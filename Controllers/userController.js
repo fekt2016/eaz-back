@@ -37,6 +37,30 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
   next();
 });
 
+exports.upLoadUserAvatar = catchAsync(async (req, res, next) => {
+  console.log('red', req.body);
+  if (req.body.password || req.body.passwordConfirm) {
+    return next(
+      new AppError(
+        'This route is not for password updates, Please use updatemyPassword',
+        400,
+      ),
+    );
+  }
+  if (req.file) req.body.photo = req.file.filename;
+
+  const userPhoto = await User.findByIdAndUpdate(req.body.photo, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      user: userPhoto,
+    },
+  });
+});
 exports.updateMe = catchAsync(async (req, res, next) => {
   // 1) Create error if user Posts password  data
   if (req.body.password || req.body.passwordConfirm) {
@@ -72,6 +96,7 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
   });
 });
 exports.getMe = catchAsync(async (req, res, next) => {
+  console.log('get me');
   const data = await User.findById(req.user.id);
 
   if (!data) {
@@ -88,11 +113,56 @@ exports.userCount = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { userCount } });
 });
 
-exports.getMe = (req, res, next) => {
+exports.getMeId = (req, res, next) => {
   req.params.id = req.user.id;
-  console.log(req.params.id);
+
   next();
 };
+
+exports.getProfile = catchAsync(async (req, res, next) => {
+  // Determine which user profile to show
+  const userId =
+    req.user.role === 'admin' && req.params.id ? req.params.id : req.user.id;
+
+  // Fetch user with necessary fields
+  const user = await User.findById(userId)
+    .select('+securitySettings') // Include virtual field
+    .populate('wishList')
+    .populate('permissions')
+    .lean();
+
+  if (!user) {
+    return next(new AppError('No user found with that ID', 404));
+  }
+
+  const profileData = {
+    userInfo: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      photo: user.photo,
+      role: user.role,
+      address: user.address,
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin,
+      ...(user.role === 'seller' && {
+        businessName: user.businessName,
+        taxId: user.taxId,
+      }),
+    },
+    securitySettings: user.securitySettings || {},
+    connectedAccounts: user.connectedAccounts || {},
+    permissions: user.permissions || {},
+  };
+
+  // Structure the response to match frontend expectations
+
+  res.status(200).json({
+    status: 'success',
+    data: profileData,
+  });
+});
 
 exports.getAllUsers = handleFactory.getAll(User);
 exports.updateUser = handleFactory.updateOne(User);

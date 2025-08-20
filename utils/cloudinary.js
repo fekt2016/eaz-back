@@ -1,4 +1,6 @@
-const cloudinary = require('cloudinary').v2;
+// utils/cloudinary.js
+const stream = require('stream');
+const { v2: cloudinary } = require('cloudinary');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -6,4 +8,28 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-module.exports = cloudinary;
+function uploadToCloudinary(fileOrBuffer, options = {}) {
+  // If passed a string, treat it as a file path
+  if (typeof fileOrBuffer === 'string') {
+    return cloudinary.uploader.upload(fileOrBuffer[0].buffer, options);
+  }
+
+  // Otherwise assume it's a Buffer
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      options,
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      },
+    );
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(fileOrBuffer);
+    bufferStream.pipe(uploadStream);
+  });
+}
+
+module.exports = {
+  cloudinary,
+  uploadToCloudinary,
+};

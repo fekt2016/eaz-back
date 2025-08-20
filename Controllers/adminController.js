@@ -4,12 +4,12 @@ const catchAsync = require('../utils/catchAsync');
 const handleFactory = require('../Controllers/handleFactory');
 
 exports.getMe = catchAsync(async (req, res, next) => {
-  const admin = await Admin.findById(req.user.id);
-  if (!admin) return next(new AppError('User with the ID does not exits', 404));
+  const data = await Admin.findById(req.user.id);
+  if (!data) return next(new AppError('User with the ID does not exits', 404));
   res.status(200).json({
     status: 'success',
     data: {
-      admin,
+      data,
     },
   });
 });

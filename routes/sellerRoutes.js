@@ -12,17 +12,17 @@ router.post('/forgotPassword', authSellerController.forgotPassword);
 router.patch('/resetPassword/:token', authSellerController.resetPassword);
 router.post('/logout', authSellerController.logout);
 
+router.route('/public/featured').get(sellerControllor.getFeaturedSellers);
+router.route('/public/:id').get(sellerControllor.getPublicSeller);
+router.route('/profile/:id').get(sellerControllor.getSeller);
+//protected routes
+router.use(authController.protect);
 router
   .route('/me/products')
-  .get(
-    authController.protect,
-    authController.restrictTo('seller'),
-    sellerControllor.getSellerProducts,
-  );
+  .get(authController.restrictTo('seller'), sellerControllor.getSellerProducts);
 router
   .route('/me/products/:productId')
   .get(
-    authController.protect,
     authController.restrictTo('seller'),
     sellerControllor.getSellerProductById,
   )
@@ -30,26 +30,26 @@ router
 
 router.get(
   '/me',
-  authController.protect,
+
   sellerControllor.getMe,
   sellerControllor.getSeller,
 );
 
 router.delete(
   '/deleteMe',
-  authController.protect,
+
   authController.restrictTo('seller'),
   sellerControllor.deleteMe,
 );
 router.patch(
   '/updateMe',
-  authController.protect,
+
   authController.restrictTo('seller'),
   sellerControllor.updateMe,
 );
 router.patch(
   '/updateSellerImage',
-  authController.protect,
+
   authController.restrictTo('seller'),
   uploadProfileImage,
   resizeImage,
@@ -57,27 +57,18 @@ router.patch(
 );
 router.patch(
   '/:id/status',
-  authController.protect,
+
   authController.restrictTo('admin'),
   sellerControllor.sellerStatus,
 );
 router
   .route('/')
-  .get(
-    authController.protect,
-    authController.restrictTo('admin'),
-    sellerControllor.getAllSeller,
-  );
+  .get(authController.restrictTo('admin'), sellerControllor.getAllSeller);
 router
   .route('/:id')
-  .get(
-    authController.protect,
-    authController.restrictTo('admin', 'seller'),
-    sellerControllor.getSeller,
-  )
   .patch(
-    authController.protect,
     authController.restrictTo('admin', 'seller'),
     sellerControllor.updateSeller,
   );
+
 module.exports = router;

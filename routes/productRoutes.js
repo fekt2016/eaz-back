@@ -10,32 +10,32 @@ const {
   setProductIds,
   resizeProductImages,
   uploadProductImage,
-  getSellerProduct,
+  // getSellerProduct,
   conditionalUpload,
   getProductCountByCategory,
-} = require('../Controllers/ProductController');
+  getProductReviews,
+  getAllPublicProductsBySeller,
+  getProductsByCategory,
+} = require('../Controllers/ProductController.cjs');
 
 const reviewRouter = require('./../routes/reviewRoutes');
 
 const router = express.Router();
-// router.use('/:productId/review', reviewRouter);
-// router.route('/best-products-price').get(bestProductPrice, getAllProduct);
+
 router.route('/category-counts').get(getProductCountByCategory);
+router.get('/category/:categoryId', getProductsByCategory); ///category/${categoryId})
 
-// router.route('/seller').get(
-//   authController.protect,
-//   // authController.restrictTo('seller'),
-//   getSellerProduct,
-// );
-
-router.route('/').get(getAllProduct).post(
-  authController.protect,
-  // authController.restrictTo('admin', 'seller'),
-  setProductIds,
-  uploadProductImage,
-  resizeProductImages,
-  createProduct,
-);
+router
+  .route('/')
+  .get(getAllProduct)
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    setProductIds,
+    uploadProductImage,
+    resizeProductImages,
+    createProduct,
+  );
 router
   .route('/:id')
   .get(getProduct)
@@ -51,5 +51,7 @@ router
     authController.restrictTo('admin', 'seller'),
     deleteProduct,
   );
+router.route('/:id/reviews').get(getProductReviews);
+router.route('/:sellerId/public').get(getAllPublicProductsBySeller);
 
 module.exports = router;

@@ -7,10 +7,12 @@ const {
   uploadCategoryImage,
   resizeCategoryImages,
   deleteCategory,
+  getParentCategories,
 } = require('../Controllers/categoryController');
 const authController = require('../Controllers/authController');
 const router = express.Router();
 
+router.get('/parents', getParentCategories);
 router
   .route('/')
   .get(
@@ -25,11 +27,11 @@ router
     resizeCategoryImages,
     createCategory,
   );
-router
+(router
   .route('/:id')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    // authController.protect,
+    // authController.restrictTo('admin', 'seller'),
     getCategory,
   )
   .patch(
@@ -44,4 +46,4 @@ router
     authController.restrictTo('admin'),
     deleteCategory,
   ),
-  (module.exports = router);
+  (module.exports = router));

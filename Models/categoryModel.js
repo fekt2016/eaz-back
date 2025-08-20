@@ -11,10 +11,25 @@ const categorySchema = new mongoose.Schema(
       default:
         'https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg',
     },
+    // Replaced attributeTemplates with direct attribute definitions
+    attributes: [
+      {
+        name: { type: String, required: true },
+        type: {
+          type: String,
+          enum: ['text', 'number', 'boolean', 'enum', 'color'],
+          default: 'text',
+        },
+        values: [String], // For enum and color types
+        isRequired: { type: Boolean, default: false },
+        isFilterable: { type: Boolean, default: false },
+        isVariant: { type: Boolean, default: false },
+      },
+    ],
     parentCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
-      default: null, // Explicitly set null for top-level
+      default: null,
     },
     subcategories: [
       {
@@ -23,68 +38,17 @@ const categorySchema = new mongoose.Schema(
       },
     ],
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
-    status: { type: String, default: 'active' },
-    isSubcategory: {
-      type: Boolean,
-      default: function () {
-        return !!this.parentCategory;
-      },
+    status: {
+      type: String,
+      enum: ['active', 'inactive'],
+      default: 'active',
     },
-    variantStructure: {
-      type: Map,
-      of: new mongoose.Schema({
-        variantOptions: [String],
-        options: {
-          type: Map,
-          of: [String],
-        },
-      }),
-      default: {},
-    },
-    options: {
-      type: Map,
-      of: [String],
-      default: {},
-      validate: {
-        validator: function (optMap) {
-          // Only validate if it's a subcategory
-          if (!this.isSubcategory) return true;
-
-          for (const [key, values] of optMap) {
-            if (!Array.isArray(values)) return false;
-            if (
-              new Set(values.map((v) => v.toLowerCase())).size !== values.length
-            ) {
-              return false;
-            }
-          }
-          return true;
-        },
-        message: (props) =>
-          `Duplicate options are not allowed for any variant type`,
-      },
-    },
+    // Removed isSubcategory field since we can derive it from parentCategory
+    // Removed variantStructure and options fields since we're using attributes
   },
-
   {
     timestamps: true,
-    toJSON: {
-      virtuals: true,
-      transform: function (doc, ret) {
-        // Convert variantStructure Map to plain object for JSON
-        if (ret.variantStructure instanceof Map) {
-          ret.variantStructure = Object.fromEntries(ret.variantStructure);
-          for (const key in ret.variantStructure) {
-            if (ret.variantStructure[key].options instanceof Map) {
-              ret.variantStructure[key].options = Object.fromEntries(
-                ret.variantStructure[key].options,
-              );
-            }
-          }
-        }
-        return ret;
-      },
-    },
+    toJSON: { virtuals: true },
     toObject: { virtuals: true },
   },
 );
@@ -94,133 +58,97 @@ categorySchema.virtual('productCount').get(function () {
   return this.products ? this.products.length : 0;
 });
 
+// Virtual field to check if category is a subcategory
+categorySchema.virtual('isSubcategory').get(function () {
+  return !!this.parentCategory;
+});
+categorySchema.pre('save', function (next) {
+  // If the category is top-level (no parent) and it has attributes
+  if (!this.parentCategory && this.attributes && this.attributes.length > 0) {
+    return next(
+      new Error(
+        'Attributes can only be defined for subcategories. Top-level categories cannot have attributes.',
+      ),
+    );
+  }
+  next();
+});
+
 // Auto-update parent's subcategories array
 categorySchema.post('save', async function (doc) {
   if (doc.parentCategory) {
-    await mongoose.model('Category').findByIdAndUpdate(
-      doc.parentCategory,
-      { $addToSet: { subcategories: doc._id } }, // Use $addToSet to prevent duplicates
-      { new: true },
-    );
+    await mongoose
+      .model('Category')
+      .findByIdAndUpdate(
+        doc.parentCategory,
+        { $addToSet: { subcategories: doc._id } },
+        { new: true },
+      );
   }
 });
-// In your category schema
-categorySchema.set('toJSON', {
-  virtuals: true,
-  transform: function (doc, ret) {
-    // Convert variantStructure Map to object
-    if (ret.variantStructure instanceof Map) {
-      ret.variantStructure = Object.fromEntries(ret.variantStructure);
 
-      // Convert nested option Maps to objects
-      for (const key in ret.variantStructure) {
-        if (ret.variantStructure[key].options instanceof Map) {
-          ret.variantStructure[key].options = Object.fromEntries(
-            ret.variantStructure[key].options,
-          );
-        }
-      }
-    }
-    return ret;
-  },
-});
-// Add pre-save hook to convert plain objects to Maps
-categorySchema.pre('save', function (next) {
-  if (
-    this.variantStructure &&
-    typeof this.variantStructure === 'object' &&
-    !(this.variantStructure instanceof Map)
-  ) {
-    const variantMap = new Map();
-
-    for (const [key, value] of Object.entries(this.variantStructure)) {
-      const optionsMap = new Map();
-
-      if (value.options && typeof value.options === 'object') {
-        for (const [optKey, optValue] of Object.entries(value.options)) {
-          optionsMap.set(optKey, optValue);
-        }
-      }
-
-      variantMap.set(key, {
-        variantOptions: value.variantOptions || [],
-        options: optionsMap,
-      });
-    }
-
-    this.variantStructure = variantMap;
-  }
-  next();
-});
-
+// Generate slug before saving
 categorySchema.pre('save', function (next) {
   this.slug = slugify(this.name, { lower: true });
+  next();
+});
 
-  if (this.isSubcategory) {
-    // Normalize variant structure
-    if (this.variantStructure instanceof Map) {
-      const newVariantStructure = new Map();
-      for (const [key, value] of this.variantStructure) {
-        const normalizedKey = key.trim();
-        if (normalizedKey) {
-          const normalizedValue = {
-            variantOptions: (value.variantOptions || [])
-              .map((opt) => opt.trim())
-              .filter((opt) => opt.length > 0),
-            options: new Map(),
-          };
+// Validation for attributes
+categorySchema.pre('save', function (next) {
+  if (this.attributes && this.attributes.length > 0) {
+    for (const attribute of this.attributes) {
+      // Validate enum/color attributes require values
+      if (
+        (attribute.type === 'enum' || attribute.type === 'color') &&
+        (!attribute.values || attribute.values.length === 0)
+      ) {
+        return next(
+          new Error(`${attribute.name} requires values for enum/color types`),
+        );
+      }
 
-          if (value.options instanceof Map) {
-            for (const [optKey, optValues] of value.options) {
-              const normalizedOptKey = optKey.trim();
-              if (normalizedOptKey) {
-                const normalizedOptValues = optValues
-                  .map((v) => v.trim())
-                  .filter((v) => v.length > 0);
-
-                if (normalizedOptValues.length > 0) {
-                  normalizedValue.options.set(
-                    normalizedOptKey,
-                    normalizedOptValues,
-                  );
-                }
-              }
-            }
-          }
-
-          if (normalizedValue.variantOptions.length > 0) {
-            newVariantStructure.set(normalizedKey, normalizedValue);
-          }
+      // Validate values are unique
+      if (attribute.values && attribute.values.length > 0) {
+        const uniqueValues = [
+          ...new Set(attribute.values.map((v) => v.toLowerCase())),
+        ];
+        if (uniqueValues.length !== attribute.values.length) {
+          return next(new Error(`${attribute.name} has duplicate values`));
         }
       }
-      this.variantStructure = newVariantStructure;
     }
   }
   next();
 });
 
-categorySchema.pre('validate', function (next) {
-  if (!this.isSubcategory) {
-    if (this.variantStructure && this.variantStructure.size > 0) {
-      this.invalidate(
-        'variantStructure',
-        'Variant structure can only be defined for subcategories',
-      );
-    }
-
-    if (this.options && this.options.size > 0) {
-      this.invalidate(
-        'options',
-        'Variant options can only be defined for subcategories',
-      );
-    }
+// Cascade delete subcategories when parent is deleted
+categorySchema.pre('remove', async function (next) {
+  // Remove this category from its parent's subcategories
+  if (this.parentCategory) {
+    await mongoose.model('Category').findByIdAndUpdate(this.parentCategory, {
+      $pull: { subcategories: this._id },
+    });
   }
+
+  // Delete all subcategories
+  if (this.subcategories.length > 0) {
+    await mongoose.model('Category').deleteMany({
+      _id: { $in: this.subcategories },
+    });
+  }
+
+  // Remove this category from all products
+  await mongoose
+    .model('Product')
+    .updateMany({ category: this._id }, { $unset: { category: 1 } });
+
   next();
 });
 
 categorySchema.pre('find', function () {
   this.populate('parentCategory');
 });
+
 categorySchema.pre('findOne', function () {
   this.populate('parentCategory');
 });

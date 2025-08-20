@@ -1,5 +1,7 @@
 // models/tokenBlacklistModel.js
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken'); // Added jwt requirement
+
 const tokenBlacklistSchema = new mongoose.Schema(
   {
     token: {
@@ -76,5 +78,27 @@ tokenBlacklistSchema.statics.blacklistTokens = async function (tokens) {
   return this.insertMany(tokensWithExpiry, { ordered: false });
 };
 
+// ADDED MISSING METHOD: Invalidate all sessions for a user
+tokenBlacklistSchema.statics.invalidateAllSessions = async function (userId) {
+  // Create special token representing global invalidation
+  const globalToken = `global_invalidation:${userId}`;
+
+  // Set expiration to 10 years from now
+  const expiresAt = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
+
+  // Create or update global invalidation record
+  await this.findOneAndUpdate(
+    { token: globalToken },
+    {
+      token: globalToken,
+      user: userId,
+      expiresAt,
+      reason: 'security',
+      userType: 'customer', // Default, will be updated in actual usage
+    },
+    { upsert: true, new: true },
+  );
+};
+
 const TokenBlacklist = mongoose.model('TokenBlacklist', tokenBlacklistSchema);
-module.exports = TokenBlacklist;
+module.exports = TokenBlacklist; // Fixed export statement

@@ -20,7 +20,7 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(authController.protect, getAllOrder)
+  .get(authController.protect, authController.restrictTo('admin'), getAllOrder)
   .post(authController.protect, authController.restrictTo('user'), createOrder);
 
 router.get('/get/totalsales', authController.protect, totalSales);
@@ -51,10 +51,19 @@ router
   .route('/get-user-order/:id')
   .get(authController.protect, authController.restrictTo('user'), getUserOrder);
 
-// router
-//   .route('/:id')
-//   .get(authController.protect, getOrder)
-//   .patch(updateOrder)
-//   .delete(OrderDeleteOrderItem, deleteOrder);
+router
+  .route('/:id')
+  .get(authController.protect, authController.restrictTo('admin'), getOrder)
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    updateOrder,
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('user', 'admin'),
+    OrderDeleteOrderItem,
+    deleteOrder,
+  );
 
 module.exports = router;

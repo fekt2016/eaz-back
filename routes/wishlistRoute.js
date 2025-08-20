@@ -6,6 +6,7 @@ const {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
+  syncWishlist,
 } = require('../Controllers/wishlistController');
 
 router
@@ -15,6 +16,13 @@ router
     authController.protect,
     authController.restrictTo('user'),
     addToWishlist,
+  );
+router
+  .route('/sync')
+  .post(
+    authController.protect,
+    authController.restrictTo('user'),
+    syncWishlist,
   );
 
 router

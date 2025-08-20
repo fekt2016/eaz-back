@@ -6,9 +6,6 @@ const productViewModelSchema = new mongoose.Schema({
   viewedAt: Date,
 });
 
-const ProductViewModel = mongoose.model(
-  'ProductViewModel',
-  productViewModelSchema,
-);
+const ProductView = mongoose.model('ProductViewModel', productViewModelSchema);
 
-module.exports = ProductViewModel;
+module.exports = ProductView;

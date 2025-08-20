@@ -8,6 +8,7 @@ const {
   createReview,
   updateReview,
   deleteReview,
+  createUserReview,
 } = require('../Controllers/reviewController');
 
 const router = express.Router({ mergeParams: true });
@@ -19,7 +20,7 @@ router
     authController.protect,
     authController.restrictTo('user'),
     reviewController.setProductUserIds,
-    createReview,
+    createUserReview,
   );
 
 router

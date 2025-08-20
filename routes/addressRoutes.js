@@ -10,7 +10,7 @@ router
   .get(
     authController.protect,
     authController.restrictTo('user'),
-    addressController.getAddresses,
+    addressController.getUserAddresses,
   )
   .post(
     authController.protect,
@@ -19,8 +19,26 @@ router
   );
 router
   .route('/:id')
-  .patch(addressController.updateAddress)
-  .delete(addressController.deleteAddress);
-router.patch('/:id/set-default', addressController.setDefaultAddress);
+  .get(
+    authController.protect,
+    authController.restrictTo('user'),
+    addressController.getAddress,
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('user'),
+    addressController.updateAddress,
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('user'),
+    addressController.deleteAddress,
+  );
+router.patch(
+  '/:id/set-default',
+  authController.protect,
+  authController.restrictTo('user'),
+  addressController.setDefaultAddress,
+);
 
 module.exports = router;

@@ -4,25 +4,6 @@ randomTxt = () => Math.random().toString(36).substring(7).toLocaleUpperCase();
 randomNumbers = () => Math.floor(1000 + Math.random() * 9000);
 const mongoose = require('mongoose');
 
-// const generateOrderNumber = async () => {
-//   const today = new Date();
-//   const datePart = `${today.getFullYear()}${(today.getMonth() + 1)
-//     .toString()
-//     .padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
-
-//   // Find the last order number for today
-//   const lastOrder = await Order.findOne({
-//     orderNumber: new RegExp(`^ORD-${datePart}-`),
-//   }).sort({ createdAt: -1 });
-
-//   let sequence = 1;
-//   if (lastOrder && lastOrder.orderNumber) {
-//     const lastSeq = parseInt(lastOrder.orderNumber.split('-')[2], 10);
-//     if (!isNaN(lastSeq)) sequence = lastSeq + 1;
-//   }
-
-//   return `ORD-${datePart}-${sequence.toString().padStart(4, '0')}`;
-// };
 const generateOrderNumber = async () => {
   const today = new Date();
   const datePart = `${today.getFullYear()}${(today.getMonth() + 1)
@@ -51,9 +32,24 @@ const generateOrderNumber = async () => {
     return `ORD-${datePart}-${timestamp}${random}`;
   }
 };
+const validateGhanaPhone = (phone) => {
+  if (!phone) return true; // Phone is optional
+
+  // Remove all non-digit characters
+  const cleanedPhone = phone.replace(/\D/g, '');
+
+  // Check for valid Ghana formats:
+  // 1. Local format: 0XXXXXXXXX (10 digits)
+  // 2. International format: 233XXXXXXXXX (12 digits)
+  const localRegex = /^0\d{9}$/;
+  const intlRegex = /^233\d{9}$/;
+
+  return localRegex.test(cleanedPhone) || intlRegex.test(cleanedPhone);
+};
 
 module.exports = {
   randomTxt,
   randomNumbers,
   generateOrderNumber,
+  validateGhanaPhone,
 };

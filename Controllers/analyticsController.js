@@ -1,10 +1,14 @@
 const ProductView = require('../Models/productViewModel');
+const Product = require('../Models/productModel');
 const catchAsync = require('../utils/catchAsync');
+const mongoose = require('mongoose');
 
 exports.getSellerProductViews = catchAsync(async (req, res, next) => {
-  console.log(req.params.sellerId);
   try {
     const sellerId = req.params.sellerId;
+
+    const sellerIdObj = new mongoose.Types.ObjectId(sellerId);
+
     const views = await ProductView.aggregate([
       {
         $lookup: {
@@ -15,31 +19,44 @@ exports.getSellerProductViews = catchAsync(async (req, res, next) => {
         },
       },
       { $unwind: '$product' },
-      { $match: { 'product.seller': sellerId } },
+      { $match: { 'product.seller': sellerIdObj } },
       { $sort: { viewedAt: -1 } },
     ]);
-    console.log('views', views);
+
     res.status(200).json({ status: 'success', data: { views } });
   } catch (error) {
     console.log(error);
   }
 });
 
-exports.recordView = catchAsync(async (req, res, next) => {
-  try {
-    const { productId, sessionId } = req.body;
+exports.recordView = catchAsync(async (req, res) => {
+  const { productId, sessionId } = req.body;
 
-    const view = await ProductView.create({
-      product: productId,
-      sessionId,
-      viewedAt: new Date(),
-    });
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Check for existing view in last 24 hours
+  const existingView = await ProductView.findOne({
+    productId,
+    sessionId,
+    viewedAt: { $gte: oneDayAgo },
+  });
 
-    res.status(201).json({ status: 'success', data: { view } });
-  } catch (error) {
-    res.status(400).json({
-      status: 'fail',
-      message: error.message,
+  if (existingView) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'View already recorded within 24 hours',
     });
   }
+  // Update the product's totalViews
+  await Product.findByIdAndUpdate(productId, { $inc: { totalViews: 1 } });
+  // Create new view
+  const view = await ProductView.create({
+    productId,
+    sessionId,
+    viewedAt: new Date(),
+  });
+
+  res.status(201).json({
+    status: 'success',
+    data: { view },
+  });
 });

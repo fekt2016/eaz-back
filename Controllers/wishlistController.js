@@ -64,9 +64,25 @@ const removeFromWishlist = catchAsync(async (req, res) => {
     throw new Error('Wishlist not found');
   }
 });
+const syncWishlist = catchAsync(async (req, res) => {
+  const wishlist = await WishList.findOne({ user: req.user.id });
+
+  if (wishlist) {
+    wishlist.products = req.body.wishlist.products;
+    await wishlist.save();
+    res.status(200).json({
+      message: 'Wishlist synced',
+      wishlist: await wishlist.populate('products', 'name price imageCover'),
+    });
+  } else {
+    res.status(404);
+    throw new Error('Wishlist not found');
+  }
+});
 
 module.exports = {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
+  syncWishlist,
 };

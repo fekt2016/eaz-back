@@ -2,7 +2,7 @@ const Seller = require('../Models/sellerModel');
 const catchAsync = require('../utils/catchAsync');
 const { createSendToken } = require('../utils/createSendToken');
 const AppError = require('../utils/appError');
-const sendEmail = require('../utils/email');
+const sendEmail = require('../utils/emailService');
 const crypto = require('crypto');
 const sellerCustomerModel = require('../Models/chat/sellerCustomerModel');
 const TokenBlacklist = require('../Models/tokenBlackListModal');
@@ -10,7 +10,6 @@ const SecurityLog = require('../Models/securityModal');
 const jwt = require('jsonwebtoken');
 
 exports.signupSeller = catchAsync(async (req, res, next) => {
-  console.log('body', req.body);
   const newSeller = await Seller.create(req.body);
   if (!newSeller) {
     return next(new AppError('check your cred and register again', 401));
@@ -36,8 +35,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   }
 
   seller.lastLogin = Date.now();
-
-  console.log(seller.lastLogin);
 
   createSendToken(seller, 200, res);
 });
@@ -136,7 +133,7 @@ exports.logout = catchAsync(async (req, res, next) => {
   try {
     // 5. Attempt to decode token
     decoded = jwt.decode(token);
-    console.log('Decoded token:', decoded); // Add logging
+    // Add logging
   } catch (decodeError) {
     console.error('Token decode error:', decodeError); // Add logging
 

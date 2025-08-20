@@ -164,7 +164,106 @@ exports.sellerStatus = catchAsync(async (req, res, next) => {
   console.log('Updated seller:', seller);
   res.status(200).json({ status: 'success', data: { seller } });
 });
+exports.getPublicSeller = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.params.id);
+  if (!seller) return next(new AppError('No seller found with that ID', 404));
+  res.status(200).json({ status: 'success', data: { seller } });
+});
+exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
+  console.log(req.query);
+  // Get query parameters with defaults
+  const limit = parseInt(req.query.limit) || 10;
+  const minRating = parseFloat(req.query.minRating) || 4.0;
 
+  // Fetch featured sellers from database with flexible filtering
+  const sellers = await Seller.aggregate([
+    {
+      $match: {
+        // Handle missing status field
+        $or: [
+          { status: 'active' },
+          { status: { $exists: false } }, // Include documents without status field
+        ],
+        // Convert string ratings to numbers for comparison
+        $expr: {
+          $gte: [
+            { $toDouble: '$ratings.average' }, // Convert string to number
+            minRating,
+          ],
+        },
+      },
+    },
+    // Convert ratings to numbers for proper sorting
+    {
+      $addFields: {
+        'ratings.average': { $toDouble: '$ratings.average' },
+        'ratings.count': {
+          $cond: [
+            { $ifNull: ['$ratings.count', false] },
+            { $toInt: '$ratings.count' },
+            0, // Default to 0 if missing
+          ],
+        },
+      },
+    },
+    // Sort by the converted numeric values
+    { $sort: { 'ratings.average': -1, 'ratings.count': -1 } },
+    { $limit: limit },
+    // Project required fields
+    {
+      $project: {
+        _id: 1,
+        shopName: 1,
+        avatar: 1,
+        createdAt: 1,
+        rating: '$ratings.average',
+        reviewCount: '$ratings.count',
+      },
+    },
+  ]);
+
+  // Transform to final response format
+  const transformedSellers = sellers.map((seller) => ({
+    id: seller._id,
+    shopName: seller.shopName,
+    avatar: seller.avatar,
+    joinedDate: seller.createdAt,
+    rating: seller.rating,
+    reviewCount: seller.reviewCount,
+  }));
+  res.status(200).json({
+    status: 'success',
+    results: transformedSellers.length,
+    data: {
+      sellers: transformedSellers,
+    },
+  });
+});
+exports.getMySellerProfile = catchAsync(async (req, res, next) => {
+  // req.user is set by auth middleware
+  const seller = await Seller.findById(req.user.id)
+    .select('-__v -passwordChangedAt')
+    .lean();
+
+  if (!seller) return next(new AppError('Seller not found', 404));
+
+  // Transform data
+  const result = {
+    ...seller,
+    rating: seller.ratings?.average ? parseFloat(seller.ratings.average) : 0,
+    reviewCount: seller.ratings?.count ? parseInt(seller.ratings.count) : 0,
+    joinedDate: seller.createdAt,
+  };
+
+  delete result.ratings;
+  delete result.createdAt;
+  delete result.password;
+
+  res.status(200).json({
+    status: 'success',
+    data: { seller: result },
+  });
+});
 exports.getAllSeller = handleFactory.getAll(Seller);
 exports.getSeller = handleFactory.getOne(Seller);
 exports.updateSeller = handleFactory.updateOne(Seller);

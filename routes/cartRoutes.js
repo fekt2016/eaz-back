@@ -13,7 +13,7 @@ router
   .post(
     authController.restrictTo('user'),
     cartController.setUserId, // Fixed typo: setUderId → setUserId
-    cartController.createCart,
+    cartController.addToCart,
   )
   .get(
     authController.restrictTo('user'),
@@ -28,8 +28,16 @@ router
 // Protected cart item operations
 router
   .route('/items/:itemId')
-  .patch(authController.restrictTo('user'), cartController.updateCartItem)
-  .delete(cartController.deleteCartItem);
+  .patch(
+    authController.protect,
+    authController.restrictTo('user'),
+    cartController.updateCartItem,
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('user'),
+    cartController.deleteCartItem,
+  );
 
 // Admin-only cart access
 router.route('/:id').get(

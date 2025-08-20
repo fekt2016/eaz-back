@@ -6,49 +6,6 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const cloudinary = require('../utils/cloudinary');
 const stream = require('stream');
-// const { type } = require('os');
-
-// exports.resolveCategoryIds = async (req, res, next) => {
-//   try {
-//     const { category, subCategory } = req.body;
-
-//     if (!category && typeof category === 'string') {
-//       return next(new AppError('Please provide a valid category name', 400));
-//     }
-
-//     if (!subCategory || typeof subCategory !== 'string') {
-//       return next(new AppError('Please provide a valid subcategory name', 400));
-//     }
-//     const parentCategory = await Category.findOne({
-//       name: category,
-//       parentCategory: null,
-//     });
-
-//     if (!parentCategory) {
-//       return next(new AppError('Parent category not found', 404));
-//     }
-//     const childCategory = await Category.findOne({
-//       name: subCategory,
-//       parentCategory: parentCategory._id,
-//     });
-
-//     if (!childCategory) {
-//       return next(
-//         new AppError(
-//           `Subcategory '${subCategory}' not found under parent category '${category}'`,
-//           404,
-//         ),
-//       );
-//     }
-
-//     req.body.parentCategory = parentCategory._id;
-//     req.body.subCategory = childCategory._id;
-//   } catch (err) {
-//     console.log(err.message);
-//   }
-
-//   next();
-// };
 
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
@@ -115,9 +72,17 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
 
   next();
 });
+exports.getParentCategories = catchAsync(async (req, res, next) => {
+  const categories = await Category.find({ parentCategory: null }); // Adjust field if needed
 
+  res.status(200).json({
+    status: 'success',
+    results: categories.length,
+    data: { categories },
+  });
+});
 exports.getAllCategories = handleFactory.getAll(Category);
-exports.getCategory = handleFactory.getOne(Category);
+exports.getCategory = handleFactory.getOne(Category, { path: 'subcategories' });
 exports.createCategory = handleFactory.createOne(Category);
 exports.updateCategory = handleFactory.updateOne(Category);
 exports.deleteCategory = handleFactory.deleteOne(Category);

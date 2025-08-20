@@ -7,6 +7,12 @@ const addressSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
     streetAddress: {
       type: String,
       required: true,
@@ -121,7 +127,7 @@ const addressSchema = new mongoose.Schema(
       enum: ['Home', 'Work', 'Business', 'Other'],
       default: 'Home',
     },
-    additionalInstructions: {
+    additionalInformation: {
       type: String,
       trim: true,
       maxlength: 300,
