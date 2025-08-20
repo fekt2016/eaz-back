@@ -138,3 +138,4 @@ exports.getAddress = catchAsync(async (req, res, next) => {
   if (!address) next(new AppError('No address found', 404));
   res.json({ success: true, message: 'Address found', address });
 });
+console.log('user id', req.user.id);
