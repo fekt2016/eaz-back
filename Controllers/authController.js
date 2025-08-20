@@ -87,6 +87,7 @@ exports.signup = catchAsync(async (req, res, next) => {
 
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { loginId } = req.body;
+  console.log(loginId);
 
   if (!loginId) {
     return next(new AppError('Please provide email or phone number', 400));
@@ -198,9 +199,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     console.log(`Allowing ${method} access to ${fullPath} (public route)`);
     return next();
   }
-
   // Extract token
   const token = extractToken(req.headers.authorization);
+
   if (!token) {
     console.log(`No token found for protected route: ${method} ${fullPath}`);
     return next(
@@ -217,6 +218,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Verify token
   const { decoded, error } = await verifyToken(token, fullPath);
+
   if (error || !decoded) {
     console.error(
       'Token verification failed:',
@@ -228,7 +230,6 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Find user
   const currentUser = await findUserByToken(decoded);
   if (!currentUser) {
-    console.log('User not found for token');
     return next(
       new AppError('The user belonging to this token no longer exists', 401),
     );
@@ -236,7 +237,6 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Check password change timestamp
   if (currentUser.changedPasswordAfter(decoded.iat)) {
-    console.log('Password changed after token issued');
     return next(
       new AppError('User recently changed password! Please log in again', 401),
     );
@@ -252,6 +252,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
+    console.log(req.user.role);
     if (!req.user?.role || !roles.includes(req.user.role)) {
       return next(
         new AppError('You do not have permission to perform this action', 403),
@@ -332,7 +333,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
     return next(new AppError('Your current password is wrong', 401));
   }
 
-  user.password = req.body.password;
+  user.password = req.body.newPassword;
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
 

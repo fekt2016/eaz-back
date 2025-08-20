@@ -4,18 +4,20 @@ const mongoose = require('mongoose');
 
 // Get user's credit balance
 exports.getCreditBalance = catchAsync(async (req, res, next) => {
+  // console.log('user', req.user.id);
   const userId = new mongoose.Types.ObjectId(req.user.id);
   const creditbalance = await Creditbalance.findOne({
     user: userId,
-  }).populate('user', 'name email');
+  });
 
   if (!creditbalance) {
     // Initialize if doesn't exist
-    const newCredit = await Creditbalance.create({
-      user: req.user.id,
-      balance: 0,
-      transactions: [],
-    });
+    try {
+      const newCredit = await Creditbalance.create({ user: userId });
+      console.log('newCredit', newCredit);
+    } catch (error) {
+      console.log('error', error);
+    }
     return res.json({
       status: 'success',
       data: { creditbalance: newCredit },

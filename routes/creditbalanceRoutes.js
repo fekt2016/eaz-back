@@ -7,12 +7,13 @@ const authController = require('../Controllers/authController');
 
 router.get(
   '/balance',
-  // authController.restrictTo('user'),
+  authController.protect,
+  authController.restrictTo('user'),
   creditbalanceController.getCreditBalance,
 );
 router.post(
   '/add',
-  // authController.restrictTo('admin'),
+  authController.restrictTo('admin'),
   creditbalanceController.addCredit,
 );
 router.get(

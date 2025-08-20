@@ -227,7 +227,9 @@ userSchema.methods.correctPassword = async function (
     'userPassword',
     userPassword,
   );
-  return await bcrypt.compare(candidatePassword, userPassword);
+  const user = await bcrypt.compare(candidatePassword, userPassword);
+  console.log('user', user);
+  return user;
 };
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {

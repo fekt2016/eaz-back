@@ -26,6 +26,7 @@ const filterObj = (obj, ...allowedFields) => {
 };
 exports.uploadUserPhoto = upload.single('photo');
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
+  console.log('file', req.file);
   if (!req.file) return next();
 
   req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
@@ -38,7 +39,6 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
 });
 
 exports.upLoadUserAvatar = catchAsync(async (req, res, next) => {
-  console.log('red', req.body);
   if (req.body.password || req.body.passwordConfirm) {
     return next(
       new AppError(
@@ -49,7 +49,7 @@ exports.upLoadUserAvatar = catchAsync(async (req, res, next) => {
   }
   if (req.file) req.body.photo = req.file.filename;
 
-  const userPhoto = await User.findByIdAndUpdate(req.body.photo, {
+  const user = await User.findByIdAndUpdate(req.user.id, req.body.photo, {
     new: true,
     runValidators: true,
   });
@@ -57,7 +57,7 @@ exports.upLoadUserAvatar = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     data: {
-      user: userPhoto,
+      user,
     },
   });
 });
@@ -71,9 +71,9 @@ exports.updateMe = catchAsync(async (req, res, next) => {
       ),
     );
   }
+
   //2) Update user document
-  const filteredBody = filterObj(req.body, 'name', 'email');
-  if (req.file) filteredBody.photo = req.file.filename;
+  const filteredBody = filterObj(req.body, 'name', 'email', 'phone');
   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
     runValidators: true,
@@ -88,7 +88,10 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 });
 
 exports.deleteMe = catchAsync(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user.id, { active: false });
+  await User.findByIdAndUpdate(req.user.id, {
+    active: false,
+    status: 'inactive',
+  });
 
   res.status(204).json({
     status: 'success',
@@ -96,7 +99,6 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
   });
 });
 exports.getMe = catchAsync(async (req, res, next) => {
-  console.log('get me');
   const data = await User.findById(req.user.id);
 
   if (!data) {

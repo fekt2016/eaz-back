@@ -34,11 +34,16 @@ router.get(
   getProfile,
 );
 
-router.patch('/updatePassword', authController.updatePassword);
+router.patch(
+  '/updatePassword',
+  authController.protect,
+  authController.restrictTo('user'),
+  authController.updatePassword,
+);
 // router.get('/me', getMe, getUser);
 
 router.use(authController.protect, authController.restrictTo('user'));
-router.patch('/updateMe', uploadUserPhoto, resizeUserPhoto, updateMe);
+router.patch('/updateMe', updateMe);
 router.patch(
   '/avatar',
   authController.protect,
@@ -47,13 +52,34 @@ router.patch(
   resizeUserPhoto,
   upLoadUserAvatar,
 );
-router.delete('/deleteMe', deleteMe);
+
+//user deactivation his account
+router.delete(
+  '/deleteMe',
+  authController.protect,
+  authController.restrictTo('user'),
+  deleteMe,
+);
 router.get('/me', getMe);
 
-router.use(authController.restrictTo('admin'));
-
-router.get('/get/count', userCount);
-router.route('/').get(getAllUsers).post(createUser);
-router.route('/:id').get(getUser).patch(updateUser).delete(deleteUser);
+router.get(
+  '/get/count',
+  authController.protect,
+  authController.restrictTo('admin'),
+  userCount,
+);
+router
+  .route('/')
+  .get(authController.protect, authController.restrictTo('admin'), getAllUsers)
+  .post(createUser);
+router
+  .route('/:id')
+  .get(authController.protect, authController.restrictTo('admin'), getUser)
+  .patch(authController.protect, authController.restrictTo('admin'), updateUser)
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    deleteUser,
+  );
 
 module.exports = router;
