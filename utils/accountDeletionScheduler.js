@@ -67,3 +67,4 @@ async function anonymizeUserData(userId) {
 
   // Add additional data cleanup as needed
 }
+console.log('testing');
