@@ -20,6 +20,9 @@ const authController = require('../Controllers/authController');
 const router = express.Router();
 
 router.post('/signup', authController.signup);
+router.post('/email-verification', authController.emailVerification);
+router.get('/email-verification/:token', authController.verifyEmail);
+router.post('/resend-verification', authController.emailVerification);
 router.post('/send-otp', authController.sendOtp);
 router.post('/verify-otp', authController.verifyOtp);
 router.post('/logout', authController.logout);

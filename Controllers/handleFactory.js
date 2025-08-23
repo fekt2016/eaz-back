@@ -172,7 +172,6 @@ exports.createOne = (Model) => async (req, res, next) => {
       return next(new AppError('Invalid subCategory ID format', 400));
     }
 
-    console.log('body', body);
     // 3. Create document
     const doc = await Model.create(body);
 

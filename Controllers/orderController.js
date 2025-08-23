@@ -35,7 +35,6 @@ exports.getAllOrder = handleFactory.getAll(Order, [
 ]);
 // creating orders
 exports.createOrder = catchAsync(async (req, res, next) => {
-  console.log('createOrder initiated');
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -198,14 +197,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         totalDiscount = Math.min(couponBatch.discountValue, overallSubtotal);
       }
 
-      console.log('Discount applied:', totalDiscount);
-
       // Mark coupon as used and update batch
       coupon.used = true;
       coupon.usedAt = new Date();
       couponBatch.usageCount += 1;
       await couponBatch.save({ session });
-      console.log('Coupon marked as used and batch updated');
 
       // Set couponUsed reference for the order
       couponUsed = couponBatch;
@@ -225,7 +221,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       discountAmount: totalDiscount,
     });
     await newOrder.save({ session });
-    console.log('Main order created:', newOrder._id);
 
     // Create SellerOrders
     const sellerOrders = [];
@@ -259,13 +254,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       await sellerOrder.save({ session });
       sellerOrders.push(sellerOrder._id);
     }
-    console.log('Created seller orders:', sellerOrders.length);
 
     // Update main order
     newOrder.sellerOrder = sellerOrders;
     newOrder.totalPrice = orderTotal;
     await newOrder.save({ session });
-    console.log('Main order updated with totals');
 
     // Record coupon usage
     if (couponUsed) {
@@ -277,7 +270,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         usedAt: new Date(),
       });
       await couponUsageDoc.save({ session });
-      console.log('Coupon usage recorded');
     }
 
     // Update product stock
@@ -297,11 +289,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         await product.save({ session });
       }
     }
-    console.log('Product stock updated');
 
     // Commit transaction
     await session.commitTransaction();
-    console.log('Transaction committed successfully');
 
     // Fetch populated order
     const fullOrder = await Order.findById(newOrder._id)
@@ -426,10 +416,8 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
 
 //get order by seller order id
 exports.getOrderBySeller = catchAsync(async (req, res, next) => {
-  console.log('fetching seller order by ID');
   // Get order ID from URL params
   const orderId = req.params.id;
-  console.log('orderId', req.params.id);
 
   // Validate MongoDB ID format
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -479,10 +467,7 @@ exports.OrderDeleteOrderItem = catchAsync(async (req, res, next) => {
   next();
 });
 exports.getUserOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id }).populate(
-    'user',
-    'name email',
-  );
+  const orders = await Order.find({ user: req.user._id });
   if (!orders) return next(new AppError('Order not found', 404));
   res.status(200).json({ status: 'success', data: { orders } });
 });
@@ -527,13 +512,11 @@ exports.getOrder = handleFactory.getOne(Order, [
       select: 'name price', // Add any other product fields you need
     },
   },
-
   // Second population: User information
   {
     path: 'user',
     select: 'name email phone',
   },
-
   // Third population: Seller orders with additional details
   {
     path: 'sellerOrder',

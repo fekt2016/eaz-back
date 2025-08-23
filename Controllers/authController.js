@@ -52,12 +52,12 @@ exports.signup = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide a valid Ghana phone number', 400));
   }
 
-  // Email validation
+  // // Email validation
   if (req.body.email && !validator.isEmail(req.body.email)) {
     return next(new AppError('Please provide a valid email address', 400));
   }
 
-  // Require either email or phone
+  // // Require either email or phone
   if (!req.body.email && !req.body.phone) {
     return next(
       new AppError('Please provide either email or phone number', 400),
@@ -72,19 +72,99 @@ exports.signup = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Create new user
+  // // Create new user
   const newUser = await User.create({
     name: req.body.name,
     email: req.body.email,
     phone: req.body.phone ? req.body.phone.replace(/\D/g, '') : undefined,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
-    passwordChangedAt: req.body.passwordChangedAt,
+    // passwordChangedAt: req.body.passwordChangedAt,
+    emailVerified: req.body.emailVerified || false,
+  });
+  console.log('user', newUser);
+  const verificationToken = newUser.createEmailVerificationToken();
+  console.log('verificationToken', verificationToken);
+  await newUser.save({ validateBeforeSave: false });
+  const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
+
+  const message = `Welcome to YourBrand! Please verify your email by clicking on this link: ${verificationURL}. This link is valid for 10 minutes.`;
+  try {
+    await sendCustomEmail({
+      email: newUser.email,
+      subject: 'Verify Your Email Address',
+      message,
+    });
+
+    // Respond without sending sensitive data
+    res.status(201).json({
+      status: 'success',
+      requiresVerification: true,
+      message:
+        'Account created! Please check your email to verify your account.',
+      data: {
+        user: {
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+        },
+      },
+    });
+  } catch (err) {
+    // If email fails, remove the unverified user
+    await User.findByIdAndDelete(newUser._id);
+
+    return next(
+      new AppError(
+        'There was an error creating your account. Please try again.',
+        500,
+      ),
+    );
+  }
+});
+exports.verifyEmail = catchAsync(async (req, res, next) => {
+  // Get token from URL params
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+
+  // Find user with this token that hasn't expired
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpires: { $gt: Date.now() },
   });
 
-  createSendToken(newUser, 201, res);
-});
+  if (!user) {
+    return next(
+      new AppError('Verification token is invalid or has expired', 400),
+    );
+  }
 
+  // Mark email as verified and clear token fields
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  // You could automatically log the user in here or redirect to login page
+  res.status(200).json({
+    status: 'success',
+    message: 'Email verified successfully! You can now log in.',
+  });
+});
+exports.requireVerifiedEmail = catchAsync(async (req, res, next) => {
+  // Assuming user is already authenticated at this point
+  if (!req.user.emailVerified) {
+    return next(
+      new AppError(
+        'Please verify your email address to access this resource',
+        403,
+      ),
+    );
+  }
+  next();
+});
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { loginId } = req.body;
   console.log(loginId);
@@ -338,4 +418,47 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   createSendToken(user, 200, res);
+});
+
+exports.emailVerification = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email || !validator.isEmail(email)) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return next(new AppError('No user found with that email address', 404));
+  }
+
+  const verificationToken = user.createEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
+
+  const verificationURL = `${req.protocol}://${req.get(
+    'host',
+  )}/api/v1/users/verify-email/${verificationToken}`;
+
+  const message = `Verify your email by clicking on this link: ${verificationURL}. This link is valid for 10 minutes.`;
+
+  try {
+    await sendCustomEmail({
+      email: user.email,
+      subject: 'Email Verification',
+      message,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Verification email sent',
+    });
+  } catch (err) {
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new AppError('There was an error sending the verification email', 500),
+    );
+  }
 });

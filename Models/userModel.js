@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: Number,
+      unique: true,
       required: [true, 'Please provide your phone number'],
     },
     photo: { type: String, default: 'default.jpg' },
@@ -107,6 +108,12 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: String,
+    emailVerificationExpires: Date,
     createdAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now },
   },
@@ -332,6 +339,15 @@ userSchema.post('save', async function (doc, next) {
     next(error);
   }
 });
+userSchema.methods.createEmailVerificationToken = function () {
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+  this.emailVerificationExpires = Date.now() + 10 * 60 * 6000;
+  return verificationToken;
+};
 
 const User = mongoose.model('User', userSchema);
 
