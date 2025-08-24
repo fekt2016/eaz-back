@@ -22,12 +22,9 @@ exports.getWishlist = catchAsync(async (req, res) => {
 // Add to wishlist
 exports.addToWishlist = catchAsync(async (req, res, next) => {
   try {
-    console.log(req.body);
     const { productId } = req.body;
-    console.log('Adding product to wishlist:', productId);
-
     let wishlist = await WishList.findOne({ user: req.user.id });
-    console.log('Current wishlist:', wishlist);
+
     if (!wishlist) {
       // Create new wishlist if it doesn't exist
       wishlist = new WishList({
@@ -76,12 +73,8 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
     }
 
     const productIndex = wishlist.products.findIndex((item) => {
-      console.log(
-        'Checking product in wishlist:',
-        item.product.toString(),
-        productId,
-      );
-      return item.product.toString() === productId;
+      console.log('Checking product in wishlist:', item, productId);
+      return item.id.toString() === productId;
     });
 
     if (productIndex === -1) {

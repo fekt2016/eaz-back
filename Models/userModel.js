@@ -108,6 +108,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    otpType: String,
     emailVerified: {
       type: Boolean,
       default: false,

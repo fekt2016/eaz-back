@@ -27,8 +27,11 @@ router.post('/send-otp', authController.sendOtp);
 router.post('/verify-otp', authController.verifyOtp);
 router.post('/logout', authController.logout);
 
-router.post('/forgotPassword', authController.forgotPassword);
-router.patch('/resetPassword/:token', authController.resetPassword);
+// router.post('/forgotPassword', authController.forgotPassword);
+// router.patch('/resetPassword/:token', authController.resetPassword);
+router.post('/forgot-password', authController.sendPasswordResetOtp);
+router.post('/verify-reset-otp', authController.verifyResetOtp);
+router.post('/reset-password', authController.resetPassword);
 
 router.get(
   '/profile',
