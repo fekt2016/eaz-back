@@ -73,13 +73,27 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
   next();
 });
 exports.getParentCategories = catchAsync(async (req, res, next) => {
-  const categories = await Category.find({ parentCategory: null }); // Adjust field if needed
+  try {
+    const categories = await Category.find({ parentCategory: null })
+      .populate({
+        path: 'subcategories',
+        select: 'name image slug',
+        options: { sort: { name: 1 } },
+      })
+      .sort({ name: 1 }); // Sort parent categories by name
 
-  res.status(200).json({
-    status: 'success',
-    results: categories.length,
-    data: { categories },
-  });
+    res.status(200).json({
+      status: 'success',
+      results: categories.length,
+      data: { categories },
+    });
+  } catch (error) {
+    console.error('Error fetching parent categories:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch categories',
+    });
+  }
 });
 exports.getAllCategories = handleFactory.getAll(Category);
 exports.getCategory = handleFactory.getOne(Category, { path: 'subcategories' });

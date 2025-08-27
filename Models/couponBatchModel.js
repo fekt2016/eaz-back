@@ -1,3 +1,4 @@
+const { ca } = require('date-fns/locale');
 const mongoose = require('mongoose');
 
 const couponSchema = new mongoose.Schema({
@@ -182,6 +183,87 @@ couponSchema.statics.applyCoupon = async function (
   }
 
   return true;
+};
+
+couponSchema.statics.validateUserCoupon = async function (code, userId) {
+  const batch = await this.findOne({
+    'coupons.code': code,
+    validFrom: { $lte: new Date() },
+    expiresAt: { $gte: new Date() },
+    isActive: true,
+  });
+  // console.log('batch', batch);
+  if (!batch) {
+    throw new Error('Coupon not found or expired');
+  }
+
+  if (batch.maxUsage === 0) {
+    throw new Error('Coupon usage limit reached');
+  }
+  if (batch.used === true) {
+    throw new Error('This coupon has already been used');
+  }
+
+  const coupon = batch.coupons.find((c) => c.code === code);
+  if (!coupon || coupon.used) {
+    throw new Error('Invalid coupon code');
+  }
+
+  if (coupon.recipient && coupon.recipient.toString() !== userId.toString()) {
+    throw new Error('This coupon is not assigned to you');
+  }
+
+  if (coupon.usageCount >= batch.maxUsage) {
+    throw new Error('Coupon usage limit reached');
+  }
+
+  return {
+    discountValue: batch.discountValue,
+    discountType: batch.discountType,
+    couponId: coupon._id,
+    batchId: batch._id,
+    sellerId: batch.seller,
+    maxUsage: batch.maxUsage,
+    usageCount: coupon.usageCount,
+    isActive: batch.isActive,
+    expiresAt: batch.expiresAt,
+    minOrderAmount: batch.minOrderAmount,
+  };
+};
+couponSchema.statics.markCouponAsUsed = async function (
+  batchId,
+  couponId,
+  userId,
+) {
+  console.log('batchId', batchId);
+  console.log('couponId', couponId);
+  console.log('userId', userId);
+  try {
+    const batch = await this.findById(batchId);
+    console.log('batch found', batch);
+    if (!batch) {
+      throw new Error('Coupon batch not found');
+    }
+
+    const coupon = batch.coupons.find(
+      (c) => c._id.toString() === couponId.toString(),
+    );
+    if (!coupon) {
+      throw new Error('Coupon not found in batch');
+    }
+    console.log('coupon found', coupon);
+
+    coupon.used = true;
+    coupon.usedAt = new Date();
+    coupon.lastUsedBy = userId;
+
+    // Save the updated batch
+    const result = await batch.save();
+
+    console.log('Coupon marked as used:', result);
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 const CouponBatch = mongoose.model('CouponBatch', couponSchema);

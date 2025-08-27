@@ -6,7 +6,7 @@ const {
   updateCouponBatch,
   deleteCouponBatch,
   applyCoupon,
-  markCouponUsed,
+  applyUserCoupon,
 } = require('../Controllers/couponController');
 const authController = require('../Controllers/authController');
 const router = express.Router();
@@ -16,6 +16,12 @@ router.post(
   authController.protect,
   authController.restrictTo('user'),
   applyCoupon,
+);
+router.post(
+  '/apply-user-coupon',
+  authController.protect,
+  authController.restrictTo('user'),
+  applyUserCoupon,
 );
 
 //Admin/SellerRoutes

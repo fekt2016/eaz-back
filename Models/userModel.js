@@ -56,13 +56,13 @@ const userSchema = new mongoose.Schema(
       enum: ['active', 'deactive', 'pending'],
       default: 'active',
     },
-    twoFactorEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    twoFactorSecret: String,
-    twoFactorTempSecret: String, // For setup process
-    twoFactorBackupCodes: [String],
+    // twoFactorEnabled: {
+    //   type: Boolean,
+    //   default: false,
+    // },
+    // twoFactorSecret: String,
+    // twoFactorTempSecret: String, // For setup process
+    // twoFactorBackupCodes: [String],
     permissions: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Permission',
@@ -109,6 +109,10 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     otpType: String,
+    otpVerified: {
+      type: Boolean,
+      default: false,
+    },
     emailVerified: {
       type: Boolean,
       default: false,
@@ -183,13 +187,13 @@ userSchema.virtual('activeExports').get(function () {
       (expert.status === 'completed' && expert.expiresAt > new Date()),
   );
 });
-userSchema.virtual('securitySettings').get(function () {
-  return {
-    twoFactorEnabled: this.twoFactorEnabled,
-    lastPasswordChange: this.passwordChangedAt,
-    // Add other security-related fields as needed
-  };
-});
+// userSchema.virtual('securitySettings').get(function () {
+//   return {
+//     twoFactorEnabled: this.twoFactorEnabled,
+//     lastPasswordChange: this.passwordChangedAt,
+//     // Add other security-related fields as needed
+//   };
+// });
 userSchema.pre('save', async function (next) {
   //Only run this function if passworld was actually modified
   if (!this.isModified('password')) return next();
@@ -199,20 +203,6 @@ userSchema.pre('save', async function (next) {
   this.passwordConfirm = undefined;
   next();
 });
-userSchema.methods.createOtp = function () {
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = otp;
-  this.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiration
-  return otp;
-};
-
-// Add OTP verification method
-userSchema.methods.verifyOtp = function (candidateOtp) {
-  return this.otp === candidateOtp && this.otpExpires > Date.now();
-};
-
-//password methods
 userSchema.pre('save', function (next) {
   if (!this.isModified('password') || this.isNew) return next();
   // -1s to make sure the token is created after the password has been changed
@@ -225,19 +215,20 @@ userSchema.pre(/^find/, function (next) {
   next();
 });
 
-userSchema.methods.correctPassword = async function (
-  candidatePassword,
-  userPassword,
-) {
-  console.log(
-    'candidatePassword',
-    candidatePassword,
-    'userPassword',
-    userPassword,
-  );
-  const user = await bcrypt.compare(candidatePassword, userPassword);
-  console.log('user', user);
-  return user;
+// userSchema.methods.correctPassword = async function (
+//   userPassword,
+//   candidatePassword,
+// ) {
+//   console.log('candidatePassword', candidatePassword);
+//   console.log('userPassword', userPassword);
+//   const user = await bcrypt.compare(userPassword, candidatePassword);
+//   console.log('user', user);
+//   return user;
+// };
+userSchema.methods.correctPassword = async function (candidatePassword) {
+  console.log('candidatePassword', candidatePassword);
+  console.log('userPassword', this.password);
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
@@ -262,6 +253,21 @@ userSchema.methods.createPasswordResetToken = function () {
 
   return resetToken;
 };
+userSchema.methods.createOtp = function () {
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  this.otp = otp;
+  this.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiration
+  return otp;
+};
+
+// Add OTP verification method
+userSchema.methods.verifyOtp = function (candidateOtp) {
+  return this.otp === candidateOtp && this.otpExpires > Date.now();
+};
+
+//password methods
+
 // Data Export Methods
 userSchema.methods.requestDataExport = function () {
   const newExport = {

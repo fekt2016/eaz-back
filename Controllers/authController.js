@@ -83,9 +83,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     // passwordChangedAt: req.body.passwordChangedAt,
     emailVerified: req.body.emailVerified || false,
   });
-  console.log('user', newUser);
+
   const verificationToken = newUser.createEmailVerificationToken();
-  console.log('verificationToken', verificationToken);
+
   await newUser.save({ validateBeforeSave: false });
   const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
 
@@ -196,17 +196,17 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // Send OTP
-  if (validator.isEmail(loginId)) {
-    const message = `Your verification code is: ${otp}\nThis code will expire in 10 minutes.`;
-    await sendCustomEmail({
-      email: user.email,
-      subject: 'Your OTP for login',
-      message,
-    });
-  } else {
-    // In production: Integrate with SMS gateway
-    console.log(`OTP for ${user.phone}: ${otp}`);
-  }
+  // if (validator.isEmail(loginId)) {
+  //   const message = `Your verification code is: ${otp}\nThis code will expire in 10 minutes.`;
+  //   await sendCustomEmail({
+  //     email: user.email,
+  //     subject: 'Your OTP for login',
+  //     message,
+  //   });
+  // } else {
+  //   // In production: Integrate with SMS gateway
+  //   console.log(`OTP for ${user.phone}: ${otp}`);
+  // }
 
   res.status(200).json({
     status: 'success',
@@ -216,51 +216,59 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 });
 
 exports.verifyOtp = catchAsync(async (req, res, next) => {
-  const { loginId, otp, password } = req.body;
+  try {
+    const { loginId, otp, password } = req.body;
+    console.log(loginId, otp, password);
 
-  if (!loginId || !otp || !password) {
-    return next(new AppError('Please provide loginId, OTP, and password', 400));
+    if (!loginId || !otp || !password) {
+      return next(
+        new AppError('Please provide loginId, OTP, and password', 400),
+      );
+    }
+
+    let user;
+    const query = User.findOne();
+
+    if (validator.isEmail(loginId)) {
+      query.where({ email: loginId });
+    } else if (validator.isMobilePhone(loginId)) {
+      query.where({ phone: loginId.replace(/\D/g, '') });
+    } else {
+      return next(
+        new AppError('Please provide a valid email or phone number', 400),
+      );
+    }
+
+    query.select('+password +otp +otpExpires');
+    user = await query;
+
+    if (!user) {
+      return next(
+        new AppError('No user found with that email or phone number', 404),
+      );
+    }
+
+    // Verify OTP
+    if (!user.verifyOtp(otp)) {
+      return next(new AppError('OTP is invalid or has expired', 401));
+    }
+    // console.log('1', user.password, password);
+    // Verify password
+    if (!(await user.correctPassword(password))) {
+      console.log('Incorrect password');
+      return next(new AppError('Incorrect password', 401));
+    }
+
+    // Clear OTP and update last login
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    user.lastLogin = Date.now();
+    await user.save({ validateBeforeSave: false });
+    console.log('2', user);
+    createSendToken(user, 200, res);
+  } catch (error) {
+    console.error('Verify OTP error:', error);
   }
-
-  let user;
-  const query = User.findOne();
-
-  if (validator.isEmail(loginId)) {
-    query.where({ email: loginId });
-  } else if (validator.isMobilePhone(loginId)) {
-    query.where({ phone: loginId.replace(/\D/g, '') });
-  } else {
-    return next(
-      new AppError('Please provide a valid email or phone number', 400),
-    );
-  }
-
-  query.select('+password +otp +otpExpires');
-  user = await query;
-
-  if (!user) {
-    return next(
-      new AppError('No user found with that email or phone number', 404),
-    );
-  }
-
-  // Verify OTP
-  if (!user.verifyOtp(otp)) {
-    return next(new AppError('OTP is invalid or has expired', 401));
-  }
-
-  // Verify password
-  if (!(await user.correctPassword(password, user.password))) {
-    return next(new AppError('Incorrect password', 401));
-  }
-
-  // Clear OTP and update last login
-  user.otp = undefined;
-  user.otpExpires = undefined;
-  user.lastLogin = Date.now();
-  await user.save({ validateBeforeSave: false });
-
-  createSendToken(user, 200, res);
 });
 
 exports.logout = catchAsync(async (req, res, next) => {
@@ -349,9 +357,7 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
 
     // Validate input
     if (!loginId) {
-      return res
-        .status(400)
-        .json({ error: 'Email or phone number is required' });
+      return next(new AppError('Please provide email or phone number', 400));
     }
 
     // Determine if loginId is email or phone
@@ -375,7 +381,6 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
 
     await user.save();
 
-    console.log(user);
     // Send OTP via email or SMS
     if (isEmail) {
       await sendCustomEmail({
@@ -406,46 +411,34 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
       .json({ error: 'Failed to initiate password reset. Please try again.' });
   }
 });
-exports.verifyResetOtp = async (req, res) => {
+exports.verifyResetOtp = catchAsync(async (req, res, next) => {
   try {
     const { loginId, otp } = req.body;
-    console.log('verify', loginId, otp);
 
-    // Validate input
-    if (!loginId || !otp) {
-      return res
-        .status(400)
-        .json({ error: 'Email/phone and OTP are required' });
-    }
+    //   // Validate input
+    if (!loginId || !otp)
+      return next(new AppError('Please provide loginId and OTP', 400));
 
-    // Determine if loginId is email or phone
+    //   // Determine if loginId is email or phone
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
-
     // Find user with valid OTP
     const user = await User.findOne({
       ...query,
       otpType: 'passwordReset',
       otpExpires: { $gt: Date.now() }, // Check if OTP is not expired
-    });
-    console.log('user otp', user.otp);
-    if (!user) {
-      return res.status(400).json({ error: 'OTP expired or invalid' });
-    }
-    console.log('user', user);
-    console.log('otp', otp, user.otp);
-    // Verify OTP
-    const isValidOtp = await bcrypt.compare(otp, user.otp);
+    }).select('+otp +otpExpires');
+
+    if (!user)
+      return next(new AppError('User not found, check your credential', 403));
+    const isValidOtp = user.verifyOtp(otp);
     if (!isValidOtp) {
-      return res.status(400).json({ error: 'Invalid OTP' });
+      return next(new AppError('Invalid or expired OTP', 400));
     }
 
-    // Mark OTP as verified by setting a flag (add this field to your User model)
     user.otpVerified = true;
-
-    // Generate reset token
+    //   // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-
     // Save reset token to user document
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
@@ -459,24 +452,24 @@ exports.verifyResetOtp = async (req, res) => {
     console.error('Verify OTP error:', error);
     res.status(500).json({ error: 'Failed to verify OTP. Please try again.' });
   }
-};
+});
 // Reset password
-exports.resetPassword = async (req, res) => {
+exports.resetPassword = catchAsync(async (req, res, next) => {
   try {
     const { loginId, newPassword, resetToken } = req.body;
 
+    console.log('reset', loginId, newPassword, resetToken);
+
     // Validate input
     if (!loginId || !newPassword) {
-      return res
-        .status(400)
-        .json({ error: 'Email/phone and new password are required' });
+      return next(new AppError('Please provide loginId and newPassword', 400));
     }
 
     // Check password strength
     if (newPassword.length < 8) {
-      return res
-        .status(400)
-        .json({ error: 'Password must be at least 8 characters long' });
+      return next(
+        new AppError('Password must be at least 8 characters long', 400),
+      );
     }
 
     // Determine if loginId is email or phone
@@ -488,6 +481,7 @@ exports.resetPassword = async (req, res) => {
 
     // If resetToken is provided, add it to search criteria
     if (resetToken) {
+      console.log('with token');
       searchCriteria.resetToken = resetToken;
       searchCriteria.resetTokenExpires = { $gt: Date.now() };
     } else {
@@ -495,14 +489,20 @@ exports.resetPassword = async (req, res) => {
       searchCriteria.otpVerified = true;
       searchCriteria.otpExpires = { $gt: Date.now() };
     }
-
+    console.log('resetToken', resetToken, searchCriteria);
     // Find user with valid reset credentials
-    const user = await User.findOne(searchCriteria);
+    const user = await User.findOne({ email: loginId }).select(
+      '+otp +otpExpires +otpVerified +resetToken +resetTokenExpires +password',
+    );
 
     if (!user) {
-      return res
-        .status(400)
-        .json({ error: 'Invalid or expired reset credentials' });
+      return next(new AppError('Invalid or expired reset credentials', 400));
+    }
+    if (!user.otpVerified) {
+      return next(new AppError('OTP not verified', 400));
+    }
+    if (user.otpExpires < Date.now()) {
+      return next(new AppError('OTP expired, please request a new one', 400));
     }
 
     // Hash new password
@@ -545,7 +545,7 @@ exports.resetPassword = async (req, res) => {
       .status(500)
       .json({ error: 'Failed to reset password. Please try again.' });
   }
-};
+});
 
 // exports.forgotPassword = catchAsync(async (req, res, next) => {
 //   const user = await User.findOne({ email: req.body.email });

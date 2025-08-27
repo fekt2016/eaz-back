@@ -2,7 +2,10 @@ const CouponBatch = require('../Models/couponBatchModel');
 const catchAsync = require('../utils/catchAsync');
 const { nanoid } = require('nanoid');
 const AppError = require('../utils/appError');
+const CreditBalance = require('../Models/creditbalanceModel');
+const mongoose = require('mongoose');
 
+const User = require('../Models/userModel');
 exports.createCouponBatch = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -174,3 +177,106 @@ exports.markCouponUsed = catchAsync(
     await CouponBatch.applyCoupon(batchId, couponId, userId, orderId);
   },
 );
+
+exports.applyUserCoupon = catchAsync(async (req, res, next) => {
+  console.log('applyUserCoupon called', req.body);
+
+  const { couponCode } = req.body;
+  const userId = new mongoose.Types.ObjectId(req.user.id);
+
+  try {
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    if (!couponCode) {
+      return res.status(400).json({ message: 'Coupon code is required' });
+    }
+
+    // console.log('Applying coupon for user:', userId, couponCode);
+
+    // Validate the coupon
+    const couponData = await CouponBatch.validateUserCoupon(
+      couponCode.toUpperCase(),
+      userId,
+    );
+
+    console.log('Coupon validated:', couponData);
+    //check if coupon has already been used
+    if (couponData.used) {
+      return next(new AppError('This coupon has already been used', 400));
+    }
+
+    // Check if it's an amount coupon (not percentage)
+    if (couponData.discountType !== 'fixed') {
+      return next(
+        new AppError('Only fixed amount coupons can be applied', 400),
+      );
+    }
+
+    // Find or create credit balance for user
+    let creditBalance = await CreditBalance.findOne({ user: userId });
+
+    if (!creditBalance) {
+      // Create new credit balance
+      creditBalance = await CreditBalance.create({
+        user: userId,
+        balance: Number(couponData.discountValue),
+        currency: 'GHS',
+        transactions: [
+          {
+            date: new Date(),
+            amount: Number(couponData.discountValue),
+            type: 'bonus',
+            description: `Coupon redemption: ${couponCode.toUpperCase()}`,
+            reference: `COUPON-${couponData.couponId}`,
+          },
+        ],
+      });
+    } else {
+      // Ensure both values are numbers
+      const discountValue = Number(couponData.discountValue);
+      const currentBalance = Number(creditBalance.balance);
+
+      // Update balance and add transaction
+      creditBalance.balance = currentBalance + discountValue;
+      creditBalance.transactions.push({
+        date: new Date(),
+        amount: discountValue,
+        type: 'bonus',
+        description: `Coupon redemption: ${couponCode.toUpperCase()}`,
+        reference: `COUPON-${couponData.couponId}`,
+      });
+
+      await creditBalance.save();
+    }
+
+    // console.log('Credit balance updated:', creditBalance);
+
+    // Mark coupon as used
+    await CouponBatch.markCouponAsUsed(
+      couponData.batchId,
+      couponData.couponId,
+      userId,
+    );
+
+    // Get user info for response
+    const user = await User.findById(userId).select('name email');
+
+    res.status(200).json({
+      status: 'success',
+      discountValue: couponData.discountValue,
+      discountType: couponData.discountType,
+      couponId: couponData.couponId,
+      batchId: couponData.batchId,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+      newBalance: creditBalance.balance,
+    });
+  } catch (error) {
+    console.error('Error applying coupon:', error);
+    return next(new AppError(error.message, 400));
+  }
+});

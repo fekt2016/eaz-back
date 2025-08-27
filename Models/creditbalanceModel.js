@@ -18,6 +18,16 @@ const creditbalanceSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  availableBalance: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  holdAmount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   currency: {
     type: String,
     default: 'GHS',
@@ -38,6 +48,11 @@ const creditbalanceSchema = new mongoose.Schema({
       reference: String,
     },
   ],
+});
+
+creditbalanceSchema.pre('save', function (next) {
+  this.availableBalance = this.balance;
+  next();
 });
 
 const Creditbalance = mongoose.model('Creditbalance', creditbalanceSchema);
