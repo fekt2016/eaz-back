@@ -14,7 +14,7 @@ const { ExpressAdapter } = require('@bull-board/express');
 
 // Utils and config
 const AppError = require('./utils/appError');
-const globalErrorHandler = require('./controllers/errorController');
+const globalErrorHandler = require('./Controllers/errorController');
 
 // Routers
 const routerConfig = [
@@ -42,6 +42,7 @@ const routerConfig = [
     path: '/notification-settings',
     router: require('./routes/notificationRoutes'),
   },
+  { path: '/search', router: require('./routes/searchRoutes') },
 ];
 // Import queues
 const dataExportQueue = require('./jobs/dataExportQueue');
@@ -71,19 +72,30 @@ createBullBoard({
 // 3. Global Middleware Stack
 app.use(helmet());
 
-// CORS Configuration
-const corsOptions = {
+// Determine environment
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+// Development CORS settings (more permissive)
+const devCorsOptions = {
+  origin: true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-User-Role',
+    'x-seller-subdomain',
+    'x-admin-subdomain',
+  ],
+  exposedHeaders: ['Content-Range', 'X-Total-Count'],
+};
+
+// Production CORS settings (more restrictive)
+const prodCorsOptions = {
   origin: [
-    'http://127.0.0.1:4000',
-    'http://localhost:4000',
-    'http://localhost:5174',
-    'http://127.0.0.1:5174',
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-    'http://localhost:5175',
-    'http://127.0.0.1:5175',
-    'http://seller.localhost:5173',
-    'http://admin.localhost:5173',
+    'https://eazworld.com',
+    'https://www.eazworld.com',
+    'https://api.eazworld.com', // Add your API subdomain if using one
     process.env.FRONTEND_URL,
   ],
   credentials: true,
@@ -97,15 +109,18 @@ const corsOptions = {
   ],
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
 };
-app.use(cors(corsOptions));
+
+// Use appropriate CORS configuration based on environment
+app.use(cors(isDevelopment ? devCorsOptions : prodCorsOptions));
+app.options('*', cors(isDevelopment ? devCorsOptions : prodCorsOptions));
 
 // Development logging
-if (process.env.NODE_ENV === 'development') {
+if (isDevelopment) {
   app.use(morgan('dev'));
 }
 
 // Rate limiting - only enable in production
-if (process.env.NODE_ENV === 'production') {
+if (!isDevelopment) {
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500, // limit each IP to 500 requests per window

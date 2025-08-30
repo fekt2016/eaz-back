@@ -312,6 +312,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   });
   // res.status(200).json({ status: 'success', data: { products } });
 });
+
 exports.createProduct = handleFactory.createOne(Product);
 
 exports.updateProduct = handleFactory.updateOne(Product);

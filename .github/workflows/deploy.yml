@@ -1,0 +1,72 @@
+name: 🚀 FTP Deployment to cPanel
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: 🎉 Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: ftp_server
+      url: https://eazworld.com
+
+    steps:
+      - name: 🚚 Checkout code
+        uses: actions/checkout@v4
+
+      # NEW STEPS ADDED HERE
+      - name: ⎔ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x # Use your project's Node version
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🏗️ Build project
+        run: npm run build # This creates the dist directory
+      # END OF NEW STEPS
+
+      - name: 🔒 Verify environment secrets
+        run: |
+          echo "Verifying FTP secrets..."
+          if [ -z "${{ secrets.FTP_SERVER }}" ]; then
+            echo "::error::FTP_SERVER secret is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then
+            echo "::error::FTP_USERNAME secret is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then
+            echo "::error::FTP_PASSWORD secret is missing!"
+            exit 1
+          fi
+          echo "✅ All secrets verified successfully"
+
+      - name: 📤 Deploy to FTP server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/ # Now this directory exists
+          server-dir: /backend/
+          exclude: |
+            .git/
+            .github/
+            .gitignore
+            README.md
+            node_modules/
+            *.log
+            .env*
+            *.md
+          log-level: verbose
+          dangerous-clean-slate: false
+
+      - name: 🌐 Verify deployment
+        run: |
+          echo "Deployment completed successfully!"
+          echo "View site: https://eazworld.com"
+          echo "FTP directory:/public_html/"

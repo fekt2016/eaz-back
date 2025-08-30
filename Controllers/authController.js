@@ -43,6 +43,7 @@ const publicRoutes = [
   { path: '/api/v1/admin/register', methods: ['POST'] },
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
   { path: '/api/v1/seller/login', methods: ['POST'] },
+  { path: '/api/v1/search', methods: ['GET'] },
 ];
 
 // Controller methods ===========================================================

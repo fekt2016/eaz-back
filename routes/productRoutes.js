@@ -18,8 +18,6 @@ const {
   getProductsByCategory,
 } = require('../Controllers/ProductController.cjs');
 
-const reviewRouter = require('./../routes/reviewRoutes');
-
 const router = express.Router();
 
 router.route('/category-counts').get(getProductCountByCategory);
