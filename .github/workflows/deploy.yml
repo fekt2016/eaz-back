@@ -1,72 +1,92 @@
-name: 🚀 FTP Deployment to cPanel
+name: 🚀 SSH Deployment for Express Backend
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**' # Only trigger when backend files change
+      - 'package.json'
+      - 'package-lock.json'
+      - 'server.js'
+      - '.github/workflows/backend-deploy.yml' # This file
 
 jobs:
   deploy:
-    name: 🎉 Deploy to Production
+    name: 🎉 Deploy Backend to Production
     runs-on: ubuntu-latest
     environment:
-      name: ftp_server
-      url: https://eazworld.com
+      name: production
+      url: https://api.eazworld.com
 
     steps:
       - name: 🚚 Checkout code
         uses: actions/checkout@v4
 
-      # NEW STEPS ADDED HERE
-      - name: ⎔ Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x # Use your project's Node version
+      - name: 🔒 Verify SSH secrets
+        run: |
+          echo "Verifying SSH secrets..."
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            echo "::error::SSH_HOST secret is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_USERNAME }}" ]; then
+            echo "::error::SSH_USERNAME secret is missing!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_KEY }}" ]; then
+            echo "::error::SSH_KEY secret is missing!"
+            exit 1
+          fi
+          echo "✅ All SSH secrets verified successfully"
 
       - name: 📦 Install dependencies
-        run: npm install
-
-      - name: 🏗️ Build project
-        run: npm run build # This creates the dist directory
-      # END OF NEW STEPS
-
-      - name: 🔒 Verify environment secrets
         run: |
-          echo "Verifying FTP secrets..."
-          if [ -z "${{ secrets.FTP_SERVER }}" ]; then
-            echo "::error::FTP_SERVER secret is missing!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then
-            echo "::error::FTP_USERNAME secret is missing!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then
-            echo "::error::FTP_PASSWORD secret is missing!"
-            exit 1
-          fi
-          echo "✅ All secrets verified successfully"
+          npm ci --only=production
+          # If you have a specific backend folder
+          # cd backend && npm ci --only=production
 
-      - name: 📤 Deploy to FTP server
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: 🛠️ Build application (if needed)
+        run: |
+          # Add any build steps for your backend
+          # For example, if you use TypeScript:
+          # npm run build
+          echo "No build step needed for Express.js"
+
+      - name: 📤 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/ # Now this directory exists
-          server-dir: /backend/
-          exclude: |
-            .git/
-            .github/
-            .gitignore
-            README.md
-            node_modules/
-            *.log
-            .env*
-            *.md
-          log-level: verbose
-          dangerous-clean-slate: false
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            echo "🚀 Starting deployment process..."
+            cd /home2/eazworld/public_html/myapp
 
-      - name: 🌐 Verify deployment
+            # Pull the latest code
+            git pull origin main
+
+            # Install production dependencies
+            npm install --production
+
+            # Run database migrations if needed
+            # npx sequelize db:migrate --env production
+
+            # Restart the application with PM2
+            if pm2 list | grep -q "myapp"; then
+              echo "🔄 Restarting existing PM2 process..."
+              pm2 restart myapp
+            else
+              echo "⭐ Starting new PM2 process..."
+              pm2 start server.js --name myapp
+            fi
+
+            # Save PM2 process list
+            pm2 save
+
+            echo "✅ Deployment completed successfully!"
+
+      - name: 📋 Verify deployment
         run: |
-          echo "Deployment completed successfully!"
-          echo "View site: https://eazworld.com"
-          echo "FTP directory:/public_html/"
+          echo "Backend deployment completed!"
+          echo "API endpoint: https://api.eazworld.com"
+          echo "PM2 status should be online"

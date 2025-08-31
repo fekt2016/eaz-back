@@ -464,11 +464,11 @@ productSchema.virtual('hasStock').get(function () {
   return this.totalStock > 0;
 });
 
-productSchema.virtual('isOnSale').get(function () {
-  return this.variants.some(
-    (variant) => variant.originalPrice && variant.price < variant.originalPrice,
-  );
-});
+// productSchema.virtual('isOnSale').get(function () {
+//   return this.variants.some(
+//     (variant) => variant.originalPrice && variant.price < variant.originalPrice,
+//   );
+// });
 
 productSchema.virtual('salePercentage').get(function () {
   if (!this.isOnSale) return 0;
