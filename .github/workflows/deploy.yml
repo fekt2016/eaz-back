@@ -30,7 +30,7 @@ jobs:
         with:
           host: eazworld.com
           username: eazworld
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY}}
           port: 22
           script: |
             echo "🚀 Starting deployment process..."
