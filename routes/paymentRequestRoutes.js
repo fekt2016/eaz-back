@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const paymentRequestController = require('../controllers/paymentRequestController');
-const authController = require('../controllers/authController');
+const paymentRequestController = require('../Controllers/paymentRequestController');
+const authController = require('../Controllers/authController');
 
 // Seller routes
 router.post(
