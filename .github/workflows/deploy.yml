@@ -2,12 +2,12 @@ name: 🚀 SSH Deployment for Express Backend
 on:
   push:
     branches: [main]
-    paths:
-      - 'backend/**' # Only trigger when backend files change
-      - 'package.json'
-      - 'package-lock.json'
-      - 'server.js'
-      - '.github/workflows/backend-deploy.yml' # This file
+    # paths:
+    #   - 'backend/**' # Only trigger when backend files change
+    #   - 'package.json'
+    #   - 'package-lock.json'
+    #   - 'server.js'
+    #   - '.github/workflows/backend-deploy.yml' # This file
 
 jobs:
   deploy:
