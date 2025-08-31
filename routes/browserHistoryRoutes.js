@@ -1,5 +1,5 @@
 const express = require('express');
-const historyController = require('../controllers/browserHistoryController');
+const historyController = require('../Controllers/browserHistoryController');
 const authController = require('../Controllers/authController');
 
 const router = express.Router();
