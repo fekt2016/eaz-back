@@ -38,7 +38,7 @@ jobs:
           fi
           echo "✅ All SSH secrets verified successfully"
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install dependencie
         run: |
           npm ci --only=production
           # If you have a specific backend folder
