@@ -1,13 +1,8 @@
 name: 🚀 SSH Deployment for Express Backend
+
 on:
   push:
     branches: [main]
-    # paths:
-    #   - 'backend/**' # Only trigger when backend files change
-    #   - 'package.json'
-    #   - 'package-lock.json'
-    #   - 'server.js'
-    #   - '.github/workflows/backend-deploy.yml' # This file
 
 jobs:
   deploy:
@@ -24,40 +19,23 @@ jobs:
       - name: 🔒 Verify SSH secrets
         run: |
           echo "Verifying SSH secrets..."
-          if [ -z "${{ secrets.SSH_HOST }}" ]; then
-            echo "::error::SSH_HOST secret is missing!"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SSH_USERNAME }}" ]; then
-            echo "::error::SSH_USERNAME secret is missing!"
-            exit 1
-          fi
           if [ -z "${{ secrets.SSH_KEY }}" ]; then
             echo "::error::SSH_KEY secret is missing!"
             exit 1
           fi
-          echo "✅ All SSH secrets verified successfully"
+          echo "✅ SSH_KEY secret verified successfully"
 
-      - name: 📦 Install dependencie
+      - name: 📦 Install dependencies
         run: |
           npm ci --only=production
-          # If you have a specific backend folder
-          # cd backend && npm ci --only=production
-
-      - name: 🛠️ Build application (if needed)
-        run: |
-          # Add any build steps for your backend
-          # For example, if you use TypeScript:
-          # npm run build
-          echo "No build step needed for Express.js"
 
       - name: 📤 Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: eazworld.com
-          username: eazworld
+          host: eazworld.com # Directly hardcoded host
+          username: eazworld # Directly hardcoded username
           key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: 22 # Directly hardcoded port
           script: |
             echo "🚀 Starting deployment process..."
             cd /home2/eazworld/public_html/myapp
@@ -67,9 +45,6 @@ jobs:
 
             # Install production dependencies
             npm install --production
-
-            # Run database migrations if needed
-            # npx sequelize db:migrate --env production
 
             # Restart the application with PM2
             if pm2 list | grep -q "myapp"; then
@@ -88,5 +63,5 @@ jobs:
       - name: 📋 Verify deployment
         run: |
           echo "Backend deployment completed!"
-          echo "API endpoint: https://api.eazworld.com"
+          echo "API endpoint: https://eazworld.com"
           echo "PM2 status should be online"
