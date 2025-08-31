@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const wishlistController = require('../controllers/wishlistController');
+const wishlistController = require('../Controllers/wishlistController');
 const authController = require('../Controllers/authController');
 
 // // Public routes (for guest users)
