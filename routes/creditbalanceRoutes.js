@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const creditbalanceController = require('../controllers/creditbalanceController');
+const creditbalanceController = require('../Controllers/creditbalanceController');
 const authController = require('../Controllers/authController');
 
 // router.use(authController.protect);
