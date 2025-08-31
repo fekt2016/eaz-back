@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    name: 🎉 Deploy Backend to Production
+    name: 🎉 Deploy to Production
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -23,93 +23,14 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           echo "Verifying FTP environment secrets..."
-          if [ -z "$FTP_SERVER" ]; then
-            echo "::error::FTP_SERVER secret is missing!"
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo "::error::Missing FTP secrets!"
             exit 1
           fi
-          if [ -z "$FTP_USERNAME" ]; then
-            echo "::error::FTP_USERNAME secret is missing!"
-            exit 1
-          fi
-          if [ -z "$FTP_PASSWORD" ]; then
-            echo "::error::FTP_PASSWORD secret is missing!"
-            exit 1
-          fi
-          echo "✅ All environment secrets verified successfully"
-          echo "FTP Server: $FTP_SERVER"
-          echo "FTP Username: $FTP_USERNAME"
+          echo "✅ All secrets verified"
 
       - name: 📦 Install dependencies
-        run: |
-          npm ci --only=production --legacy-peer-deps
-
-      - name: 🗂️ Create deployment package
-        run: |
-          # Create a clean deployment directory
-          mkdir -p deploy-package
-
-          # Copy only necessary files for production
-          cp -r node_modules deploy-package/
-          cp -r routes deploy-package/
-          cp -r models deploy-package/
-          cp -r middleware deploy-package/
-          cp -r controllers deploy-package/
-          cp -r utils deploy-package/
-          cp package.json deploy-package/
-          cp package-lock.json deploy-package/
-          cp server.js deploy-package/
-          cp .env deploy-package/ 2>/dev/null || echo ".env not found, using environment variables"
-
-          # Create PM2 ecosystem file for deployment
-          cat > deploy-package/ecosystem.config.js << 'EOF'
-          module.exports = {
-            apps: [{
-              name: 'myapp',
-              script: 'server.js',
-              instances: 1,
-              autorestart: true,
-              watch: false,
-              max_memory_restart: '1G',
-              env: {
-                NODE_ENV: 'production',
-                PORT: 3000
-              }
-            }]
-          };
-          EOF
-
-          # Create deployment script
-          cat > deploy-package/deploy.sh << 'EOF'
-          #!/bin/bash
-          echo "🚀 Starting deployment process..."
-          cd /home2/eazworld/public_html/myapp
-
-          # Install dependencies
-          npm install --production --legacy-peer-deps
-
-          # Restart application with PM2
-          if command -v pm2 >/dev/null 2>&1; then
-            if pm2 describe myapp >/dev/null 2>&1; then
-              echo "🔄 Restarting existing PM2 process..."
-              pm2 reload ecosystem.config.js
-            else
-              echo "⭐ Starting new PM2 process..."
-              pm2 start ecosystem.config.js
-            fi
-            pm2 save --force
-            pm2 status
-          else
-            echo "⚠️ PM2 not found, starting with node..."
-            node server.js &
-          fi
-
-          echo "✅ Deployment completed successfully!"
-          EOF
-
-          chmod +x deploy-package/deploy.sh
-
-          echo "📦 Deployment package created:"
-          ls -la deploy-package/
+        run: npm ci --only=production --legacy-peer-deps
 
       - name: 📤 Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -132,35 +53,9 @@ jobs:
             **/__tests__/
             **/*.test.js
           log-level: verbose
-          dangerous-clean-slate: false
 
-      - name: 🚀 Run deployment script on server
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./scripts/
-          server-dir: ./public_html/myapp/
-          only: []
-          log-level: verbose
-        continue-on-error: true
-
-      - name: 📋 Verify deployment
+      - name: 📋 Completion
         run: |
-          echo "✅ Backend deployment completed!"
-          echo "🌐 API endpoint: https://eazworld.com"
-          echo "📁 Files deployed to: /public_html/myapp/"
-          echo "⏰ Deployment time: $(date)"
-          echo ""
-          echo "Next steps:"
-          echo "1. SSH into your server"
-          echo "2. cd /home2/eazworld/public_html/myapp"
-          echo "3. Run: chmod +x deploy.sh"
-          echo "4. Run: ./deploy.sh"
-
-      - name: 🧹 Cleanup
-        if: always()
-        run: |
-          rm -rf deploy-package/
-          echo "Cleanup completed"
+          echo "✅ FTP upload completed!"
+          echo "🌐 Your files are at: /public_html/myapp/"
+          echo "🔧 Remember to restart your app manually via SSH"
