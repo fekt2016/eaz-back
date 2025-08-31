@@ -19,19 +19,18 @@ jobs:
       - name: 🔒 Verify SSH secrets
         run: |
           echo "Verifying that SSH_KEY secret is configured..."
-          # This just confirms the secret exists in workflow configuration
           echo "✅ Proceeding to deployment..."
 
       - name: 📦 Install dependencies
         run: |
-          npm ci --only=production
+          npm ci --only=production --legacy-peer-deps  # ← Added --legacy-peer-deps here
 
       - name: 📤 Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: eazworld.com
           username: eazworld
-          key: ${{ secrets.SSH_KEY }} # This is where the secret is actually used
+          key: ${{ secrets.SSH_KEY }}
           port: 22
           script: |
             echo "🚀 Starting deployment process..."
@@ -40,8 +39,8 @@ jobs:
             # Pull the latest code
             git pull origin main
 
-            # Install production dependencies
-            npm install --production
+            # Install production dependencies (also add --legacy-peer-deps here)
+            npm install --production --legacy-peer-deps  # ← Add it here too!
 
             # Restart the application with PM2
             if pm2 list | grep -q "myapp"; then
