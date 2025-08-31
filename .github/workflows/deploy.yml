@@ -17,16 +17,41 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🔍 Debug SSH Key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
         run: |
           echo "Checking SSH_KEY secret..."
-          if [ -n "${{ secrets.SSH_KEY }}" ]; then
+          if [ -n "$SSH_KEY" ]; then
             echo "✅ SSH_KEY exists and has content"
-            echo "Key starts with: $(echo "${{ secrets.SSH_KEY }}" | head -c 50)"
-            echo "Key length: $(echo -n "${{ secrets.SSH_KEY }}" | wc -c) characters"
+            echo "Key starts with: $(echo "$SSH_KEY" | head -c 50)"
+            echo "Key length: $(echo -n "$SSH_KEY" | wc -c) characters"
+            # Save key to file for validation
+            echo "$SSH_KEY" > debug_key.pem
+            chmod 600 debug_key.pem
+            echo "Key type: $(file debug_key.pem)"
           else
             echo "❌ SSH_KEY is empty or missing"
             exit 1
           fi
+
+      - name: 🔑 Setup SSH Key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          # Create .ssh directory if it doesn't exist
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Save the private key
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # Add key to SSH agent
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/deploy_key
+
+          # Add known hosts
+          ssh-keyscan -H eazworld.com >> ~/.ssh/known_hosts
 
       - name: 📦 Install dependencies
         run: |
@@ -41,30 +66,46 @@ jobs:
           port: 22
           script: |
             echo "🚀 Starting deployment process..."
-            cd /home2/eazworld/public_html/myapp
+            echo "Current directory: $(pwd)"
+            echo "User: $(whoami)"
 
-            # Pull the latest code
+            # Navigate to your app directory
+            cd /home2/eazworld/public_html/myapp || { echo "❌ Failed to change directory"; exit 1; }
+
+            echo "📦 Pulling latest code..."
             git pull origin main
 
-            # Install production dependencies
+            echo "🔧 Installing dependencies..."
             npm install --production --legacy-peer-deps
 
-            # Restart the application with PM2
-            if pm2 list | grep -q "myapp"; then
+            echo "🔄 Managing PM2 process..."
+            # Check if app exists and restart, otherwise start new
+            if pm2 describe myapp > /dev/null 2>&1; then
               echo "🔄 Restarting existing PM2 process..."
-              pm2 restart myapp
+              pm2 restart myapp --update-env
             else
               echo "⭐ Starting new PM2 process..."
-              pm2 start server.js --name myapp
+              pm2 start server.js --name myapp --log /home2/eazworld/logs/myapp.log --time
             fi
 
             # Save PM2 process list
-            pm2 save
+            pm2 save --force
+
+            echo "📊 Current PM2 status:"
+            pm2 status
 
             echo "✅ Deployment completed successfully!"
 
       - name: 📋 Verify deployment
         run: |
           echo "Backend deployment completed!"
-          echo "API endpoint: https://eazworld.com"
-          echo "PM2 status should be online1"
+          echo "🌐 API endpoint: https://eazworld.com"
+          echo "📊 PM2 status should be online"
+          echo "⏰ Deployment time: $(date)"
+
+      - name: 🧹 Cleanup SSH Key
+        if: always()
+        run: |
+          echo "Cleaning up SSH key..."
+          rm -f ~/.ssh/deploy_key
+          echo "Cleanup completed"
