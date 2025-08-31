@@ -48,4 +48,4 @@ jobs:
         run: |
           echo "✅ FTP upload completed!"
           echo "🌐 Your files are at: /public_html/myapp/"
-          echo "🔧 Remember to restart your app manually via SSH1"
+          echo "🔧 Remember to restart your app manually via SSH"
