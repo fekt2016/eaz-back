@@ -55,7 +55,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: eazworld.com
-          username: ${{ secrets.SSH_USERNAME }}
+          username: eazworld
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
