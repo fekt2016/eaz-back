@@ -16,21 +16,28 @@ jobs:
       - name: 🚚 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🔒 Verify SSH secrets
+      - name: 🔍 Debug SSH Key
         run: |
-          echo "Verifying that SSH_KEY secret is configured..."
-          echo "✅ Proceeding to deployment..."
+          echo "Checking SSH_KEY secret..."
+          if [ -n "${{ secrets.SSH_KEY }}" ]; then
+            echo "✅ SSH_KEY exists and has content"
+            echo "Key starts with: $(echo "${{ secrets.SSH_KEY }}" | head -c 50)"
+            echo "Key length: $(echo -n "${{ secrets.SSH_KEY }}" | wc -c) characters"
+          else
+            echo "❌ SSH_KEY is empty or missing"
+            exit 1
+          fi
 
       - name: 📦 Install dependencies
         run: |
-          npm ci --only=production --legacy-peer-deps  # ← Added --legacy-peer-deps here
+          npm ci --only=production --legacy-peer-deps
 
       - name: 📤 Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: eazworld.com
           username: eazworld
-          key: ${{secrets.SSH_PRIVATE_KEY}}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
             echo "🚀 Starting deployment process..."
@@ -39,8 +46,8 @@ jobs:
             # Pull the latest code
             git pull origin main
 
-            # Install production dependencies (also add --legacy-peer-deps here)
-            npm install --production --legacy-peer-deps  # ← Add it here too!
+            # Install production dependencies
+            npm install --production --legacy-peer-deps
 
             # Restart the application with PM2
             if pm2 list | grep -q "myapp"; then
