@@ -2,9 +2,6 @@ const mongoose = require('mongoose');
 const app = require('./app');
 const dotenv = require('dotenv');
 dotenv.config({ path: './config.env' });
-const Product = require('./Models/productModel');
-const Category = require('./Models/categoryModel');
-const cloudinary = require('cloudinary').v2;
 
 // const commonWords = new Set([
 //   'the',
