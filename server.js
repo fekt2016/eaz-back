@@ -254,12 +254,7 @@ const mongodb = process.env.MONGO_URL.replace(
 
 // Database connection
 mongoose
-  .connect(mongodb, {
-    // Add these options for better connection handling
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    connectTimeoutMS: 10000,
-  })
+  .connect(mongodb)
   .then(async () => {
     console.log('Connected to MongoDB');
 
