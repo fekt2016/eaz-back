@@ -254,9 +254,7 @@ const mongodb = process.env.MONGO_URL.replace(
 
 // Database connection
 mongoose
-  .connect(mongodb, {
-    useNewUrlParser: true,
-  })
+  .connect(mongodb)
   .then(async () => {
     console.log('Connected to MongoDB');
 
