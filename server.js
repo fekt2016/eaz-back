@@ -73,7 +73,7 @@ class Server {
       const host =
         process.env.HOST ||
         (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
-      const port = process.env.PORT || 4000;
+      const port = process.env.PORT || 6000;
 
       this.server = app.listen(port, host, () => {
         console.log(
