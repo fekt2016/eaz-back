@@ -25,7 +25,7 @@ exports.deleteOne = (Model) =>
 
 exports.updateOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    console.log('body', req.body.variants);
+    console.log('body', req.body);
     // Order model specific validation
     if (req.body.orderStatus && Object.keys(req.body).length > 1) {
       return next(
@@ -40,59 +40,57 @@ exports.updateOne = (Model) =>
         if (req.body.variants && typeof req.body.variants === 'string') {
           try {
             req.body.variants = JSON.parse(req.body.variants);
-
-            console.log('attributes', attributes);
           } catch (err) {
             return next(new AppError('Invalid variants format', 400));
           }
         }
 
         // Parse attributes if sent as string
-        // if (req.body.attributes && typeof req.body.attributes === 'string') {
-        //   try {
-        //     req.body.attributes = JSON.parse(req.body.attributes);
-        //   } catch (err) {
-        //     return next(new AppError('Invalid attributes format', 400));
-        //   }
-        // }
-        console.log('varaints', req.body.variants);
-        // // Parse attributes if sent as string
-        // if (typeof req.body.attributes === 'string') {
-        //   req.body.attributes = JSON.parse(req.body.attributes);
-        // }
-        // // Validate attributes structure
-        // if (!Array.isArray(req.body.attributes)) {
-        //   return next(new AppError('Attributes must be an array', 400));
-        // }
-        // // Validate each attribute
-        // for (const attr of req.body.attributes) {
-        //   if (!attr.name || typeof attr.name !== 'string') {
-        //     return next(new AppError('Attribute must have a name string', 400));
-        //   }
-        //   if (
-        //     !['text', 'number', 'boolean', 'enum', 'color'].includes(attr.type)
-        //   ) {
-        //     return next(
-        //       new AppError(`Invalid attribute type: ${attr.type}`, 400),
-        //     );
-        //   }
-        //   if (
-        //     (attr.type === 'enum' || attr.type === 'color') &&
-        //     (!Array.isArray(attr.values) || attr.values.length === 0)
-        //   ) {
-        //     return next(
-        //       new AppError(
-        //         `${attr.name} requires values for enum/color types`,
-        //         400,
-        //       ),
-        //     );
-        //   }
-        // }
+        if (req.body.attributes && typeof req.body.attributes === 'string') {
+          try {
+            req.body.attributes = JSON.parse(req.body.attributes);
+          } catch (err) {
+            return next(new AppError('Invalid attributes format', 400));
+          }
+        }
+        console.log('attributes', req.body.attributes);
+        // Parse attributes if sent as string
+        if (typeof req.body.attributes === 'string') {
+          req.body.attributes = JSON.parse(req.body.attributes);
+        }
+        // Validate attributes structure
+        if (!Array.isArray(req.body.attributes)) {
+          return next(new AppError('Attributes must be an array', 400));
+        }
+        // Validate each attribute
+        for (const attr of req.body.attributes) {
+          if (!attr.name || typeof attr.name !== 'string') {
+            return next(new AppError('Attribute must have a name string', 400));
+          }
+          if (
+            !['text', 'number', 'boolean', 'enum', 'color'].includes(attr.type)
+          ) {
+            return next(
+              new AppError(`Invalid attribute type: ${attr.type}`, 400),
+            );
+          }
+          if (
+            (attr.type === 'enum' || attr.type === 'color') &&
+            (!Array.isArray(attr.values) || attr.values.length === 0)
+          ) {
+            return next(
+              new AppError(
+                `${attr.name} requires values for enum/color types`,
+                400,
+              ),
+            );
+          }
+        }
       } catch (error) {
         return next(new AppError('Invalid attributes format', 400));
       }
-
-      const doc = await Model.findById(req.params.id);
+      const categoryId = new mongoose.Types.ObjectId(req.params.id);
+      const doc = await Model.findById(categoryId);
       if (!doc) {
         return next(new AppError('No document found with that ID', 404));
       }
@@ -131,9 +129,18 @@ exports.updateOne = (Model) =>
 
 exports.createOne = (Model) => async (req, res, next) => {
   // console.log(req.files);
+  console.log('req.body', req.body);
   try {
     // const { files } = req;
     let body = req.body;
+
+    if (body.attributes && typeof body.attributes === 'string') {
+      try {
+        body.attributes = JSON.parse(body.attributes);
+      } catch (err) {
+        return next(new AppError('Invalid attributes format', 400));
+      }
+    }
 
     if (body.variants && typeof body.variants === 'string') {
       try {

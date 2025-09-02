@@ -264,7 +264,7 @@ mongoose
     // await addTagsToAllProducts();
 
     // Start server AFTER migrations
-    const port = process.env.PORT || 4000;
+    const port = process.env.PORT || 6000;
 
     const server = app.listen(port, () => {
       console.log(`Server running on port ${port}`);
