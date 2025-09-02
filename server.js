@@ -45,15 +45,15 @@ class Server {
   async connectDatabase() {
     try {
       // MongoDB connection options for production
-      const mongooseOptions = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-        maxPoolSize: 10, // Connection pool size
-      };
+      // const mongooseOptions = {
+      //   useNewUrlParser: true,
+      //   useUnifiedTopology: true,
+      //   serverSelectionTimeoutMS: 5000,
+      //   socketTimeoutMS: 45000,
+      //   maxPoolSize: 10, // Connection pool size
+      // };
 
-      await mongoose.connect(this.mongodb, mongooseOptions);
+      await mongoose.connect(this.mongodb);
       console.log('Connected to MongoDB successfully');
 
       // Log MongoDB connection details (without password)
