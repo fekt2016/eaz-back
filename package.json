@@ -28,6 +28,7 @@
     "bull": "^4.10.4",
     "cloudinary": "^2.6.0",
     "cloudinary-react": "^1.8.1",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "date-fns": "^2.30.0",

@@ -1,345 +1,169 @@
 const mongoose = require('mongoose');
 const app = require('./app');
 const dotenv = require('dotenv');
+
+// Load environment variables first
 dotenv.config({ path: './config.env' });
 
-// const commonWords = new Set([
-//   'the',
-//   'and',
-//   'for',
-//   'with',
-//   'this',
-//   'that',
-//   'these',
-//   'those',
-//   'from',
-//   'your',
-//   'have',
-//   'has',
-//   'had',
-//   'was',
-//   'were',
-//   'are',
-//   'is',
-//   'product',
-//   'item',
-//   'new',
-//   'quality',
-//   'high',
-//   'premium',
-//   'a',
-//   'an',
-//   'in',
-//   'on',
-//   'at',
-//   'to',
-//   'of',
-//   'by',
-//   'as',
-//   'it',
-//   'its',
-//   'or',
-//   'but',
-//   'not',
-//   'be',
-//   'been',
-//   'being',
-//   'do',
-//   'does',
-//   'did',
-//   'done',
-//   'can',
-//   'could',
-//   'will',
-//   'would',
-//   'shall',
-//   'should',
-//   'may',
-//   'might',
-//   'must',
-// ]);
+// Configuration validation and setup
+class Server {
+  constructor() {
+    this.server = null;
+    this.requiredEnvVars = ['MONGO_URL', 'DATABASE_PASSWORD'];
+    this.validateEnvironment();
 
-// // Function to generate tags for a product
-// async function generateTagsForProduct(product) {
-//   const tags = new Set();
+    // MongoDB configuration
+    this.mongodb = process.env.MONGO_URL.replace(
+      '<PASSWORD>',
+      process.env.DATABASE_PASSWORD,
+    );
 
-//   // Add brand
-//   if (product.brand) {
-//     tags.add(product.brand.toLowerCase().trim());
-//   }
+    this.setupEventHandlers();
+  }
 
-//   // Add category names
-//   try {
-//     // Populate categories if they're just IDs
-//     let parentCategoryName = '';
-//     let subCategoryName = '';
+  validateEnvironment() {
+    const missingVars = this.requiredEnvVars.filter(
+      (envVar) => !process.env[envVar],
+    );
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required environment variables: ${missingVars.join(', ')}`,
+      );
+    }
+  }
 
-//     if (
-//       typeof product.parentCategory === 'object' &&
-//       product.parentCategory.name
-//     ) {
-//       parentCategoryName = product.parentCategory.name;
-//     } else {
-//       const parentCat = await Category.findById(product.parentCategory);
-//       parentCategoryName = parentCat ? parentCat.name : '';
-//     }
+  setupEventHandlers() {
+    // Graceful shutdown handlers
+    process.on('SIGTERM', () => this.gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => this.gracefulShutdown('SIGINT'));
 
-//     if (typeof product.subCategory === 'object' && product.subCategory.name) {
-//       subCategoryName = product.subCategory.name;
-//     } else {
-//       const subCat = await Category.findById(product.subCategory);
-//       subCategoryName = subCat ? subCat.name : '';
-//     }
+    // Global error handlers
+    process.on('unhandledRejection', this.handleUnhandledRejection.bind(this));
+    process.on('uncaughtException', this.handleUncaughtException.bind(this));
+  }
 
-//     if (parentCategoryName) {
-//       tags.add(parentCategoryName.toLowerCase().trim());
-//     }
+  async connectDatabase() {
+    try {
+      // MongoDB connection options for production
+      const mongooseOptions = {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10, // Connection pool size
+      };
 
-//     if (subCategoryName) {
-//       tags.add(subCategoryName.toLowerCase().trim());
-//     }
+      await mongoose.connect(this.mongodb, mongooseOptions);
+      console.log('Connected to MongoDB successfully');
 
-//     // Add brand + category combinations
-//     if (product.brand && parentCategoryName) {
-//       tags.add(
-//         `${product.brand.toLowerCase().trim()}-${parentCategoryName.toLowerCase().trim()}`,
-//       );
-//     }
-//   } catch (error) {
-//     console.error(
-//       `Error processing categories for product ${product._id}:`,
-//       error,
-//     );
-//   }
+      // Log MongoDB connection details (without password)
+      const dbHost = mongoose.connection.host;
+      const dbName = mongoose.connection.name;
+      console.log(`MongoDB Host: ${dbHost}, Database: ${dbName}`);
 
-//   // Add material tags
-//   if (product.specifications && product.specifications.material) {
-//     product.specifications.material.forEach((material) => {
-//       if (material && material.value) {
-//         const materialValue = material.value.toLowerCase().trim();
-//         tags.add(materialValue);
+      return true;
+    } catch (error) {
+      console.error('Error connecting to MongoDB:', error.message);
+      throw error;
+    }
+  }
 
-//         // Add material + category combinations
-//         if (parentCategoryName) {
-//           tags.add(
-//             `${materialValue}-${parentCategoryName.toLowerCase().trim()}`,
-//           );
-//         }
+  async startServer() {
+    try {
+      const host =
+        process.env.HOST ||
+        (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
+      const port = process.env.PORT || 4000;
 
-//         // Add brand + material combinations
-//         if (product.brand) {
-//           tags.add(`${product.brand.toLowerCase().trim()}-${materialValue}`);
-//         }
-//       }
-//     });
-//   }
+      this.server = app.listen(port, host, () => {
+        console.log(
+          `Server running in ${process.env.NODE_ENV || 'development'} mode`,
+        );
+        console.log(`Listening on http://${host}:${port}`);
 
-//   // Add color tags
-//   if (product.specifications && product.specifications.color) {
-//     product.specifications.color.forEach((color) => {
-//       if (color && color.name) {
-//         const colorName = color.name.toLowerCase().trim();
-//         tags.add(colorName);
+        if (process.env.NODE_ENV === 'production') {
+          console.log('Production server is ready');
+        }
+      });
 
-//         // Add color + category combinations
-//         if (parentCategoryName) {
-//           tags.add(`${colorName}-${parentCategoryName.toLowerCase().trim()}`);
-//         }
-
-//         // Add brand + color combinations
-//         if (product.brand) {
-//           tags.add(`${product.brand.toLowerCase().trim()}-${colorName}`);
-//         }
-//       }
-//     });
-//   }
-
-//   // Add keywords from name
-//   if (product.name) {
-//     const nameWords = product.name.toLowerCase().split(/\s+/);
-//     nameWords.forEach((word) => {
-//       const cleanWord = word.replace(/[^a-z0-9]/g, '');
-//       if (cleanWord.length > 2 && !commonWords.has(cleanWord)) {
-//         tags.add(cleanWord);
-//       }
-//     });
-//   }
-
-//   // Add condition tag
-//   if (product.condition) {
-//     tags.add(product.condition);
-//   }
-
-//   // Add tags from variant attributes
-//   if (product.variants && product.variants.length > 0) {
-//     product.variants.forEach((variant) => {
-//       if (variant.attributes && variant.attributes.length > 0) {
-//         variant.attributes.forEach((attr) => {
-//           if (attr.key && attr.value) {
-//             const key = attr.key.toLowerCase().trim();
-//             const value = attr.value.toLowerCase().trim();
-
-//             tags.add(value);
-//             tags.add(`${key}-${value}`);
-
-//             // Add brand + attribute combinations
-//             if (product.brand) {
-//               tags.add(`${product.brand.toLowerCase().trim()}-${value}`);
-//             }
-//           }
-//         });
-//       }
-//     });
-//   }
-
-//   // Convert to array and limit to 20 tags
-//   return Array.from(tags)
-//     .filter((tag) => tag && tag.length > 0)
-//     .slice(0, 20);
-// }
-
-// // Main function to update all products with tags
-// async function addTagsToAllProducts() {
-//   try {
-//     // Connect to MongoDB
-
-//     // Get all products with necessary fields populated
-//     const products = await Product.find()
-//       .populate('parentCategory', 'name')
-//       .populate('subCategory', 'name');
-
-//     console.log(`Found ${products.length} products to process`);
-
-//     let updatedCount = 0;
-//     let errorCount = 0;
-
-//     // Process each product
-//     for (const product of products) {
-//       try {
-//         // Generate tags for the product
-//         const tags = await generateTagsForProduct(product);
-
-//         // Update the product with the generated tags
-//         await Product.findByIdAndUpdate(product._id, { tags });
-
-//         updatedCount++;
-
-//         // Log progress every 100 products
-//         if (updatedCount % 100 === 0) {
-//           console.log(`Updated ${updatedCount} products so far...`);
-//         }
-//       } catch (error) {
-//         console.error(`Error updating product ${product._id}:`, error);
-//         errorCount++;
-//       }
-//     }
-
-//     console.log(`\nProcess completed!`);
-//     console.log(`Successfully updated: ${updatedCount} products`);
-//     console.log(`Errors: ${errorCount} products`);
-//   } catch (error) {
-//     console.error('Error in main function:', error);
-//   } finally {
-//     // Close the database connection
-//   }
-// }
-
-const mongodb = process.env.MONGO_URL.replace(
-  '<PASSWORD>',
-  process.env.DATABASE_PASSWORD,
-);
-
-// Database connection
-mongoose
-  .connect(mongodb)
-  .then(async () => {
-    console.log('Connected to MongoDB');
-
-    // Import models AFTER connection is established
-    // const User = require('./Models/userModel');
-    // const Permission = require('./Models/permissionModel');
-
-    // Run permissions fix
-    // await fixPermissions(User, Permission);
-    // await addTagsToAllProducts();
-
-    // Start server AFTER migrations
-    const port = process.env.PORT || 6000;
-
-    const server = app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-      console.log(`Server running on port ${port}`);
-      console.log(`Server running on port ${port}`);
-    });
-
-    // Error handling
-    process.on('unhandledRejection', (err) => {
-      console.error('UNHANDLED REJECTION! 🔥 Shutting down');
-      console.error(err.name, err.message);
-      server.close(() => {
+      // Handle server errors
+      this.server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          console.error(`Port ${port} is already in use`);
+        } else {
+          console.error('Server error:', error.message);
+        }
         process.exit(1);
       });
-    });
 
-    process.on('uncaughtException', (err) => {
-      console.error('UNCAUGHT EXCEPTION! 🔥 Shutting down');
-      console.error(err.name, err.message);
-      server.close(() => {
+      return this.server;
+    } catch (error) {
+      console.error('Failed to start server:', error.message);
+      throw error;
+    }
+  }
+
+  async gracefulShutdown(signal) {
+    console.log(`${signal} received. Shutting down gracefully...`);
+
+    try {
+      // Close HTTP server
+      if (this.server) {
+        await new Promise((resolve) => {
+          this.server.close(() => {
+            console.log('HTTP server closed.');
+            resolve();
+          });
+        });
+      }
+
+      // Close MongoDB connection
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close(false);
+        console.log('MongoDB connection closed.');
+      }
+
+      console.log('Shutdown completed.');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error.message);
+      process.exit(1);
+    }
+  }
+
+  handleUnhandledRejection(err) {
+    console.error('UNHANDLED REJECTION! 🔥 Shutting down');
+    console.error('Error:', err.name, err.message);
+
+    if (this.server) {
+      this.server.close(() => {
         process.exit(1);
       });
-    });
-  })
-  .catch((error) => {
-    console.error('Error connecting to MongoDB:', error);
+    } else {
+      process.exit(1);
+    }
+  }
+
+  handleUncaughtException(err) {
+    console.error('UNCAUGHT EXCEPTION! 🔥 Shutting down');
+    console.error('Error:', err.name, err.message);
     process.exit(1);
-  });
+  }
 
-// Define fixPermissions function with parameters
-// async function fixPermissions(User, Permission) {
-//   try {
-//     console.log('Starting permission fix...');
+  async initialize() {
+    try {
+      await this.connectDatabase();
+      await this.startServer();
+    } catch (error) {
+      console.error('Failed to initialize application:', error.message);
+      process.exit(1);
+    }
+  }
+}
 
-//     // Find users with duplicate permissions
-//     const users = await User.aggregate([
-//       {
-//         $lookup: {
-//           from: 'permissions',
-//           localField: '_id',
-//           foreignField: 'user',
-//           as: 'perms',
-//         },
-//       },
-//       {
-//         $match: {
-//           'perms.1': { $exists: true }, // Users with >1 permission
-//         },
-//       },
-//     ]);
+// Create and start the server
+const serverInstance = new Server();
+serverInstance.initialize();
 
-//     console.log(`Found ${users.length} users with duplicate permissions`);
-
-//     for (const user of users) {
-//       try {
-//         // Keep first permission, delete others
-//         const [keep, ...duplicates] = user.perms;
-
-//         // Update user reference
-//         await User.findByIdAndUpdate(user._id, { permissions: keep._id });
-
-//         // Delete duplicates
-//         await Permission.deleteMany({
-//           _id: { $in: duplicates.map((d) => d._id) },
-//         });
-
-//         console.log(`Fixed permissions for user ${user._id}`);
-//       } catch (innerError) {
-//         console.error(`Error fixing user ${user._id}:`, innerError.message);
-//       }
-//     }
-
-//     console.log('Permission fix completed successfully');
-//   } catch (err) {
-//     console.error('Permission fix failed:', err);
-//     throw err; // Rethrow to exit process
-//   }
-// }
+// Export for testing purposes
+module.exports = serverInstance;
