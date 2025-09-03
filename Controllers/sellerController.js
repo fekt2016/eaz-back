@@ -170,10 +170,10 @@ exports.getPublicSeller = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { seller } });
 });
 exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
-  console.log(req.query);
   // Get query parameters with defaults
   const limit = parseInt(req.query.limit) || 10;
   const minRating = parseFloat(req.query.minRating) || 4.0;
+  const productsPerSeller = parseInt(req.query.productsPerSeller) || 4; // Number of products to include per seller
 
   // Fetch featured sellers from database with flexible filtering
   const sellers = await Seller.aggregate([
@@ -209,6 +209,37 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     // Sort by the converted numeric values
     { $sort: { 'ratings.average': -1, 'ratings.count': -1 } },
     { $limit: limit },
+    // Lookup products for each seller
+    {
+      $lookup: {
+        from: 'products',
+        let: { sellerId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$seller', '$$sellerId'] },
+                  { $eq: ['$status', 'active'] }, // Only include active products
+                ],
+              },
+            },
+          },
+          { $limit: productsPerSeller },
+          {
+            $project: {
+              name: 1,
+              price: 1,
+              images: 1,
+              ratings: 1,
+              slug: 1,
+              category: 1,
+            },
+          },
+        ],
+        as: 'sellerProducts',
+      },
+    },
     // Project required fields
     {
       $project: {
@@ -216,8 +247,11 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
         shopName: 1,
         avatar: 1,
         createdAt: 1,
+        products: 1,
+        productCount: 1,
         rating: '$ratings.average',
         reviewCount: '$ratings.count',
+        sellerProducts: 1,
       },
     },
   ]);
@@ -230,7 +264,18 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     joinedDate: seller.createdAt,
     rating: seller.rating,
     reviewCount: seller.reviewCount,
+    productCount: seller.productCount,
+    products: seller.sellerProducts.map((product) => ({
+      id: product._id,
+      name: product.name,
+      price: product.price,
+      images: product.images, // Default image if none exists
+      rating: product.ratings?.average || 0,
+      slug: product.slug,
+      category: product.parentCategory,
+    })),
   }));
+  console.log('transformedSellers', transformedSellers);
   res.status(200).json({
     status: 'success',
     results: transformedSellers.length,
@@ -239,6 +284,80 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     },
   });
 });
+// exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
+//   // Get query parameters with defaults
+//   const limit = parseInt(req.query.limit) || 10;
+//   const minRating = parseFloat(req.query.minRating) || 4.0;
+
+//   // Fetch featured sellers from database with flexible filtering
+//   const sellers = await Seller.aggregate([
+//     {
+//       $match: {
+//         // Handle missing status field
+//         $or: [
+//           { status: 'active' },
+//           { status: { $exists: false } }, // Include documents without status field
+//         ],
+//         // Convert string ratings to numbers for comparison
+//         $expr: {
+//           $gte: [
+//             { $toDouble: '$ratings.average' }, // Convert string to number
+//             minRating,
+//           ],
+//         },
+//       },
+//     },
+//     // Convert ratings to numbers for proper sorting
+//     {
+//       $addFields: {
+//         'ratings.average': { $toDouble: '$ratings.average' },
+//         'ratings.count': {
+//           $cond: [
+//             { $ifNull: ['$ratings.count', false] },
+//             { $toInt: '$ratings.count' },
+//             0, // Default to 0 if missing
+//           ],
+//         },
+//       },
+//     },
+//     // Sort by the converted numeric values
+//     { $sort: { 'ratings.average': -1, 'ratings.count': -1 } },
+//     { $limit: limit },
+//     // Project required fields
+//     {
+//       $project: {
+//         _id: 1,
+//         shopName: 1,
+//         avatar: 1,
+//         createdAt: 1,
+//         products: 1,
+//         productCount: 1,
+//         rating: '$ratings.average',
+//         reviewCount: '$ratings.count',
+//       },
+//     },
+//   ]);
+//   console.log(sellers);
+
+//   // Transform to final response format
+//   const transformedSellers = sellers.map((seller) => ({
+//     id: seller._id,
+//     shopName: seller.shopName,
+//     avatar: seller.avatar,
+//     joinedDate: seller.createdAt,
+//     rating: seller.rating,
+//     reviewCount: seller.reviewCount,
+//     productCount: seller.productCount,
+//     products: seller.products,
+//   }));
+//   res.status(200).json({
+//     status: 'success',
+//     results: transformedSellers.length,
+//     data: {
+//       sellers: transformedSellers,
+//     },
+//   });
+// });
 exports.getMySellerProfile = catchAsync(async (req, res, next) => {
   // req.user is set by auth middleware
   const seller = await Seller.findById(req.user.id)
