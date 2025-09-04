@@ -45,7 +45,6 @@ class Server {
   async connectDatabase() {
     try {
       await mongoose.connect(this.mongodb);
-
       console.log('Connected to MongoDB successfully');
 
       // Log MongoDB connection details (without password)
