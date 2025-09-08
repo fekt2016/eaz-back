@@ -44,6 +44,7 @@ const publicRoutes = [
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
   { path: '/api/v1/seller/login', methods: ['POST'] },
   { path: '/api/v1/search', methods: ['GET'] },
+  { path: '/api/v1/discount', methods: ['GET'] },
 ];
 
 // Controller methods ===========================================================
@@ -169,7 +170,6 @@ exports.requireVerifiedEmail = catchAsync(async (req, res, next) => {
 });
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { loginId } = req.body;
-  console.log(loginId);
 
   if (!loginId) {
     return next(new AppError('Please provide email or phone number', 400));

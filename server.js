@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const app = require('./app');
 const dotenv = require('dotenv');
 
-// Load environment variables first
 dotenv.config({ path: './config.env' });
 
 // Configuration validation and setup
@@ -64,6 +63,7 @@ class Server {
       const host =
         process.env.HOST ||
         (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
+      console.log(process.env.PORT);
       const port = process.env.PORT || 6000;
 
       this.server = app.listen(port, host, () => {
@@ -150,8 +150,9 @@ class Server {
       process.exit(1);
     }
   }
-}
 
+  // Function to create all categories from the ecommerceCategories data
+}
 // Create and start the server
 const serverInstance = new Server();
 serverInstance.initialize();

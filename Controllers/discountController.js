@@ -4,6 +4,42 @@ const catchAsync = require('../utils/catchAsync');
 const mongoose = require('mongoose');
 const AppError = require('../utils/appError');
 
+// Helper function to update products when discounts change
+const updateAffectedProducts = async (discount) => {
+  try {
+    let query = {};
+
+    if (discount.products && discount.products.length > 0) {
+      // Discount applies to specific products
+      query = { _id: { $in: discount.products } };
+    } else if (discount.categories && discount.categories.length > 0) {
+      // Discount applies to categories
+      query = {
+        $or: [
+          { parentCategory: { $in: discount.categories } },
+          { subCategory: { $in: discount.categories } },
+        ],
+      };
+    } else {
+      // Store-wide discount
+      query = { seller: discount.seller };
+    }
+
+    // Find all affected products
+    const products = await Product.find(query);
+
+    // Update each product
+    for (const product of products) {
+      await product.applyDiscounts();
+    }
+
+    return products.length;
+  } catch (error) {
+    console.error('Error updating affected products:', error);
+    throw error;
+  }
+};
+
 exports.createDiscount = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -15,6 +51,7 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     maxUsage,
     active,
     products, // Array of product IDs
+    categories, // Array of category IDs
   } = req.body;
 
   const discount = await Discount.create({
@@ -27,26 +64,33 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     maxUsage,
     active,
     seller: req.user.id,
-    products: products.map((id) => new mongoose.Types.ObjectId(id)),
+    products: products
+      ? products.map((id) => new mongoose.Types.ObjectId(id))
+      : [],
+    categories: categories
+      ? categories.map((id) => new mongoose.Types.ObjectId(id))
+      : [],
   });
-
-  // Apply discount to products
-  const updatedProducts = await Product.updateMany(
-    { _id: { $in: products } },
-    { $push: { discounts: discount._id } },
-  );
+  if (endDate < startDate) {
+    return next(new AppError('End date must be greater than start date', 400));
+  }
+  // Update affected products
+  await updateAffectedProducts(discount);
 
   res.status(201).json({
     status: 'success',
     data: { discount },
   });
 });
+
 exports.getAllDiscount = catchAsync(async (req, res) => {
   let discounts;
   if (req.user.role === 'seller') {
-    discounts = await Discount.find({ seller: req.user.id });
+    discounts = await Discount.find({ seller: req.user.id }).populate(
+      'products categories',
+    );
   } else {
-    discounts = await Discount.find();
+    discounts = await Discount.find().populate('products categories');
   }
 
   res.status(200).json({
@@ -56,7 +100,9 @@ exports.getAllDiscount = catchAsync(async (req, res) => {
 });
 
 exports.getDiscount = catchAsync(async (req, res) => {
-  const discount = await Discount.findById(req.params.id);
+  const discount = await Discount.findById(req.params.id).populate(
+    'products categories',
+  );
   res.status(200).json({
     status: 'success',
     data: { discount },
@@ -64,7 +110,6 @@ exports.getDiscount = catchAsync(async (req, res) => {
 });
 
 exports.updateDiscount = catchAsync(async (req, res, next) => {
-  // const discountId = new mongoose.Types.ObjectId(req.param.id);
   const discount = await Discount.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
@@ -74,6 +119,13 @@ exports.updateDiscount = catchAsync(async (req, res, next) => {
     return next(new AppError('No discount found with that ID', 404));
   }
 
+  if (req.body.endDate < req.body.startDate) {
+    return next(new AppError('End date must be greater than start date', 400));
+  }
+
+  // Update affected products
+  await updateAffectedProducts(discount);
+
   res.status(200).json({
     status: 'success',
     data: { discount },
@@ -81,9 +133,45 @@ exports.updateDiscount = catchAsync(async (req, res, next) => {
 });
 
 exports.deleteDiscount = catchAsync(async (req, res) => {
-  const discount = await Discount.findByIdAndDelete(req.params.id);
+  const discount = await Discount.findById(req.params.id);
+
+  if (!discount) {
+    return next(new AppError('No discount found with that ID', 404));
+  }
+
+  await Discount.findByIdAndDelete(req.params.id);
+
+  // Update affected products to remove this discount
+  await updateAffectedProducts(discount);
+
   res.status(200).json({
     status: 'success',
     data: { discount },
+  });
+});
+
+// New endpoint to get active discounts for a product
+exports.getProductDiscounts = catchAsync(async (req, res, next) => {
+  const productId = req.params.productId;
+  const now = new Date();
+
+  const discounts = await Discount.find({
+    $or: [
+      { products: productId },
+      {
+        categories: {
+          $in: [req.product.parentCategory, req.product.subCategory],
+        },
+      },
+      { products: { $size: 0 }, categories: { $size: 0 } }, // Store-wide discounts
+    ],
+    active: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: { discounts },
   });
 });

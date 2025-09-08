@@ -278,6 +278,7 @@ app.use('/api/v1/search', routers.search);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  console.log('Server is running');
   res.status(200).json({
     status: 'success',
     message: 'Server is running',

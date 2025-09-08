@@ -2,20 +2,18 @@ const express = require('express');
 const authController = require('../Controllers/authController');
 const {
   getAllProduct,
-  getProduct,
   deleteProduct,
   createProduct,
   updateProduct,
-  bestProductPrice,
   setProductIds,
   resizeProductImages,
   uploadProductImage,
-  // getSellerProduct,
   conditionalUpload,
   getProductCountByCategory,
   getProductReviews,
   getAllPublicProductsBySeller,
   getProductsByCategory,
+  getProductById,
 } = require('../Controllers/ProductController.cjs');
 
 const router = express.Router();
@@ -36,7 +34,7 @@ router
   );
 router
   .route('/:id')
-  .get(getProduct)
+  .get(getProductById)
   .patch(
     authController.protect,
     authController.restrictTo('admin', 'seller'),

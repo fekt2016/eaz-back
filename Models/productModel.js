@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
-const Category = require('./categoryModel');
-const AppError = require('../utils/appError');
+// const Category = require('./categoryModel');
+// const AppError = require('../utils/appError');
 
 const productSchema = new mongoose.Schema(
   {
@@ -76,7 +76,7 @@ const productSchema = new mongoose.Schema(
         ],
         price: {
           type: Number,
-          required: true,
+          required: [true, 'Price is required'],
           min: [0, 'Price must be at least 0'],
         },
         originalPrice: {
@@ -136,7 +136,7 @@ const productSchema = new mongoose.Schema(
     ],
     price: {
       type: Number,
-      required: [true, 'Price is required'],
+      // required: [true, 'Price is required'],
       min: [0, 'Price must be at least 0'],
     },
     minPrice: {
@@ -414,7 +414,9 @@ productSchema.pre('save', function (next) {
   if (this.parentCategory && this.subCategory) {
     this.categoryPath = `${this.parentCategory}/${this.subCategory}`;
   }
-
+  if (this.variants && this.variants.length > 0 && this.variants[0].price) {
+    this.price = this.variants[0].price;
+  }
   // Calculate popularity score based on views, sales, and ratings
   this.popularity =
     this.totalViews * 0.1 + this.totalSold * 0.5 + this.ratingsAverage * 10;
@@ -464,11 +466,11 @@ productSchema.virtual('hasStock').get(function () {
   return this.totalStock > 0;
 });
 
-// productSchema.virtual('isOnSale').get(function () {
-//   return this.variants.some(
-//     (variant) => variant.originalPrice && variant.price < variant.originalPrice,
-//   );
-// });
+productSchema.virtual('isOnSale').get(function () {
+  return this.variants.some(
+    (variant) => variant.originalPrice && variant.price < variant.originalPrice,
+  );
+});
 
 productSchema.virtual('salePercentage').get(function () {
   if (!this.isOnSale) return 0;
@@ -483,6 +485,104 @@ productSchema.virtual('salePercentage').get(function () {
     ((variant.originalPrice - variant.price) / variant.originalPrice) * 100,
   );
 });
+
+// Method to apply discounts to a product
+productSchema.methods.applyDiscounts = async function () {
+  console.log('applyDiscounts called');
+  const Discount = mongoose.model('Discount');
+  const now = new Date();
+
+  // Find all applicable discounts for this product
+  const discounts = await Discount.find({
+    $or: [
+      { products: this._id },
+      { categories: { $in: [this.parentCategory, this.subCategory] } },
+      { products: { $size: 0 }, categories: { $size: 0 }, seller: this.seller }, // Store-wide discounts from this seller
+    ],
+    active: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  });
+  console.log(discounts);
+  // Track if any discount was applied
+  let discountApplied = false;
+  // console.log('variants', this.variants);
+  // Apply the best discount to each variant
+  for (let i = 0; i < this.variants.length; i++) {
+    let bestDiscountedPrice = this.variants[i].price;
+    // console.log('bestDiscountedPrice', bestDiscountedPrice);
+    let bestDiscount = null;
+
+    // Store original price if not already set
+    if (!this.variants[i].originalPrice) {
+      this.variants[i].originalPrice = this.variants[i].price;
+    }
+
+    // Check each discount to find the best one for this variant
+    for (const discount of discounts) {
+      let discountedPrice = this.variants[i].originalPrice;
+
+      switch (discount.type) {
+        case 'percentage':
+          discountedPrice =
+            this.variants[i].originalPrice * (1 - discount.value / 100);
+          break;
+        case 'fixed':
+          discountedPrice = Math.max(
+            0,
+            this.variants[i].originalPrice - discount.value,
+          );
+          break;
+      }
+      // console.log('discountedPrice', discountedPrice);
+      // Track the best discount (lowest price)
+      if (discountedPrice < bestDiscountedPrice) {
+        bestDiscountedPrice = discountedPrice;
+        // console.log('bestDiscountedPrice', bestDiscountedPrice);
+        bestDiscount = discount;
+        // console.log('bestDiscount', bestDiscount);
+      }
+    }
+
+    // Apply the best discount if found
+    if (bestDiscount) {
+      this.variants[i].price = Math.round(bestDiscountedPrice * 100) / 100;
+      // Round to 2 decimal places
+      // console.log('variant price', this.variants[i].price);
+      discountApplied = true;
+    } else {
+      // Reset to original price if no discount applies
+      this.variants[i].price = this.variants[i].originalPrice;
+    }
+  }
+
+  // Update min and max prices
+  const prices = this.variants.map((v) => v.price);
+  this.minPrice = Math.min(...prices);
+  this.maxPrice = Math.max(...prices);
+  console.log('discountApplied', discountApplied);
+  return discountApplied;
+};
+
+// Method to remove all discounts and revert to original prices
+productSchema.methods.removeDiscounts = function () {
+  let changesMade = false;
+
+  for (let i = 0; i < this.variants.length; i++) {
+    if (this.variants[i].originalPrice) {
+      this.variants[i].price = this.variants[i].originalPrice;
+      changesMade = true;
+    }
+  }
+
+  if (changesMade) {
+    const prices = this.variants.map((v) => v.price);
+    this.minPrice = Math.min(...prices);
+    this.maxPrice = Math.max(...prices);
+  }
+
+  return changesMade;
+};
 
 // Middleware
 productSchema.pre('validate', function (next) {
@@ -502,6 +602,60 @@ productSchema.pre('validate', function (next) {
 
   next();
 });
+
+// Add a pre-save middleware to automatically generate tags
+productSchema.pre('save', async function (next) {
+  // Only generate tags if the product is new or name/description changed
+  if (this.isNew || this.isModified('name') || this.isModified('description')) {
+    await this.generateTags();
+  }
+  next();
+});
+
+// Add a method to generate tags
+productSchema.methods.generateTags = function () {
+  const tags = new Set();
+
+  this.name
+    ?.toLowerCase()
+    .split(/\s+/)
+    .forEach((w) => {
+      if (w.length > 2) tags.add(w);
+    });
+
+  this.description
+    ?.toLowerCase()
+    .split(/\s+/)
+    .forEach((w) => {
+      if (w.length > 3) tags.add(w);
+    });
+
+  if (this.brand) tags.add(this.brand.toLowerCase());
+  if (this.manufacturer?.name) tags.add(this.manufacturer.name.toLowerCase());
+
+  if (this.specifications?.material) {
+    this.specifications.material.forEach((m) => {
+      if (m.value)
+        m.value.split(',').forEach((val) => tags.add(val.trim().toLowerCase()));
+    });
+  }
+
+  if (this.specifications?.color) {
+    this.specifications.color.forEach((c) => {
+      if (c.name) tags.add(c.name.toLowerCase());
+    });
+  }
+
+  if (this.variants) {
+    this.variants.forEach((v) => {
+      v.attributes?.forEach((attr) => {
+        tags.add(`${attr.key}:${attr.value}`.toLowerCase());
+      });
+    });
+  }
+
+  this.tags = Array.from(tags).filter(Boolean).slice(0, 20); // no save here!
+};
 
 // Indexes for better search performance
 productSchema.index(
@@ -603,94 +757,6 @@ productSchema.methods.getAvailableAttributes = function () {
   });
 
   return result;
-};
-// Add a pre-save middleware to automatically generate tags
-productSchema.pre('save', async function (next) {
-  // Only generate tags if the product is new or name/description changed
-  if (this.isNew || this.isModified('name') || this.isModified('description')) {
-    await this.generateTags();
-  }
-  next();
-});
-
-// Add a method to generate tags
-productSchema.methods.generateTags = async function () {
-  const tags = new Set();
-
-  // Add words from name and description
-  this.name
-    .toLowerCase()
-    .split(/\s+/)
-    .forEach((word) => {
-      if (word.length > 2) tags.add(word); // Skip very short words
-    });
-
-  this.description
-    .toLowerCase()
-    .split(/\s+/)
-    .forEach((word) => {
-      if (word.length > 3) tags.add(word); // Skip very short words
-    });
-
-  // Add brand
-  if (this.brand) {
-    tags.add(this.brand.toLowerCase());
-  }
-
-  // Add manufacturer name
-  if (this.manufacturer && this.manufacturer.name) {
-    tags.add(this.manufacturer.name.toLowerCase());
-  }
-
-  // Add material tags
-  if (this.specifications && this.specifications.material) {
-    this.specifications.material.forEach((material) => {
-      if (material.value) {
-        material.value.split(',').forEach((value) => {
-          tags.add(value.trim().toLowerCase());
-        });
-      }
-    });
-  }
-
-  // Add color tags
-  if (this.specifications && this.specifications.color) {
-    this.specifications.color.forEach((color) => {
-      if (color.name) {
-        tags.add(color.name.toLowerCase());
-      }
-    });
-  }
-
-  // Add variant attributes as tags
-  if (this.variants) {
-    this.variants.forEach((variant) => {
-      if (variant.attributes) {
-        variant.attributes.forEach((attr) => {
-          tags.add(`${attr.key}:${attr.value}`.toLowerCase());
-        });
-      }
-    });
-  }
-
-  // Add category names (you'll need to populate these first)
-  if (this.populated('parentCategory') && this.parentCategory.name) {
-    tags.add(this.parentCategory.name.toLowerCase());
-  }
-
-  if (this.populated('subCategory') && this.subCategory.name) {
-    tags.add(this.subCategory.name.toLowerCase());
-  }
-
-  // Convert Set to Array and remove any empty values
-  this.tags = Array.from(tags).filter((tag) => tag && tag.length > 0);
-
-  // Limit to a reasonable number of tags (e.g., 20)
-  if (this.tags.length > 20) {
-    this.tags = this.tags.slice(0, 20);
-  }
-
-  return this.save();
 };
 
 const Product = mongoose.model('Product', productSchema);

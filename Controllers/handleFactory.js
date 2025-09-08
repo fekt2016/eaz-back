@@ -129,7 +129,7 @@ exports.updateOne = (Model) =>
 
 exports.createOne = (Model) => async (req, res, next) => {
   // console.log(req.files);
-  console.log('req.body', req.body);
+  // console.log('req.body', req.body);
   try {
     // const { files } = req;
     let body = req.body;
@@ -178,7 +178,7 @@ exports.createOne = (Model) => async (req, res, next) => {
     if (body.subCategory && !mongoose.isValidObjectId(body.subCategory)) {
       return next(new AppError('Invalid subCategory ID format', 400));
     }
-
+    console.log();
     // 3. Create document
     const doc = await Model.create(body);
 
@@ -210,7 +210,7 @@ exports.getOne = (Model, popOptions) =>
     if (!doc) {
       return next(new AppError('doc with this ID is not found', 404));
     }
-
+    console.log('doc', doc);
     res.status(200).json({ status: 'success', data: { data: doc } });
   });
 

@@ -4,8 +4,9 @@ const multer = require('multer');
 const multerStorage = multer.memoryStorage();
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
-const cloudinary = require('../utils/cloudinary');
+// const cloudinary = require('../utils/cloudinary');
 const stream = require('stream');
+const cloudinary = require('cloudinary').v2;
 
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
@@ -30,6 +31,7 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
   req.file = { ...req.file };
 
   try {
+    const cloudinary = req.app.get('cloudinary');
     // Only process image if a new file is uploaded
     if (req.file) {
       const imageBuffer =

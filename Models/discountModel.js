@@ -36,13 +36,13 @@ const discountSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: [true, 'End date is required'],
-      validate: {
-        validator: function (value) {
-          console.log('this.startDate', this.startDate, this.endDate);
-          return value > this.startDate;
-        },
-        message: 'End date must be after start date',
-      },
+      // validate: {
+      //   validator: function (value) {
+      //     console.log('value', value, this.startDate);
+      //     return value > this.startDate;
+      //   },
+      //   message: 'End date must be after start date',
+      // },
     },
     active: {
       type: Boolean,
@@ -143,6 +143,7 @@ discountSchema.pre('validate', function (next) {
   }
   next();
 });
+
 // Indexes for efficient querying
 discountSchema.index({ code: 1, seller: 1 }, { unique: true });
 discountSchema.index({ seller: 1, active: 1 });

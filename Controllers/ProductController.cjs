@@ -52,11 +52,12 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   // console.log(req);
   req.body = { ...req.body };
   req.files = { ...req.files };
-
+  console.log('req.files', req.files);
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
+    // console.log('cloudinary', cloudinary);
     if (req.files) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
@@ -88,7 +89,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         });
 
         req.body.imageCover = coverResult.secure_url;
-        // console.log('Cover image URL:', req.body.imageCover);
+        console.log('Cover image URL:', req.body.imageCover);
       }
 
       if (req.files.newImages) {
@@ -115,7 +116,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       }
 
       req.body.images = [...parseExistingImages, ...imagesUrls];
-      // console.log('All images:', req.body);
+      console.log('All images:', req.body);
     }
   } catch (err) {
     console.log(err.message);
@@ -231,10 +232,27 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
 
 exports.getProduct = handleFactory.getOne(Product, [
   { path: 'reviews', populate: { path: 'user', select: 'name photo' } },
-  { path: 'parentCategory', select: 'name slug' },
+  { path: 'parentCategory', select: 'id name slug' },
   { path: 'subCategory', select: 'name slug' },
   { path: 'seller', select: 'name email shopName avatar location' },
 ]);
+
+exports.getProductById = catchAsync(async (req, res, next) => {
+  const product = await Product.findById(req.params.id).populate({
+    path: 'parentCategory',
+    select: 'name slug',
+  });
+
+  console.log(product);
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { product },
+  });
+});
 
 exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   const categoryId = req.params.categoryId;
