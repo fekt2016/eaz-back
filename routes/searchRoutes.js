@@ -1,13 +1,18 @@
-// Backend routes (Node.js/Express example)
 const express = require('express');
 const router = express.Router();
 const {
   searchProducts,
   getSearchSuggestions,
+  searchProductsResults,
 } = require('../Controllers/searchController');
 
-// Use route parameters instead of query parameters
-router.get('/:query', searchProducts);
+// For filtered/product/category/brand/tag results (using query params)
+router.get('/results', searchProductsResults);
+
+// For free-text search (e.g. /search/query/iphone)
+router.get('/query/:query', searchProducts);
+
+// For typeahead/autocomplete suggestions
 router.get('/suggestions/:query', getSearchSuggestions);
 
 module.exports = router;

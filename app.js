@@ -41,6 +41,7 @@ const routers = {
   history: require('./routes/browserHistoryRoutes'),
   notificationSettings: require('./routes/notificationRoutes'),
   search: require('./routes/searchRoutes'),
+  newsletter: require('./routes/newsletterRoutes'),
 };
 
 // Import queues
@@ -275,6 +276,7 @@ app.use('/api/v1/creditbalance', routers.creditbalance);
 app.use('/api/v1/history', routers.history);
 app.use('/api/v1/notification-settings', routers.notificationSettings);
 app.use('/api/v1/search', routers.search);
+app.use('/api/v1/newsletter', routers.newsletter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

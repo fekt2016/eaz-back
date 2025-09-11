@@ -35,16 +35,16 @@ exports.getMyCart = catchAsync(async (req, res, next) => {
   }
 
   cart.products = cart.products.map((item) => {
-    const variantId = String(item.variant); // the ID you stored
+    const variantId = String(item.variant);
+
     const selectedVariant =
       (item.product.variants || []).find(
         (v) => v._id.toString() === variantId,
       ) || null;
-
-    // Return a new object for this cart-item:
+    console.log('selectedVariant', selectedVariant);
     return {
       ...item,
-      variants: selectedVariant, // full sub-doc instead of string
+      variant: selectedVariant, // ✅ replaces ID with full object
     };
   });
 
@@ -195,13 +195,13 @@ exports.getCart = catchAsync(async (req, res, next) => {
   if (!cart) {
     return next(new AppError('No cart found for this user', 404));
   }
-  console.log(cart);
+
   cart.products = cart.products.filter((item) => {
     const variantId = item.variant.toString() || item.variantId;
     const selectedVariant = item.product.variants.id(variantId) || null;
     return { ...item.toObject(), variant: selectedVariant };
   });
-  console.log('cart', cart);
+
   res.status(200).json({
     status: 'success',
     data: { cart },

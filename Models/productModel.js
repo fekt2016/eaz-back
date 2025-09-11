@@ -467,7 +467,7 @@ productSchema.virtual('hasStock').get(function () {
 });
 
 productSchema.virtual('isOnSale').get(function () {
-  return this.variants.some(
+  return (this.variants || []).some(
     (variant) => variant.originalPrice && variant.price < variant.originalPrice,
   );
 });

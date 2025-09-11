@@ -194,7 +194,6 @@ exports.createOne = (Model) => async (req, res, next) => {
 
 exports.getOne = (Model, popOptions) =>
   catchAsync(async (req, res, next) => {
-    console.log('req.params', req.params.id);
     // let query;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -206,6 +205,7 @@ exports.getOne = (Model, popOptions) =>
       query = query.populate(popOptions);
 
     const doc = await query;
+    console.log('doc', doc);
 
     if (!doc) {
       return next(new AppError('doc with this ID is not found', 404));
