@@ -3,7 +3,7 @@ const nodemailer = require('nodemailer');
 // Create reusable transporter
 const createTransport = () => {
   return nodemailer.createTransport({
-    host: MAILTRAP_HOST,
+    host: process.env.MAILTRAP_HOST,
     port: process.env.MAILTRAP_PORT,
     auth: {
       user: process.env.MAILTRAP_USER,
