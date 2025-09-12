@@ -6,13 +6,13 @@ const handleCastErrorDB = (err) => {
 };
 
 const handleDuplicateFieldsDB = (err) => {
-  let value = '';
+  let value = 'unknown';
 
-  // Modern Mongo errors have err.keyValue
+  // Modern MongoDB provides keyValue
   if (err.keyValue) {
     value = JSON.stringify(err.keyValue);
   } else if (err.errmsg) {
-    // Fallback regex if errmsg exists
+    // Regex fallback for older Mongo error messages
     const match = err.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/);
     value = match ? match[0] : 'unknown';
   }
@@ -28,7 +28,7 @@ const handleValidationErrorDB = (err) => {
 };
 
 const handleJsonWebTokenErrorJWT = () =>
-  new AppError('Invalid token, Please log in again.', 401);
+  new AppError('Invalid token, please log in again.', 401);
 
 const handleTokenExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401);
@@ -49,8 +49,9 @@ const sendErrorProd = (err, res) => {
       message: err.message,
     });
   } else {
-    // 1) Log error
+    // 1) Log error for debugging
     console.error('ERROR 🔥', err);
+
     // 2) Send generic message
     res.status(500).json({
       status: 'error',
@@ -66,8 +67,13 @@ module.exports = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
+    // Clone error safely
     let error = { ...err };
-    error.message = err.message; // ensure message is preserved
+    error.message = err.message;
+    error.name = err.name;
+    error.code = err.code;
+    error.errmsg = err.errmsg;
+    error.keyValue = err.keyValue;
 
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);
