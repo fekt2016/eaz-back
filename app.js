@@ -168,7 +168,7 @@ if (isDevelopment) {
     }),
   );
 }
-
+app.set('trust proxy', 1);
 // Rate limiting - different for production
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
