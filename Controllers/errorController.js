@@ -1,3 +1,4 @@
+// Controllers/errorController.js
 const AppError = require('../utils/appError');
 
 const handleCastErrorDB = (err) => {
@@ -8,11 +9,9 @@ const handleCastErrorDB = (err) => {
 const handleDuplicateFieldsDB = (err) => {
   let value = 'unknown';
 
-  // Modern MongoDB provides keyValue
   if (err.keyValue) {
     value = JSON.stringify(err.keyValue);
   } else if (err.errmsg) {
-    // Regex fallback for older Mongo error messages
     const match = err.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/);
     value = match ? match[0] : 'unknown';
   }
@@ -49,10 +48,8 @@ const sendErrorProd = (err, res) => {
       message: err.message,
     });
   } else {
-    // 1) Log error for debugging
     console.error('ERROR 🔥', err);
 
-    // 2) Send generic message
     res.status(500).json({
       status: 'error',
       message: 'Something went very wrong!',
@@ -67,7 +64,6 @@ module.exports = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
-    // Clone error safely
     let error = { ...err };
     error.message = err.message;
     error.name = err.name;

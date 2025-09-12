@@ -51,23 +51,25 @@ const publicRoutes = [
 
 // Controller methods ===========================================================
 
+// Controllers/authController.js (signup part)
 exports.signup = catchAsync(async (req, res, next) => {
   // Phone validation
   if (req.body.phone && !validateGhanaPhone(req.body.phone)) {
     return next(new AppError('Please provide a valid Ghana phone number', 400));
   }
 
-  // // Email validation
+  // Email validation
   if (req.body.email && !validator.isEmail(req.body.email)) {
     return next(new AppError('Please provide a valid email address', 400));
   }
 
-  // // Require either email or phone
+  // Require either email or phone
   if (!req.body.email && !req.body.phone) {
     return next(
       new AppError('Please provide either email or phone number', 400),
     );
   }
+
   if (!req.body.password || !req.body.passwordConfirm) {
     return next(
       new AppError(
@@ -77,32 +79,29 @@ exports.signup = catchAsync(async (req, res, next) => {
     );
   }
 
-  // // Create new user
-  const newUser = await User.create({
-    name: req.body.name,
-    email: req.body.email,
-    phone: req.body.phone ? req.body.phone.replace(/\D/g, '') : undefined,
-    password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
-    passwordChangedAt: req.body.passwordChangedAt,
-    emailVerified: req.body.emailVerified || false,
-  });
-
-  const verificationToken = newUser.createEmailVerificationToken();
-
-  await newUser.save({ validateBeforeSave: false });
-  console.log('newUser', newUser);
-  const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
-
-  const message = `Welcome to YourBrand! Please verify your email by clicking on this link: ${verificationURL}. This link is valid for 10 minutes.`;
   try {
+    const newUser = await User.create({
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone ? req.body.phone.replace(/\D/g, '') : undefined,
+      password: req.body.password,
+      passwordConfirm: req.body.passwordConfirm,
+      passwordChangedAt: req.body.passwordChangedAt,
+      emailVerified: req.body.emailVerified || false,
+    });
+
+    const verificationToken = newUser.createEmailVerificationToken();
+    await newUser.save({ validateBeforeSave: false });
+
+    const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
+    const message = `Welcome to YourBrand! Please verify your email by clicking this link: ${verificationURL}. Valid for 10 minutes.`;
+
     await sendCustomEmail({
       email: newUser.email,
       subject: 'Verify Your Email Address',
       message,
     });
 
-    // Respond without sending sensitive data
     res.status(201).json({
       status: 'success',
       requiresVerification: true,
@@ -117,9 +116,18 @@ exports.signup = catchAsync(async (req, res, next) => {
       },
     });
   } catch (err) {
-    // If email fails, remove the unverified user
-    await User.findByIdAndDelete(newUser._id);
-    console.log(err);
+    // If email fails, delete unverified user
+    if (err.code === 11000) {
+      return next(
+        new AppError(
+          'This email or phone is already registered. Please log in.',
+          400,
+        ),
+      );
+    }
+
+    await User.findOneAndDelete({ email: req.body.email });
+    console.error('Signup Error:', err);
 
     return next(
       new AppError(
@@ -129,6 +137,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     );
   }
 });
+
 exports.verifyEmail = catchAsync(async (req, res, next) => {
   // Get token from URL params
   const hashedToken = crypto
