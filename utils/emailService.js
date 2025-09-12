@@ -3,11 +3,11 @@ const nodemailer = require('nodemailer');
 // Create reusable transporter
 const createTransport = () => {
   return nodemailer.createTransport({
-    host: 'sandbox.smtp.mailtrap.io',
-    port: 2525,
+    host: MAILTRAP_HOST,
+    port: process.env.MAILTRAP_PORT,
     auth: {
-      user: 'aeb806e7289334',
-      pass: 'a55bcacf0429d3',
+      user: process.env.MAILTRAP_USER,
+      pass: process.env.MAILTRAP_PASSWORD,
     },
     authMethod: 'PLAIN',
   });
