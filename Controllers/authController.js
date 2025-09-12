@@ -91,6 +91,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   const verificationToken = newUser.createEmailVerificationToken();
 
   await newUser.save({ validateBeforeSave: false });
+  console.log('newUser', newUser);
   const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
 
   const message = `Welcome to YourBrand! Please verify your email by clicking on this link: ${verificationURL}. This link is valid for 10 minutes.`;

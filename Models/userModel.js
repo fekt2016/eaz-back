@@ -180,6 +180,7 @@ userSchema.methods.cancelAccountDeletion = function () {
 };
 
 userSchema.virtual('activeExports').get(function () {
+  if (!this.dataExports) return [];
   return this.dataExports.filter(
     (expert) =>
       expert.status === 'pending' ||
@@ -187,13 +188,13 @@ userSchema.virtual('activeExports').get(function () {
       (expert.status === 'completed' && expert.expiresAt > new Date()),
   );
 });
-// userSchema.virtual('securitySettings').get(function () {
-//   return {
-//     twoFactorEnabled: this.twoFactorEnabled,
-//     lastPasswordChange: this.passwordChangedAt,
-//     // Add other security-related fields as needed
-//   };
-// });
+userSchema.virtual('securitySettings').get(function () {
+  return {
+    twoFactorEnabled: this.twoFactorEnabled,
+    lastPasswordChange: this.passwordChangedAt,
+    // Add other security-related fields as needed
+  };
+});
 userSchema.pre('save', async function (next) {
   //Only run this function if passworld was actually modified
   if (!this.isModified('password')) return next();
