@@ -84,7 +84,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     phone: req.body.phone ? req.body.phone.replace(/\D/g, '') : undefined,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
-    // passwordChangedAt: req.body.passwordChangedAt,
+    passwordChangedAt: req.body.passwordChangedAt,
     emailVerified: req.body.emailVerified || false,
   });
 
