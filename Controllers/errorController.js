@@ -1,13 +1,23 @@
 const AppError = require('../utils/appError');
 
 const handleCastErrorDB = (err) => {
-  console.log('err');
   const message = `Invalid ${err.path}: ${err.value}`;
   return new AppError(message, 400);
 };
+
 const handleDuplicateFieldsDB = (err) => {
-  const value = err.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/)[0];
-  const message = `Duplicate field value: ${value}. Please use another value`;
+  let value = '';
+
+  // Modern Mongo errors have err.keyValue
+  if (err.keyValue) {
+    value = JSON.stringify(err.keyValue);
+  } else if (err.errmsg) {
+    // Fallback regex if errmsg exists
+    const match = err.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/);
+    value = match ? match[0] : 'unknown';
+  }
+
+  const message = `Duplicate field value: ${value}. Please use another value.`;
   return new AppError(message, 400);
 };
 
@@ -16,11 +26,13 @@ const handleValidationErrorDB = (err) => {
   const message = `Invalid input data. ${errors.join('. ')}`;
   return new AppError(message, 400);
 };
-const handleJsonWebTokenErrorJWT = () => {
-  return new AppError('Invalid token, Plaese Login again', 401);
-};
+
+const handleJsonWebTokenErrorJWT = () =>
+  new AppError('Invalid token, Please log in again.', 401);
+
 const handleTokenExpiredError = () =>
-  new AppError('Your token has expired! Please log in again ', 401);
+  new AppError('Your token has expired! Please log in again.', 401);
+
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -29,21 +41,20 @@ const sendErrorDev = (err, res) => {
     stack: err.stack,
   });
 };
+
 const sendErrorProd = (err, res) => {
-  //Operational, trusted error:  send message to client
   if (err.isOperational) {
     res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
     });
-    //Programming or other unknown error: dont leak error details
   } else {
     // 1) Log error
-    //2) Send generic message
     console.error('ERROR 🔥', err);
+    // 2) Send generic message
     res.status(500).json({
       status: 'error',
-      message: 'Something went very wrong',
+      message: 'Something went very wrong!',
     });
   }
 };
@@ -55,11 +66,17 @@ module.exports = (err, req, res, next) => {
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else if (process.env.NODE_ENV === 'production') {
-    if (err.name === 'CastError') err = handleCastErrorDB(err);
-    if (err.code === 11000) err = handleDuplicateFieldsDB(err);
-    if (err.name === 'ValidationError') err = handleValidationErrorDB(err);
-    if (err.name === 'JsonWebTokenError') err = handleJsonWebTokenErrorJWT();
-    if (err.name === 'TokenExpiredError') err = handleTokenExpiredError();
-    sendErrorProd(err, res);
+    let error = { ...err };
+    error.message = err.message; // ensure message is preserved
+
+    if (error.name === 'CastError') error = handleCastErrorDB(error);
+    if (error.code === 11000) error = handleDuplicateFieldsDB(error);
+    if (error.name === 'ValidationError')
+      error = handleValidationErrorDB(error);
+    if (error.name === 'JsonWebTokenError')
+      error = handleJsonWebTokenErrorJWT();
+    if (error.name === 'TokenExpiredError') error = handleTokenExpiredError();
+
+    sendErrorProd(error, res);
   }
 };
