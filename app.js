@@ -288,6 +288,10 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
   });
 });
+app.use((req, res, next) => {
+  console.log('Incoming request:', req.method, req.url);
+  next();
+});
 
 // 5. Error handling
 app.all('*', (req, res, next) => {
