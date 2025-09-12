@@ -112,18 +112,31 @@ app.use(
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
+const allowedOrigins = [
+  'https://eazworld.com',
+  'https://www.eazworld.com',
+  'https://api.eazworld.com',
+  process.env.FRONTEND_URL, // optional env variable
+].filter(Boolean);
+
 // CORS configuration
 const corsOptions = {
-  origin: isProduction
-    ? [
-        'https://eazworld.com',
-        'https://www.eazworld.com',
-        'https://api.eazworld.com',
-        process.env.FRONTEND_URL,
-      ].filter(Boolean) // Remove any falsy values
-    : true, // Allow all in development
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like server-to-server or Postman)
+    if (!origin) return callback(null, true);
+
+    if (process.env.NODE_ENV === 'development') {
+      // Allow all origins in dev
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
+      // Allow whitelisted production origins
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS not allowed for origin: ${origin}`), false);
+    }
+  },
+  credentials: true, // allow cookies/Authorization headers
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
