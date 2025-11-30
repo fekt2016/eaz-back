@@ -33,8 +33,8 @@ const browserHistorySchema = new mongoose.Schema(
 );
 
 // Index for faster querying
-browserHistorySchema.index({ user: 1, viewedAt: -1 });
+
 
 const BrowserHistory = mongoose.model('BrowserHistory', browserHistorySchema);
 
-module.exports = BrowserHistory;
+module.exports = BrowserHistory;;

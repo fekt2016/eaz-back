@@ -38,10 +38,7 @@ exports.unfollowSeller = catchAsync(async (req, res, next) => {
     return next(new AppError('You are not following this seller', 400));
   }
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 });
 exports.checkFollowStatus = catchAsync(async (req, res, next) => {
   const { sellerId } = req.params;

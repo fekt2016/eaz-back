@@ -41,4 +41,20 @@ router.patch(
   addressController.setDefaultAddress,
 );
 
-module.exports = router;
+// Lookup digital address
+router.post(
+  '/lookup-digital',
+  authController.protect,
+  authController.restrictTo('user'),
+  addressController.lookupDigitalAddress,
+);
+
+// Create address with zone
+router.post(
+  '/create',
+  authController.protect,
+  authController.restrictTo('user'),
+  addressController.createAddressWithZone,
+);
+
+module.exports = router;;

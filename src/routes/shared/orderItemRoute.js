@@ -1,11 +1,9 @@
 const express = require('express');
-const {
-  getAllOrderItem,
+const { getAllOrderItem,
   createOrderItem,
   updateOrderItem,
   deleteOrderItem,
-  getOrderItem,
-} = require('../../controllers/shared/orderItemController');
+  getOrderItem, } = require('../../controllers/shared/orderItemController');
 const router = express.Router();
 
 router.route('/').get(getAllOrderItem).post(createOrderItem);
@@ -15,4 +13,4 @@ router
   .patch(updateOrderItem)
   .delete(deleteOrderItem);
 
-module.exports = router;
+module.exports = router;;

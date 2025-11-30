@@ -16,10 +16,13 @@ router
   .get(wishlistController.getWishlist)
   .post(wishlistController.addToWishlist);
 
+// Toggle wishlist endpoint (add if not present, remove if present)
+router.route('/toggle/:productId').post(wishlistController.toggleWishlist);
+
 router.route('/:productId').delete(wishlistController.removeFromWishlist);
 
 router.route('/check/:productId').get(wishlistController.checkInWishlist);
 
 router.route('/merge').post(wishlistController.mergeWishlists);
 
-module.exports = router;
+module.exports = router;;

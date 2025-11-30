@@ -1,6 +1,6 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
-const cartController = require('../../controllers/buyer/cartController.cjs');
+const cartController = require('../../controllers/buyer/cartController');
 
 const router = express.Router();
 
@@ -49,4 +49,4 @@ router.route('/:id').get(
 //   cartController.updateCart,
 // );
 
-module.exports = router;
+module.exports = router;;

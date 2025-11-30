@@ -8,4 +8,4 @@ const productViewModelSchema = new mongoose.Schema({
 
 const ProductView = mongoose.model('ProductViewModel', productViewModelSchema);
 
-module.exports = ProductView;
+module.exports = ProductView;;

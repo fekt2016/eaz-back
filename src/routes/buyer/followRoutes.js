@@ -32,4 +32,4 @@ router
     followController.getFollowedShops,
   );
 
-module.exports = router;
+module.exports = router;;

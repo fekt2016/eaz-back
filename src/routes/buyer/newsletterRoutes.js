@@ -14,4 +14,4 @@ router
   )
   .delete(newsletterController.unsubscribeFromNewsletter);
 
-module.exports = router;
+module.exports = router;;

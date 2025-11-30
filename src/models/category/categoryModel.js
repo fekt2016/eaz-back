@@ -154,4 +154,4 @@ categorySchema.pre('findOne', function () {
 });
 
 const Category = mongoose.model('Category', categorySchema);
-module.exports = Category;
+module.exports = Category;;

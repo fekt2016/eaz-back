@@ -71,4 +71,4 @@ const paymentValidator = [
     .withMessage('Invalid bank selected'),
 ];
 
-module.exports = paymentValidator;
+module.exports = paymentValidator;;

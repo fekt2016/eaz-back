@@ -13,4 +13,4 @@ router
 
 router.patch('/reset', notificationController.resetToDefaults);
 
-module.exports = router;
+module.exports = router;;

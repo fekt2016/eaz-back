@@ -10,9 +10,13 @@ const Seller = require('../../models/user/sellerModel');
 
 const publicRoutes = [
   { path: '/api/v1/product', methods: ['GET'] },
+  { path: '/api/v1/product/eazshop', methods: ['GET'] }, // Public EazShop products
   { path: '/api/v1/categories/parents', methods: ['GET'] },
   { path: '/api/v1/wishlist/sync', methods: ['POST'] },
   { path: '/api/v1/product/category-counts', methods: ['GET'] },
+  { path: '/api/v1/neighborhoods', methods: ['GET'] }, // Public neighborhood routes
+  { path: '/api/v1/neighborhoods/search', methods: ['GET'] },
+  { path: '/api/v1/neighborhoods/city', methods: ['GET'] },
   { path: '/api/v1/users/register', methods: ['POST'] },
   { path: '/api/v1/users/signup', methods: ['POST'] },
   { path: '/api/v1/users/login', methods: ['POST'] },
@@ -23,6 +27,12 @@ const publicRoutes = [
   { path: '/api/v1/admin/login', methods: ['POST'] },
   { path: '/api/v1/admin/register', methods: ['POST'] },
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
+  { path: '/api/v1/seller/login', methods: ['POST'] },
+  { path: '/api/v1/seller/register', methods: ['POST'] },
+  { path: '/api/v1/seller/signup', methods: ['POST'] },
+  { path: '/api/v1/seller/send-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/verify-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/forgotPassword', methods: ['POST'] },
 ];
 
 const escapeRegex = (string) => {
@@ -81,7 +91,17 @@ const findUserByToken = async (decoded) => {
     seller: Seller,
   };
 
-  return models[decoded.role]?.findById(decoded.id);
+  const user = await models[decoded.role]?.findById(decoded.id);
+  
+  // If user doesn't have a role set, default to the role from token
+  // This ensures the role is always available for restrictTo middleware
+  if (user && !user.role) {
+    user.role = decoded.role || 'user';
+    // Save the role to the database if it was missing
+    await user.save({ validateBeforeSave: false });
+  }
+  
+  return user;
 };
 
 module.exports = {

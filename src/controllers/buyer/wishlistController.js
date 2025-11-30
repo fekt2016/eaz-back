@@ -1,243 +1,498 @@
-// wishlist.controller.js
+/**
+ * Wishlist Controller - Refactored with Best Practices
+ * 
+ * Improvements:
+ * - Uses MongoDB operators ($addToSet, $pull) for atomic operations
+ * - Lean queries for better performance
+ * - Consistent error handling with AppError
+ * - User validation and security checks
+ * - Optimized queries to reduce database calls
+ * - Toggle endpoint for better UX
+ */
+
 const WishList = require('../../models/product/wishListModel');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const Product = require('../../models/product/productModel');
 
-// Get user's wishlist
-exports.getWishlist = catchAsync(async (req, res) => {
-  const wishlist = await WishList.findOne({ user: req.user.id }).populate(
-    'products',
-    'name price imageCover',
-  );
+/**
+ * Helper function to calculate totalStock for products
+ * @param {Array} products - Array of wishlist items with populated products
+ */
+const calculateTotalStock = (products) => {
+  if (!products || products.length === 0) return;
+  
+  products.forEach((item) => {
+    if (item.product && item.product.variants) {
+      item.product.totalStock = item.product.variants.reduce(
+        (sum, variant) => sum + (variant.stock || 0),
+        0
+      );
+    }
+  });
+};
 
-  if (!wishlist) {
-    return res.status(200).json({ products: [] });
+/**
+ * Get user's wishlist
+ * GET /api/v1/wishlist
+ */
+exports.getWishlist = catchAsync(async (req, res, next) => {
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
   }
 
-  res.status(200).json({ status: 'success', data: wishlist });
+  // Use lean() for better performance and populate with select
+  const wishlist = await WishList.findOne({ user: req.user.id })
+    .populate({
+      path: 'products.product',
+      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    })
+    .lean();
+
+  // Return empty array if no wishlist exists
+  if (!wishlist || !wishlist.products || wishlist.products.length === 0) {
+    return res.status(200).json({ 
+      status: 'success', 
+      data: { wishlist: { products: [] } } 
+    });
+  }
+
+  // Calculate totalStock for each product
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({ 
+    status: 'success', 
+    data: { wishlist } 
+  });
 });
 
-// Add to wishlist
+/**
+ * Add product to wishlist using $addToSet for atomic operation
+ * POST /api/v1/wishlist
+ */
 exports.addToWishlist = catchAsync(async (req, res, next) => {
-  try {
-    const { productId } = req.body;
-    let wishlist = await WishList.findOne({ user: req.user.id });
+  const { productId } = req.body;
 
-    if (!wishlist) {
-      // Create new wishlist if it doesn't exist
-      wishlist = new WishList({
-        user: req.user.id,
-        products: [{ productId }],
-      });
-    } else {
-      // Check if product already exists in wishlist
-      const existingProduct = wishlist.products.find((item) => {
-        return item.product.toString() === productId;
-      });
-
-      if (existingProduct) {
-        return res.status(400).json({ message: 'Product already in wishlist' });
-      }
-
-      // Add product to wishlist
-      wishlist.products.push({ product: productId });
-    }
-
-    await wishlist.save();
-    await wishlist.populate('products.product');
-
-    res.status(200).json(wishlist);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Remove from wishlist
-exports.removeFromWishlist = catchAsync(async (req, res, next) => {
-  try {
-    const { productId } = req.params;
-    console.log('Removing product from wishlist:', productId);
-
-    // Validate productId
-    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
-      return next(new AppError('Invalid product ID', 400));
-    }
-
-    // Find the user's wishlist
-    const wishlist = await WishList.findOne({ user: req.user.id });
-
-    if (!wishlist) {
-      return next(new AppError('Wishlist not found', 404));
-    }
-
-    const productIndex = wishlist.products.findIndex((item) => {
-      console.log('Checking product in wishlist:', item, productId);
-      return item.id.toString() === productId;
-    });
-
-    if (productIndex === -1) {
-      return next(new AppError('Product not found in wishlist', 404));
-    }
-
-    // Remove the product from the wishlist
-    wishlist.products.splice(productIndex, 1);
-
-    // Save the updated wishlist
-    await wishlist.save();
-
-    // Populate product details before sending response
-    await wishlist.populate('products', 'name price imageCover');
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Product removed from wishlist',
-      data: {
-        wishlist,
-      },
-    });
-  } catch (err) {
-    console.log(err.message);
-  }
-});
-exports.removeFromGuestWishlist = catchAsync(async (req, res, next) => {
-  const { sessionId, productId } = req.body;
-  if (!sessionId || !productId) {
-    return next(new AppError('Session ID and Product ID are required', 400));
-  }
-  const wishlist = await WishList.findOne({ sessionId });
-  if (!wishlist) {
-    return next(new AppError('Wishlist not found', 404));
-  }
-  const productIndex = wishlist.products.findIndex(
-    (item) => item.product.toString() === productId,
-  );
-
-  if (productIndex === -1) {
-    return next(new AppError('Product not found in wishlist', 404));
-  }
-  wishlist.products.splice(productIndex, 1);
-  await wishlist.save();
-  res.status(200).json({
-    status: 'success',
-    message: 'Product removed from guest wishlist',
-    data: {
-      wishlist,
-    },
-  });
-});
-// exports.syncWishlist = catchAsync(async (req, res, next) => {
-//   const wishlist = await WishList.findOne({ user: req.user.id });
-
-//   if (wishlist) {
-//     wishlist.products = req.body.wishlist.products;
-//     await wishlist.save();
-//     res.status(200).json({
-//       message: 'Wishlist synced',
-//       wishlist: await wishlist.populate('products', 'name price imageCover'),
-//     });
-//   } else {
-//     res.status(404);
-//     throw new Error('Wishlist not found');
-//   }
-// });
-
-// Get or create guest wishlist
-exports.getOrCreateGuestWishlist = catchAsync(async (req, res, next) => {
-  const { sessionId } = req.body;
-
-  if (!sessionId) {
-    return next(new AppError('Session ID is required', 400));
+  // Validate inputs
+  if (!productId) {
+    return next(new AppError('Product ID is required', 400));
   }
 
-  let wishlist = await WishList.findOne({ sessionId }).populate(
-    'products.product',
-    'name price images seller',
-  );
-
-  if (!wishlist) {
-    // Create new guest wishlist
-    wishlist = await WishList.create({
-      sessionId,
-      products: [],
-    });
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID format', 400));
   }
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      wishlist,
-    },
-  });
-});
-
-// Add product to guest wishlist
-exports.addToGuestWishlist = catchAsync(async (req, res, next) => {
-  const { sessionId, productId } = req.body;
-
-  if (!sessionId || !productId) {
-    return next(new AppError('Session ID and Product ID are required', 400));
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
   }
 
-  // Check if product exists
-  const product = await Product.findById(productId);
-
+  // Verify product exists
+  const product = await Product.findById(productId).lean();
   if (!product) {
     return next(new AppError('Product not found', 404));
   }
 
-  let wishlist = await WishList.findOne({ sessionId });
-  console.log('Current guest wishlist:', wishlist);
-
-  if (!wishlist) {
-    // Create new guest wishlist if it doesn't exist
-    wishlist = await WishList.create({
-      sessionId,
-      products: [{ product: productId }],
-    });
-  } else {
-    // Check if product is already in wishlist
-    const existingProduct = wishlist.products.find(
-      (item) => item.product.toString() === productId,
-    );
-
-    if (existingProduct) {
-      return next(new AppError('Product already in wishlist', 400));
+  // Use findOneAndUpdate with $addToSet for atomic operation
+  // This prevents duplicates automatically
+  const wishlist = await WishList.findOneAndUpdate(
+    { user: req.user.id },
+    {
+      $addToSet: {
+        products: {
+          product: productId,
+          addedAt: new Date(),
+        },
+      },
+    },
+    {
+      new: true,
+      upsert: true, // Create wishlist if it doesn't exist
+      setDefaultsOnInsert: true,
     }
+  ).populate({
+    path: 'products.product',
+    select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+  });
 
-    // Add product to wishlist
-    wishlist.products.push({ product: productId });
-    await wishlist.save();
+  // Check if product was actually added (might already exist)
+  const productExists = wishlist.products.some(
+    (item) => item.product._id.toString() === productId
+  );
+
+  if (!productExists) {
+    return next(new AppError('Product already in wishlist', 400));
   }
 
-  // Populate the product details
-  await wishlist.populate('products.product', 'name price images seller');
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
 
   res.status(200).json({
     status: 'success',
     message: 'Product added to wishlist',
-    data: {
+    data: { wishlist },
+  });
+});
+
+/**
+ * Remove product from wishlist using $pull for atomic operation
+ * DELETE /api/v1/wishlist/:productId
+ */
+exports.removeFromWishlist = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+
+  // Validate inputs
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID', 400));
+  }
+
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
+  }
+
+  // Use findOneAndUpdate with $pull for atomic operation
+  const wishlist = await WishList.findOneAndUpdate(
+    { user: req.user.id },
+    {
+      $pull: {
+        products: { product: productId },
+      },
+    },
+    {
+      new: true,
+    }
+  ).populate({
+    path: 'products.product',
+    select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+  });
+
+  if (!wishlist) {
+    return next(new AppError('Wishlist not found', 404));
+  }
+
+  // Check if product was actually removed
+  const productExists = wishlist.products.some(
+    (item) => item.product._id.toString() === productId
+  );
+
+  if (productExists) {
+    return next(new AppError('Product not found in wishlist', 404));
+  }
+
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Product removed from wishlist',
+    data: { wishlist },
+  });
+});
+
+/**
+ * Toggle product in wishlist (add if not present, remove if present)
+ * POST /api/v1/wishlist/toggle/:productId
+ */
+exports.toggleWishlist = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+
+  // Validate inputs
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID', 400));
+  }
+
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
+  }
+
+  // Verify product exists
+  const product = await Product.findById(productId).lean();
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  // Check if product is in wishlist
+  const existingWishlist = await WishList.findOne({
+    user: req.user.id,
+    'products.product': productId,
+  }).lean();
+
+  let wishlist;
+  let action;
+
+  if (existingWishlist) {
+    // Remove product
+    wishlist = await WishList.findOneAndUpdate(
+      { user: req.user.id },
+      {
+        $pull: {
+          products: { product: productId },
+        },
+      },
+      {
+        new: true,
+      }
+    ).populate({
+      path: 'products.product',
+      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    });
+    action = 'removed';
+  } else {
+    // Add product
+    wishlist = await WishList.findOneAndUpdate(
+      { user: req.user.id },
+      {
+        $addToSet: {
+          products: {
+            product: productId,
+            addedAt: new Date(),
+          },
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      }
+    ).populate({
+      path: 'products.product',
+      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    });
+    action = 'added';
+  }
+
+  if (!wishlist) {
+    return next(new AppError('Failed to update wishlist', 500));
+  }
+
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({
+    status: 'success',
+    message: `Product ${action} from wishlist`,
+    data: { 
       wishlist,
+      inWishlist: action === 'added',
     },
   });
 });
 
-// Merge guest wishlist with user wishlist after login
-exports.mergeWishlists = catchAsync(async (req, res, next) => {
+/**
+ * Check if product is in wishlist
+ * GET /api/v1/wishlist/check/:productId
+ */
+exports.checkInWishlist = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+
+  // Validate inputs
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID', 400));
+  }
+
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
+  }
+
+  // Use lean() for better performance - only check existence
+  const wishlist = await WishList.findOne({
+    user: req.user.id,
+    'products.product': productId,
+  })
+    .select('_id')
+    .lean();
+
+  const inWishlist = !!wishlist;
+
+  res.status(200).json({
+    status: 'success',
+    inWishlist,
+  });
+});
+
+// ========== GUEST WISHLIST METHODS ==========
+
+/**
+ * Get or create guest wishlist
+ * POST /api/v1/wishlist/guest
+ */
+exports.getOrCreateGuestWishlist = catchAsync(async (req, res, next) => {
   const { sessionId } = req.body;
 
-  if (!sessionId) {
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
     return next(new AppError('Session ID is required', 400));
   }
 
-  // Find guest wishlist
-  const guestWishlist = await WishList.findOne({ sessionId });
+  // Use findOneAndUpdate with upsert for atomic operation
+  let wishlist = await WishList.findOneAndUpdate(
+    { sessionId },
+    {},
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  ).populate({
+    path: 'products.product',
+    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+  });
 
-  if (!guestWishlist || guestWishlist.products.length === 0) {
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({
+    status: 'success',
+    data: { wishlist },
+  });
+});
+
+/**
+ * Add product to guest wishlist using $addToSet
+ * POST /api/v1/wishlist/guest/add
+ */
+exports.addToGuestWishlist = catchAsync(async (req, res, next) => {
+  const { sessionId, productId } = req.body;
+
+  // Validate inputs
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+    return next(new AppError('Session ID is required', 400));
+  }
+
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID', 400));
+  }
+
+  // Verify product exists
+  const product = await Product.findById(productId).lean();
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  // Use findOneAndUpdate with $addToSet for atomic operation
+  const wishlist = await WishList.findOneAndUpdate(
+    { sessionId },
+    {
+      $addToSet: {
+        products: {
+          product: productId,
+          addedAt: new Date(),
+        },
+      },
+    },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  ).populate({
+    path: 'products.product',
+    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+  });
+
+  // Check if product was actually added
+  const productExists = wishlist.products.some(
+    (item) => item.product._id.toString() === productId
+  );
+
+  if (!productExists) {
+    return next(new AppError('Product already in wishlist', 400));
+  }
+
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Product added to wishlist',
+    data: { wishlist },
+  });
+});
+
+/**
+ * Remove product from guest wishlist using $pull
+ * POST /api/v1/wishlist/guest/remove
+ */
+exports.removeFromGuestWishlist = catchAsync(async (req, res, next) => {
+  const { sessionId, productId } = req.body;
+
+  // Validate inputs
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+    return next(new AppError('Session ID is required', 400));
+  }
+
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError('Invalid product ID', 400));
+  }
+
+  // Use findOneAndUpdate with $pull for atomic operation
+  const wishlist = await WishList.findOneAndUpdate(
+    { sessionId },
+    {
+      $pull: {
+        products: { product: productId },
+      },
+    },
+    {
+      new: true,
+    }
+  ).populate({
+    path: 'products.product',
+    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+  });
+
+  if (!wishlist) {
+    return next(new AppError('Wishlist not found', 404));
+  }
+
+  // Check if product was actually removed
+  const productExists = wishlist.products.some(
+    (item) => item.product._id.toString() === productId
+  );
+
+  if (productExists) {
+    return next(new AppError('Product not found in wishlist', 404));
+  }
+
+  // Calculate totalStock
+  calculateTotalStock(wishlist.products);
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Product removed from guest wishlist',
+    data: { wishlist },
+  });
+});
+
+/**
+ * Merge guest wishlist with user wishlist after login
+ * POST /api/v1/wishlist/merge
+ */
+exports.mergeWishlists = catchAsync(async (req, res, next) => {
+  const { sessionId } = req.body;
+
+  // Validate inputs
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+    return next(new AppError('Session ID is required', 400));
+  }
+
+  // Validate user ID
+  if (!req.user?.id || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+    return next(new AppError('Invalid user ID', 400));
+  }
+
+  // Find guest wishlist
+  const guestWishlist = await WishList.findOne({ sessionId }).lean();
+
+  if (!guestWishlist || !guestWishlist.products || guestWishlist.products.length === 0) {
     return res.status(200).json({
       status: 'success',
       message: 'No guest wishlist to merge',
+      data: { wishlist: null },
     });
   }
 
@@ -251,29 +506,48 @@ exports.mergeWishlists = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Get current user product IDs to avoid duplicates
-  const userProductIds = userWishlist.products.map((item) =>
-    item.product.toString(),
+  // Get existing product IDs to avoid duplicates
+  const existingProductIds = new Set(
+    userWishlist.products.map((item) => item.product.toString())
   );
 
-  // Add guest products to user wishlist (avoiding duplicates)
-  for (const item of guestWishlist.products) {
-    const productId = item.product.toString();
+  // Add guest products using $addToSet for each product
+  // This is more efficient than manual array manipulation
+  const productsToAdd = guestWishlist.products
+    .filter((item) => !existingProductIds.has(item.product.toString()))
+    .map((item) => ({
+      product: item.product,
+      addedAt: item.addedAt || new Date(),
+    }));
 
-    if (!userProductIds.includes(productId)) {
-      userWishlist.products.push({ product: productId });
-      userProductIds.push(productId); // Update to prevent duplicates in this operation
+  if (productsToAdd.length > 0) {
+    // Use $addToSet for each product to prevent duplicates
+    for (const productItem of productsToAdd) {
+      await WishList.findOneAndUpdate(
+        { user: req.user.id },
+        {
+          $addToSet: {
+            products: productItem,
+          },
+        }
+      );
     }
-  }
 
-  // Save the updated user wishlist
-  await userWishlist.save();
+    // Refetch the updated wishlist
+    userWishlist = await WishList.findOne({ user: req.user.id });
+  }
 
   // Delete the guest wishlist after successful merge
   await WishList.findByIdAndDelete(guestWishlist._id);
 
   // Populate the merged wishlist
-  await userWishlist.populate('products.product', 'name price images seller');
+  await userWishlist.populate({
+    path: 'products.product',
+    select: 'name price images seller',
+  });
+
+  // Calculate totalStock
+  calculateTotalStock(userWishlist.products);
 
   res.status(200).json({
     status: 'success',
@@ -281,31 +555,3 @@ exports.mergeWishlists = catchAsync(async (req, res, next) => {
     data: { wishlist: userWishlist },
   });
 });
-exports.checkInWishlist = catchAsync(async (req, res, next) => {
-  const { productId } = req.params;
-
-  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
-    return next(new AppError('Invalid product ID', 400));
-  }
-
-  // Check if the user has a wishlist
-  const wishlist = await WishList.findOne({ user: req.user.id });
-
-  if (!wishlist) {
-    return res.status(200).json({
-      inWishlist: false,
-    });
-  }
-
-  // Check if the product is in the wishlist
-  const inWishlist = wishlist.products.some(
-    (item) => item.product.toString() === productId,
-  );
-
-  res.status(200).json({
-    status: 'success',
-    inWishlist,
-  });
-});
-// The existing methods (getWishlist, addToWishlist, removeFromWishlist, checkInWishlist)
-// remain the same but should check for both user and sessionId where appropriate

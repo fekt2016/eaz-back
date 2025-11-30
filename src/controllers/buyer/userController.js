@@ -4,6 +4,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const handleFactory = require('../shared/handleFactory');
 const multer = require('multer');
 const sharp = require('sharp');
+const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 const multerStorage = multer.memoryStorage();
 
@@ -79,6 +80,15 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     runValidators: true,
   });
 
+  // Log activity
+  logActivityAsync({
+    userId: req.user.id,
+    role: 'buyer',
+    action: 'UPDATE_PROFILE',
+    description: `User updated profile information`,
+    req,
+  });
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -93,17 +103,23 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
     status: 'inactive',
   });
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 });
 exports.getMe = catchAsync(async (req, res, next) => {
-  const data = await User.findById(req.user.id);
-
-  if (!data) {
-    return next(new AppError('No user found with that ID', 404));
+  // User is already attached to req.user by protect middleware
+  // Just return it instead of querying again
+  if (!req.user) {
+    return next(new AppError('You are not authenticated', 401));
   }
+  
+  // Optionally refresh from database to get latest data
+  const data = await User.findById(req.user.id);
+  
+  if (!data) {
+    // User was deleted after authentication - clear the session
+    return next(new AppError('Your account no longer exists. Please contact support.', 404));
+  }
+  
   res.status(200).json({ status: 'success', data });
 });
 

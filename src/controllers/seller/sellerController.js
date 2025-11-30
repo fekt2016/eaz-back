@@ -5,6 +5,8 @@ const stream = require('stream');
 const Product = require('../../models/product/productModel');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 const AppError = require('../../utils/errors/appError');
+const multer = require('multer');
+const { uploadMultipleFields } = require('../../middleware/upload/cloudinaryUpload');
 
 exports.getSellerProducts = catchAsync(async (req, res, next) => {
   const features = new APIFeature(
@@ -47,6 +49,67 @@ exports.SellerDeleteProduct = catchAsync(async (req, res, next) => {
   }
   res.status(200).json({ status: 'success', data: { product } });
 });
+
+// Multer configuration for file uploads
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  // Allow images and PDFs
+  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new AppError('Only images and PDF files are allowed', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+});
+
+// Middleware to conditionally handle file uploads
+exports.uploadBusinessDocuments = (req, res, next) => {
+  // Check if request contains multipart/form-data
+  if (req.headers['content-type']?.startsWith('multipart/form-data')) {
+    return upload.fields([
+      { name: 'businessCert', maxCount: 1 },
+      { name: 'idProof', maxCount: 1 },
+      { name: 'addressProof', maxCount: 1 },
+    ])(req, res, next);
+  }
+  next();
+};
+
+// Middleware to upload business documents to Cloudinary
+// Note: addressProof is mapped to addresProof (model typo) in updateMe
+exports.uploadBusinessDocumentsToCloudinary = uploadMultipleFields([
+  { 
+    name: 'businessCert', 
+    folder: 'seller-documents', 
+    resourceType: 'auto',
+    storeIn: 'verificationDocuments',
+    // Map to correct field name in model
+    fieldMapping: 'businessCert'
+  },
+  { 
+    name: 'idProof', 
+    folder: 'seller-documents', 
+    resourceType: 'auto',
+    storeIn: 'verificationDocuments',
+    fieldMapping: 'idProof'
+  },
+  { 
+    name: 'addressProof', 
+    folder: 'seller-documents', 
+    resourceType: 'auto',
+    storeIn: 'verificationDocuments',
+    // Map addressProof to addresProof (model uses addresProof with typo)
+    fieldMapping: 'addresProof'
+  },
+]);
 
 exports.updateSellerImage = catchAsync(async (req, res, next) => {
   // 1. Check if file exists
@@ -116,22 +179,107 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 });
 
 exports.updateMe = catchAsync(async (req, res, next) => {
-  const { name, email, phone, shopAddress } = req.body;
+  const sellerId = req.user.id;
+  console.log("body",req.body);
+  let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks } = req.body;
 
+  // Parse JSON strings if they exist (from FormData)
+  // Support shopAddress, location (legacy), and shopLocation (new) for backward compatibility
+  let addressData = shopLocation || location || shopAddress;
+  if (typeof addressData === 'string') {
+    try {
+      addressData = JSON.parse(addressData);
+    } catch (e) {
+      addressData = undefined;
+    }
+  }
+  if (typeof socialMediaLinks === 'string') {
+    try {
+      socialMediaLinks = JSON.parse(socialMediaLinks);
+    } catch (e) {
+      socialMediaLinks = undefined;
+    }
+  }
+
+  // Build update object
+  const updateData = {};
+  
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) updateData.email = email;
+  if (phone !== undefined) updateData.phone = phone;
+  if (shopName !== undefined) updateData.shopName = shopName;
+  if (shopDescription !== undefined) updateData.shopDescription = shopDescription;
+  if (digitalAddress !== undefined) updateData.digitalAddress = digitalAddress;
+  
+  // Update shopLocation (shop address) if provided
+  if (addressData && typeof addressData === 'object') {
+    updateData.shopLocation = {
+      street: addressData.street || undefined,
+      city: addressData.city || undefined,
+      town: addressData.town || undefined,
+      state: addressData.state || undefined,
+      region: addressData.region || undefined,
+      zipCode: addressData.zipCode || undefined,
+      postalCode: addressData.postalCode || undefined,
+      country: addressData.country || 'Ghana',
+    };
+  }
+
+  // Handle social media links
+  if (socialMediaLinks && typeof socialMediaLinks === 'object') {
+    updateData.socialMediaLinks = {
+      facebook: socialMediaLinks.facebook || undefined,
+      instagram: socialMediaLinks.instagram || undefined,
+      twitter: socialMediaLinks.twitter || undefined,
+      TikTok: socialMediaLinks.TikTok || undefined,
+    };
+  }
+
+  // Handle file uploads - files are already uploaded by middleware
+  // URLs are stored in req.body.verificationDocuments by the cloudinaryUpload middleware
+  // The middleware already maps addressProof to addresProof (model field name)
+  if (req.body.verificationDocuments && typeof req.body.verificationDocuments === 'object') {
+    // Initialize verificationDocuments if not already in updateData
+    if (!updateData.verificationDocuments) {
+      updateData.verificationDocuments = {};
+    }
+
+    // Copy all verification documents with new structure (url and status)
+    // When a new document is uploaded, set status to 'pending'
+    if (req.body.verificationDocuments.businessCert) {
+      const url = typeof req.body.verificationDocuments.businessCert === 'string' 
+        ? req.body.verificationDocuments.businessCert 
+        : req.body.verificationDocuments.businessCert.url || req.body.verificationDocuments.businessCert;
+      updateData.verificationDocuments.businessCert = {
+        url: url,
+        status: 'pending'
+      };
+    }
+    if (req.body.verificationDocuments.idProof) {
+      const url = typeof req.body.verificationDocuments.idProof === 'string' 
+        ? req.body.verificationDocuments.idProof 
+        : req.body.verificationDocuments.idProof.url || req.body.verificationDocuments.idProof;
+      updateData.verificationDocuments.idProof = {
+        url: url,
+        status: 'pending'
+      };
+    }
+    // Middleware maps addressProof to addresProof, so check for addresProof
+    if (req.body.verificationDocuments.addresProof) {
+      const url = typeof req.body.verificationDocuments.addresProof === 'string' 
+        ? req.body.verificationDocuments.addresProof 
+        : req.body.verificationDocuments.addresProof.url || req.body.verificationDocuments.addresProof;
+      updateData.verificationDocuments.addresProof = {
+        url: url,
+        status: 'pending'
+      };
+    }
+  }
+
+  // Update seller
   const seller = await Seller.findByIdAndUpdate(
-    req.user.id,
-    {
-      name,
-      email,
-      phone,
-      shopAddress: {
-        street: shopAddress.street,
-        city: shopAddress.city,
-        state: shopAddress.state,
-        zipCode: shopAddress.zipCode,
-        country: shopAddress.country,
-      },
-    },
+    sellerId,
+    updateData,
     {
       new: true,
       runValidators: true,
@@ -139,12 +287,34 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   );
   if (!seller) return next(new AppError('No seller found with that ID', 404));
 
+  // Auto-update onboarding if business info is complete
+  const hasBusinessInfo =
+    seller.shopName &&
+    seller.shopLocation &&
+    seller.shopLocation.city &&
+    seller.shopDescription;
+
+  if (hasBusinessInfo && !seller.requiredSetup.hasAddedBusinessInfo) {
+    seller.requiredSetup.hasAddedBusinessInfo = true;
+    
+    // Check if all setup is complete (product not required for verification)
+    const allSetupComplete =
+      seller.requiredSetup.hasAddedBusinessInfo &&
+      seller.requiredSetup.hasAddedBankDetails;
+
+    if (allSetupComplete && seller.onboardingStage === 'profile_incomplete') {
+      seller.onboardingStage = 'pending_verification';
+    }
+    
+    await seller.save({ validateBeforeSave: false });
+  }
+
   res.status(200).json({ status: 'success', data: { seller } });
 });
 exports.deleteMe = catchAsync(async (req, res, next) => {
   const seller = await Seller.findByIdAndUpdate(req.user.id, { active: false });
   if (!seller) return next(new AppError('No seller found with that ID', 404));
-  res.status(204).json({ status: 'success', data: null });
+  res.status(204).json({ data: null, status: 'success' });
 });
 exports.getMe = (req, res, next) => {
   req.params.id = req.user.id;
@@ -284,7 +454,7 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     },
   });
 });
-// exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
+// export const getFeaturedSellers = catchAsync(async (req, res, next) => {
 //   // Get query parameters with defaults
 //   const limit = parseInt(req.query.limit) || 10;
 //   const minRating = parseFloat(req.query.minRating) || 4.0;
@@ -383,7 +553,50 @@ exports.getMySellerProfile = catchAsync(async (req, res, next) => {
     data: { seller: result },
   });
 });
-exports.getAllSeller = handleFactory.getAll(Seller);
-exports.getSeller = handleFactory.getOne(Seller);
+// Override getAllSeller to include balance fields
+exports.getAllSeller = catchAsync(async (req, res, next) => {
+  let filter = {};
+  if (req.query.search) {
+    const search = req.query.search;
+    filter = {
+      ...filter,
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { shopName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ],
+    };
+  }
+
+  let query = Seller.find(filter).select('name shopName email balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin');
+
+  const features = new APIFeature(query, req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .paginate();
+
+  const results = await features.query;
+  
+  // Calculate withdrawableBalance for each seller
+  results.forEach(seller => {
+    seller.calculateWithdrawableBalance();
+  });
+
+  const meta = await features.getMeta();
+
+  res.status(200).json({
+    status: 'success',
+    results: results.length,
+    meta,
+    data: {
+      results,
+    },
+  });
+});
+exports.getSeller = handleFactory.getOne(Seller, {
+  path: 'verifiedBy',
+  select: 'name email',
+});
 exports.updateSeller = handleFactory.updateOne(Seller);
 exports.deleteSeller = handleFactory.deleteOne(Seller);

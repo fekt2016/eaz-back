@@ -76,15 +76,8 @@ const paymentMethodSchema = new mongoose.Schema(
   },
 );
 
-// Prevent duplicate payment methods
-paymentMethodSchema.index(
-  { user: 1, phone: 1 },
-  { unique: true, partialFilterExpression: { type: 'mobile_money' } },
-);
-paymentMethodSchema.index(
-  { user: 1, accountNumber: 1 },
-  { unique: true, partialFilterExpression: { type: 'bank_transfer' } },
-);
+
+
 
 // Middleware to ensure only one default payment method per user
 paymentMethodSchema.pre('save', async function (next) {
@@ -98,4 +91,4 @@ paymentMethodSchema.pre('save', async function (next) {
 });
 
 const PaymentMethod = mongoose.model('PaymentMethod', paymentMethodSchema);
-module.exports = PaymentMethod;
+module.exports = PaymentMethod;;

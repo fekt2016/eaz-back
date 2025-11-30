@@ -1,20 +1,29 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
+const multer = require('multer');
+const stream = require('stream');
 const Review = require('../../models/product/reviewModel');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
+const Seller = require('../../models/user/sellerModel');
 const handleFactory = require('../shared/handleFactory');
 
 //product middleWare
 exports.setProductIds = (req, res, next) => {
   if (!req.body.seller) req.body.seller = req.user.id;
+  
+  // If admin is creating an EazShop product, set seller to EazShop seller ID
+  const EAZSHOP_SELLER_ID = '000000000000000000000001';
+  if (req.user.role === 'admin' && req.body.isEazShopProduct === true) {
+    req.body.seller = EAZSHOP_SELLER_ID;
+    req.body.isEazShopProduct = true;
+  }
+  
   next();
 };
 
 //Create product by seller
-const multer = require('multer');
-const stream = require('stream');
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
@@ -199,22 +208,61 @@ function calculateAverage(reviews) {
 //get product reviews
 exports.getProductReviews = catchAsync(async (req, res, next) => {
   const { id: productId } = req.params;
+  
+  // Check if productId exists and is not empty
+  if (!productId || productId === 'undefined' || productId === 'null') {
+    return next(new AppError('Product ID is required', 400));
+  }
+  
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return next(new AppError(`Invalid product ID format: ${productId}`, 400));
+  }
+  
   try {
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return next(new AppError('Invalid product ID format', 400));
-    }
     const productExists = await Product.exists({ _id: productId });
     if (!productExists) {
       return next(new AppError('Product not found', 404));
     }
-    const reviews = await Review.find({ product: productId })
+    // Show approved reviews to public, or all reviews if admin
+    // Also show pending reviews to the user who created them
+    let statusFilter = {};
+    if (req.user && req.user.role === 'admin') {
+      // Admin sees all reviews
+      statusFilter = {};
+    } else if (req.user) {
+      // Authenticated users see approved reviews, or their own pending reviews
+      statusFilter = {
+        $or: [
+          { status: 'approved' },
+          { status: 'pending', user: mongoose.Types.ObjectId(req.user.id) }
+        ]
+      };
+    } else {
+      // Anonymous users only see approved reviews
+      statusFilter = { status: 'approved' };
+    }
+    
+    const reviews = await Review.find({ 
+      product: productId,
+      ...statusFilter
+    })
       .populate({
         path: 'user',
         select: 'name photo',
       })
+      .populate({
+        path: 'sellerReply.repliedBy',
+        select: 'shopName',
+      })
       .sort({ createdAt: -1 })
       .lean();
-    console.log(reviews);
+  
+    // Debug logging
+    console.log(`[getProductReviews] Product ID: ${productId}`);
+    console.log(`[getProductReviews] User: ${req.user?.id || 'anonymous'}, Role: ${req.user?.role || 'none'}`);
+    console.log(`[getProductReviews] Status filter:`, statusFilter);
+    console.log(`[getProductReviews] Found ${reviews.length} reviews`);
 
     res.status(200).json({
       success: true,
@@ -243,7 +291,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     select: 'name slug',
   });
 
-  console.log(product);
+ 
   if (!product) {
     return next(new AppError('Product not found', 404));
   }
@@ -328,10 +376,158 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
       products,
     },
   });
-  // res.status(200).json({ status: 'success', data: { products } });
+});
+// Custom createProduct with onboarding auto-update
+exports.createProduct = catchAsync(async (req, res, next) => {
+  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+  
+  // Use handleFactory to create product
+  const createOneHandler = handleFactory.createOne(Product);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let productCreated = false;
+  let createdProduct = null;
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    productCreated = true;
+    if (data?.data?.data) {
+      createdProduct = data.data.data;
+    } else if (data?.data) {
+      createdProduct = data.data;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await createOneHandler(req, res, next);
+  
+  // Log activity and update onboarding (async, don't block response)
+  if (productCreated && req.user && req.user.role === 'seller') {
+    setImmediate(async () => {
+      try {
+        // Log activity
+        if (createdProduct) {
+          logActivityAsync({
+            userId: req.user.id,
+            role: 'seller',
+            action: 'CREATE_PRODUCT',
+            description: `Seller created product: ${createdProduct.name || 'Unknown'}`,
+            req,
+            metadata: { productId: createdProduct._id },
+          });
+        }
+        
+        const seller = await Seller.findById(req.user.id);
+        if (seller) {
+          // Check if this is seller's first product
+          const productCount = await Product.countDocuments({ seller: seller._id });
+          
+          if (productCount > 0 && !seller.requiredSetup.hasAddedFirstProduct) {
+            seller.requiredSetup.hasAddedFirstProduct = true;
+            
+            // Note: Product is tracked but not required for verification
+            // Sellers can add products without being verified
+            // Only update onboarding stage if business info and bank details are complete
+            const allSetupComplete =
+              seller.requiredSetup.hasAddedBusinessInfo &&
+              seller.requiredSetup.hasAddedBankDetails;
+
+            if (allSetupComplete && seller.onboardingStage === 'profile_incomplete') {
+              seller.onboardingStage = 'pending_verification';
+            }
+            
+            await seller.save({ validateBeforeSave: false });
+            console.log('[Product] Seller onboarding updated after product creation');
+          }
+        }
+      } catch (onboardingError) {
+        // Don't fail product creation if onboarding update fails
+        console.error('[Product] Error updating onboarding:', onboardingError);
+      }
+    });
+  }
+});
+// Wrapper for updateProduct with activity logging
+exports.updateProduct = catchAsync(async (req, res, next) => {
+  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+  
+  // Get old product data before update
+  const oldProduct = await Product.findById(req.params.id);
+  
+  const updateHandler = handleFactory.updateOne(Product);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let productUpdated = null;
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    if (data?.doc) {
+      productUpdated = data.doc;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await updateHandler(req, res, next);
+  
+  // Log activity after update
+  if (productUpdated && req.user && req.user.role === 'seller') {
+    const changes = [];
+    if (oldProduct && productUpdated.name !== oldProduct.name) {
+      changes.push(`name from "${oldProduct.name}" to "${productUpdated.name}"`);
+    }
+    if (oldProduct && productUpdated.price !== oldProduct.price) {
+      changes.push(`price from GH₵${oldProduct.price} to GH₵${productUpdated.price}`);
+    }
+    const changeDesc = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+    
+    logActivityAsync({
+      userId: req.user.id,
+      role: 'seller',
+      action: 'UPDATE_PRODUCT',
+      description: `Seller updated product: ${productUpdated.name || 'Unknown'}${changeDesc}`,
+      req,
+      metadata: { productId: productUpdated._id },
+    });
+  }
 });
 
-exports.createProduct = handleFactory.createOne(Product);
-
-exports.updateProduct = handleFactory.updateOne(Product);
-exports.deleteProduct = handleFactory.deleteOne(Product);
+// Wrapper for deleteProduct with activity logging
+exports.deleteProduct = catchAsync(async (req, res, next) => {
+  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+  
+  // Get product before deletion
+  const productToDelete = await Product.findById(req.params.id);
+  
+  const deleteHandler = handleFactory.deleteOne(Product);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let deleted = false;
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    if (data?.status === 'success') {
+      deleted = true;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await deleteHandler(req, res, next);
+  
+  // Log activity after deletion
+  if (deleted && productToDelete && req.user && req.user.role === 'seller') {
+    logActivityAsync({
+      userId: req.user.id,
+      role: 'seller',
+      action: 'DELETE_PRODUCT',
+      description: `Seller deleted product: ${productToDelete.name || 'Unknown'}`,
+      req,
+      metadata: { productId: productToDelete._id },
+    });
+  }
+});

@@ -19,10 +19,7 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
 
   if (!admin) return next(new AppError('User with the ID does not exits', 404));
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({data: null, status: 'success'});
 });
 
 exports.getAllAdmins = handleFactory.getAll(Admin);

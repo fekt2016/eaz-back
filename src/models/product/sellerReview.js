@@ -93,4 +93,4 @@ sellerReviewSchema.post('save', function (doc) {
     updateTimestamps[doc.seller] = now;
   }
 });
-module.exports = mongoose.model('SellerReview', sellerReviewSchema);
+module.exports = mongoose.model('SellerReview', sellerReviewSchema);;

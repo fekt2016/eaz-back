@@ -1,6 +1,5 @@
 const express = require('express');
-const {
-  getPermissions,
+const { getPermissions,
   updateEmailPrefs,
   updateSMSPrefs,
   updateDataSharing,
@@ -9,8 +8,7 @@ const {
   updateAccountVisibility,
   requestDataDownload,
   requestAccountDeletion,
-  cancelAccountDeletion,
-} = require('../../controllers/buyer/permissionController');
+  cancelAccountDeletion, } = require('../../controllers/buyer/permissionController');
 const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
@@ -28,4 +26,4 @@ router.post('/download-data', requestDataDownload);
 router.post('/request-deletion', requestAccountDeletion);
 router.post('/cancel-deletion', cancelAccountDeletion);
 
-module.exports = router;
+module.exports = router;;

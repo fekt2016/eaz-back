@@ -62,10 +62,7 @@ exports.deleteHistoryItem = catchAsync(async (req, res, next) => {
     return next(new AppError('History item not found', 404));
   }
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 });
 
 exports.deleteMultipleHistoryItems = catchAsync(async (req, res, next) => {
@@ -95,8 +92,5 @@ exports.deleteMultipleHistoryItems = catchAsync(async (req, res, next) => {
 exports.clearMyHistory = catchAsync(async (req, res, next) => {
   await BrowserHistory.deleteMany({ user: req.user.id });
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 });

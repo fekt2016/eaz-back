@@ -4,7 +4,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const dataExportQueue = require('../../jobs/queues/dataExportQueue');
 const mongoose = require('mongoose');
-const anonymizeUser = require('../../utils/helpers/anonymizeUser.js.js');
+const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 // Get permissions
 exports.getPermissions = catchAsync(async (req, res, next) => {

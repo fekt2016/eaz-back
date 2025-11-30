@@ -28,4 +28,4 @@ const couponUsageSchema = new mongoose.Schema({
 });
 
 const CouponUsage = mongoose.model('CouponUsage', couponUsageSchema);
-module.exports = CouponUsage;
+module.exports = CouponUsage;;

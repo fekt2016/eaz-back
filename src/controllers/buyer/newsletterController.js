@@ -35,10 +35,7 @@ exports.subscribeToNewsletter = async (req, res, next) => {
 };
 
 exports.unsubscribeFromNewsletter = (req, res, next) => {
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 };
 
 exports.getAllSubscribers = async (req, res, next) => {

@@ -101,4 +101,4 @@ tokenBlacklistSchema.statics.invalidateAllSessions = async function (userId) {
 };
 
 const TokenBlacklist = mongoose.model('TokenBlacklist', tokenBlacklistSchema);
-module.exports = TokenBlacklist; // Fixed export statement
+module.exports = TokenBlacklist; // Fixed export statement;

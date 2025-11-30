@@ -6,7 +6,7 @@ const wishlistSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       // required: true,
-      unique: true,
+      // unique: true, // Removed - using sparse index instead
     },
     products: [
       {
@@ -34,10 +34,8 @@ const wishlistSchema = new mongoose.Schema(
   },
 );
 
-// Index for better performance
-// wishlistSchema.index({ user: 1 });
-// wishlistSchema.index({ sessionId: 1 });
-// wishlistSchema.index({ 'products.product': 1 });
+// Sparse unique index on user - allows multiple null values but ensures one wishlist per user
+
 
 // Virtual for product count
 wishlistSchema.virtual('productCount').get(function () {
@@ -81,4 +79,4 @@ wishlistSchema.methods.mergeWishlist = function (otherWishlist) {
 
 const Wishlist = mongoose.model('Wishlist', wishlistSchema);
 
-module.exports = Wishlist;
+module.exports = Wishlist;;

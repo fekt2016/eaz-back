@@ -43,4 +43,4 @@ const securityLogSchema = new mongoose.Schema(
 
 const SecurityLog = mongoose.model('SecurityLog', securityLogSchema);
 
-module.exports = SecurityLog;
+module.exports = SecurityLog;;

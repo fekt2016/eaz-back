@@ -33,20 +33,34 @@ const handleTokenExpiredError = () =>
   new AppError('Your token has expired! Please log in again.', 401);
 
 const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
+  const errorResponse = {
     status: err.status,
     error: err,
     message: err.message,
     stack: err.stack,
-  });
+  };
+  
+  // Include custom error properties if they exist (for OTP expiration, etc.)
+  if (err.code) errorResponse.code = err.code;
+  if (err.isExpired !== undefined) errorResponse.isExpired = err.isExpired;
+  if (err.isInvalid !== undefined) errorResponse.isInvalid = err.isInvalid;
+  
+  res.status(err.statusCode).json(errorResponse);
 };
 
 const sendErrorProd = (err, res) => {
   if (err.isOperational) {
-    res.status(err.statusCode).json({
+    const errorResponse = {
       status: err.status,
       message: err.message,
-    });
+    };
+    
+    // Include custom error properties if they exist (for OTP expiration, etc.)
+    if (err.code) errorResponse.code = err.code;
+    if (err.isExpired !== undefined) errorResponse.isExpired = err.isExpired;
+    if (err.isInvalid !== undefined) errorResponse.isInvalid = err.isInvalid;
+    
+    res.status(err.statusCode).json(errorResponse);
   } else {
     console.error('ERROR 🔥', err);
 
@@ -57,7 +71,7 @@ const sendErrorProd = (err, res) => {
   }
 };
 
-module.exports = (err, req, res, next) => {
+const globalErrorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
@@ -82,3 +96,5 @@ module.exports = (err, req, res, next) => {
     sendErrorProd(error, res);
   }
 };
+
+module.exports = globalErrorHandler;;

@@ -3,12 +3,116 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 
+/**
+ * Helper function to get User ID for payment method creation
+ * For sellers, finds or creates a User account with the same email
+ * For regular users, returns their ID directly
+ */
+const getUserIdForPaymentMethod = async (currentUser) => {
+  // If user is a seller, find or create User account
+  if (currentUser.role === 'seller' && currentUser.email) {
+    const User = require('../../models/user/userModel');
+    const Seller = require('../../models/user/sellerModel');
+    const bcrypt = require('bcryptjs');
+    const crypto = require('crypto');
+    
+    let userAccount = await User.findOne({ email: currentUser.email });
+    
+    // If User account doesn't exist, create one for the seller
+    if (!userAccount) {
+      // Fetch full seller document to get phone from paymentMethods
+      const sellerDoc = await Seller.findById(currentUser.id).select('paymentMethods');
+      
+      // Generate a secure random password (seller won't use this, they authenticate as seller)
+      // Must be at least 8 characters for User model validation
+      // Use unhashed password - the User model's pre-save hook will hash it
+      const randomPassword = crypto.randomBytes(16).toString('hex'); // 32 characters, meets minLength: 8
+      
+      // Try to get phone from seller's payment methods
+      let sellerPhone = null;
+      if (sellerDoc?.paymentMethods?.mobileMoney?.phone) {
+        const phoneStr = String(sellerDoc.paymentMethods.mobileMoney.phone).replace(/\D/g, '');
+        if (phoneStr && phoneStr.length >= 9) {
+          sellerPhone = parseInt(phoneStr, 10);
+        }
+      }
+      
+      // If no phone from payment methods, generate a unique placeholder
+      // Use seller ID + timestamp to ensure uniqueness
+      if (!sellerPhone) {
+        const timestamp = Date.now().toString().slice(-8);
+        const sellerIdStr = currentUser.id.toString().slice(-6);
+        sellerPhone = parseInt(`233${timestamp}${sellerIdStr}`, 10);
+        
+        // Ensure it's a valid number (not too long)
+        if (sellerPhone > 9999999999) {
+          sellerPhone = parseInt(sellerPhone.toString().slice(-10), 10);
+        }
+      }
+      
+      try {
+        // Create user with passwordConfirm matching the unhashed password for validation
+        // The pre-save hook will hash the password and remove passwordConfirm
+        userAccount = await User.create({
+          email: currentUser.email,
+          name: currentUser.businessName || currentUser.name || currentUser.shopName || 'Seller',
+          phone: sellerPhone,
+          password: randomPassword, // Use unhashed password - pre-save hook will hash it
+          passwordConfirm: randomPassword, // Must match for validation
+          role: 'user',
+          emailVerified: true, // Seller email is already verified
+          active: true,
+          status: 'active',
+        });
+      } catch (error) {
+        // If phone uniqueness fails, try with a different approach
+        if (error.code === 11000 && error.keyPattern?.phone) {
+          // Phone already exists, generate a completely unique one
+          const timestamp = Date.now().toString();
+          const random = Math.floor(Math.random() * 100000);
+          sellerPhone = parseInt(`233${timestamp.slice(-7)}${random.toString().padStart(5, '0')}`, 10);
+          
+          // Ensure it's a valid number length
+          if (sellerPhone > 9999999999) {
+            sellerPhone = parseInt(sellerPhone.toString().slice(-10), 10);
+          }
+          
+          // Try again with new phone
+          userAccount = await User.create({
+            email: currentUser.email,
+            name: currentUser.businessName || currentUser.name || currentUser.shopName || 'Seller',
+            phone: sellerPhone,
+            password: randomPassword, // Use unhashed password - pre-save hook will hash it
+            passwordConfirm: randomPassword, // Must match for validation
+            role: 'user',
+            emailVerified: true,
+            active: true,
+            status: 'active',
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    return userAccount._id;
+  }
+  
+  // For regular users, return their ID
+  return currentUser.id;
+};
+
 exports.createPaymentMethod = catchAsync(async (req, res, next) => {
-  const user = req.user.id;
+  const currentUser = req.user;
+  
+  // Get User ID (handles sellers by finding/creating User account)
+  const userId = await getUserIdForPaymentMethod(currentUser);
+  
   const {
     type,
     provider,
     mobileName,
+    name,
     isDefault,
     mobileNumber,
     bankName,
@@ -17,25 +121,32 @@ exports.createPaymentMethod = catchAsync(async (req, res, next) => {
     branch,
   } = req.body;
 
+  // Use name or mobileName or accountName for the name field
+  const paymentMethodName = name || mobileName || accountName || 'Payment Method';
+
   const paymentData =
     type === 'mobile_money'
       ? {
           type,
-          name: mobileName,
-          mobileNumber,
-          isDefault,
-          user,
-          provider,
+          name: paymentMethodName,
+          mobileNumber: mobileNumber,
+          isDefault: isDefault || false,
+          user: userId,
+          provider: provider,
         }
       : {
           type,
+          name: paymentMethodName,
           bankName,
           accountNumber,
           accountName,
-          branch,
-          user,
+          branch: branch || undefined,
+          isDefault: isDefault || false,
+          user: userId,
         };
+  
   const paymentMethod = await PaymentMethod.create(paymentData);
+  
   res.status(201).json({
     status: 'success',
     data: {
@@ -46,6 +157,50 @@ exports.createPaymentMethod = catchAsync(async (req, res, next) => {
 
 exports.getAllPaymentMethods = catchAsync(async (req, res, next) => {
   const paymentMethods = await PaymentMethod.find();
+  res.status(200).json({
+    status: 'success',
+    results: paymentMethods.length,
+    data: {
+      paymentMethods,
+    },
+  });
+});
+
+/**
+ * Get payment methods for the current authenticated user
+ * @route GET /api/v1/payment-method/me
+ * @access Protected
+ * 
+ * Note: PaymentMethod model uses 'user' field which references User model.
+ * For sellers, if they have a User account with the same email, payment methods will be returned.
+ * If no User account exists, returns empty array (frontend will fallback to seller.paymentMethods).
+ */
+exports.getMyPaymentMethods = catchAsync(async (req, res, next) => {
+  const currentUser = req.user;
+  
+  // If user is a seller, try to find User account by email
+  let userId = currentUser.id;
+  
+  if (currentUser.role === 'seller' && currentUser.email) {
+    const User = require('../../models/user/userModel');
+    const userAccount = await User.findOne({ email: currentUser.email });
+    if (userAccount) {
+      userId = userAccount._id;
+    } else {
+      // Seller doesn't have User account - return empty array
+      // Frontend will fallback to seller.paymentMethods
+      return res.status(200).json({
+        status: 'success',
+        results: 0,
+        data: {
+          paymentMethods: [],
+        },
+      });
+    }
+  }
+  
+  const paymentMethods = await PaymentMethod.find({ user: userId }).sort({ isDefault: -1, createdAt: -1 });
+  
   res.status(200).json({
     status: 'success',
     results: paymentMethods.length,
@@ -69,7 +224,24 @@ exports.getPaymentMethod = catchAsync(async (req, res, next) => {
 });
 
 exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
-  const paymentMethod = await PaymentMethod.findByIdAndUpdate(
+  const currentUser = req.user;
+  
+  // Get User ID (handles sellers by finding User account)
+  const userId = await getUserIdForPaymentMethod(currentUser);
+  
+  // First, find the payment method to verify ownership
+  const paymentMethod = await PaymentMethod.findById(req.params.id);
+  if (!paymentMethod) {
+    return next(new AppError('Payment method not found', 404));
+  }
+  
+  // Verify the payment method belongs to the user
+  if (paymentMethod.user.toString() !== userId.toString()) {
+    return next(new AppError('You do not have permission to modify this payment method', 403));
+  }
+  
+  // Update the payment method
+  const updatedPaymentMethod = await PaymentMethod.findByIdAndUpdate(
     req.params.id,
     req.body,
     {
@@ -77,43 +249,46 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
       runValidators: true,
     },
   );
-  if (!paymentMethod) {
-    return next(new AppError('Payment method not found', 404));
-  }
+  
   res.status(200).json({
     status: 'success',
     data: {
-      paymentMethod,
+      paymentMethod: updatedPaymentMethod,
     },
   });
 });
 
 exports.deletePaymentMethod = catchAsync(async (req, res, next) => {
-  const paymentMethod = await PaymentMethod.findByIdAndDelete(req.params.id);
+  const currentUser = req.user;
+  
+  // Get User ID (handles sellers by finding User account)
+  const userId = await getUserIdForPaymentMethod(currentUser);
+  
+  // First, find the payment method to verify ownership
+  const paymentMethod = await PaymentMethod.findById(req.params.id);
   if (!paymentMethod) {
     return next(new AppError('Payment method not found', 404));
   }
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
-});
-exports.getAllPaymentMethods = catchAsync(async (req, res, next) => {
-  const paymentMethods = await PaymentMethod.find();
-  res.status(200).json({
-    status: 'success',
-    results: paymentMethods.length,
-    data: {
-      paymentMethods,
-    },
-  });
+  
+  // Verify the payment method belongs to the user
+  if (paymentMethod.user.toString() !== userId.toString()) {
+    return next(new AppError('You do not have permission to delete this payment method', 403));
+  }
+  
+  // Delete the payment method
+  await PaymentMethod.findByIdAndDelete(req.params.id);
+  
+  res.status(204).json({ data: null, status: 'success' });
 });
 exports.setDefaultPaymentMethod = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const userId = req.user.id; // Assuming user is attached to request
+    const currentUser = req.user;
+    
+    // Get User ID (handles sellers by finding User account)
+    const userId = await getUserIdForPaymentMethod(currentUser);
     const paymentMethodId = req.params.id;
 
     // 1. Clear existing default payment method
@@ -138,6 +313,13 @@ exports.setDefaultPaymentMethod = catchAsync(async (req, res, next) => {
       await session.abortTransaction();
       session.endSession();
       return next(new AppError('Payment method not found', 404));
+    }
+
+    // Verify the payment method belongs to the user
+    if (paymentMethod.user.toString() !== userId.toString()) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('You do not have permission to modify this payment method', 403));
     }
 
     await session.commitTransaction();

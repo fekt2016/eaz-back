@@ -1,4 +1,4 @@
-// const Order = require('../../models/order/orderModel');
+// import Order from '../../models/order/orderModel.js';
 const Sequence = require('../../models/category/sequenceModel');
 randomTxt = () => Math.random().toString(36).substring(7).toLocaleUpperCase();
 randomNumbers = () => Math.floor(1000 + Math.random() * 9000);

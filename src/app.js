@@ -1,3 +1,25 @@
+// Load environment variables FIRST - before any other imports
+const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
+
+// Load .env file from backend directory
+// __dirname is backend/src, so go up one level to backend/
+const envPath = path.join(__dirname, '../.env');
+const configEnvPath = path.join(__dirname, '../config.env');
+
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log(`✅ [app.js] Loaded environment from: ${envPath}`);
+} else if (fs.existsSync(configEnvPath)) {
+  dotenv.config({ path: configEnvPath });
+  console.log(`✅ [app.js] Loaded environment from: ${configEnvPath}`);
+} else {
+  // Try default .env location
+  dotenv.config({ path: envPath });
+  console.log(`⚠️  [app.js] Attempting to load from: ${envPath} (file may not exist)`);
+}
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -8,6 +30,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
+// Bull Board (CommonJS compatible)
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
@@ -20,41 +43,48 @@ const AppError = require('./utils/errors/appError');
 const globalErrorHandler = require('./controllers/shared/errorController');
 
 // Import routers by role
-const buyerRoutes = {
-  users: require('./routes/buyer/userRoutes'),
-  cart: require('./routes/buyer/cartRoutes'),
-  wishlist: require('./routes/buyer/wishlistRoute'),
-  address: require('./routes/buyer/addressRoutes'),
-  history: require('./routes/buyer/browserHistoryRoutes'),
-  creditbalance: require('./routes/buyer/creditbalanceRoutes'),
-  follow: require('./routes/buyer/followRoutes'),
-  permission: require('./routes/buyer/permissionRoutes'),
-  newsletter: require('./routes/buyer/newsletterRoutes'),
-};
+const userRoutes = require('./routes/buyer/userRoutes');
+const cartRoutes = require('./routes/buyer/cartRoutes');
+const wishlistRoutes = require('./routes/buyer/wishlistRoute');
+const addressRoutes = require('./routes/buyer/addressRoutes');
+const browserHistoryRoutes = require('./routes/buyer/browserHistoryRoutes');
+const creditbalanceRoutes = require('./routes/buyer/creditbalanceRoutes');
+const followRoutes = require('./routes/buyer/followRoutes');
+const permissionRoutes = require('./routes/buyer/permissionRoutes');
+const newsletterRoutes = require('./routes/buyer/newsletterRoutes');
 
-const sellerRoutes = {
-  seller: require('./routes/seller/sellerRoutes'),
-  paymentrequest: require('./routes/seller/paymentRequestRoutes'),
-  discount: require('./routes/seller/discountRoute'),
-  coupon: require('./routes/seller/couponRoutes'),
-};
+const sellerRoutes = require('./routes/seller/sellerRoutes');
+const sellerReviewRoutes = require('./routes/seller/reviewRoutes');
+const paymentRequestRoutes = require('./routes/seller/paymentRequestRoutes');
+const sellerPayoutRoutes = require('./routes/seller/payoutRoutes');
+const discountRoutes = require('./routes/seller/discountRoute');
+const couponRoutes = require('./routes/seller/couponRoutes');
+const shippingSettingsRoutes = require('./routes/seller/shippingSettingsRoutes');
 
-const adminRoutes = {
-  admin: require('./routes/admin/adminRoutes'),
-  analytics: require('./routes/admin/analyticsRoutes'),
-};
+const adminRoutes = require('./routes/admin/adminRoutes');
+const analyticsRoutes = require('./routes/admin/analyticsRoutes');
+const pickupCenterRoutes = require('./routes/admin/pickupCenterRoutes');
+const dispatchFeesRoutes = require('./routes/admin/dispatchFeesRoutes');
+const eazshopStoreRoutes = require('./routes/admin/eazshopStoreRoutes');
+const shippingRateRoutes = require('./routes/admin/shippingRateRoutes');
+const shippingZoneRoutes = require('./routes/admin/shippingZoneRoutes');
+const distanceAnalyzerRoutes = require('./routes/admin/distanceAnalyzerRoutes');
+const adminNeighborhoodRoutes = require('./routes/admin/neighborhoodRoutes');
+const adminReviewRoutes = require('./routes/admin/reviewRoutes');
+const adminPayoutRoutes = require('./routes/admin/payoutRoutes');
 
-const sharedRoutes = {
-  product: require('./routes/shared/productRoutes'),
-  categories: require('./routes/shared/categoryRoutes'),
-  order: require('./routes/shared/orderRoutes'),
-  orderItem: require('./routes/shared/orderItemRoute'),
-  review: require('./routes/shared/reviewRoutes'),
-  paymentmethod: require('./routes/shared/paymentMethodRoutes'),
-  payment: require('./routes/shared/paymentRoutes'),
-  search: require('./routes/shared/searchRoutes'),
-  notificationSettings: require('./routes/shared/notificationRoutes'),
-};
+const productRoutes = require('./routes/shared/productRoutes');
+const categoryRoutes = require('./routes/shared/categoryRoutes');
+const orderRoutes = require('./routes/shared/orderRoutes');
+const orderItemRoutes = require('./routes/shared/orderItemRoute');
+const reviewRoutes = require('./routes/shared/reviewRoutes');
+const paymentMethodRoutes = require('./routes/shared/paymentMethodRoutes');
+const paymentRoutes = require('./routes/shared/paymentRoutes');
+const searchRoutes = require('./routes/shared/searchRoutes');
+const notificationRoutes = require('./routes/shared/notificationRoutes');
+const shippingRoutes = require('./routes/shared/shippingRoutes');
+const locationRoutes = require('./routes/shared/locationRoutes');
+const neighborhoodRoutes = require('./routes/shared/neighborhoodRoutes');
 
 // Import queues
 const dataExportQueue = require('./jobs/queues/dataExportQueue');
@@ -107,7 +137,16 @@ app.use(
         ],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
-        connectSrc: ["'self'", 'https://api.cloudinary.com'],
+        connectSrc: [
+          "'self'",
+          'https://api.cloudinary.com',
+          'https://api.paystack.co',
+          'https://checkout.paystack.com',
+        ],
+        frameSrc: [
+          "'self'",
+          'https://checkout.paystack.com',
+        ],
       },
     },
   }),
@@ -121,23 +160,35 @@ const allowedOrigins = [
   'https://eazworld.com',
   'https://www.eazworld.com',
   'https://api.eazworld.com',
+  'https://checkout.paystack.com', // Allow Paystack checkout domain
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 // CORS configuration
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-
-    if (process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS not allowed for origin: ${origin}`), false);
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      console.log('[CORS] Request with no origin, allowing');
+      return callback(null, true);
     }
+
+    // Development: Allow all origins (including localhost with any port)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CORS] Development mode - allowing origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    // Production: Only allow specific origins
+    if (allowedOrigins.includes(origin)) {
+      console.log(`[CORS] Production - allowing origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS] Blocked origin: ${origin}`);
+    callback(new Error(`CORS not allowed for origin: ${origin}`), false);
   },
-  credentials: true,
+  credentials: true, // REQUIRED for cookies
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -147,6 +198,7 @@ const corsOptions = {
     'x-admin-subdomain',
   ],
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11) choke on 204
 };
 
 app.use(cors(corsOptions));
@@ -267,36 +319,55 @@ app.use((req, res, next) => {
 
 // 4. Routes - Organized by role
 // Buyer routes
-app.use('/api/v1/users', buyerRoutes.users);
-app.use('/api/v1/cart', buyerRoutes.cart);
-app.use('/api/v1/wishlist', buyerRoutes.wishlist);
-app.use('/api/v1/address', buyerRoutes.address);
-app.use('/api/v1/history', buyerRoutes.history);
-app.use('/api/v1/creditbalance', buyerRoutes.creditbalance);
-app.use('/api/v1/follow', buyerRoutes.follow);
-app.use('/api/v1/permission', buyerRoutes.permission);
-app.use('/api/v1/newsletter', buyerRoutes.newsletter);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
+app.use('/api/v1/address', addressRoutes);
+app.use('/api/v1/history', browserHistoryRoutes);
+app.use('/api/v1/creditbalance', creditbalanceRoutes);
+app.use('/api/v1/follow', followRoutes);
+app.use('/api/v1/permission', permissionRoutes);
+app.use('/api/v1/newsletter', newsletterRoutes);
 
 // Seller routes
-app.use('/api/v1/seller', sellerRoutes.seller);
-app.use('/api/v1/paymentrequest', sellerRoutes.paymentrequest);
-app.use('/api/v1/discount', sellerRoutes.discount);
-app.use('/api/v1/coupon', sellerRoutes.coupon);
+app.use('/api/v1/seller', sellerRoutes);
+app.use('/api/v1/seller/reviews', sellerReviewRoutes);
+app.use('/api/v1/seller/payout', sellerPayoutRoutes);
+app.use('/api/v1/paymentrequest', paymentRequestRoutes);
+app.use('/api/v1/discount', discountRoutes);
+app.use('/api/v1/coupon', couponRoutes);
+app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 
 // Admin routes
-app.use('/api/v1/admin', adminRoutes.admin);
-app.use('/api/v1/analytics', adminRoutes.analytics);
+// IMPORTANT: adminNeighborhoodRoutes must come BEFORE adminRoutes to avoid route conflicts
+// adminRoutes has a catch-all /:id route that would match /neighborhoods
+// Mount adminNeighborhoodRoutes at /api/v1/admin/neighborhoods
+app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
+app.use('/api/v1/admin/reviews', adminReviewRoutes);
+app.use('/api/v1/admin/payout', adminPayoutRoutes);
+app.use('/api/v1/logs', require('./modules/activityLog/activityLog.routes'));
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/pickup-centers', pickupCenterRoutes);
+app.use('/api/v1/dispatch-fees', dispatchFeesRoutes);
+app.use('/api/v1/eazshop', eazshopStoreRoutes);
+app.use('/api/v1/shipping-rates', shippingRateRoutes);
+app.use('/api/v1/shipping-zones', shippingZoneRoutes);
+app.use('/api/v1/shipping-analysis', distanceAnalyzerRoutes);
 
 // Shared routes
-app.use('/api/v1/product', sharedRoutes.product);
-app.use('/api/v1/categories', sharedRoutes.categories);
-app.use('/api/v1/order', sharedRoutes.order);
-app.use('/api/v1/orderItem', sharedRoutes.orderItem);
-app.use('/api/v1/review', sharedRoutes.review);
-app.use('/api/v1/paymentmethod', sharedRoutes.paymentmethod);
-app.use('/api/v1/payment', sharedRoutes.payment);
-app.use('/api/v1/search', sharedRoutes.search);
-app.use('/api/v1/notification-settings', sharedRoutes.notificationSettings);
+app.use('/api/v1/product', productRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/order', orderRoutes);
+app.use('/api/v1/orderItem', orderItemRoutes);
+app.use('/api/v1/review', reviewRoutes);
+app.use('/api/v1/paymentmethod', paymentMethodRoutes);
+app.use('/api/v1/payment', paymentRoutes);
+app.use('/api/v1/search', searchRoutes);
+app.use('/api/v1/notification-settings', notificationRoutes);
+app.use('/api/v1/shipping', shippingRoutes);
+app.use('/api/v1/location', locationRoutes);
+app.use('/api/v1/neighborhoods', neighborhoodRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -316,5 +387,5 @@ app.all('*', (req, res, next) => {
 
 app.use(globalErrorHandler);
 
-module.exports = app;
+module.exports = app;;
 

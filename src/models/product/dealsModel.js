@@ -40,4 +40,4 @@ const dealsSchema = new mongoose.Schema({
 
 const Deals = new mongoose.model('Deals', dealsSchema);
 
-module.exports = Deals;
+module.exports = Deals;;

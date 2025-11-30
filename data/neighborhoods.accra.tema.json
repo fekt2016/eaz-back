@@ -1,0 +1,814 @@
+[
+  {
+    "name": "Nima",
+    "municipality": "Ayawaso East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Maamobi",
+    "municipality": "Ayawaso East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Pig Farm",
+    "municipality": "Ayawaso East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kanda",
+    "municipality": "Ayawaso East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kawukudi",
+    "municipality": "Ayawaso Central",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Alajo",
+    "municipality": "Ayawaso Central",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kotobabi",
+    "municipality": "Ayawaso Central",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "New Town",
+    "municipality": "Ayawaso East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kokomlemle",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Roman Ridge",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dzorwulu",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Airport Residential",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Ridge",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Asylum Down",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Adabraka",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tudu",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Osu",
+    "municipality": "Klottey Korle",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Labone",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Cantonments",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Accra Central",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Arena",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Okaishie",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Agbogbloshie",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Fadama",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dansoman",
+    "municipality": "Ablekuma West",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Mamprobi",
+    "municipality": "Ablekuma South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Chorkor",
+    "municipality": "Ablekuma South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Korle Gonno",
+    "municipality": "Klottey Korle",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kaneshie",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "North Kaneshie",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Abbosey Okai",
+    "municipality": "Ablekuma Central",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Odorkor",
+    "municipality": "Ablekuma West",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Laterbiokoshie",
+    "municipality": "Ablekuma North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "La",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Labadi",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Trade Fair",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tse Addo",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Burma Camp",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Achimota",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Circle",
+    "municipality": "Okaikwei South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Taifa",
+    "municipality": "Ga East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Spintex",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Airport Hills",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "East Legon",
+    "municipality": "La Nkwantanang Madina",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Adjiringanor",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Trasacco Area",
+    "municipality": "La Nkwantanang Madina",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Westlands",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dome",
+    "municipality": "Ga East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Lapaz",
+    "municipality": "Okaikwei North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Sowutuom",
+    "municipality": "Ablekuma North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Ablekuma North",
+    "municipality": "Ablekuma North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Abeka",
+    "municipality": "Ablekuma North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Caprice",
+    "municipality": "Ablekuma North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "East Legon Hills",
+    "municipality": "La Nkwantanang Madina",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Ashaley Botwe",
+    "municipality": "La Nkwantanang Madina",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Lakeside Estate",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Haatso",
+    "municipality": "Ga East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kwabenya",
+    "municipality": "Ga East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Pokuase",
+    "municipality": "Ga North",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Amasaman",
+    "municipality": "Ga West",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Amrahia",
+    "municipality": "Adenta",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Adenta",
+    "municipality": "Adenta",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "West Trassacco",
+    "municipality": "La Nkwantanang Madina",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Oyarifa",
+    "municipality": "Adenta",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Oyibi",
+    "municipality": "Adenta",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dodowa Road",
+    "municipality": "Adenta",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Spintex East",
+    "municipality": "La Dadekotopon",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Baatsona Estate East",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Teshie-Nungua Estates",
+    "municipality": "Ledzokuku",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kokrobite",
+    "municipality": "Ga South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Weija",
+    "municipality": "Ga South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kasoa",
+    "municipality": "Awutu Senya East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Afienya",
+    "municipality": "Ningo Prampram",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dawhenya",
+    "municipality": "Ningo Prampram",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Prampram",
+    "municipality": "Ningo Prampram",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Ningo",
+    "municipality": "Ningo Prampram",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kasoa Central",
+    "municipality": "Awutu Senya East",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Shai Hills",
+    "municipality": "Shai Osudoku",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Dodowa Township",
+    "municipality": "Shai Osudoku",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "McCarthy Hill",
+    "municipality": "Ga South",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Amansaman Outskirts",
+    "municipality": "Ga West",
+    "city": "Accra",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 1",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 2",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 3",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 4",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 5",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 6",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 7",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 8",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 9",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 10",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 11",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 12",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 13",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 14",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 15",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 16",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 17",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 18",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 19",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 20",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 21",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 22",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 23",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 24",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Community 25",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Sakumono",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Lashibi",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Klagon",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Baatsona",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Kpone",
+    "municipality": "Kpone Katamanso",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Tema Newtown",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Greenwich Meridian",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Heavy Industrial Area",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Free Zone Enclave",
+    "municipality": "Tema West",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "Ashaiman",
+    "municipality": "Ashaiman",
+    "city": "Tema",
+    "lat": null,
+    "lng": null
+  }
+]

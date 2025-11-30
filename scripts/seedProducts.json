@@ -1,0 +1,673 @@
+[
+  {
+    "name": "Samsung Galaxy A14 4GB/128GB - Black",
+    "description": "Experience premium smartphone technology with the Samsung Galaxy A14. Features a 6.6-inch HD+ display, powerful 4GB RAM, 128GB storage, triple camera system, and long-lasting 5000mAh battery. Perfect for everyday use with smooth performance and stunning visuals.",
+    "shortDescription": "Premium smartphone with 4GB RAM, 128GB storage, triple camera, and 5000mAh battery.",
+    "imageCover": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80",
+      "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=800&q=80",
+      "https://images.unsplash.com/photo-1580910051074-3eb694886505?w=800&q=80"
+    ],
+    "brand": "Samsung",
+    "price": 899,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Black" },
+          { "key": "Storage", "value": "128GB" },
+          { "key": "RAM", "value": "4GB" }
+        ],
+        "price": 899,
+        "originalPrice": 1099,
+        "stock": 50,
+        "sku": "SAM-A14-4GB-128GB-BLK",
+        "status": "active",
+        "weight": { "value": 201, "unit": "g" },
+        "dimensions": { "length": 16.7, "width": 7.8, "height": 0.9, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 201, "unit": "g" },
+      "dimensions": { "length": 16.7, "width": 7.8, "height": 0.9, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "specifications": {
+      "weight": { "value": 201, "unit": "g" },
+      "dimensions": { "length": 16.7, "width": 7.8, "height": 0.9, "unit": "cm" },
+      "color": [{ "name": "Black", "hexCode": "#000000" }],
+      "other": [
+        { "key": "Display", "value": "6.6-inch HD+" },
+        { "key": "Battery", "value": "5000mAh" },
+        { "key": "Camera", "value": "Triple Camera System" }
+      ]
+    },
+    "tags": ["smartphone", "samsung", "android", "4gb", "128gb", "black"]
+  },
+  {
+    "name": "iPhone 12 Silicone Case - Blue",
+    "description": "Protect your iPhone 12 with this premium silicone case. Soft-touch finish, precise cutouts, and raised edges protect your screen and camera. Available in vibrant blue color. Official quality at an affordable price.",
+    "shortDescription": "Premium silicone case for iPhone 12 with soft-touch finish and precise cutouts.",
+    "imageCover": "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=800&q=80",
+      "https://images.unsplash.com/photo-1601972602237-8c79241f8eb5?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 45,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Blue" },
+          { "key": "Model", "value": "iPhone 12" }
+        ],
+        "price": 45,
+        "stock": 200,
+        "sku": "EZS-IP12-CASE-BLU",
+        "status": "active",
+        "weight": { "value": 25, "unit": "g" },
+        "dimensions": { "length": 15, "width": 7.5, "height": 1, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 25, "unit": "g" },
+      "dimensions": { "length": 15, "width": 7.5, "height": 1, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["iphone", "case", "protection", "silicone", "blue"]
+  },
+  {
+    "name": "Men's Sneakers - Breathable Running Shoes",
+    "description": "Comfortable and stylish men's running shoes with breathable mesh upper, cushioned insole, and durable rubber outsole. Perfect for daily wear, jogging, and light exercise. Available in multiple sizes.",
+    "shortDescription": "Comfortable men's running shoes with breathable mesh and cushioned insole.",
+    "imageCover": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+      "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 120,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Size", "value": "42" },
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 120,
+        "originalPrice": 150,
+        "stock": 75,
+        "sku": "EZS-SHOE-M-42-BLK",
+        "status": "active",
+        "weight": { "value": 350, "unit": "g" },
+        "dimensions": { "length": 30, "width": 12, "height": 10, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 350, "unit": "g" },
+      "dimensions": { "length": 30, "width": 12, "height": 10, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["shoes", "sneakers", "men", "running", "sports"]
+  },
+  {
+    "name": "Electric Kettle 1.8L Stainless Steel",
+    "description": "Fast-boiling electric kettle with 1.8L capacity, stainless steel construction, auto shut-off, and boil-dry protection. Perfect for making tea, coffee, and hot water. Energy-efficient and safe to use.",
+    "shortDescription": "1.8L stainless steel electric kettle with auto shut-off and boil-dry protection.",
+    "imageCover": "https://images.unsplash.com/photo-1609004555499-0d0e0e0b0b0b?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1609004555499-0d0e0e0b0b0b?w=800&q=80",
+      "https://images.unsplash.com/photo-1609004555499-0d0e0e0b0b0b?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 85,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Capacity", "value": "1.8L" },
+          { "key": "Color", "value": "Silver" }
+        ],
+        "price": 85,
+        "stock": 100,
+        "sku": "EZS-KETTLE-18L-SLV",
+        "status": "active",
+        "weight": { "value": 1.2, "unit": "kg" },
+        "dimensions": { "length": 20, "width": 18, "height": 25, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 1.2, "unit": "kg" },
+      "dimensions": { "length": 20, "width": 18, "height": 25, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["kettle", "electric", "kitchen", "appliance", "stainless steel"]
+  },
+  {
+    "name": "Wireless Bluetooth Earbuds - Noise Cancelling",
+    "description": "Premium wireless earbuds with active noise cancellation, 30-hour battery life, IPX7 waterproof rating, and crystal-clear sound quality. Perfect for music, calls, and workouts.",
+    "shortDescription": "Wireless earbuds with noise cancellation, 30-hour battery, and IPX7 waterproof.",
+    "imageCover": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80",
+      "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 199,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 199,
+        "originalPrice": 249,
+        "stock": 150,
+        "sku": "EZS-EARBUDS-BT-BLK",
+        "status": "active",
+        "weight": { "value": 50, "unit": "g" },
+        "dimensions": { "length": 8, "width": 6, "height": 3, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 50, "unit": "g" },
+      "dimensions": { "length": 8, "width": 6, "height": 3, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["earbuds", "wireless", "bluetooth", "noise cancelling", "audio"]
+  },
+  {
+    "name": "Laptop Stand - Adjustable Aluminum",
+    "description": "Ergonomic laptop stand with adjustable height and angle. Made from premium aluminum, supports laptops up to 17 inches. Improves posture and reduces neck strain. Foldable for easy storage.",
+    "shortDescription": "Adjustable aluminum laptop stand for improved ergonomics and posture.",
+    "imageCover": "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 75,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Silver" },
+          { "key": "Material", "value": "Aluminum" }
+        ],
+        "price": 75,
+        "stock": 80,
+        "sku": "EZS-LAPTOP-STAND-SLV",
+        "status": "active",
+        "weight": { "value": 800, "unit": "g" },
+        "dimensions": { "length": 35, "width": 25, "height": 15, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 800, "unit": "g" },
+      "dimensions": { "length": 35, "width": 25, "height": 15, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["laptop", "stand", "ergonomic", "aluminum", "office"]
+  },
+  {
+    "name": "Women's Handbag - Leather Crossbody",
+    "description": "Elegant leather crossbody handbag for women. Features multiple compartments, adjustable strap, and premium quality leather. Perfect for daily use, parties, and special occasions.",
+    "shortDescription": "Elegant leather crossbody handbag with multiple compartments and adjustable strap.",
+    "imageCover": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80",
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 180,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Brown" },
+          { "key": "Material", "value": "Leather" }
+        ],
+        "price": 180,
+        "originalPrice": 220,
+        "stock": 60,
+        "sku": "EZS-HANDBAG-LEATHER-BRN",
+        "status": "active",
+        "weight": { "value": 400, "unit": "g" },
+        "dimensions": { "length": 28, "width": 12, "height": 20, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 400, "unit": "g" },
+      "dimensions": { "length": 28, "width": 12, "height": 20, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["handbag", "women", "leather", "crossbody", "fashion"]
+  },
+  {
+    "name": "Smart Watch - Fitness Tracker",
+    "description": "Feature-rich smartwatch with fitness tracking, heart rate monitor, sleep tracking, and smartphone notifications. Water-resistant, long battery life, and compatible with iOS and Android.",
+    "shortDescription": "Smartwatch with fitness tracking, heart rate monitor, and smartphone notifications.",
+    "imageCover": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80",
+      "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 299,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Black" },
+          { "key": "Band", "value": "Silicone" }
+        ],
+        "price": 299,
+        "originalPrice": 349,
+        "stock": 90,
+        "sku": "EZS-SMARTWATCH-BLK",
+        "status": "active",
+        "weight": { "value": 45, "unit": "g" },
+        "dimensions": { "length": 4, "width": 4, "height": 1.2, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 45, "unit": "g" },
+      "dimensions": { "length": 4, "width": 4, "height": 1.2, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["smartwatch", "fitness", "tracker", "wearable", "health"]
+  },
+  {
+    "name": "Portable Power Bank 20000mAh",
+    "description": "High-capacity 20000mAh power bank with fast charging, dual USB ports, and LED indicator. Compatible with all smartphones and tablets. Compact design, perfect for travel.",
+    "shortDescription": "20000mAh power bank with fast charging and dual USB ports.",
+    "imageCover": "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c7?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c7?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 65,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Capacity", "value": "20000mAh" },
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 65,
+        "stock": 120,
+        "sku": "EZS-POWERBANK-20K-BLK",
+        "status": "active",
+        "weight": { "value": 350, "unit": "g" },
+        "dimensions": { "length": 15, "width": 7, "height": 2.5, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 350, "unit": "g" },
+      "dimensions": { "length": 15, "width": 7, "height": 2.5, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["power bank", "charger", "portable", "battery", "mobile"]
+  },
+  {
+    "name": "Men's Casual Shirt - Cotton",
+    "description": "Comfortable men's casual shirt made from 100% premium cotton. Classic fit, button-down collar, and versatile design. Perfect for office, casual outings, and everyday wear.",
+    "shortDescription": "100% cotton men's casual shirt with classic fit and button-down collar.",
+    "imageCover": "https://images.unsplash.com/photo-1594938291221-94ad1c9e7a88?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1594938291221-94ad1c9e7a88?w=800&q=80",
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 55,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Size", "value": "Large" },
+          { "key": "Color", "value": "White" }
+        ],
+        "price": 55,
+        "stock": 100,
+        "sku": "EZS-SHIRT-M-L-WHT",
+        "status": "active",
+        "weight": { "value": 200, "unit": "g" },
+        "dimensions": { "length": 35, "width": 30, "height": 2, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 200, "unit": "g" },
+      "dimensions": { "length": 35, "width": 30, "height": 2, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["shirt", "men", "cotton", "casual", "fashion"]
+  },
+  {
+    "name": "Blender - 1000W Professional",
+    "description": "Powerful 1000W professional blender with stainless steel blades, multiple speed settings, and large 1.5L capacity. Perfect for smoothies, soups, and food preparation. Easy to clean and durable.",
+    "shortDescription": "1000W professional blender with stainless steel blades and 1.5L capacity.",
+    "imageCover": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&q=80",
+      "https://images.unsplash.com/photo-1574269909862-7e1d70bb8078?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 250,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Power", "value": "1000W" },
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 250,
+        "originalPrice": 299,
+        "stock": 45,
+        "sku": "EZS-BLENDER-1KW-BLK",
+        "status": "active",
+        "weight": { "value": 2.5, "unit": "kg" },
+        "dimensions": { "length": 20, "width": 20, "height": 40, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 2.5, "unit": "kg" },
+      "dimensions": { "length": 20, "width": 20, "height": 40, "unit": "cm" },
+      "shippingClass": "heavy"
+    },
+    "tags": ["blender", "kitchen", "appliance", "smoothie", "food"]
+  },
+  {
+    "name": "Iron - Steam 2000W",
+    "description": "Powerful 2000W steam iron with non-stick soleplate, variable steam control, and auto shut-off safety feature. Perfect for all fabric types. Lightweight and easy to use.",
+    "shortDescription": "2000W steam iron with non-stick soleplate and variable steam control.",
+    "imageCover": "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 95,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Power", "value": "2000W" },
+          { "key": "Color", "value": "Blue" }
+        ],
+        "price": 95,
+        "stock": 70,
+        "sku": "EZS-IRON-2KW-BLU",
+        "status": "active",
+        "weight": { "value": 1.5, "unit": "kg" },
+        "dimensions": { "length": 30, "width": 12, "height": 15, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 1.5, "unit": "kg" },
+      "dimensions": { "length": 30, "width": 12, "height": 15, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["iron", "steam", "laundry", "appliance", "home"]
+  },
+  {
+    "name": "Water Heater - 50L Electric",
+    "description": "Energy-efficient 50L electric water heater with thermostat control, safety features, and durable construction. Perfect for homes and offices. Fast heating and long-lasting performance.",
+    "shortDescription": "50L electric water heater with thermostat control and safety features.",
+    "imageCover": "https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 450,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Capacity", "value": "50L" },
+          { "key": "Type", "value": "Electric" }
+        ],
+        "price": 450,
+        "originalPrice": 550,
+        "stock": 25,
+        "sku": "EZS-WATERHEATER-50L",
+        "status": "active",
+        "weight": { "value": 15, "unit": "kg" },
+        "dimensions": { "length": 40, "width": 40, "height": 80, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 15, "unit": "kg" },
+      "dimensions": { "length": 40, "width": 40, "height": 80, "unit": "cm" },
+      "shippingClass": "oversized"
+    },
+    "tags": ["water heater", "electric", "appliance", "home", "bathroom"]
+  },
+  {
+    "name": "USB-C Cable - Fast Charging 2m",
+    "description": "Premium USB-C cable with fast charging support, durable braided design, and 2-meter length. Compatible with all USB-C devices. Data transfer and charging in one cable.",
+    "shortDescription": "2m USB-C fast charging cable with braided design.",
+    "imageCover": "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 25,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Length", "value": "2m" },
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 25,
+        "stock": 300,
+        "sku": "EZS-USBC-2M-BLK",
+        "status": "active",
+        "weight": { "value": 30, "unit": "g" },
+        "dimensions": { "length": 20, "width": 2, "height": 1, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 30, "unit": "g" },
+      "dimensions": { "length": 20, "width": 2, "height": 1, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["cable", "usb-c", "charger", "accessory", "mobile"]
+  },
+  {
+    "name": "Laptop Backpack - 15.6 inch",
+    "description": "Durable laptop backpack with padded compartment for 15.6-inch laptops, multiple pockets, water-resistant material, and comfortable shoulder straps. Perfect for students and professionals.",
+    "shortDescription": "Durable laptop backpack with padded compartment and multiple pockets.",
+    "imageCover": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80",
+      "https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 110,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Size", "value": "15.6 inch" },
+          { "key": "Color", "value": "Black" }
+        ],
+        "price": 110,
+        "originalPrice": 140,
+        "stock": 85,
+        "sku": "EZS-BACKPACK-156-BLK",
+        "status": "active",
+        "weight": { "value": 600, "unit": "g" },
+        "dimensions": { "length": 40, "width": 30, "height": 15, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 600, "unit": "g" },
+      "dimensions": { "length": 40, "width": 30, "height": 15, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["backpack", "laptop", "bag", "school", "office"]
+  },
+  {
+    "name": "Wireless Mouse - Ergonomic",
+    "description": "Comfortable wireless mouse with ergonomic design, 2.4GHz connection, long battery life, and precise tracking. Compatible with Windows, Mac, and Linux. Perfect for office and home use.",
+    "shortDescription": "Ergonomic wireless mouse with 2.4GHz connection and long battery life.",
+    "imageCover": "https://images.unsplash.com/photo-1527814050087-3793815479db?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1527814050087-3793815479db?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 35,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Black" },
+          { "key": "Connection", "value": "Wireless" }
+        ],
+        "price": 35,
+        "stock": 200,
+        "sku": "EZS-MOUSE-WIRELESS-BLK",
+        "status": "active",
+        "weight": { "value": 80, "unit": "g" },
+        "dimensions": { "length": 11, "width": 6, "height": 4, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 80, "unit": "g" },
+      "dimensions": { "length": 11, "width": 6, "height": 4, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["mouse", "wireless", "computer", "accessory", "office"]
+  },
+  {
+    "name": "Tablet Stand - Adjustable",
+    "description": "Versatile adjustable tablet stand with 360-degree rotation, foldable design, and universal compatibility. Works with tablets, phones, and e-readers. Made from premium aluminum.",
+    "shortDescription": "Adjustable tablet stand with 360-degree rotation and foldable design.",
+    "imageCover": "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 40,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Silver" },
+          { "key": "Material", "value": "Aluminum" }
+        ],
+        "price": 40,
+        "stock": 95,
+        "sku": "EZS-TABLET-STAND-SLV",
+        "status": "active",
+        "weight": { "value": 250, "unit": "g" },
+        "dimensions": { "length": 20, "width": 15, "height": 10, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 250, "unit": "g" },
+      "dimensions": { "length": 20, "width": 15, "height": 10, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["tablet", "stand", "accessory", "aluminum", "office"]
+  },
+  {
+    "name": "HDMI Cable - 4K Ultra HD 2m",
+    "description": "Premium HDMI cable supporting 4K Ultra HD, HDR, and 3D video. 2-meter length, gold-plated connectors, and high-speed data transfer. Compatible with all HDMI devices.",
+    "shortDescription": "2m HDMI cable supporting 4K Ultra HD and HDR video.",
+    "imageCover": "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1591488320449-011701bb6704?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 30,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Length", "value": "2m" },
+          { "key": "Resolution", "value": "4K" }
+        ],
+        "price": 30,
+        "stock": 180,
+        "sku": "EZS-HDMI-2M-4K",
+        "status": "active",
+        "weight": { "value": 100, "unit": "g" },
+        "dimensions": { "length": 20, "width": 2, "height": 1, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 100, "unit": "g" },
+      "dimensions": { "length": 20, "width": 2, "height": 1, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["hdmi", "cable", "4k", "video", "electronics"]
+  },
+  {
+    "name": "Desk Lamp - LED Adjustable",
+    "description": "Modern LED desk lamp with adjustable brightness, color temperature control, and flexible gooseneck design. USB charging port, eye-care technology, and energy-efficient LED bulbs.",
+    "shortDescription": "LED desk lamp with adjustable brightness and color temperature control.",
+    "imageCover": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 65,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "White" },
+          { "key": "Type", "value": "LED" }
+        ],
+        "price": 65,
+        "stock": 110,
+        "sku": "EZS-LAMP-LED-WHT",
+        "status": "active",
+        "weight": { "value": 500, "unit": "g" },
+        "dimensions": { "length": 25, "width": 15, "height": 40, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 500, "unit": "g" },
+      "dimensions": { "length": 25, "width": 15, "height": 40, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["lamp", "led", "desk", "lighting", "office"]
+  },
+  {
+    "name": "Phone Mount - Car Dashboard",
+    "description": "Universal car phone mount with strong suction cup, 360-degree rotation, and one-hand operation. Compatible with all smartphones. Secure grip and easy installation.",
+    "shortDescription": "Universal car phone mount with suction cup and 360-degree rotation.",
+    "imageCover": "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=800&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=800&q=80"
+    ],
+    "brand": "EazShop",
+    "price": 28,
+    "status": "active",
+    "variants": [
+      {
+        "attributes": [
+          { "key": "Color", "value": "Black" },
+          { "key": "Type", "value": "Suction Cup" }
+        ],
+        "price": 28,
+        "stock": 150,
+        "sku": "EZS-PHONEMOUNT-CAR-BLK",
+        "status": "active",
+        "weight": { "value": 80, "unit": "g" },
+        "dimensions": { "length": 8, "width": 6, "height": 12, "unit": "cm" }
+      }
+    ],
+    "shipping": {
+      "weight": { "value": 80, "unit": "g" },
+      "dimensions": { "length": 8, "width": 6, "height": 12, "unit": "cm" },
+      "shippingClass": "standard"
+    },
+    "tags": ["phone mount", "car", "accessory", "mobile", "automotive"]
+  }
+]
+

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
-// const Category = require('./categoryModel');
-// const AppError = require('../../utils/errors/appError');
+// import Category from './categoryModel.js';
+// import AppError from '../../utils/errors/appError.js';
 
 const productSchema = new mongoose.Schema(
   {
@@ -9,6 +9,10 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Seller',
       required: true,
+    },
+    isEazShopProduct: {
+      type: Boolean,
+      default: false,
     },
     name: {
       type: String,
@@ -221,6 +225,11 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: ['new', 'used', 'refurbished', 'open_box', 'damaged', 'for_parts'],
       default: 'new',
+    },
+    shippingType: {
+      type: String,
+      enum: ['normal', 'heavy'],
+      default: 'normal',
     },
     tags: [
       {
@@ -485,6 +494,22 @@ productSchema.virtual('salePercentage').get(function () {
     ((variant.originalPrice - variant.price) / variant.originalPrice) * 100,
   );
 });
+
+// Tax calculation virtuals (Ghana GRA VAT-inclusive pricing)
+// Price entered by seller is VAT-inclusive (includes 15% VAT)
+productSchema.virtual('taxBreakdown').get(function () {
+  const taxService = require('../../services/tax/taxService');
+  const price = this.defaultPrice || 0;
+  return taxService.extractTaxFromPrice(price);
+});
+
+// Get base price before VAT for a specific variant
+productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
+  const taxService = require('../../services/tax/taxService');
+  const variant = this.variants?.[variantIndex];
+  if (!variant) return null;
+  return taxService.extractTaxFromPrice(variant.price || 0);
+};
 
 // Method to apply discounts to a product
 productSchema.methods.applyDiscounts = async function () {
@@ -761,4 +786,4 @@ productSchema.methods.getAvailableAttributes = function () {
 
 const Product = mongoose.model('Product', productSchema);
 
-module.exports = Product;
+module.exports = Product;;

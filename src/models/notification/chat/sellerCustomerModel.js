@@ -15,4 +15,4 @@ const sellerCustomerSchema = new Schema(
   },
 );
 
-module.exports = model('seller_customers', sellerCustomerSchema);
+module.exports = model('seller_customers', sellerCustomerSchema);;

@@ -1,7 +1,6 @@
 const express = require('express');
 
-const {
-  getAllUsers,
+const { getAllUsers,
   getUser,
   updateUser,
   deleteUser,
@@ -13,8 +12,7 @@ const {
   uploadUserPhoto,
   resizeUserPhoto,
   getProfile,
-  upLoadUserAvatar,
-} = require('../../controllers/buyer/userController');
+  upLoadUserAvatar, } = require('../../controllers/buyer/userController');
 const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
@@ -36,24 +34,29 @@ router.post('/reset-password', authController.resetPassword);
 router.get(
   '/profile',
   authController.protect,
-  authController.restrictTo('user'),
+  authController.restrictTo('user', 'admin'),
   getProfile,
 );
 
 router.patch(
   '/updatePassword',
   authController.protect,
-  authController.restrictTo('user'),
+  authController.restrictTo('user', 'admin'),
   authController.updatePassword,
 );
 // router.get('/me', getMe, getUser);
 
-router.use(authController.protect, authController.restrictTo('user'));
-router.patch('/updateMe', updateMe);
+// Routes that should be accessible to both users and admins
+router.patch(
+  '/updateMe',
+  authController.protect,
+  authController.restrictTo('user', 'admin'),
+  updateMe,
+);
 router.patch(
   '/avatar',
   authController.protect,
-  authController.restrictTo('user'),
+  authController.restrictTo('user', 'admin'),
   uploadUserPhoto,
   resizeUserPhoto,
   upLoadUserAvatar,
@@ -63,10 +66,15 @@ router.patch(
 router.delete(
   '/deleteMe',
   authController.protect,
-  authController.restrictTo('user'),
+  authController.restrictTo('user', 'admin'),
   deleteMe,
 );
-router.get('/me', getMe);
+router.get(
+  '/me',
+  authController.protect,
+  authController.restrictTo('user', 'admin'),
+  getMe,
+);
 
 router.get(
   '/get/count',
@@ -88,4 +96,4 @@ router
     deleteUser,
   );
 
-module.exports = router;
+module.exports = router;;

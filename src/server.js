@@ -29,13 +29,23 @@ class Server {
         process.env.HOST ||
         (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
 
-      const port = process.env.PORT || 4000;
+      const port = parseInt(process.env.PORT || 4000, 10);
+
+      // Validate port number
+      if (isNaN(port) || port < 1 || port > 65535) {
+        throw new Error(
+          `Invalid port number: ${process.env.PORT}. Port must be between 1 and 65535.`,
+        );
+      }
 
       this.server = app.listen(port, host, () => {
         console.log(
           `Server running in ${process.env.NODE_ENV || 'development'} mode`,
         );
         console.log(`Listening on http://${host}:${port}`);
+        console.log(
+          `Access locally at: http://localhost:${port} or http://127.0.0.1:${port}`,
+        );
 
         if (process.env.NODE_ENV === 'production') {
           console.log('Production server is ready');
@@ -45,9 +55,28 @@ class Server {
       // Handle server errors
       this.server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
-          console.error(`Port ${port} is already in use`);
+          console.error(`\n❌ Port ${port} is already in use`);
+          console.error(
+            `\nTo fix this, you can:\n  1. Stop the process using port ${port}\n  2. Use a different port by setting PORT environment variable\n  3. Find the process: lsof -i :${port}`,
+          );
+          console.error(
+            `\nSuggested alternative ports: ${port + 1}, ${port + 2}, 3000, 5000`,
+          );
+        } else if (error.code === 'EACCES') {
+          console.error(
+            `\n❌ Permission denied: Cannot bind to port ${port}`,
+          );
+          console.error(
+            `Ports below 1024 require root privileges. Use a port >= 1024 or run with sudo.`,
+          );
+        } else if (error.code === 'EADDRNOTAVAIL') {
+          console.error(
+            `\n❌ Address not available: Cannot bind to ${host}:${port}`,
+          );
+          console.error(`Check your HOST environment variable.`);
         } else {
-          console.error('Server error:', error.message);
+          console.error(`\n❌ Server error: ${error.message}`);
+          console.error(`Error code: ${error.code}`);
         }
         process.exit(1);
       });

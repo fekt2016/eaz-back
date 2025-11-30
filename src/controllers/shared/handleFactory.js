@@ -1,10 +1,9 @@
-const Product = require('../../models/product/productModel');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
-// const cloudinary = require('../../utils/storage/cloudinary');
-// const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
+// import cloudinary from '../../utils/storage/cloudinary.js';
+// import { uploadToCloudinary } from '../../utils/storage/cloudinary.js';
 
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
@@ -249,14 +248,14 @@ exports.getAll = (Model, popOptions) =>
 
     const meta = await features.getMeta();
 
-    if (!results || results.length === 0) {
-      return next(new AppError('No documents found', 404));
-    }
-
+    // Return empty array instead of error if no results found
+    // This allows pagination to work correctly even when there are no documents
     res.status(200).json({
       status: 'success',
-      results: results.length,
-      results,
+      results: results || [],
       meta,
     });
   });
+
+// Export all functions (already exported individually above)
+// Keep individual exports for backward compatibility

@@ -2,14 +2,13 @@ const express = require('express');
 const authController = require('../../controllers/buyer/authController');
 const reviewController = require('../../controllers/shared/reviewController');
 
-const {
-  getAllReview,
+const { getAllReview,
   getReview,
   createReview,
   updateReview,
   deleteReview,
   createUserReview,
-} = require('../../controllers/shared/reviewController');
+  replyToReview, } = require('../../controllers/shared/reviewController');
 
 const router = express.Router({ mergeParams: true });
 
@@ -31,6 +30,19 @@ router
     authController.restrictTo('user', 'admin'),
     reviewController.updateReview,
   )
-  .delete(reviewController.deleteReview);
+  .delete(
+    authController.protect,
+    authController.restrictTo('user', 'admin'),
+    reviewController.deleteReview,
+  );
 
-module.exports = router;
+// Seller reply to review
+router
+  .route('/:id/reply')
+  .post(
+    authController.protect,
+    authController.restrictTo('seller', 'admin'),
+    reviewController.replyToReview,
+  );
+
+module.exports = router;;

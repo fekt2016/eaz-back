@@ -1,7 +1,8 @@
-const { default: mongoose } = require('mongoose');
+const mongoose = require('mongoose');
 const Address = require('../../models/user/addressModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const { lookupDigitalAddress } = require('../../utils/helpers/digitalAddressHelper');
 
 // Get all addresses for current user
 exports.getAddresses = catchAsync(async (req, res, next) => {
@@ -23,6 +24,22 @@ exports.createAddress = catchAsync(async (req, res, next) => {
 
   try {
     const { isDefault, ...addressData } = req.body;
+    
+    // Normalize city to lowercase
+    if (addressData.city) {
+      addressData.city = addressData.city.toLowerCase().trim();
+    }
+    
+    // Normalize region to lowercase and handle "greater accra region" -> "greater accra"
+    if (addressData.region) {
+      const normalizedRegion = addressData.region.toLowerCase().trim();
+      if (normalizedRegion === 'greater accra region') {
+        addressData.region = 'greater accra';
+      } else {
+        addressData.region = normalizedRegion;
+      }
+    }
+    
     const address = new Address({
       user: userId,
       ...addressData,
@@ -36,6 +53,7 @@ exports.createAddress = catchAsync(async (req, res, next) => {
       address.isDefault = true;
     }
     await address.save();
+ 
 
     res
       .status(201)
@@ -46,32 +64,105 @@ exports.createAddress = catchAsync(async (req, res, next) => {
 });
 
 // Update address
-exports.updateAddress = catchAsync(async (req, res) => {
-  const { isDefault, id, ...updateData } = req.body;
+exports.updateAddress = catchAsync(async (req, res, next ) => {
+  const { isDefault, ...updateData } = req.body;
+  console.log("updateData received:", updateData);
+  console.log("address ID from params:", req.params.id);
+  
+  // Find address for this user
   const address = await Address.findOne({
     _id: req.params.id,
     user: req.user.id,
   });
 
   if (!address) {
-    return res
-      .status(404)
-      .json({ success: false, message: 'Address not found' });
+    return res.status(404).json({
+      success: false,
+      message: "Address not found"
+    });
   }
 
-  Object.assign(address, updateData);
-
-  if (isDefault) {
-    await Address.updateMany(
-      { user: req.user.id, _id: { $ne: req.params.id } },
-      { $set: { isDefault: false } },
-    );
-    address.isDefault = true;
+  // Normalize updateData before applying
+  const normalizedData = { ...updateData };
+  
+  // Normalize all string fields to lowercase (except special fields)
+  if (normalizedData.fullName) {
+    normalizedData.fullName = normalizedData.fullName.toLowerCase().trim();
+  }
+  if (normalizedData.streetAddress) {
+    normalizedData.streetAddress = normalizedData.streetAddress.toLowerCase().trim();
+  }
+  if (normalizedData.area) {
+    normalizedData.area = normalizedData.area.toLowerCase().trim();
+  }
+  if (normalizedData.landmark) {
+    normalizedData.landmark = normalizedData.landmark.toLowerCase().trim();
+  }
+  if (normalizedData.city) {
+    normalizedData.city = normalizedData.city.toLowerCase().trim();
+  }
+  if (normalizedData.region) {
+    const normalizedRegion = normalizedData.region.toLowerCase().trim();
+    // Handle "greater accra region" -> "greater accra"
+    if (normalizedRegion === 'greater accra region') {
+      normalizedData.region = 'greater accra';
+    } else {
+      normalizedData.region = normalizedRegion;
+    }
+  }
+  if (normalizedData.country) {
+    normalizedData.country = normalizedData.country.toLowerCase().trim();
+  }
+  if (normalizedData.additionalInformation) {
+    normalizedData.additionalInformation = normalizedData.additionalInformation.toLowerCase().trim();
+  }
+  
+  // Digital address should be uppercase
+  if (normalizedData.digitalAddress) {
+    normalizedData.digitalAddress = normalizedData.digitalAddress.toUpperCase().trim();
+  }
+  
+  // Contact phone should be trimmed only
+  if (normalizedData.contactPhone) {
+    normalizedData.contactPhone = normalizedData.contactPhone.trim();
   }
 
-  await address.save();
-  res.json({ success: true, message: 'Address updated', address });
+  // Apply normalized updates
+  Object.assign(address, normalizedData);
+
+  // 🛑 Handle default address switching
+  if (isDefault !== undefined) {
+    if (isDefault) {
+      await Address.updateMany(
+        { user: req.user.id, _id: { $ne: req.params.id } },
+        { $set: { isDefault: false } }
+      );
+      address.isDefault = true;
+    } else {
+      address.isDefault = false;
+    }
+  }
+
+  // Save the address
+  try {
+    await address.save();
+    console.log("Address saved successfully:", address);
+  } catch (error) {
+    console.error("Error saving address:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update address",
+      error: error.errors
+    });
+  }
+
+  res.json({
+    success: true,
+    message: "Address updated",
+    address
+  });
 });
+
 
 // Delete address
 exports.deleteAddress = catchAsync(async (req, res, next) => {
@@ -136,4 +227,66 @@ exports.getAddress = catchAsync(async (req, res, next) => {
   const address = await Address.findById(req.params.id);
   if (!address) next(new AppError('No address found', 404));
   res.json({ success: true, message: 'Address found', address });
+});
+
+/**
+ * Lookup digital address and return address details
+ * POST /api/v1/address/lookup-digital
+ */
+exports.lookupDigitalAddress = catchAsync(async (req, res, next) => {
+  const { digitalAddress } = req.body;
+
+  if (!digitalAddress) {
+    return next(new AppError('Digital address is required', 400));
+  }
+
+  try {
+    const addressDetails = await lookupDigitalAddress(digitalAddress);
+    res.status(200).json({
+      status: 'success',
+      data: addressDetails,
+    });
+  } catch (error) {
+    return next(new AppError(error.message, 400));
+  }
+});
+
+/**
+ * Create address with zone information
+ * POST /api/v1/address/create
+ */
+exports.createAddressWithZone = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  const { isDefault, zone, ...addressData } = req.body;
+
+  try {
+    const address = new Address({
+      user: userId,
+      ...addressData,
+    });
+
+    if (isDefault) {
+      await Address.updateMany(
+        { user: req.user.id },
+        { $set: { isDefault: false } },
+      );
+      address.isDefault = true;
+    }
+
+    await address.save();
+
+    // Return address with zone info
+    const addressWithZone = address.toObject();
+    if (zone) {
+      addressWithZone.zone = zone;
+    }
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Address created successfully',
+      data: { address: addressWithZone },
+    });
+  } catch (error) {
+    return next(new AppError(error.message, 400));
+  }
 });

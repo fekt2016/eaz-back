@@ -19,4 +19,4 @@ router.route('/clear-all').delete(historyController.clearMyHistory);
 
 router.route('/multiple').delete(historyController.deleteMultipleHistoryItems);
 
-module.exports = router;
+module.exports = router;;

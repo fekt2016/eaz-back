@@ -93,11 +93,7 @@ const couponSchema = new mongoose.Schema({
   updatedAt: Date,
 });
 
-// Indexes for faster queries
-couponSchema.index({ seller: 1 });
-// couponSchema.index({ 'coupons.code': 1 }, { unique: true });
-couponSchema.index({ expiresAt: 1 });
-couponSchema.index({ validFrom: 1 });
+
 
 // Middleware to update timestamps
 couponSchema.pre('save', function (next) {
@@ -267,4 +263,4 @@ couponSchema.statics.markCouponAsUsed = async function (
 };
 
 const CouponBatch = mongoose.model('CouponBatch', couponSchema);
-module.exports = CouponBatch;
+module.exports = CouponBatch;;

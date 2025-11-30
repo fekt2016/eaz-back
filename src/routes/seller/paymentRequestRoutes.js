@@ -1,28 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const paymentRequestController = require('../../controllers/seller/paymentRequestController');
+const paymentController = require('../../controllers/shared/paymentController');
 const authController = require('../../controllers/buyer/authController');
+const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
-// Seller routes
+// Seller routes (no verification required - sellers can withdraw even if not fully verified)
 router.post(
   '/',
   authController.protect,
   authController.restrictTo('seller'),
-  paymentRequestController.createPaymentRequest,
+  paymentController.createPaymentRequest,
 );
 
 router.get(
   '/',
   authController.protect,
   authController.restrictTo('seller'),
-  paymentRequestController.getSellerRequests,
+  paymentController.getSellerRequests,
 );
 
 router.get(
   '/:id',
   authController.protect,
   authController.restrictTo('seller'),
-  paymentRequestController.getRequestById,
+  paymentController.getRequestById,
+);
+
+// Delete payment request (seller only) - must be before admin routes to avoid conflicts
+router.delete(
+  '/:id',
+  authController.protect,
+  authController.restrictTo('seller'),
+  paymentController.deletePaymentRequest,
 );
 
 // Admin routes
@@ -30,14 +39,21 @@ router.get(
   '/admin/pending',
   authController.protect,
   authController.restrictTo('admin'),
-  paymentRequestController.getPendingRequests,
+  paymentController.getPendingRequests,
+);
+
+router.get(
+  '/admin/:id',
+  authController.protect,
+  authController.restrictTo('admin'),
+  paymentController.getPaymentRequestByIdAdmin,
 );
 
 router.put(
   '/admin/:id/process',
   authController.protect,
   authController.restrictTo('admin'),
-  paymentRequestController.processPaymentRequest,
+  paymentController.processPaymentRequest,
 );
 
-module.exports = router;
+module.exports = router;;

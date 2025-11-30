@@ -12,10 +12,10 @@ const dataExportQueue = new Queue('data exports', {
 });
 
 // Export the queue for adding jobs
-module.exports = dataExportQueue;
+module.exports = dataExportQueue;;
 
 // Export initialization function that takes cloudinary
-module.exports.initializeProcessor = (cloudinary) => {
+exports.initializeProcessor = (cloudinary) => {
   // Process jobs with concurrency control
   dataExportQueue.process(3, async (job) => {
     return processDataExportJob(job, cloudinary);

@@ -1,7 +1,7 @@
 // // utils/anonymizeUser.js
-// const User = require('../../models/user/userModel');
+// import User from '../../models/user/userModel.js';
 
-// module.exports = async (userId) => {
+// export default async (userId) => {
 //   try {
 //     const anonymizedEmail = `deleted-${userId}@example.com`;
 
@@ -31,7 +31,7 @@ const User = require('../../models/user/userModel');
 const Order = require('../../models/order/orderModel');
 const Review = require('../../models/product/reviewModel');
 
-module.exports = async (userId) => {
+module.exports = async (userId) => {;
   try {
     const anonymizedId = `deleted_${crypto.randomBytes(8).toString('hex')}`;
     const anonymizedEmail = `${anonymizedId}@deleted.example`;

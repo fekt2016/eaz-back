@@ -88,4 +88,4 @@ class APIFeature {
   }
 }
 
-module.exports = APIFeature;
+module.exports = APIFeature;;

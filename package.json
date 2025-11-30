@@ -6,7 +6,12 @@
   "scripts": {
     "start:dev": "NODE_ENV=development nodemon src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
-    "debug": "ndb src/server.js"
+    "debug": "ndb src/server.js",
+        "seed:pickup-centers": "node scripts/seedPickupCenters.js",
+        "update-neighborhood-locations": "node src/scripts/fetchCoordinatesForNeighborhoods.js",
+        "seed:shipping-zones": "node src/seed/shippingZones.seed.js",
+        "reset:revenue": "node scripts/reset-revenue.js",
+        "reset:admin-revenue-only": "node scripts/reset-admin-revenue-only.js"
   },
   "keywords": [
     "shop",
@@ -22,6 +27,7 @@
     "@bull-board/express": "^6.12.0",
     "@bull-board/ui": "^6.12.0",
     "@cloudinary/url-builder": "^0.2.0-beta",
+    "@sendgrid/mail": "^8.1.6",
     "archiver": "^5.3.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",

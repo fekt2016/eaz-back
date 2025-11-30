@@ -1,6 +1,8 @@
 // utils/cloudinary.js
 const stream = require('stream');
-const { v2: cloudinary } = require('cloudinary');
+const cloudinaryPackage = require('cloudinary');
+
+const cloudinary = cloudinaryPackage.v2;
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

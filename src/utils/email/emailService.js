@@ -1,169 +1,118 @@
-const nodemailer = require('nodemailer');
+/**
+ * Email Service - SendGrid Only
+ * 
+ * This service uses SendGrid exclusively for all email operations.
+ * SendGrid must be configured with SENDGRID_API_KEY environment variable.
+ */
 
-// Create reusable transporter
-const createTransport = () => {
-  return nodemailer.createTransport({
-    host: process.env.MAILTRAP_HOST,
-    port: process.env.MAILTRAP_PORT,
-    auth: {
-      user: process.env.MAILTRAP_USER,
-      pass: process.env.MAILTRAP_PASSWORD,
-    },
-    authMethod: 'PLAIN',
+// Brand Configuration (configurable via environment variables)
+const BRAND_CONFIG = {
+  name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
+  tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
+  url: process.env.FRONTEND_URL || 'https://eazworld.com',
+  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@eazworld.com',
+  fromName: process.env.EMAIL_FROM_NAME || 'EazShop',
+};
+
+let sendGridService = null;
+
+// Initialize SendGrid service
+try {
+  sendGridService = require('./sendGridService');
+  console.log('[EmailService] ✅ SendGrid email service loaded');
+} catch (error) {
+  console.error('[EmailService] ❌ Failed to load SendGrid service:', error.message);
+  throw new Error('SendGrid email service is required but failed to load. Please ensure @sendgrid/mail is installed.');
+}
+
+// Validate SendGrid configuration
+if (!process.env.SENDGRID_API_KEY) {
+  console.error('[EmailService] ❌ SENDGRID_API_KEY not set in environment variables!');
+  throw new Error('SENDGRID_API_KEY is required. Please set it in your environment variables.');
+}
+
+// Log brand configuration
+console.log(`[EmailService] 📧 Brand: ${BRAND_CONFIG.name} | URL: ${BRAND_CONFIG.url}`);
+
+
+const sendEmail = async (data) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+
+  return sendGridService.sendEmail({
+    to: data.email || data.to,
+    subject: data.subject,
+    text: data.message || data.text,
+    html: data.html,
+    from: data.from,
+    fromName: data.fromName,
+    cc: data.cc,
+    bcc: data.bcc,
   });
 };
 
-// Core email sending function
-const sendEmail = async (data) => {
-  console.log('data', data);
-  const mailOptions = {
-    from: `Yussif Faisal <${process.env.EMAIL_FROM}>`,
-    to: data.email,
-    subject: data.subject,
-    text: data.message,
-  };
 
-  await createTransport().sendMail(mailOptions);
+const sendWelcomeEmail = async (email, name) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendWelcomeEmail(email, name);
 };
 
-// Specific email functions
-const sendWelcomeEmail = (email) => {
-  return sendEmail(email, 'Welcome', 'Welcome to eaz-world shop');
-};
 
 const sendCustomEmail = async (data) => {
-  return sendEmail(data);
-};
-
-// ... existing email functions ...
-
-// const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt) => {
-//   const formattedDate = new Date(expiresAt).toLocaleString();
-
-//   const mailOptions = {
-//     from: `"Your App" <${process.env.EMAIL_FROM}>`,
-//     to: toEmail,
-//     subject: 'Your Data Export is Ready',
-//     html: `
-//       <h1>Your Data is Ready for Download</h1>
-//       <p>We've prepared your personal data export as requested.</p>
-//       <p><a href="${downloadUrl}">Download your data</a></p>
-//       <p><strong>Important:</strong> This link will expire on ${formattedDate}</p>
-//       <p>If you didn't request this, please contact our support team.</p>
-//     `,
-//   };
-
-//   await transporter.sendMail(mailOptions);
-// };
-
-const sendAccountDeletionConfirmation = async (toEmail) => {
-  const mailOptions = {
-    from: `"Your App" <${process.env.EMAIL_FROM}>`,
-    to: toEmail,
-    subject: 'Account Deletion Completed',
-    html: `
-      <h1>Your Account Has Been Deleted</h1>
-      <p>We've completed your account deletion request as scheduled.</p>
-      <p>All personal data has been permanently removed from our systems in accordance with our privacy policy.</p>
-      <p>If you didn't request this, please contact our support team immediately.</p>
-    `,
-  };
-
-  await createTransport().sendMail(mailOptions);
-};
-
-const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt) => {
-  try {
-    // Format expiration date
-    const formattedExpires = new Date(expiresAt).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short',
-    });
-
-    // Create email content
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
-          .content { padding: 30px; background-color: #ffffff; }
-          .button { 
-            display: inline-block; 
-            padding: 12px 24px; 
-            background-color: #007bff; 
-            color: white !important; 
-            text-decoration: none; 
-            border-radius: 4px; 
-            margin: 20px 0;
-          }
-          .footer { 
-            margin-top: 30px; 
-            padding-top: 20px; 
-            border-top: 1px solid #eaeaea; 
-            color: #6c757d; 
-            font-size: 0.9em;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h2>Your Data Export is Ready</h2>
-          </div>
-          
-          <div class="content">
-            <p>Hello,</p>
-            <p>We've prepared your personal data export as requested.</p>
-            
-            <p>
-              <a href="${downloadUrl}" class="button">Download Your Data</a>
-            </p>
-            
-            <p><strong>Important:</strong> 
-              This download link will expire on <strong>${formattedExpires}</strong>. 
-              Please download your data before this time.
-            </p>
-            
-            <p>If you didn't request this export, please contact our support team immediately.</p>
-          </div>
-          
-          <div class="footer">
-            <p>Best regards,<br>The Privacy Team</p>
-            <p>© ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const mailOptions = {
-      from: `"Privacy Team" <${process.env.EMAIL_FROM}>`,
-      to: toEmail,
-      subject: 'Your Data Export is Ready',
-      html: htmlContent,
-      text: `Your data export is ready for download: ${downloadUrl}\nThis link expires on ${formattedExpires}`,
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`Data ready email sent to ${toEmail}`);
-    return true;
-  } catch (error) {
-    console.error('Email send error:', error);
-    throw new Error('Failed to send data ready email');
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
   }
+  return sendGridService.sendCustomEmail(data);
+};
+
+
+const sendAccountDeletionConfirmation = async (toEmail, name) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendAccountDeletionConfirmation(toEmail, name);
+};
+
+const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt, name) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendDataReadyEmail(toEmail, downloadUrl, expiresAt, name);
+};
+
+
+const sendLoginEmail = async (toEmail, name, loginInfo) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendLoginEmail(toEmail, name, loginInfo);
+};
+
+
+const sendLoginOtpEmail = async (toEmail, otp, name) => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendLoginOtpEmail(toEmail, otp, name);
 };
 
 module.exports = {
+  sendEmail,
   sendWelcomeEmail,
   sendCustomEmail,
   sendAccountDeletionConfirmation,
   sendDataReadyEmail,
-  sendDataReadyEmail,
+  sendLoginEmail,
+  sendLoginOtpEmail,
+  // Export SendGrid service directly
+  get sendGridService() {
+    return sendGridService;
+  },
+  // Export brand configuration
+  get brandConfig() {
+    return BRAND_CONFIG;
+  },
 };

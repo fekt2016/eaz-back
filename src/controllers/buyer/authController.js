@@ -9,19 +9,21 @@ const Seller = require('../../models/user/sellerModel');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
-const { sendCustomEmail } = require('../../utils/email/emailService');
+const { sendCustomEmail, sendLoginEmail, sendLoginOtpEmail } = require('../../utils/email/emailService');
 const { createSendToken } = require('../../utils/helpers/createSendToken');
 const { validateGhanaPhone } = require('../../utils/helpers/helper');
 const bcrypt = require('bcryptjs');
-const {
-  isPublicRoute,
+const sanitizePath = require('../../utils/helpers/sanitizePath');
+const { isPublicRoute,
   isTokenBlacklisted,
   matchRoutePattern,
   escapeRegex,
   findUserByToken,
   extractToken,
-  verifyToken,
-} = require('../../utils/helpers/routeUtils');
+  verifyToken, } = require('../../utils/helpers/routeUtils');
+const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
+const securityMonitor = require('../../services/securityMonitor');
+const ActivityLog = require('../../models/activityLog/activityLogModel');
 
 // Initialize route cache (5 minutes TTL)
 
@@ -43,6 +45,11 @@ const publicRoutes = [
   { path: '/api/v1/admin/register', methods: ['POST'] },
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
   { path: '/api/v1/seller/login', methods: ['POST'] },
+  { path: '/api/v1/seller/register', methods: ['POST'] },
+  { path: '/api/v1/seller/signup', methods: ['POST'] },
+  { path: '/api/v1/seller/send-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/verify-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/forgotPassword', methods: ['POST'] },
   { path: '/api/v1/search', methods: ['GET'] },
   { path: '/api/v1/discount', methods: ['GET'] },
   { path: '/api/v1/newsletter', methods: ['POST'] },
@@ -208,18 +215,30 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
+  console.log('otp', otp);
+
+  // Send OTP via email using SendGrid
+  if (validator.isEmail(loginId)) {
+    try {
+      await sendLoginOtpEmail(user.email, otp, user.name);
+      console.log(`[Auth] Login OTP email sent to ${user.email}`);
+    } catch (error) {
+      console.error('[Auth] Failed to send login OTP email:', error.message);
+      // Don't fail the request if email fails, OTP is still generated
+    }
+  }
 
   res.status(200).json({
     status: 'success',
     message: 'OTP sent to your email or phone!',
-    otp,
+    otp, // Remove in production - only for development
   });
 });
 
 exports.verifyOtp = catchAsync(async (req, res, next) => {
   try {
-    const { loginId, otp, password } = req.body;
-    console.log(loginId, otp, password);
+    const { loginId, otp, password, redirectTo } = req.body;
+    console.log('[verifyOtp] Request received:', { loginId, otp: otp ? '***' : 'missing', password: password ? '***' : 'missing' });
 
     if (!loginId || !otp || !password) {
       return next(
@@ -244,20 +263,132 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     user = await query;
 
     if (!user) {
+      console.log('[verifyOtp] User not found for:', loginId);
       return next(
         new AppError('No user found with that email or phone number', 404),
       );
     }
 
-    // Verify OTP
-    if (!user.verifyOtp(otp)) {
-      return next(new AppError('OTP is invalid or has expired', 401));
+    console.log('[verifyOtp] User found:', { id: user._id, email: user.email, phone: user.phone, hasOtp: !!user.otp, otpExpires: user.otpExpires });
+
+    // Verify OTP - normalize input (trim and remove non-digits)
+    const otpString = String(otp || '').trim().replace(/\D/g, '');
+    
+    if (!otpString || otpString.length === 0) {
+      return next(new AppError('Please provide a valid OTP code', 400));
     }
-    // console.log('1', user.password, password);
+    
+    const otpValid = user.verifyOtp(otpString);
+    
+    console.log('[verifyOtp] OTP verification details:', {
+      providedOtp: otpString,
+      providedOtpOriginal: otp,
+      storedOtp: user.otp,
+      storedOtpType: typeof user.otp,
+      providedType: typeof otp,
+      otpExpires: user.otpExpires ? new Date(user.otpExpires).toISOString() : 'N/A',
+      currentTime: new Date().toISOString(),
+      isExpired: user.otpExpires ? user.otpExpires <= Date.now() : true,
+      isValid: otpValid,
+    });
+    
+    if (!otpValid) {
+      // Provide more specific error message
+      let errorMessage = 'OTP is invalid or has expired';
+      const now = Date.now();
+      const expiresAt = user.otpExpires ? new Date(user.otpExpires).getTime() : null;
+      
+      if (!user.otp) {
+        errorMessage = 'No OTP found. Please request a new OTP.';
+        console.log('[verifyOtp] Error: No OTP stored for user');
+      } else if (!expiresAt) {
+        errorMessage = 'OTP expiration time is missing. Please request a new OTP.';
+        console.log('[verifyOtp] Error: OTP expiration time missing');
+      } else if (expiresAt <= now) {
+        const minutesExpired = Math.floor((now - expiresAt) / (1000 * 60));
+        errorMessage = `OTP has expired ${minutesExpired} minute(s) ago. Please request a new OTP.`;
+        console.log('[verifyOtp] Error: OTP expired', { expiresAt: new Date(expiresAt).toISOString(), now: new Date(now).toISOString(), minutesExpired });
+      } else {
+        // OTP exists and not expired, but doesn't match
+        errorMessage = 'Invalid OTP code. Please check and try again.';
+        console.log('[verifyOtp] Error: OTP mismatch', {
+          storedOtpLength: String(user.otp || '').length,
+          providedOtpLength: otpString.length,
+        });
+      }
+      
+      return next(new AppError(errorMessage, 401));
+    }
+    
     // Verify password
-    if (!(await user.correctPassword(password))) {
-      console.log('Incorrect password');
+    const passwordValid = await user.correctPassword(password);
+    console.log('[verifyOtp] Password verification result:', passwordValid);
+    
+    if (!passwordValid) {
+      console.log('[verifyOtp] Password validation failed');
       return next(new AppError('Incorrect password', 401));
+    }
+
+    // Capture IP and device
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    // Security monitoring
+    const ipChange = await securityMonitor.detectIPChange(user, ipAddress, 'buyer');
+    const deviceChange = await securityMonitor.detectDeviceChange(user, userAgent, 'buyer');
+    const multipleIps = await securityMonitor.detectMultipleIps(user, 'buyer');
+    const geoMismatch = await securityMonitor.detectGeoMismatch(user, ipAddress, 'buyer');
+    const location = await securityMonitor.getIpLocation(ipAddress);
+
+    // Compute risk level
+    const riskLevel = securityMonitor.computeRiskLevel({
+      ipChanged: ipChange.changed,
+      deviceChanged: deviceChange.changed,
+      multipleIps: multipleIps.multipleIps,
+      geoMismatch: geoMismatch.mismatch,
+    });
+
+    // Log IP change if detected
+    if (ipChange.changed) {
+      await ActivityLog.create({
+        userId: user._id,
+        userModel: 'User',
+        role: 'buyer',
+        action: 'IP_CHANGE',
+        description: `IP address changed from ${ipChange.previousIp} to ${ipChange.currentIp}`,
+        activityType: 'IP_CHANGE',
+        ipAddress: ipChange.currentIp,
+        previousIp: ipChange.previousIp,
+        userAgent,
+        location,
+        riskLevel: 'medium',
+        platform: 'eazmain',
+        metadata: {
+          previousIp: ipChange.previousIp,
+          currentIp: ipChange.currentIp,
+        },
+      });
+    }
+
+    // Log device change if detected
+    if (deviceChange.changed) {
+      await ActivityLog.create({
+        userId: user._id,
+        userModel: 'User',
+        role: 'buyer',
+        action: 'DEVICE_CHANGE',
+        description: `Device changed from ${deviceChange.previousDevice?.substring(0, 50)} to ${deviceChange.currentDevice?.substring(0, 50)}`,
+        activityType: 'DEVICE_CHANGE',
+        ipAddress,
+        userAgent: deviceChange.currentDevice,
+        location,
+        riskLevel: 'medium',
+        platform: 'eazmain',
+        metadata: {
+          previousDevice: deviceChange.previousDevice,
+          currentDevice: deviceChange.currentDevice,
+        },
+      });
     }
 
     // Clear OTP and update last login
@@ -266,16 +397,148 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
     console.log('2', user);
-    createSendToken(user, 200, res);
+
+    // Log login activity with security info
+    const loginLog = await ActivityLog.create({
+      userId: user._id,
+      userModel: 'User',
+      role: 'buyer',
+      action: 'LOGIN',
+      description: `User logged in via OTP`,
+      activityType: 'LOGIN',
+      ipAddress,
+      previousIp: ipChange.previousIp || null,
+      userAgent,
+      location,
+      riskLevel,
+      platform: 'eazmain',
+      metadata: {
+        ipChanged: ipChange.changed,
+        deviceChanged: deviceChange.changed,
+        multipleIps: multipleIps.multipleIps,
+        ipCount: multipleIps.ipCount,
+      },
+    });
+
+    // Trigger security alert if risk is high or critical
+    if (riskLevel === 'high' || riskLevel === 'critical') {
+      await securityMonitor.triggerSecurityAlert(user, loginLog, 'buyer');
+    }
+
+    // Check if critical risk requires force logout
+    if (riskLevel === 'critical') {
+      console.warn(`[User Login] CRITICAL RISK detected for user ${user.email || user.phone}. Login allowed but logged.`);
+    }
+
+    // Send login notification email using SendGrid
+    if (user.email) {
+      try {
+        const loginInfo = {
+          ip: ipAddress,
+          device: userAgent,
+          location: location || 'Unknown location',
+        };
+        await sendLoginEmail(user.email, user.name, loginInfo);
+        console.log(`[Auth] Login notification email sent to ${user.email}`);
+      } catch (error) {
+        console.error('[Auth] Failed to send login notification email:', error.message);
+        // Don't fail the login if email fails
+      }
+    }
+
+    // Sanitize redirect path
+    const sanitizedRedirectTo = sanitizePath(redirectTo, '/');
+    console.log(`[Auth] Redirect path: ${redirectTo} -> ${sanitizedRedirectTo}`);
+
+    // Create token manually (same logic as createSendToken)
+    // Default to 90 days if JWT_EXPIRES_IN is not set
+    const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
+    const signToken = (id, role) => {
+      return jwt.sign({ id: id, role: role }, process.env.JWT_SECRET, {
+        expiresIn: expiresIn,
+      });
+    };
+
+    const token = signToken(user._id, user.role);
+    
+    // Set cookie (same as createSendToken)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isProduction, // true in production, false in development
+      sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
+      path: '/', // Available on all paths
+      expires: new Date(
+        Date.now() +
+          (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
+      ),
+      // Set domain for production to allow cookie sharing across subdomains
+      // Only set in production, leave undefined in development (localhost)
+      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    };
+
+    res.cookie('eazmain_jwt', token, cookieOptions);
+    console.log(`[Auth] JWT cookie set (eazmain_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
+
+    // Remove sensitive data
+    user.password = undefined;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+
+    // Create safe user payload
+    const safeUserPayload = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      lastLogin: user.lastLogin,
+    };
+
+    // Log activity
+    logActivityAsync({
+      userId: user._id,
+      role: 'buyer',
+      action: 'LOGIN',
+      description: `User logged in via OTP verification`,
+      req,
+    });
+
+    // Return JSON with token and redirectTo (frontend handles navigation)
+    res.status(200).json({
+      status: 'success',
+      message: 'OTP verified',
+      token,
+      user: safeUserPayload,
+      redirectTo: sanitizedRedirectTo,
+    });
   } catch (error) {
     console.error('Verify OTP error:', error);
   }
 });
 
 exports.logout = catchAsync(async (req, res, next) => {
-  res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000),
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // Log activity if user is authenticated
+  if (req.user) {
+    logActivityAsync({
+      userId: req.user._id || req.user.id,
+      role: 'buyer',
+      action: 'LOGOUT',
+      description: `User logged out`,
+      req,
+    });
+  }
+  
+  // Clear JWT cookie with same settings as creation
+  res.cookie('eazmain_jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000), // Expire immediately (10 seconds)
     httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
   });
   res.status(200).json({ status: 'success' });
 });
@@ -289,14 +552,46 @@ exports.protect = catchAsync(async (req, res, next) => {
     console.log(`Allowing ${method} access to ${fullPath} (public route)`);
     return next();
   }
-  // Extract token
-  const token = extractToken(req.headers.authorization);
-
+  // Extract token from Authorization header or cookie
+  // Priority: 1) Authorization header, 2) Cookie
+  let token = extractToken(req.headers.authorization);
+  
+  // Fallback to cookie if Authorization header is missing
+  // Check for app-specific cookie based on route path
+  // IMPORTANT: Each app (eazmain, eazseller, eazadmin) uses its own cookie
+  // Note: /api/v1/paymentrequest is used by sellers, so it should use eazseller_jwt
+  const cookieName = fullPath.startsWith('/api/v1/seller') ? 'eazseller_jwt' :
+                     fullPath.startsWith('/api/v1/admin') ? 'eazadmin_jwt' :
+                     fullPath.startsWith('/api/v1/paymentrequest') ? 'eazseller_jwt' : // Payment requests are seller routes
+                     'eazmain_jwt'; // Default to buyer/eazmain
+  
+  // Security: For seller routes, ONLY accept eazseller_jwt, never eazmain_jwt
+  if (fullPath.startsWith('/api/v1/seller') || fullPath.startsWith('/api/v1/paymentrequest')) {
+    // Explicitly check for eazseller_jwt only
+    if (req.cookies && req.cookies.eazmain_jwt) {
+      console.warn(`[Auth] ⚠️ SECURITY: Seller route detected eazmain_jwt cookie - ignoring it. Route: ${fullPath}`);
+      // Don't use eazmain_jwt for seller routes - this prevents cross-app authentication
+    }
+  }
+  
   if (!token) {
-    console.log(`No token found for protected route: ${method} ${fullPath}`);
-    return next(
-      new AppError('You are not logged in! Please log in to get access.', 401),
-    );
+    if (req.cookies && req.cookies[cookieName]) {
+      token = req.cookies[cookieName];
+      console.log(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
+    } else {
+      // Debug: Log cookie information
+      console.log(`[Auth] ❌ No token found for protected route: ${method} ${fullPath}`);
+      console.log(`[Auth] Authorization header: ${req.headers.authorization ? 'present' : 'missing'}`);
+      console.log(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
+      console.log(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
+      // Log all cookies for debugging (but don't log values for security)
+      console.log(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
+      return next(
+        new AppError('You are not logged in! Please log in to get access.', 401),
+      );
+    }
+  } else {
+    console.log(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
   }
   const blacklisted = await TokenBlacklist.findOne({ token });
   // Check token blacklist
@@ -342,12 +637,27 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
-    console.log(req.user.role);
-    if (!req.user?.role || !roles.includes(req.user.role)) {
+    // Ensure req.user exists
+    if (!req.user) {
+      console.error(`[restrictTo] ❌ No user found in request. Path: ${req.path}, Method: ${req.method}`);
       return next(
-        new AppError('You do not have permission to perform this action', 403),
+        new AppError('You are not authenticated. Please log in to get access.', 401),
       );
     }
+    
+    // Get role from user object, fallback to 'user' if not set
+    const userRole = req.user.role || 'user';
+    
+    console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}`);
+    
+    if (!roles.includes(userRole)) {
+      console.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, User ID: ${req.user.id}`);
+      return next(
+        new AppError(`You do not have permission to perform this action. Required role: ${roles.join(' or ')}, Your role: ${userRole}`, 403),
+      );
+    }
+    
+    console.log(`[restrictTo] ✅ Permission granted - User role: ${userRole} matches required roles`);
     next();
   };
 };
@@ -382,18 +692,10 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
 
     await user.save();
 
-    // Send OTP via email or SMS
+    // Send OTP via email or SMS using SendGrid
     if (isEmail) {
-      await sendCustomEmail({
-        email: user.email,
-        subject: 'Password Reset Code',
-        message: `
-          <h2>Password Reset Request</h2>
-          <p>Your password reset code is: <strong>${otp}</strong></p>
-          <p>This code will expire in 10 minutes.</p>
-          <p>If you didn't request this, please ignore this email.</p>
-        `,
-      });
+      await sendLoginOtpEmail(user.email, otp, user.name);
+      console.log(`[Auth] Password reset OTP email sent to ${user.email}`);
     } else {
       await sendSMS({
         to: user.phone,
@@ -559,7 +861,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
 
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, res, null, 'eazmain_jwt');
 });
 
 exports.emailVerification = catchAsync(async (req, res, next) => {

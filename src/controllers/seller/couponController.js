@@ -135,10 +135,7 @@ exports.deleteCouponBatch = catchAsync(async (req, res, next) => {
     return next(new AppError('Coupon batch not found', 404));
   }
 
-  res.status(204).json({
-    status: 'success',
-    data: null,
-  });
+  res.status(204).json({ data: null, status: 'success' });
 });
 
 exports.applyCoupon = catchAsync(async (req, res, next) => {

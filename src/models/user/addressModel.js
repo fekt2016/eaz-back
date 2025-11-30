@@ -19,6 +19,14 @@ const addressSchema = new mongoose.Schema(
       trim: true,
       maxlength: 200,
     },
+    area: {
+      type: String,
+      trim: true,
+      maxlength: 100,
+      default: '',
+      // This field represents the neighborhood/area name (e.g., "Nima", "Cantonments", "Tema Community 1")
+      // Used for shipping zone calculation
+    },
     landmark: {
       type: String,
       trim: true,
@@ -29,47 +37,49 @@ const addressSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      enum: [
-        'Accra',
-        'Kumasi',
-        'Tamale',
-        'Sekondi-Takoradi',
-        'Ashaiman',
-        'Sunyani',
-        'Cape Coast',
-        'Obuasi',
-        'Teshie',
-        'Tema',
-        'Madina',
-        'Koforidua',
-        'Wa',
-        'Ho',
-        'Bolgatanga',
-        'Techiman',
-        'Nkawkaw',
-      ],
+      lowercase: true,
+      enum: ['accra', 'tema'],
+      validate: {
+        validator: function(v) {
+          return ['accra', 'tema'].includes(v.toLowerCase());
+        },
+        message: 'EazShop currently delivers only in Accra and Tema.',
+      },
     },
     region: {
       type: String,
       required: true,
+      trim: true,
+      lowercase: true,
       enum: [
-        'Greater Accra',
-        'Ashanti',
-        'Western',
-        'Central',
-        'Eastern',
-        'Volta',
-        'Northern',
-        'Upper East',
-        'Upper West',
-        'Bono',
-        'Ahafo',
-        'Bono East',
-        'Oti',
-        'Savannah',
-        'North East',
-        'Western North',
+        'greater accra',
+        'ashanti',
+        'western',
+        'central',
+        'eastern',
+        'volta',
+        'northern',
+        'upper east',
+        'upper west',
+        'bono',
+        'ahafo',
+        'bono east',
+        'oti',
+        'savannah',
+        'north east',
+        'western north',
       ],
+      validate: {
+        validator: function(v) {
+          // Ensure it's "greater accra" not "greater accra region"
+          const normalized = v.toLowerCase().trim();
+          if (normalized === 'greater accra region') {
+            return false;
+          }
+          return this.constructor.schema.path('region').enumValues.includes(normalized);
+        },
+        message: 'Invalid region. Use "greater accra" (not "greater accra region").',
+      },
     },
     digitalAddress: {
       type: String,
@@ -143,7 +153,11 @@ const addressSchema = new mongoose.Schema(
 
 // Virtual for full address string
 addressSchema.virtual('fullAddress').get(function () {
-  return `${this.streetAddress}, ${this.landmark ? this.landmark + ', ' : ''}${this.city}, ${this.region}, Ghana`;
+  const parts = [this.streetAddress];
+  if (this.area) parts.push(this.area);
+  if (this.landmark) parts.push(this.landmark);
+  parts.push(this.city, this.region, 'Ghana');
+  return parts.join(', ');
 });
 
 // Pre-save hook to handle default address logic
@@ -163,10 +177,4 @@ addressSchema.pre('save', async function (next) {
   next();
 });
 
-// Indexes for faster queries
-addressSchema.index({ user: 1 });
-addressSchema.index({ region: 1 });
-addressSchema.index({ city: 1 });
-addressSchema.index({ isDefault: 1 });
-
-module.exports = mongoose.model('Address', addressSchema);
+module.exports = mongoose.model('Address', addressSchema);;

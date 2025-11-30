@@ -56,4 +56,4 @@ const shippingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model('Shipping', shippingSchema);
+module.exports = mongoose.model('Shipping', shippingSchema);;

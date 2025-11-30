@@ -1,14 +1,12 @@
 const express = require('express');
-const {
-  getAllCategories,
+const { getAllCategories,
   createCategory,
   getCategory,
   updateCategory,
   uploadCategoryImage,
   resizeCategoryImages,
   deleteCategory,
-  getParentCategories,
-} = require('../../controllers/shared/categoryController');
+  getParentCategories, } = require('../../controllers/shared/categoryController');
 const authController = require('../../controllers/buyer/authController');
 const router = express.Router();
 
@@ -16,8 +14,7 @@ router.get('/parents', getParentCategories);
 router
   .route('/')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    // Make categories publicly accessible for browsing
     getAllCategories,
   )
   .post(
@@ -27,7 +24,7 @@ router
     resizeCategoryImages,
     createCategory,
   );
-(router
+router
   .route('/:id')
   .get(
     // authController.protect,
@@ -45,5 +42,6 @@ router
     authController.protect,
     authController.restrictTo('admin'),
     deleteCategory,
-  ),
-  (module.exports = router));
+  );
+
+module.exports = router;;

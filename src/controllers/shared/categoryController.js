@@ -1,12 +1,13 @@
 const Category = require('../../models/category/categoryModel');
 const handleFactory = require('../shared/handleFactory');
 const multer = require('multer');
-const multerStorage = multer.memoryStorage();
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
-// const cloudinary = require('../../utils/storage/cloudinary');
 const stream = require('stream');
-const cloudinary = require('cloudinary').v2;
+const cloudinary = require('cloudinary');
+const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+
+const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
@@ -99,6 +100,114 @@ exports.getParentCategories = catchAsync(async (req, res, next) => {
 });
 exports.getAllCategories = handleFactory.getAll(Category);
 exports.getCategory = handleFactory.getOne(Category, { path: 'subcategories' });
-exports.createCategory = handleFactory.createOne(Category);
-exports.updateCategory = handleFactory.updateOne(Category);
-exports.deleteCategory = handleFactory.deleteOne(Category);
+// Wrapper functions with activity logging
+exports.createCategory = catchAsync(async (req, res, next) => {
+  const createHandler = handleFactory.createOne(Category);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let categoryCreated = null;
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    if (data?.doc) {
+      categoryCreated = data.doc;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await createHandler(req, res, next);
+  
+  // Log activity after creation
+  if (categoryCreated && req.user) {
+    const role = req.user.role === 'admin' ? 'admin' : 'seller';
+    logActivityAsync({
+      userId: req.user.id,
+      role,
+      action: 'CREATE_CATEGORY',
+      description: `${role === 'admin' ? 'Admin' : 'Seller'} created category: ${categoryCreated.name || 'Unknown'}`,
+      req,
+      metadata: { categoryId: categoryCreated._id },
+    });
+  }
+});
+
+exports.updateCategory = catchAsync(async (req, res, next) => {
+  const updateHandler = handleFactory.updateOne(Category);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let categoryUpdated = null;
+  let oldCategory = null;
+  
+  // Get old category data before update
+  if (req.params.id) {
+    oldCategory = await Category.findById(req.params.id);
+  }
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    if (data?.doc) {
+      categoryUpdated = data.doc;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await updateHandler(req, res, next);
+  
+  // Log activity after update
+  if (categoryUpdated && req.user) {
+    const role = req.user.role === 'admin' ? 'admin' : 'seller';
+    const changes = [];
+    if (oldCategory && categoryUpdated.name !== oldCategory.name) {
+      changes.push(`name from "${oldCategory.name}" to "${categoryUpdated.name}"`);
+    }
+    const changeDesc = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+    
+    logActivityAsync({
+      userId: req.user.id,
+      role,
+      action: 'UPDATE_CATEGORY',
+      description: `${role === 'admin' ? 'Admin' : 'Seller'} updated category: ${categoryUpdated.name || 'Unknown'}${changeDesc}`,
+      req,
+      metadata: { categoryId: categoryUpdated._id },
+    });
+  }
+});
+
+exports.deleteCategory = catchAsync(async (req, res, next) => {
+  // Get category before deletion
+  const categoryToDelete = await Category.findById(req.params.id);
+  
+  const deleteHandler = handleFactory.deleteOne(Category);
+  
+  // Store original json method
+  const originalJson = res.json.bind(res);
+  let deleted = false;
+  
+  // Override res.json to intercept response
+  res.json = function(data) {
+    if (data?.status === 'success') {
+      deleted = true;
+    }
+    originalJson(data);
+  };
+  
+  // Call the factory handler
+  await deleteHandler(req, res, next);
+  
+  // Log activity after deletion
+  if (deleted && categoryToDelete && req.user) {
+    const role = req.user.role === 'admin' ? 'admin' : 'seller';
+    logActivityAsync({
+      userId: req.user.id,
+      role,
+      action: 'DELETE_CATEGORY',
+      description: `${role === 'admin' ? 'Admin' : 'Seller'} deleted category: ${categoryToDelete.name || 'Unknown'}`,
+      req,
+      metadata: { categoryId: categoryToDelete._id },
+    });
+  }
+});

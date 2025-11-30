@@ -151,4 +151,4 @@ discountSchema.index({ endDate: 1 });
 discountSchema.index({ startDate: 1 });
 
 const Discount = mongoose.model('Discount', discountSchema);
-module.exports = Discount;
+module.exports = Discount;;

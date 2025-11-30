@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
     },
-    role: { type: String, enum: ['user'], default: 'user' },
+    role: { type: String, enum: ['user', 'seller', 'admin', 'driver', 'eazshop_store'], default: 'user' },
     address: String,
 
     passwordChangedAt: { type: Date, default: Date.now() },
@@ -255,16 +255,84 @@ userSchema.methods.createPasswordResetToken = function () {
   return resetToken;
 };
 userSchema.methods.createOtp = function () {
-  // Generate 6-digit OTP
+  // Generate 6-digit OTP and ensure it's stored as a string
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = otp;
+  this.otp = String(otp).trim(); // Ensure it's a string and trim any whitespace
   this.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiration
+  console.log('[createOtp] Generated OTP:', { otp: this.otp, expires: new Date(this.otpExpires).toISOString() });
   return otp;
 };
 
 // Add OTP verification method
 userSchema.methods.verifyOtp = function (candidateOtp) {
-  return this.otp === candidateOtp && this.otpExpires > Date.now();
+  // Check if OTP exists
+  if (!this.otp) {
+    console.log('[verifyOtp] No OTP stored for user');
+    return false;
+  }
+  
+  // Check if OTP has expired
+  if (!this.otpExpires) {
+    console.log('[verifyOtp] No expiration time set for OTP');
+    return false;
+  }
+  
+  const now = Date.now();
+  const expiresAt = new Date(this.otpExpires).getTime();
+  
+  if (expiresAt <= now) {
+    console.log('[verifyOtp] OTP expired:', {
+      expires: new Date(expiresAt).toISOString(),
+      current: new Date(now).toISOString(),
+      expired: expiresAt <= now,
+      timeDiff: now - expiresAt,
+    });
+    return false;
+  }
+  
+  // Convert both to strings and normalize (trim whitespace, remove any non-digit characters)
+  // Handle both string and number types
+  let storedOtp = String(this.otp || '').trim();
+  let providedOtp = String(candidateOtp || '').trim();
+  
+  // Remove any non-digit characters (in case OTP was formatted with spaces or dashes)
+  storedOtp = storedOtp.replace(/\D/g, '');
+  providedOtp = providedOtp.replace(/\D/g, '');
+  
+  // Ensure both are 6 digits (pad with zeros if needed, though this shouldn't happen)
+  if (storedOtp.length !== 6) {
+    console.log('[verifyOtp] Stored OTP has invalid length:', storedOtp.length);
+  }
+  
+  if (providedOtp.length === 0) {
+    console.log('[verifyOtp] Provided OTP is empty after normalization');
+    return false;
+  }
+  
+  // Compare OTPs (both normalized as digit-only strings)
+  const otpMatch = storedOtp === providedOtp;
+  
+  if (!otpMatch) {
+    console.log('[verifyOtp] OTP mismatch:', {
+      stored: storedOtp,
+      provided: providedOtp,
+      storedOriginal: this.otp,
+      providedOriginal: candidateOtp,
+      storedType: typeof this.otp,
+      providedType: typeof candidateOtp,
+      storedLength: storedOtp.length,
+      providedLength: providedOtp.length,
+      storedIsString: typeof storedOtp === 'string',
+      providedIsString: typeof providedOtp === 'string',
+    });
+  } else {
+    console.log('[verifyOtp] OTP match successful:', {
+      stored: storedOtp,
+      provided: providedOtp,
+    });
+  }
+  
+  return otpMatch;
 };
 
 //password methods
@@ -359,4 +427,4 @@ userSchema.methods.createEmailVerificationToken = function () {
 
 const User = mongoose.model('User', userSchema);
 
-module.exports = User;
+module.exports = User;;
