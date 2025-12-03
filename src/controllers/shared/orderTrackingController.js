@@ -147,14 +147,46 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     }
   }
 
-  // If order is being refunded, revert seller balances
+  // If order is being refunded, revert seller balances and refund buyer wallet
   if (status === 'refunded' && wasCompleted) {
     try {
+      // Revert seller balances
       const reversalResult = await orderService.revertSellerBalancesOnRefund(
         orderId,
         'Order Refunded'
       );
       console.log('[updateOrderStatus] Seller balance reversal result:', reversalResult);
+
+      // Refund buyer wallet if order was paid with wallet
+      if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
+        try {
+          const walletService = require('../../services/walletService');
+          const refundAmount = order.totalPrice || 0;
+          const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+
+          if (refundAmount > 0) {
+            const refundResult = await walletService.creditWallet(
+              order.user,
+              refundAmount,
+              'CREDIT_REFUND',
+              `Refund for Order #${order.orderNumber}`,
+              reference,
+              {
+                orderId: order._id.toString(),
+                orderNumber: order.orderNumber,
+                refundedBy: user.id,
+                refundedByRole: user.role,
+              },
+              order._id
+            );
+
+            console.log(`[updateOrderStatus] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+          }
+        } catch (walletError) {
+          console.error('[updateOrderStatus] Error refunding wallet:', walletError);
+          // Don't fail the order update if wallet refund fails
+        }
+      }
     } catch (error) {
       // Log error but don't fail the status update
       console.error('[updateOrderStatus] Error reverting seller balances:', error);
@@ -562,14 +594,46 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     }
   }
 
-  // If order is being refunded, revert seller balances
+  // If order is being refunded, revert seller balances and refund buyer wallet
   if (status === 'refunded' && wasCompleted) {
     try {
+      // Revert seller balances
       const reversalResult = await orderService.revertSellerBalancesOnRefund(
         id,
         'Order Refunded'
       );
       console.log('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
+
+      // Refund buyer wallet if order was paid with wallet
+      if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
+        try {
+          const walletService = require('../../services/walletService');
+          const refundAmount = order.totalPrice || 0;
+          const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+
+          if (refundAmount > 0) {
+            const refundResult = await walletService.creditWallet(
+              order.user,
+              refundAmount,
+              'CREDIT_REFUND',
+              `Refund for Order #${order.orderNumber}`,
+              reference,
+              {
+                orderId: order._id.toString(),
+                orderNumber: order.orderNumber,
+                refundedBy: user.id,
+                refundedByRole: user.role,
+              },
+              order._id
+            );
+
+            console.log(`[addTrackingUpdate] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+          }
+        } catch (walletError) {
+          console.error('[addTrackingUpdate] Error refunding wallet:', walletError);
+          // Don't fail the order update if wallet refund fails
+        }
+      }
     } catch (error) {
       // Log error but don't fail the status update
       console.error('[addTrackingUpdate] Error reverting seller balances:', error);

@@ -144,7 +144,64 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
     console.warn(`[Admin Login] CRITICAL RISK detected for admin ${admin.email}. Login allowed but logged.`);
   }
 
-  createSendToken(admin, 200, res, null, 'eazadmin_jwt');
+  // Create device session and generate tokens
+  const { createDeviceSession } = require('../../utils/helpers/createDeviceSession');
+  let sessionData;
+  try {
+    console.log('[Admin Auth] Creating device session for admin:', admin._id);
+    sessionData = await createDeviceSession(req, admin, 'eazadmin');
+    console.log('[Admin Auth] Device session created successfully:', sessionData?.deviceId);
+  } catch (deviceError) {
+    // If device limit exceeded, return error
+      // If device limit exceeded, return error (only in production)
+      if (process.env.NODE_ENV === 'production' && deviceError.message && deviceError.message.includes('Too many devices')) {
+        return next(new AppError(deviceError.message, 403));
+      }
+    // For other errors, log and continue without device session (fallback)
+    console.error('[Admin Auth] ❌ Error creating device session:', deviceError.message || deviceError);
+    console.error('[Admin Auth] Error stack:', deviceError.stack);
+    sessionData = null;
+  }
+
+  // Use createSendToken - pass null for req to avoid creating duplicate device session
+  // since we already created it above
+  try {
+    // If sessionData exists, use the deviceId from it, otherwise let createSendToken create one
+    if (sessionData) {
+      // Create token with existing deviceId
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign(
+        { id: admin._id, role: admin.role, deviceId: sessionData.deviceId },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '90d' }
+      );
+      
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.cookie('eazadmin_jwt', token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
+        expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000),
+        ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+      });
+
+      admin.password = undefined;
+      res.status(200).json({
+        status: 'success',
+        token,
+        deviceId: sessionData.deviceId,
+        refreshToken: sessionData.refreshToken,
+        data: { user: admin },
+      });
+    } else {
+      // Fallback: create token without device session
+      await createSendToken(admin, 200, res, null, 'eazadmin_jwt', null, null);
+    }
+  } catch (error) {
+    console.error('[Admin Auth] Error in token creation:', error);
+    createSendToken(admin, 200, res, null, 'eazadmin_jwt');
+  }
 });
 
 exports.signupUser = catchAsync(async (req, res, next) => {

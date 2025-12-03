@@ -8,6 +8,8 @@ const taxController = require('../../controllers/admin/taxController');
 const platformSettingsController = require('../../controllers/admin/platformSettingsController');
 const adminAuditLogController = require('../../controllers/admin/adminAuditLogController');
 const analyticsController = require('../../controllers/admin/analyticsController');
+const sessionManagementController = require('../../controllers/admin/sessionManagementController');
+const historyController = require('../../controllers/admin/historyController');
 const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
@@ -127,6 +129,55 @@ router
     statsController.resetRevenueOnly
   );
 
+// Device Session Management Routes - MUST come before /:id route
+router
+  .route('/sessions')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.getAllSessions
+  );
+
+router
+  .route('/sessions/suspicious')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.getSuspiciousLogins
+  );
+
+router
+  .route('/sessions/cleanup-logs')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.getCleanupLogs
+  );
+
+router
+  .route('/sessions/logout-device/:deviceId')
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.forceLogoutDevice
+  );
+
+router
+  .route('/sessions/user/:userId')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.getUserSessions
+  );
+
+router
+  .route('/sessions/logout-user/:userId')
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin'),
+    sessionManagementController.forceLogoutUser
+  );
+
 // Admin Audit Logs Routes - MUST come before /:id route
 router
   .route('/audit-logs')
@@ -158,24 +209,6 @@ router
     authController.protect,
     authController.restrictTo('admin', 'superadmin', 'moderator'),
     adminAuditLogController.getAdminAuditLog
-  );
-
-router
-  .route('/:id')
-  .get(
-    authController.protect,
-    authController.restrictTo('admin'),
-    adminController.getAdmin,
-  )
-  .patch(
-    authController.protect,
-    authController.restrictTo('admin'),
-    adminController.updateAdmin,
-  )
-  .delete(
-    authController.protect,
-    authController.restrictTo('admin'),
-    adminController.deleteAdmin,
   );
 
 // Shipping Configuration Routes
@@ -333,6 +366,67 @@ router
     authController.protect,
     authController.restrictTo('admin', 'superadmin', 'moderator'),
     analyticsController.getInventoryAnalytics
+  );
+
+// Balance History Management Routes
+router
+  .route('/wallet-history')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    historyController.getAllWalletHistory
+  );
+
+router
+  .route('/wallet-history/:userId')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    historyController.getUserWalletHistory
+  );
+
+router
+  .route('/revenue-history')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    historyController.getAllSellerRevenueHistory
+  );
+
+router
+  .route('/revenue-history/:sellerId')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    historyController.getSellerRevenueHistory
+  );
+
+router
+  .route('/history/stats')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    historyController.getHistoryStats
+  );
+
+// Generic /:id route - MUST be last to avoid matching specific routes like /wallet-history
+// This route handles GET, PATCH, DELETE for individual admin records
+router
+  .route('/:id')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    adminController.getAdmin,
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    adminController.updateAdmin,
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    adminController.deleteAdmin,
   );
 
 module.exports = router;

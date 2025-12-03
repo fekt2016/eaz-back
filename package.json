@@ -7,11 +7,12 @@
     "start:dev": "NODE_ENV=development nodemon src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
     "debug": "ndb src/server.js",
-        "seed:pickup-centers": "node scripts/seedPickupCenters.js",
-        "update-neighborhood-locations": "node src/scripts/fetchCoordinatesForNeighborhoods.js",
-        "seed:shipping-zones": "node src/seed/shippingZones.seed.js",
-        "reset:revenue": "node scripts/reset-revenue.js",
-        "reset:admin-revenue-only": "node scripts/reset-admin-revenue-only.js"
+    "seed:pickup-centers": "node scripts/seedPickupCenters.js",
+    "update-neighborhood-locations": "node src/scripts/fetchCoordinatesForNeighborhoods.js",
+    "seed:shipping-zones": "node src/seed/shippingZones.seed.js",
+    "reset:revenue": "node scripts/reset-revenue.js",
+    "reset:admin-revenue-only": "node scripts/reset-admin-revenue-only.js",
+    "seed:seller-products": "node src/scripts/seedSellerProducts.js"
   },
   "keywords": [
     "shop",
@@ -53,9 +54,11 @@
     "multer": "^1.4.5-lts.1",
     "nanoid": "^3.3.11",
     "node-cache": "^5.1.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "sharp": "^0.33.5",
     "slugify": "^1.6.6",
+    "ua-parser-js": "^2.0.6",
     "uuid": "^11.1.0",
     "validator": "^13.12.0",
     "xss-clean": "^0.1.4"

@@ -102,10 +102,20 @@ const userSchema = new mongoose.Schema(
     },
     otp: {
       type: String,
-      select: false,
+      select: false, // Hashed OTP stored here
     },
     otpExpires: {
       type: Date,
+      select: false,
+    },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    otpLockedUntil: {
+      type: Date,
+      default: null,
       select: false,
     },
     otpType: String,
@@ -114,6 +124,10 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
     emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    phoneVerified: {
       type: Boolean,
       default: false,
     },
@@ -255,84 +269,83 @@ userSchema.methods.createPasswordResetToken = function () {
   return resetToken;
 };
 userSchema.methods.createOtp = function () {
-  // Generate 6-digit OTP and ensure it's stored as a string
+  const crypto = require('crypto');
+  // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = String(otp).trim(); // Ensure it's a string and trim any whitespace
-  this.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiration
-  console.log('[createOtp] Generated OTP:', { otp: this.otp, expires: new Date(this.otpExpires).toISOString() });
+  
+  // Hash OTP before storing (SHA-256)
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+  
+  // Store hashed OTP
+  this.otp = hashedOtp;
+  this.otpExpires = Date.now() + (process.env.OTP_EXPIRES_IN || 10) * 60 * 1000; // 10 minutes default
+  this.otpAttempts = 0; // Reset attempts on new OTP
+  this.otpLockedUntil = null; // Clear lockout
+  
+  console.log('[createOtp] Generated OTP (hashed):', { 
+    expires: new Date(this.otpExpires).toISOString(),
+    expiresIn: process.env.OTP_EXPIRES_IN || 10 
+  });
+  
+  // Return plain OTP for sending (not hashed)
   return otp;
 };
 
-// Add OTP verification method
+// Add OTP verification method with hashing
 userSchema.methods.verifyOtp = function (candidateOtp) {
+  const crypto = require('crypto');
+  
+  // Check if account is locked
+  if (this.otpLockedUntil && new Date(this.otpLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil((new Date(this.otpLockedUntil).getTime() - Date.now()) / (1000 * 60));
+    console.log('[verifyOtp] Account locked:', { minutesRemaining });
+    return { valid: false, locked: true, minutesRemaining };
+  }
+  
   // Check if OTP exists
   if (!this.otp) {
     console.log('[verifyOtp] No OTP stored for user');
-    return false;
+    return { valid: false, reason: 'no_otp' };
   }
   
   // Check if OTP has expired
   if (!this.otpExpires) {
     console.log('[verifyOtp] No expiration time set for OTP');
-    return false;
+    return { valid: false, reason: 'no_expiry' };
   }
   
   const now = Date.now();
   const expiresAt = new Date(this.otpExpires).getTime();
   
   if (expiresAt <= now) {
-    console.log('[verifyOtp] OTP expired:', {
-      expires: new Date(expiresAt).toISOString(),
-      current: new Date(now).toISOString(),
-      expired: expiresAt <= now,
-      timeDiff: now - expiresAt,
-    });
-    return false;
+    const minutesExpired = Math.floor((now - expiresAt) / (1000 * 60));
+    console.log('[verifyOtp] OTP expired:', { minutesExpired });
+    return { valid: false, reason: 'expired', minutesExpired };
   }
   
-  // Convert both to strings and normalize (trim whitespace, remove any non-digit characters)
-  // Handle both string and number types
-  let storedOtp = String(this.otp || '').trim();
-  let providedOtp = String(candidateOtp || '').trim();
+  // Normalize candidate OTP (remove non-digits)
+  const providedOtp = String(candidateOtp || '').trim().replace(/\D/g, '');
   
-  // Remove any non-digit characters (in case OTP was formatted with spaces or dashes)
-  storedOtp = storedOtp.replace(/\D/g, '');
-  providedOtp = providedOtp.replace(/\D/g, '');
-  
-  // Ensure both are 6 digits (pad with zeros if needed, though this shouldn't happen)
-  if (storedOtp.length !== 6) {
-    console.log('[verifyOtp] Stored OTP has invalid length:', storedOtp.length);
+  if (providedOtp.length === 0 || providedOtp.length !== 6) {
+    console.log('[verifyOtp] Invalid OTP format:', { length: providedOtp.length });
+    return { valid: false, reason: 'invalid_format' };
   }
   
-  if (providedOtp.length === 0) {
-    console.log('[verifyOtp] Provided OTP is empty after normalization');
-    return false;
-  }
-  
-  // Compare OTPs (both normalized as digit-only strings)
-  const otpMatch = storedOtp === providedOtp;
+  // Hash candidate OTP and compare with stored hash
+  const hashedCandidate = crypto.createHash('sha256').update(providedOtp).digest('hex');
+  const otpMatch = this.otp === hashedCandidate;
   
   if (!otpMatch) {
-    console.log('[verifyOtp] OTP mismatch:', {
-      stored: storedOtp,
-      provided: providedOtp,
-      storedOriginal: this.otp,
-      providedOriginal: candidateOtp,
-      storedType: typeof this.otp,
-      providedType: typeof candidateOtp,
-      storedLength: storedOtp.length,
-      providedLength: providedOtp.length,
-      storedIsString: typeof storedOtp === 'string',
-      providedIsString: typeof providedOtp === 'string',
-    });
-  } else {
-    console.log('[verifyOtp] OTP match successful:', {
-      stored: storedOtp,
-      provided: providedOtp,
-    });
+    console.log('[verifyOtp] OTP mismatch');
+    return { valid: false, reason: 'mismatch' };
   }
   
-  return otpMatch;
+  // OTP is valid - reset attempts and lockout
+  this.otpAttempts = 0;
+  this.otpLockedUntil = null;
+  
+  console.log('[verifyOtp] OTP verified successfully');
+  return { valid: true };
 };
 
 //password methods

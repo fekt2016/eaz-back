@@ -218,10 +218,21 @@ exports.setDefaultAddress = async (req, res) => {
 exports.getUserAddresses = catchAsync(async (req, res, next) => {
   const userId = new mongoose.Types.ObjectId(req.user.id);
   const addresses = await Address.find({ user: userId });
-  if (!addresses) next(new AppError('No address found', 404));
-  res
-    .status(200)
-    .json({ status: 'success', message: 'Address found', data: { addresses } });
+  
+  // Address.find() always returns an array, so check length instead
+  if (!addresses || addresses.length === 0) {
+    return res.status(200).json({ 
+      status: 'success', 
+      message: 'No addresses found', 
+      data: { addresses: [] } 
+    });
+  }
+  
+  res.status(200).json({ 
+    status: 'success', 
+    message: 'Addresses found', 
+    data: { addresses } 
+  });
 });
 exports.getAddress = catchAsync(async (req, res, next) => {
   const address = await Address.findById(req.params.id);

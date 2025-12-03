@@ -379,6 +379,16 @@ const productSchema = new mongoose.Schema(
         _id: false,
       },
     ],
+    // AI Embedding for semantic search and recommendations
+    embedding: {
+      type: [Number],
+      default: null,
+      select: false, // Don't include in default queries (large array)
+    },
+    embeddingUpdatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     toJSON: { virtuals: true },

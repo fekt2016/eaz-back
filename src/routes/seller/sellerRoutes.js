@@ -4,21 +4,27 @@ const authSellerController = require('../../controllers/seller/authSellerControl
 const onboardingController = require('../../controllers/seller/onboardingController');
 const balanceController = require('../../controllers/seller/balanceController');
 const sellerAnalyticsController = require('../../controllers/seller/sellerAnalyticsController');
+const sellerRefundController = require('../../controllers/seller/refundController');
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
 const authController = require('../../controllers/buyer/authController');
 const { resizeImage, uploadProfileImage } = require('../../middleware/upload/multer');
 
+const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+
 const router = express.Router();
 router.post('/signup', authSellerController.signupSeller);
 router.post('/login', authSellerController.loginSeller);
-router.post('/send-otp', authSellerController.sendOtp);
-router.post('/verify-otp', authSellerController.verifyOtp);
+router.post('/send-otp', otpLimiter, authSellerController.sendOtp);
+router.post('/verify-otp', otpLimiter, authSellerController.verifyOtp); // ✅ Add rate limiting
+router.post('/verify-account', otpLimiter, authSellerController.verifyEmail); // ✅ New account verification endpoint
+router.post('/resend-otp', otpLimiter, authSellerController.resendOtp); // ✅ New resend OTP endpoint
 router.post('/forgotPassword', authSellerController.forgotPassword);
 router.patch('/resetPassword/:token', authSellerController.resetPassword);
 router.post('/logout', authSellerController.logout);
 
 router.route('/public/featured').get(sellerControllor.getFeaturedSellers);
+router.route('/public/best-sellers').get(sellerControllor.getBestSellers);
 router.route('/public/:id').get(sellerControllor.getPublicSeller);
 router.route('/profile/:id').get(sellerControllor.getSeller);
 //protected routes
@@ -50,11 +56,13 @@ router.patch(
 router.post(
   '/send-verification-email',
   authController.restrictTo('seller'),
+  otpLimiter,
   authSellerController.sendEmailVerificationOtp
 );
 router.post(
   '/verify-email',
   authController.restrictTo('seller'),
+  otpLimiter,
   authSellerController.verifyEmail
 );
 
@@ -75,6 +83,16 @@ router.get(
   authController.restrictTo('seller'),
   balanceController.getSellerTransactions
 );
+router.get(
+  '/me/revenue-history',
+  authController.restrictTo('seller'),
+  balanceController.getSellerRevenueHistory
+);
+router.get(
+  '/me/balance-history',
+  authController.restrictTo('seller'),
+  balanceController.getSellerRevenueHistory
+); // Alias for revenue-history
 router.get(
   '/me/earnings',
   authController.restrictTo('seller'),
@@ -145,6 +163,31 @@ router.get(
   '/analytics/performance',
   authController.restrictTo('seller'),
   sellerAnalyticsController.getSellerPerformanceScore
+);
+
+// Seller Refund Review Routes
+router.get(
+  '/refunds',
+  authController.restrictTo('seller'),
+  sellerRefundController.getSellerRefunds
+);
+
+router.get(
+  '/refunds/:refundId',
+  authController.restrictTo('seller'),
+  sellerRefundController.getSellerRefundById
+);
+
+router.post(
+  '/refunds/:refundId/approve-return',
+  authController.restrictTo('seller'),
+  sellerRefundController.approveReturn
+);
+
+router.post(
+  '/refunds/:refundId/reject-return',
+  authController.restrictTo('seller'),
+  sellerRefundController.rejectReturn
 );
 
 router.delete(

@@ -33,7 +33,7 @@ const transactionSchema = new mongoose.Schema(
     },
     payoutRequest: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'PayoutRequest',
+      ref: 'PaymentRequest',
       required: false,
     },
     metadata: {

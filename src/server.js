@@ -138,6 +138,15 @@ class Server {
   async initialize() {
     try {
       await connectDatabase();
+      
+      // Initialize cron jobs after database connection (only in production)
+      require('./cron/tokenCleanup');
+      if (process.env.NODE_ENV === 'production') {
+        console.log('✅ Cron jobs initialized');
+      } else {
+        console.log('⚠️  Cron jobs disabled in development mode');
+      }
+      
       await this.startServer();
     } catch (error) {
       console.error('Failed to initialize application:', error.message);

@@ -1,5 +1,6 @@
 const Creditbalance = require('../../models/user/creditbalanceModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 
 // Get user's credit balance
@@ -30,31 +31,39 @@ exports.getCreditBalance = catchAsync(async (req, res, next) => {
   });
 });
 
-// Add credit to user's account
+// Add credit to user's account (Admin adjustment - uses walletService)
 exports.addCredit = catchAsync(async (req, res, next) => {
   const { amount, description, reference, user } = req.body;
 
+  if (!amount || amount <= 0) {
+    return next(new AppError('Invalid amount', 400));
+  }
+
   const userId = new mongoose.Types.ObjectId(user);
-  const creditbalance = await Creditbalance.findOneAndUpdate(
-    { user: userId },
+  const walletService = require('../../services/walletService');
+  
+  const finalReference = reference || `ADMIN-ADJUST-${userId}-${Date.now()}`;
+  const finalDescription = description || `Admin credit adjustment`;
+
+  // Use walletService for proper transaction logging
+  const result = await walletService.creditWallet(
+    userId,
+    amount,
+    'CREDIT_ADJUSTMENT',
+    finalDescription,
+    finalReference,
     {
-      $inc: { balance: amount },
-      $push: {
-        transactions: {
-          amount,
-          type: 'topup',
-          description,
-          reference,
-        },
-      },
-      $set: { lastUpdated: Date.now() },
-    },
-    { new: true, upsert: true },
+      adjustedBy: req.user.id,
+      adjustedByRole: req.user.role,
+    }
   );
 
   res.json({
     status: 'success',
-    data: { creditbalance },
+    data: {
+      creditbalance: result.wallet,
+      transaction: result.transaction,
+    },
   });
 });
 

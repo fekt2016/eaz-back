@@ -22,6 +22,7 @@ const {
   getOrderByTrackingNumber,
   addTrackingUpdate,
 } = require('../../controllers/shared/orderTrackingController');
+const { requestRefund, getRefundStatus } = require('../../controllers/buyer/refundController');
 
 const authController = require('../../controllers/buyer/authController');
 
@@ -129,6 +130,21 @@ router.post(
   authController.protect,
   authController.restrictTo('admin', 'seller'),
   addTrackingUpdate
+);
+
+// Refund Request Routes (buyer only)
+router.post(
+  '/:orderId/request-refund',
+  authController.protect,
+  authController.restrictTo('user'),
+  requestRefund
+);
+
+router.get(
+  '/:orderId/refund-status',
+  authController.protect,
+  authController.restrictTo('user'),
+  getRefundStatus
 );
 
 router

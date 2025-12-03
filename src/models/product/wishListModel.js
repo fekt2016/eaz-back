@@ -35,7 +35,13 @@ const wishlistSchema = new mongoose.Schema(
 );
 
 // Sparse unique index on user - allows multiple null values but ensures one wishlist per user
+wishlistSchema.index({ user: 1 }, { unique: true, sparse: true });
 
+// Sparse unique index on sessionId - allows multiple null values but ensures one wishlist per session
+wishlistSchema.index({ sessionId: 1 }, { unique: true, sparse: true });
+
+// Index on products.product for faster lookups
+wishlistSchema.index({ 'products.product': 1 });
 
 // Virtual for product count
 wishlistSchema.virtual('productCount').get(function () {

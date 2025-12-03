@@ -2,6 +2,8 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Seller = require('../../models/user/sellerModel');
 const Transaction = require('../../models/transaction/transactionModel');
+const SellerRevenueHistory = require('../../models/history/sellerRevenueHistoryModel');
+const PaymentRequest = require('../../models/payment/paymentRequestModel');
 const mongoose = require('mongoose');
 
 /**
@@ -32,18 +34,49 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     console.log(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
   }
 
+  // Calculate total withdrawals (sum of all paid/approved withdrawal requests)
+  // Use amountRequested if available (the actual amount that left the account), otherwise use amount
+  const totalWithdrawals = await PaymentRequest.aggregate([
+    {
+      $match: {
+        seller: new mongoose.Types.ObjectId(sellerId),
+        status: { $in: ['paid', 'approved', 'success'] }, // Only count successful withdrawals
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { 
+          $sum: { 
+            $ifNull: ['$amountRequested', '$amount'] // Use amountRequested if available, fallback to amount
+          } 
+        },
+      },
+    },
+  ]);
+
+  const totalWithdrawn = totalWithdrawals.length > 0 ? totalWithdrawals[0].total : 0;
+
+  // Calculate total revenue: balance (current) + totalWithdrawn (all time)
+  // This represents all earnings from delivered orders
+  const totalRevenue = (seller.balance || 0) + (totalWithdrawn || 0);
+
   res.status(200).json({
     status: 'success',
     data: {
-      balance: seller.balance || 0, // Total balance
+      balance: seller.balance || 0, // Total balance from seller model (current available + locked + pending)
       lockedBalance: seller.lockedBalance || 0, // Funds locked by admin due to disputes/issues
       pendingBalance: seller.pendingBalance || 0, // Funds in withdrawal requests awaiting approval/OTP
-      withdrawableBalance: seller.withdrawableBalance || 0, // Available balance
+      withdrawableBalance: seller.withdrawableBalance || 0, // Available balance (can be withdrawn)
       availableBalance: seller.withdrawableBalance || 0, // Alias for backward compatibility
+      totalWithdrawn: totalWithdrawn || 0, // Total amount withdrawn by seller (all time)
+      totalRevenue: totalRevenue || 0, // Total revenue = balance + totalWithdrawn (all earnings from delivered orders)
       seller: {
         name: seller.name,
         shopName: seller.shopName,
       },
+      // Verification: totalRevenue = balance + totalWithdrawn
+      // Verification: balance = withdrawableBalance + lockedBalance + pendingBalance
     },
   });
 });
@@ -202,6 +235,109 @@ exports.getSellerEarningsByOrder = catchAsync(async (req, res, next) => {
     status: 'success',
     data: {
       earnings: transaction,
+    },
+  });
+});
+
+/**
+ * Get seller balance/revenue history
+ * GET /api/v1/seller/me/revenue-history
+ * Tracks all balance changes with balanceBefore and balanceAfter
+ */
+exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
+  const sellerId = req.user.id; // Use req.user.id like other seller endpoints
+  
+  // Validate sellerId
+  if (!sellerId || !mongoose.Types.ObjectId.isValid(sellerId)) {
+    return next(new AppError('Invalid seller ID', 400));
+  }
+
+  const {
+    page = 1,
+    limit = 20,
+    type = null,
+    startDate = null,
+    endDate = null,
+    minAmount = null,
+    maxAmount = null,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+  } = req.query;
+
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+
+  // Build query
+  const query = { sellerId: new mongoose.Types.ObjectId(sellerId) };
+
+  // Filter by type
+  if (type) {
+    const validTypes = ['ORDER_EARNING', 'REFUND_DEDUCTION', 'PAYOUT', 'ADMIN_ADJUST', 'CORRECTION', 'REVERSAL'];
+    if (validTypes.includes(type.toUpperCase())) {
+      query.type = type.toUpperCase();
+    }
+  }
+
+  // Filter by date range
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) {
+      query.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      query.createdAt.$lte = new Date(endDate);
+    }
+  }
+
+  // Filter by amount range
+  if (minAmount !== null || maxAmount !== null) {
+    query.amount = {};
+    if (minAmount !== null) {
+      query.amount.$gte = parseFloat(minAmount);
+    }
+    if (maxAmount !== null) {
+      query.amount.$lte = parseFloat(maxAmount);
+    }
+  }
+
+  // Get seller info for response
+  const seller = await Seller.findById(sellerId).select('name shopName email balance').lean();
+
+  const [history, total] = await Promise.all([
+    SellerRevenueHistory.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('orderId', 'orderNumber totalPrice')
+      .populate('refundId', 'status totalRefundAmount')
+      .populate('payoutRequestId', 'status amount')
+      .populate('adminId', 'name email')
+      .lean(),
+    SellerRevenueHistory.countDocuments(query),
+  ]);
+
+  res.status(200).json({
+    status: 'success',
+    results: history.length,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+    },
+    data: {
+      seller: seller ? {
+        name: seller.name,
+        shopName: seller.shopName,
+        email: seller.email,
+        currentBalance: seller.balance || 0,
+      } : null,
+      history: history.map(entry => ({
+        ...entry,
+        // Add computed fields for easier frontend display
+        isCredit: ['ORDER_EARNING', 'ADMIN_ADJUST', 'CORRECTION'].includes(entry.type),
+        isDebit: ['REFUND_DEDUCTION', 'PAYOUT', 'REVERSAL'].includes(entry.type),
+      })),
     },
   });
 });

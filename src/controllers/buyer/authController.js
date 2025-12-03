@@ -94,32 +94,57 @@ exports.signup = catchAsync(async (req, res, next) => {
       password: req.body.password,
       passwordConfirm: req.body.passwordConfirm,
       passwordChangedAt: req.body.passwordChangedAt,
-      emailVerified: req.body.emailVerified || false,
+      emailVerified: false, // Always false on signup - requires OTP verification
+      phoneVerified: false,
     });
 
-    const verificationToken = newUser.createEmailVerificationToken();
+    // Generate OTP for email verification
+    const { sendLoginOtpEmail } = require('../../utils/email/emailService');
+    const otp = newUser.createOtp();
     await newUser.save({ validateBeforeSave: false });
 
-    const verificationURL = `${req.protocol}://${req.get('host')}/api/v1/users/email-verification/${verificationToken}`;
-    const message = `Welcome to YourBrand! Please verify your email by clicking this link: ${verificationURL}. Valid for 10 minutes.`;
+    // Log OTP to console for development
+    console.log('========================================');
+    console.log(`[Buyer Signup] 🔐 OTP PIN: ${otp}`);
+    console.log(`[Buyer Signup] User: ${newUser.email || newUser.phone}`);
+    console.log(`[Buyer Signup] OTP expires in 10 minutes`);
+    console.log('========================================');
 
-    await sendCustomEmail({
-      email: newUser.email,
-      subject: 'Verify Your Email Address',
-      message,
-    });
+    // Send OTP via email
+    try {
+      await sendLoginOtpEmail(newUser.email, otp, newUser.name);
+      console.log(`[Buyer Signup] OTP sent to ${newUser.email}`);
+    } catch (emailError) {
+      console.error('[Buyer Signup] Failed to send OTP email:', emailError.message);
+      // Don't fail signup if email fails - OTP is still generated
+    }
+
+    // If phone is provided, also send SMS OTP
+    if (newUser.phone) {
+      try {
+        const { sendSMS } = require('../../utils/email/emailService');
+        await sendSMS({
+          to: newUser.phone,
+          message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
+        });
+        console.log(`[Buyer Signup] OTP sent to phone ${newUser.phone}`);
+      } catch (smsError) {
+        console.error('[Buyer Signup] Failed to send SMS:', smsError.message);
+      }
+    }
 
     res.status(201).json({
       status: 'success',
       requiresVerification: true,
-      message:
-        'Account created! Please check your email to verify your account.',
+      message: 'Account created! Please check your email for the verification code.',
       data: {
         user: {
           id: newUser._id,
           name: newUser.name,
           email: newUser.email,
+          phone: newUser.phone,
         },
+        otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
       },
     });
   } catch (err) {
@@ -236,9 +261,10 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 });
 
 exports.verifyOtp = catchAsync(async (req, res, next) => {
+  console.log('req.body', req.body);
   try {
     const { loginId, otp, password, redirectTo } = req.body;
-    console.log('[verifyOtp] Request received:', { loginId, otp: otp ? '***' : 'missing', password: password ? '***' : 'missing' });
+ 
 
     if (!loginId || !otp || !password) {
       return next(
@@ -248,6 +274,8 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     let user;
     const query = User.findOne();
+    console.log('query', query);
+
 
     if (validator.isEmail(loginId)) {
       query.where({ email: loginId });
@@ -259,8 +287,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       );
     }
 
-    query.select('+password +otp +otpExpires');
+    query.select('+password +otp +otpExpires +otpAttempts +otpLockedUntil');
     user = await query;
+    console.log('user', user);
 
     if (!user) {
       console.log('[verifyOtp] User not found for:', loginId);
@@ -269,56 +298,118 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       );
     }
 
-    console.log('[verifyOtp] User found:', { id: user._id, email: user.email, phone: user.phone, hasOtp: !!user.otp, otpExpires: user.otpExpires });
+    // ✅ CRITICAL: Check if account is verified before allowing login
+    if (!user.emailVerified && !user.phoneVerified) {
+      return next(
+        new AppError(
+          'Account not verified. Please verify your email or phone number first using the verification code sent to you. If you need a new code, please use the resend option.',
+          403
+        )
+      );
+    }
+
+    // ✅ ENFORCE: User must login with the method they verified
+    const isEmailLogin = validator.isEmail(loginId);
+    const isPhoneLogin = validator.isMobilePhone(loginId);
+    
+    if (user.emailVerified && !user.phoneVerified) {
+      // Only email verified - must login with email
+      if (!isEmailLogin) {
+        return next(
+          new AppError(
+            'Your account is verified with email. Please login using your email address.',
+            403
+          )
+        );
+      }
+    } else if (user.phoneVerified && !user.emailVerified) {
+      // Only phone verified - must login with phone
+      if (!isPhoneLogin) {
+        return next(
+          new AppError(
+            'Your account is verified with phone number. Please login using your phone number.',
+            403
+          )
+        );
+      }
+    }
+    // If both are verified, user can login with either method
+
+    // Determine which verification method was used
+    const verifiedBy = [];
+    if (user.emailVerified) verifiedBy.push('email');
+    if (user.phoneVerified) verifiedBy.push('phone');
+    
+    console.log('[verifyOtp] User found:', { 
+      id: user._id, 
+      email: user.email, 
+      phone: user.phone, 
+      emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      verifiedBy: verifiedBy, // ✅ Shows which method(s) verified the account
+      isVerified: user.emailVerified || user.phoneVerified,
+      loginMethod: isEmailLogin ? 'email' : isPhoneLogin ? 'phone' : 'unknown',
+      hasOtp: !!user.otp 
+    });
 
     // Verify OTP - normalize input (trim and remove non-digits)
     const otpString = String(otp || '').trim().replace(/\D/g, '');
     
-    if (!otpString || otpString.length === 0) {
-      return next(new AppError('Please provide a valid OTP code', 400));
+    if (!otpString || otpString.length === 0 || otpString.length !== 6) {
+      return next(new AppError('Please provide a valid 6-digit OTP code', 400));
     }
     
-    const otpValid = user.verifyOtp(otpString);
+    // Verify OTP (returns object with valid, reason, etc.)
+    const otpResult = user.verifyOtp(otpString);
     
-    console.log('[verifyOtp] OTP verification details:', {
-      providedOtp: otpString,
-      providedOtpOriginal: otp,
-      storedOtp: user.otp,
-      storedOtpType: typeof user.otp,
-      providedType: typeof otp,
-      otpExpires: user.otpExpires ? new Date(user.otpExpires).toISOString() : 'N/A',
-      currentTime: new Date().toISOString(),
-      isExpired: user.otpExpires ? user.otpExpires <= Date.now() : true,
-      isValid: otpValid,
-    });
+    // Handle account lockout
+    if (otpResult.locked) {
+      return next(
+        new AppError(
+          `Your account is locked for ${otpResult.minutesRemaining} minute(s) due to multiple failed attempts. Please try again later.`,
+          429
+        )
+      );
+    }
     
-    if (!otpValid) {
-      // Provide more specific error message
-      let errorMessage = 'OTP is invalid or has expired';
-      const now = Date.now();
-      const expiresAt = user.otpExpires ? new Date(user.otpExpires).getTime() : null;
+    // Handle failed OTP verification
+    if (!otpResult.valid) {
+      // Increment failed attempts
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
       
-      if (!user.otp) {
+      // Lock account after 5 failed attempts
+      if (user.otpAttempts >= 5) {
+        user.otpLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        await user.save({ validateBeforeSave: false });
+        return next(
+          new AppError(
+            'Too many failed attempts. Your account is locked for 15 minutes.',
+            429
+          )
+        );
+      }
+      
+      await user.save({ validateBeforeSave: false });
+      
+      // Provide specific error message
+      const attemptsRemaining = 5 - user.otpAttempts;
+      let errorMessage = 'Invalid OTP code.';
+      
+      if (otpResult.reason === 'expired') {
+        errorMessage = `OTP expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
+      } else if (otpResult.reason === 'no_otp') {
         errorMessage = 'No OTP found. Please request a new OTP.';
-        console.log('[verifyOtp] Error: No OTP stored for user');
-      } else if (!expiresAt) {
-        errorMessage = 'OTP expiration time is missing. Please request a new OTP.';
-        console.log('[verifyOtp] Error: OTP expiration time missing');
-      } else if (expiresAt <= now) {
-        const minutesExpired = Math.floor((now - expiresAt) / (1000 * 60));
-        errorMessage = `OTP has expired ${minutesExpired} minute(s) ago. Please request a new OTP.`;
-        console.log('[verifyOtp] Error: OTP expired', { expiresAt: new Date(expiresAt).toISOString(), now: new Date(now).toISOString(), minutesExpired });
+      } else if (otpResult.reason === 'mismatch') {
+        errorMessage = `Wrong OTP. You have ${attemptsRemaining} attempt(s) remaining.`;
       } else {
-        // OTP exists and not expired, but doesn't match
-        errorMessage = 'Invalid OTP code. Please check and try again.';
-        console.log('[verifyOtp] Error: OTP mismatch', {
-          storedOtpLength: String(user.otp || '').length,
-          providedOtpLength: otpString.length,
-        });
+        errorMessage = `Invalid OTP. You have ${attemptsRemaining} attempt(s) remaining.`;
       }
       
       return next(new AppError(errorMessage, 401));
     }
+    
+    // OTP is valid - save user (attempts already reset in verifyOtp method)
+    await user.save({ validateBeforeSave: false });
     
     // Verify password
     const passwordValid = await user.correctPassword(password);
@@ -450,16 +541,38 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     const sanitizedRedirectTo = sanitizePath(redirectTo, '/');
     console.log(`[Auth] Redirect path: ${redirectTo} -> ${sanitizedRedirectTo}`);
 
-    // Create token manually (same logic as createSendToken)
-    // Default to 90 days if JWT_EXPIRES_IN is not set
+    // Create device session and generate tokens
+    const { createDeviceSession } = require('../../utils/helpers/createDeviceSession');
+    let sessionData;
+    try {
+      console.log('[Auth] Creating device session for user:', user._id);
+      sessionData = await createDeviceSession(req, user, 'eazmain');
+      console.log('[Auth] Device session created successfully:', sessionData.deviceId);
+    } catch (deviceError) {
+      // If device limit exceeded, return error (only in production)
+      if (process.env.NODE_ENV === 'production' && deviceError.message && deviceError.message.includes('Too many devices')) {
+        return next(new AppError(deviceError.message, 403));
+      }
+      // For other errors, log full error details and continue without device session (fallback)
+      console.error('[Auth] ❌ Error creating device session:', deviceError.message || deviceError);
+      console.error('[Auth] Error stack:', deviceError.stack);
+      console.error('[Auth] Full error object:', JSON.stringify(deviceError, Object.getOwnPropertyNames(deviceError)));
+      sessionData = null;
+    }
+
+    // Create token with deviceId
     const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
-    const signToken = (id, role) => {
-      return jwt.sign({ id: id, role: role }, process.env.JWT_SECRET, {
+    const signToken = (id, role, deviceId) => {
+      const payload = { id, role };
+      if (deviceId) {
+        payload.deviceId = deviceId;
+      }
+      return jwt.sign(payload, process.env.JWT_SECRET, {
         expiresIn: expiresIn,
       });
     };
 
-    const token = signToken(user._id, user.role);
+    const token = signToken(user._id, user.role, sessionData?.deviceId);
     
     // Set cookie (same as createSendToken)
     const isProduction = process.env.NODE_ENV === 'production';
@@ -485,6 +598,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     user.otp = undefined;
     user.otpExpires = undefined;
 
+    // Reuse verifiedBy from earlier in the function (already declared at line 328)
+    // verifiedBy is already populated with the verification methods
+    
     // Create safe user payload
     const safeUserPayload = {
       id: user._id,
@@ -493,6 +609,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       phone: user.phone,
       role: user.role,
       emailVerified: user.emailVerified,
+      phoneVerified: user.phoneVerified,
+      verifiedBy: verifiedBy, // ✅ Shows which method(s) verified the account (reused from line 328)
+      isVerified: user.emailVerified || user.phoneVerified, // ✅ Overall verification status
       lastLogin: user.lastLogin,
     };
 
@@ -505,14 +624,25 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       req,
     });
 
-    // Return JSON with token and redirectTo (frontend handles navigation)
-    res.status(200).json({
+    // Return JSON with token, deviceId, refreshToken and redirectTo
+    const response = {
       status: 'success',
       message: 'OTP verified',
       token,
       user: safeUserPayload,
       redirectTo: sanitizedRedirectTo,
-    });
+    };
+
+    // Add device session info if created
+    if (sessionData) {
+      response.deviceId = sessionData.deviceId;
+      response.refreshToken = sessionData.refreshToken;
+      if (sessionData.suspicious) {
+        response.warning = 'New device detected. Please verify this is you.';
+      }
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error('Verify OTP error:', error);
   }
@@ -521,15 +651,37 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 exports.logout = catchAsync(async (req, res, next) => {
   const isProduction = process.env.NODE_ENV === 'production';
   
-  // Log activity if user is authenticated
-  if (req.user) {
-    logActivityAsync({
-      userId: req.user._id || req.user.id,
-      role: 'buyer',
-      action: 'LOGOUT',
-      description: `User logged out`,
-      req,
+  // Logout device session with timeout
+  const { logoutDevice } = require('../../utils/helpers/createDeviceSession');
+  try {
+    // Add timeout to prevent hanging - 3 seconds max
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Logout device timeout')), 3000);
     });
+    
+    await Promise.race([
+      logoutDevice(req),
+      timeoutPromise,
+    ]);
+  } catch (error) {
+    console.error('[Auth] Error logging out device session:', error.message);
+    // Continue with cookie clearing even if device session logout fails or times out
+  }
+  
+  // Log activity if user is authenticated (non-blocking)
+  if (req.user) {
+    try {
+      logActivityAsync({
+        userId: req.user._id || req.user.id,
+        role: 'buyer',
+        action: 'LOGOUT',
+        description: `User logged out`,
+        req,
+      });
+    } catch (error) {
+      console.error('[Auth] Error logging activity:', error.message);
+      // Don't block logout if activity logging fails
+    }
   }
   
   // Clear JWT cookie with same settings as creation
@@ -593,9 +745,9 @@ exports.protect = catchAsync(async (req, res, next) => {
   } else {
     console.log(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
   }
-  const blacklisted = await TokenBlacklist.findOne({ token });
-  // Check token blacklist
-  if (blacklisted) {
+  // Check token blacklist using the helper method (hashes token before checking)
+  const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
+  if (isBlacklisted) {
     return next(
       new AppError('Your session has expired. Please log in again.', 401),
     );
@@ -627,8 +779,11 @@ exports.protect = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Attach user to request
+  // Attach user to request with deviceId from token
   req.user = currentUser;
+  if (decoded.deviceId) {
+    req.user.deviceId = decoded.deviceId;
+  }
   console.log(
     `Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`,
   );
@@ -864,6 +1019,225 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res, null, 'eazmain_jwt');
 });
 
+// Resend OTP endpoint for buyers
+exports.resendOtp = catchAsync(async (req, res, next) => {
+  const { email, phone } = req.body;
+
+  if (!email && !phone) {
+    return next(
+      new AppError('Please provide either email or phone number', 400)
+    );
+  }
+
+  let user;
+  if (email && validator.isEmail(email)) {
+    user = await User.findOne({ email });
+  } else if (phone) {
+    user = await User.findOne({ phone: phone.replace(/\D/g, '') });
+  } else {
+    return next(
+      new AppError('Please provide a valid email or phone number', 400)
+    );
+  }
+
+  if (!user) {
+    return next(
+      new AppError('No user found with that email or phone number', 404)
+    );
+  }
+
+  // Check if account is locked
+  if (user.otpLockedUntil && new Date(user.otpLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil(
+      (new Date(user.otpLockedUntil).getTime() - Date.now()) / (1000 * 60)
+    );
+    return next(
+      new AppError(
+        `Account locked. Please try again in ${minutesRemaining} minute(s).`,
+        429
+      )
+    );
+  }
+
+  // Generate new OTP
+  const { sendLoginOtpEmail } = require('../../utils/email/emailService');
+  const otp = user.createOtp();
+  await user.save({ validateBeforeSave: false });
+
+  // Log OTP to console for development
+  console.log('========================================');
+  console.log(`[Resend OTP] 🔐 OTP PIN: ${otp}`);
+  console.log(`[Resend OTP] User: ${user.email || user.phone}`);
+  console.log(`[Resend OTP] OTP expires in 10 minutes`);
+  console.log('========================================');
+
+  // Send OTP via email
+  if (user.email) {
+    try {
+      await sendLoginOtpEmail(user.email, otp, user.name);
+      console.log(`[Resend OTP] OTP sent to ${user.email}`);
+    } catch (error) {
+      console.error('[Resend OTP] Failed to send email:', error.message);
+    }
+  }
+
+  // Send OTP via SMS if phone provided
+  if (user.phone) {
+    try {
+      const { sendSMS } = require('../../utils/email/emailService');
+      await sendSMS({
+        to: user.phone,
+        message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
+      });
+      console.log(`[Resend OTP] OTP sent to phone ${user.phone}`);
+    } catch (error) {
+      console.error('[Resend OTP] Failed to send SMS:', error.message);
+    }
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Verification code sent to your email or phone!',
+    otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
+  });
+});
+
+// Verify account with OTP (for signup verification)
+exports.verifyAccount = catchAsync(async (req, res, next) => {
+  const { email, phone, otp } = req.body;
+
+  if (!otp) {
+    return next(new AppError('Please provide the verification code', 400));
+  }
+
+  if (!email && !phone) {
+    return next(
+      new AppError('Please provide either email or phone number', 400)
+    );
+  }
+
+  let user;
+  if (email && validator.isEmail(email)) {
+    user = await User.findOne({ email }).select('+otp +otpExpires +otpAttempts +otpLockedUntil');
+  } else if (phone) {
+    user = await User.findOne({ phone: phone.replace(/\D/g, '') })
+      .select('+otp +otpExpires +otpAttempts +otpLockedUntil');
+  } else {
+    return next(
+      new AppError('Please provide a valid email or phone number', 400)
+    );
+  }
+
+  if (!user) {
+    return next(
+      new AppError('No user found with that email or phone number', 404)
+    );
+  }
+
+  // Normalize OTP
+  const otpString = String(otp || '').trim().replace(/\D/g, '');
+  
+  if (!otpString || otpString.length !== 6) {
+    return next(new AppError('Please provide a valid 6-digit verification code', 400));
+  }
+
+  // Verify OTP
+  const otpResult = user.verifyOtp(otpString);
+
+  // Handle account lockout
+  if (otpResult.locked) {
+    return next(
+      new AppError(
+        `Your account is locked for ${otpResult.minutesRemaining} minute(s) due to multiple failed attempts. Please try again later.`,
+        429
+      )
+    );
+  }
+
+  // Handle failed OTP verification
+  if (!otpResult.valid) {
+    // Increment failed attempts
+    user.otpAttempts = (user.otpAttempts || 0) + 1;
+    
+    // Lock account after 5 failed attempts
+    if (user.otpAttempts >= 5) {
+      user.otpLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await user.save({ validateBeforeSave: false });
+      return next(
+        new AppError(
+          'Too many failed attempts. Your account is locked for 15 minutes.',
+          429
+        )
+      );
+    }
+    
+    await user.save({ validateBeforeSave: false });
+    
+    // Provide specific error message
+    const attemptsRemaining = 5 - user.otpAttempts;
+    let errorMessage = 'Invalid verification code.';
+    
+    if (otpResult.reason === 'expired') {
+      errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
+    } else if (otpResult.reason === 'no_otp') {
+      errorMessage = 'No verification code found. Please request a new one.';
+    } else if (otpResult.reason === 'mismatch') {
+      errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
+    } else {
+      errorMessage = `Invalid code. You have ${attemptsRemaining} attempt(s) remaining.`;
+    }
+    
+    return next(new AppError(errorMessage, 401));
+  }
+
+  // OTP is valid - mark as verified
+  if (email && validator.isEmail(email)) {
+    user.emailVerified = true;
+  }
+  if (phone) {
+    user.phoneVerified = true;
+  }
+  
+  // Clear OTP fields
+  user.otp = undefined;
+  user.otpExpires = undefined;
+  user.otpAttempts = 0;
+  user.otpLockedUntil = null;
+  
+  await user.save({ validateBeforeSave: false });
+
+  // Determine which verification method was used
+  const verifiedBy = [];
+  if (user.emailVerified) verifiedBy.push('email');
+  if (user.phoneVerified) verifiedBy.push('phone');
+  
+  // Determine which login method to use based on verification
+  let loginMethod = 'either';
+  if (user.emailVerified && !user.phoneVerified) {
+    loginMethod = 'email';
+  } else if (user.phoneVerified && !user.emailVerified) {
+    loginMethod = 'phone';
+  }
+  
+  res.status(200).json({
+    status: 'success',
+    message: 'Account verified successfully! You can now log in.',
+    data: {
+      user: {
+        id: user._id,
+        email: user.email,
+        phone: user.phone,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        verifiedBy: verifiedBy, // ✅ Shows which method(s) verified the account
+        isVerified: user.emailVerified || user.phoneVerified, // ✅ Overall verification status
+        loginMethod: loginMethod, // ✅ Shows which method to use for login ('email', 'phone', or 'either')
+      },
+    },
+  });
+});
+
+// Legacy email verification (kept for backward compatibility)
 exports.emailVerification = catchAsync(async (req, res, next) => {
   const { email } = req.body;
 
@@ -876,33 +1250,27 @@ exports.emailVerification = catchAsync(async (req, res, next) => {
     return next(new AppError('No user found with that email address', 404));
   }
 
-  const verificationToken = user.createEmailVerificationToken();
+  // Use OTP instead of email link
+  const { sendLoginOtpEmail } = require('../../utils/email/emailService');
+  const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
 
-  const verificationURL = `${req.protocol}://${req.get(
-    'host',
-  )}/api/v1/users/verify-email/${verificationToken}`;
-
-  const message = `Verify your email by clicking on this link: ${verificationURL}. This link is valid for 10 minutes.`;
-
   try {
-    await sendCustomEmail({
-      email: user.email,
-      subject: 'Email Verification',
-      message,
-    });
+    await sendLoginOtpEmail(user.email, otp, user.name);
+    console.log(`[Email Verification] OTP sent to ${user.email}`);
 
     res.status(200).json({
       status: 'success',
-      message: 'Verification email sent',
+      message: 'Verification code sent to your email!',
+      otp: process.env.NODE_ENV !== 'production' ? otp : undefined,
     });
   } catch (err) {
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
+    user.otp = undefined;
+    user.otpExpires = undefined;
     await user.save({ validateBeforeSave: false });
 
     return next(
-      new AppError('There was an error sending the verification email', 500),
+      new AppError('There was an error sending the verification code', 500),
     );
   }
 });

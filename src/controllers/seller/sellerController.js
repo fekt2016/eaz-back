@@ -454,6 +454,179 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+exports.getBestSellers = catchAsync(async (req, res, next) => {
+  const SellerOrder = require('../../models/order/sellerOrderModel');
+  
+  // Get query parameters with defaults
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const sort = req.query.sort || 'orders';
+  const skip = (page - 1) * limit;
+
+  // First, try to get sellers with orders
+  let sellersWithOrders = [];
+  let total = 0;
+
+  try {
+    // Aggregate sellers by order count
+    // Include all non-cancelled orders to count total orders per seller
+    sellersWithOrders = await SellerOrder.aggregate([
+      {
+        $match: {
+          status: { $nin: ['cancelled', 'returned'] }, // Count all non-cancelled orders
+        },
+      },
+      {
+        $group: {
+          _id: '$seller',
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$totalBasePrice' },
+        },
+      },
+      { $sort: { totalOrders: -1 } },
+      {
+        $lookup: {
+          from: 'sellers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'sellerInfo',
+        },
+      },
+      {
+        $match: {
+          'sellerInfo': { $ne: [] }, // Only include sellers that exist
+        },
+      },
+      { $unwind: '$sellerInfo' },
+      {
+        $match: {
+          $or: [
+            { 'sellerInfo.status': 'active' },
+            { 'sellerInfo.status': { $exists: false } },
+          ],
+        },
+      },
+      {
+        $project: {
+          _id: '$sellerInfo._id',
+          shopName: '$sellerInfo.shopName',
+          name: '$sellerInfo.name',
+          avatar: '$sellerInfo.avatar',
+          location: '$sellerInfo.location',
+          createdAt: '$sellerInfo.createdAt',
+          totalOrders: 1,
+          totalRevenue: 1,
+          rating: { $ifNull: [{ $toDouble: '$sellerInfo.ratings.average' }, 0] },
+          reviewCount: { $ifNull: [{ $toInt: '$sellerInfo.ratings.count' }, 0] },
+        },
+      },
+      { $sort: sort === 'orders' ? { totalOrders: -1 } : { rating: -1 } },
+      {
+        $facet: {
+          sellers: [{ $skip: skip }, { $limit: limit }],
+          total: [{ $count: 'count' }],
+        },
+      },
+    ]);
+
+    const sellers = sellersWithOrders[0]?.sellers || [];
+    total = sellersWithOrders[0]?.total[0]?.count || 0;
+
+    console.log('[getBestSellers] Sellers with orders:', sellers.length, 'Total:', total);
+
+    // If we have sellers with orders, use them
+    if (sellers.length > 0) {
+      const transformedSellers = sellers.map((seller) => ({
+        _id: seller._id,
+        id: seller._id,
+        shopName: seller.shopName || seller.name,
+        name: seller.name,
+        avatar: seller.avatar,
+        location: seller.location,
+        totalOrders: seller.totalOrders || 0,
+        orderCount: seller.totalOrders || 0,
+        ordersCount: seller.totalOrders || 0,
+        totalRevenue: seller.totalRevenue || 0,
+        rating: seller.rating || 0,
+        averageRating: seller.rating || 0,
+        reviewCount: seller.reviewCount || 0,
+        reviewsCount: seller.reviewCount || 0,
+        createdAt: seller.createdAt,
+      }));
+
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          sellers: transformedSellers,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    }
+  } catch (aggError) {
+    console.error('[getBestSellers] Aggregation error:', aggError);
+  }
+
+  // Fallback: Get all active sellers if no orders found
+  console.log('[getBestSellers] No sellers with orders found, falling back to all active sellers');
+  try {
+    const allSellers = await Seller.find({
+      $or: [
+        { status: 'active' },
+        { status: { $exists: false } },
+      ],
+    })
+      .select('_id shopName name avatar location createdAt ratings')
+      .sort(sort === 'orders' ? { createdAt: -1 } : { 'ratings.average': -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalSellers = await Seller.countDocuments({
+      $or: [
+        { status: 'active' },
+        { status: { $exists: false } },
+      ],
+    });
+
+    console.log('[getBestSellers] Found active sellers:', allSellers.length, 'Total:', totalSellers);
+
+    const transformedSellers = allSellers.map((seller) => ({
+      _id: seller._id,
+      id: seller._id,
+      shopName: seller.shopName || seller.name,
+      name: seller.name,
+      avatar: seller.avatar,
+      location: seller.location,
+      totalOrders: 0,
+      orderCount: 0,
+      ordersCount: 0,
+      totalRevenue: 0,
+      rating: seller.ratings?.average ? parseFloat(seller.ratings.average) : 0,
+      averageRating: seller.ratings?.average ? parseFloat(seller.ratings.average) : 0,
+      reviewCount: seller.ratings?.count ? parseInt(seller.ratings.count) : 0,
+      reviewsCount: seller.ratings?.count ? parseInt(seller.ratings.count) : 0,
+      createdAt: seller.createdAt,
+    }));
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        sellers: transformedSellers,
+        total: totalSellers,
+        page,
+        limit,
+        totalPages: Math.ceil(totalSellers / limit),
+      },
+    });
+  } catch (fallbackError) {
+    console.error('[getBestSellers] Fallback error:', fallbackError);
+    return next(new AppError('Failed to fetch sellers', 500));
+  }
+});
 // export const getFeaturedSellers = catchAsync(async (req, res, next) => {
 //   // Get query parameters with defaults
 //   const limit = parseInt(req.query.limit) || 10;

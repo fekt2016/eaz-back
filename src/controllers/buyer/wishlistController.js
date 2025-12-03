@@ -24,11 +24,35 @@ const calculateTotalStock = (products) => {
   if (!products || products.length === 0) return;
   
   products.forEach((item) => {
-    if (item.product && item.product.variants) {
-      item.product.totalStock = item.product.variants.reduce(
-        (sum, variant) => sum + (variant.stock || 0),
-        0
-      );
+    try {
+      // Skip if product is null or deleted
+      if (!item || !item.product) {
+        return;
+      }
+      
+      // Handle case where product might be an ObjectId (not populated)
+      if (typeof item.product === 'object' && item.product !== null) {
+        // Check if variants exist and is an array
+        if (Array.isArray(item.product.variants)) {
+          item.product.totalStock = item.product.variants.reduce(
+            (sum, variant) => {
+              const stock = variant?.stock || 0;
+              return sum + (typeof stock === 'number' ? stock : 0);
+            },
+            0
+          );
+        } else {
+          // If no variants, use stock field if available
+          item.product.totalStock = item.product.stock || 0;
+        }
+      }
+    } catch (error) {
+      // Log error but don't break the entire request
+      console.error('[Wishlist] Error calculating totalStock for product:', error);
+      // Set default value to prevent undefined errors
+      if (item.product) {
+        item.product.totalStock = 0;
+      }
     }
   });
 };
@@ -48,11 +72,24 @@ exports.getWishlist = catchAsync(async (req, res, next) => {
     .populate({
       path: 'products.product',
       select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      // Don't fail if product is deleted - just return null
+      strictPopulate: false,
     })
     .lean();
 
   // Return empty array if no wishlist exists
   if (!wishlist || !wishlist.products || wishlist.products.length === 0) {
+    return res.status(200).json({ 
+      status: 'success', 
+      data: { wishlist: { products: [] } } 
+    });
+  }
+
+  // Filter out products that were deleted (null products)
+  wishlist.products = wishlist.products.filter(item => item && item.product);
+
+  // Return empty if all products were deleted
+  if (wishlist.products.length === 0) {
     return res.status(200).json({ 
       status: 'success', 
       data: { wishlist: { products: [] } } 
@@ -115,11 +152,24 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
   ).populate({
     path: 'products.product',
     select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    strictPopulate: false, // Don't fail if product is deleted
   });
 
+  // Filter out null products before checking
+  wishlist.products = wishlist.products.filter(item => item && item.product);
+
   // Check if product was actually added (might already exist)
-  const productExists = wishlist.products.some(
-    (item) => item.product._id.toString() === productId
+  // Filter out null products first
+  const validProducts = wishlist.products.filter(item => item && item.product);
+  const productExists = validProducts.some(
+    (item) => {
+      try {
+        return item.product && item.product._id && item.product._id.toString() === productId;
+      } catch (error) {
+        console.error('[Wishlist] Error checking product existence:', error);
+        return false;
+      }
+    }
   );
 
   if (!productExists) {
@@ -167,7 +217,13 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
   ).populate({
     path: 'products.product',
     select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    strictPopulate: false, // Don't fail if product is deleted
   });
+
+  // Filter out null products
+  if (wishlist && wishlist.products) {
+    wishlist.products = wishlist.products.filter(item => item && item.product);
+  }
 
   if (!wishlist) {
     return next(new AppError('Wishlist not found', 404));
@@ -239,7 +295,12 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
     ).populate({
       path: 'products.product',
       select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      strictPopulate: false, // Don't fail if product is deleted
     });
+    // Filter out null products
+    if (wishlist && wishlist.products) {
+      wishlist.products = wishlist.products.filter(item => item && item.product);
+    }
     action = 'removed';
   } else {
     // Add product
@@ -261,7 +322,12 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
     ).populate({
       path: 'products.product',
       select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      strictPopulate: false, // Don't fail if product is deleted
     });
+    // Filter out null products
+    if (wishlist && wishlist.products) {
+      wishlist.products = wishlist.products.filter(item => item && item.product);
+    }
     action = 'added';
   }
 
@@ -340,7 +406,13 @@ exports.getOrCreateGuestWishlist = catchAsync(async (req, res, next) => {
   ).populate({
     path: 'products.product',
     select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+    strictPopulate: false, // Don't fail if product is deleted
   });
+
+  // Filter out null products
+  if (wishlist && wishlist.products) {
+    wishlist.products = wishlist.products.filter(item => item && item.product);
+  }
 
   // Calculate totalStock
   calculateTotalStock(wishlist.products);
@@ -544,7 +616,13 @@ exports.mergeWishlists = catchAsync(async (req, res, next) => {
   await userWishlist.populate({
     path: 'products.product',
     select: 'name price images seller',
+    strictPopulate: false, // Don't fail if product is deleted
   });
+
+  // Filter out null products
+  if (userWishlist && userWishlist.products) {
+    userWishlist.products = userWishlist.products.filter(item => item && item.product);
+  }
 
   // Calculate totalStock
   calculateTotalStock(userWishlist.products);

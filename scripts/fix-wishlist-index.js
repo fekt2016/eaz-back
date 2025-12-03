@@ -12,7 +12,7 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config({ path: './.env' });
 
-const DB = process.env.DATABASE.replace(
+const DB = process.env.MONGO_URL.replace(
   '<PASSWORD>',
   process.env.DATABASE_PASSWORD
 );
@@ -20,10 +20,7 @@ const DB = process.env.DATABASE.replace(
 async function fixWishlistIndex() {
   try {
     // Connect to MongoDB
-    await mongoose.connect(DB, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(DB);
 
     console.log('✅ Connected to MongoDB');
 
@@ -73,11 +70,57 @@ async function fixWishlistIndex() {
     console.log('✅ Created sparse unique index on sessionId field');
 
     // Create index on products.product for faster lookups
-    await collection.createIndex(
-      { 'products.product': 1 },
-      { name: 'products.product_1' }
-    );
-    console.log('✅ Created index on products.product field');
+    try {
+      await collection.createIndex(
+        { 'products.product': 1 },
+        { name: 'products.product_1' }
+      );
+      console.log('✅ Created index on products.product field');
+    } catch (error) {
+      if (error.code === 85 || error.message.includes('already exists')) {
+        console.log('ℹ️  products.product_1 index already exists');
+      } else {
+        throw error;
+      }
+    }
+
+    // Clean up duplicate wishlists with user: null (keep only one)
+    const duplicateNullUsers = await collection.find({ user: null }).toArray();
+    if (duplicateNullUsers.length > 1) {
+      console.log(`\n⚠️  Found ${duplicateNullUsers.length} wishlists with user: null`);
+      console.log('   Keeping the most recent one and removing others...');
+      
+      // Sort by createdAt, keep the newest
+      duplicateNullUsers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const toKeep = duplicateNullUsers[0];
+      const toDelete = duplicateNullUsers.slice(1);
+      
+      // Merge products from deleted wishlists into the one we're keeping
+      const allProducts = new Map();
+      duplicateNullUsers.forEach(wishlist => {
+        if (wishlist.products && Array.isArray(wishlist.products)) {
+          wishlist.products.forEach(item => {
+            if (item && item.product) {
+              const productId = item.product.toString();
+              if (!allProducts.has(productId)) {
+                allProducts.set(productId, item);
+              }
+            }
+          });
+        }
+      });
+      
+      // Update the kept wishlist with merged products
+      await collection.updateOne(
+        { _id: toKeep._id },
+        { $set: { products: Array.from(allProducts.values()) } }
+      );
+      
+      // Delete the duplicate wishlists
+      const idsToDelete = toDelete.map(w => w._id);
+      await collection.deleteMany({ _id: { $in: idsToDelete } });
+      console.log(`✅ Removed ${toDelete.length} duplicate wishlist(s) with user: null`);
+    }
 
     // Verify indexes
     const newIndexes = await collection.indexes();

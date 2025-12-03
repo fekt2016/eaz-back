@@ -12,8 +12,8 @@ const router = express.Router();
 router.use(authController.protect);
 router.use(authController.restrictTo('seller'));
 
-// Create withdrawal request
-router.post('/request', payoutController.createWithdrawalRequest);
+// Note: Create withdrawal request has been moved to /payment-requests endpoint
+// Use paymentController.createPaymentRequest instead
 
 // Get seller's withdrawal requests
 router.get('/requests', payoutController.getSellerWithdrawalRequests);

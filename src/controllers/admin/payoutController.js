@@ -13,6 +13,7 @@ const AdminActionLog = require('../../models/admin/adminActionLogModel');
 const Admin = require('../../models/user/adminModel');
 const payoutService = require('../../services/payoutService');
 const mongoose = require('mongoose');
+const { logSellerRevenue } = require('../../services/historyLogger');
 
 /**
  * Get all withdrawal requests
@@ -794,9 +795,37 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     }
 
     // Refund the amount back to seller balance
+    const oldBalance = seller.balance || 0;
     seller.balance += withdrawalRequest.amount;
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
+
+    // Log seller revenue history for rejected withdrawal refund
+    try {
+      await logSellerRevenue({
+        sellerId: seller._id,
+        amount: withdrawalRequest.amount, // Positive for refund
+        type: 'REVERSAL',
+        description: `Withdrawal rejected by admin - Refund: GH₵${withdrawalRequest.amount.toFixed(2)}`,
+        reference: `WITHDRAWAL-REJECTED-${withdrawalRequest._id}-${Date.now()}`,
+        payoutRequestId: withdrawalRequest._id,
+        adminId: adminId,
+        balanceBefore: oldBalance,
+        balanceAfter: seller.balance,
+        metadata: {
+          withdrawalRequestId: withdrawalRequest._id.toString(),
+          rejectionReason: req.body.reason || 'Rejected by admin',
+          rejectedBy: adminId,
+          isPaymentRequest,
+        },
+      });
+      console.log(`[rejectWithdrawalRequest] ✅ Seller revenue history logged for rejected withdrawal refund - seller ${seller._id}`);
+    } catch (historyError) {
+      console.error(`[rejectWithdrawalRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+        error: historyError.message,
+        stack: historyError.stack,
+      });
+    }
 
     // Prepare admin tracking data
     const adminTrackingData = {
@@ -988,9 +1017,36 @@ async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferS
       newStatus = 'failed';
       shouldUpdateTransaction = true;
       // Refund amount back to seller
+      const oldBalance = seller.balance || 0;
       seller.balance += withdrawalRequest.amount;
       seller.calculateWithdrawableBalance();
       await seller.save({ session });
+
+      // Log seller revenue history for failed transfer refund
+      try {
+        await logSellerRevenue({
+          sellerId: seller._id,
+          amount: withdrawalRequest.amount, // Positive for refund
+          type: 'REVERSAL',
+          description: `Transfer failed - Refund: GH₵${withdrawalRequest.amount.toFixed(2)}`,
+          reference: `TRANSFER-FAILED-${withdrawalRequest._id}-${Date.now()}`,
+          payoutRequestId: withdrawalRequest._id,
+          balanceBefore: oldBalance,
+          balanceAfter: seller.balance,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest._id.toString(),
+            transferStatus: 'failed',
+            paystackTransferId: withdrawalRequest.paystackTransferId,
+            reason: 'Transfer failed on Paystack',
+          },
+        });
+        console.log(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for failed transfer refund - seller ${seller._id}`);
+      } catch (historyError) {
+        console.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
     } else if (transferStatus.status === 'pending' || transferStatus.status === 'otp') {
       newStatus = 'processing';
       // Update requiresPin flag if status is 'otp'
@@ -1001,9 +1057,36 @@ async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferS
       newStatus = 'failed';
       shouldUpdateTransaction = true;
       // Refund amount back to seller
+      const oldBalance = seller.balance || 0;
       seller.balance += withdrawalRequest.amount;
       seller.calculateWithdrawableBalance();
       await seller.save({ session });
+
+      // Log seller revenue history for reversed transfer refund
+      try {
+        await logSellerRevenue({
+          sellerId: seller._id,
+          amount: withdrawalRequest.amount, // Positive for refund
+          type: 'REVERSAL',
+          description: `Transfer reversed - Refund: GH₵${withdrawalRequest.amount.toFixed(2)}`,
+          reference: `TRANSFER-REVERSED-${withdrawalRequest._id}-${Date.now()}`,
+          payoutRequestId: withdrawalRequest._id,
+          balanceBefore: oldBalance,
+          balanceAfter: seller.balance,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest._id.toString(),
+            transferStatus: 'reversed',
+            paystackTransferId: withdrawalRequest.paystackTransferId,
+            reason: 'Transfer reversed on Paystack',
+          },
+        });
+        console.log(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for reversed transfer refund - seller ${seller._id}`);
+      } catch (historyError) {
+        console.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
     }
 
     // Update withdrawal request

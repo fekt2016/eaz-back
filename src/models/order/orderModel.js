@@ -328,6 +328,57 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Refund Request Fields
+    refundRequested: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    refundRequestDate: {
+      type: Date,
+    },
+    refundReason: {
+      type: String,
+      enum: [
+        'defective_product',
+        'wrong_item',
+        'not_as_described',
+        'damaged_during_shipping',
+        'late_delivery',
+        'changed_mind',
+        'duplicate_order',
+        'other',
+      ],
+    },
+    refundReasonText: {
+      type: String,
+      maxlength: 500,
+    },
+    refundAmount: {
+      type: Number,
+      min: 0,
+    },
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'processing', 'completed'],
+      default: 'pending',
+      index: true,
+    },
+    refundRejectionReason: {
+      type: String,
+      maxlength: 500,
+    },
+    refundProcessedAt: {
+      type: Date,
+    },
+    refundProcessedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'refundProcessedByModel',
+    },
+    refundProcessedByModel: {
+      type: String,
+      enum: ['Admin', 'Seller'],
+    },
   },
   {
     timestamps: true,

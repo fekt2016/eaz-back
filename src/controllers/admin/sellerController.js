@@ -6,6 +6,7 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Seller = require('../../models/user/sellerModel');
+const { logSellerRevenue } = require('../../services/historyLogger');
 
 /**
  * Reset seller balance
@@ -61,6 +62,40 @@ exports.resetSellerBalance = catchAsync(async (req, res, next) => {
   }
 
   await seller.save();
+
+  // Log revenue history with correct balance values
+  const balanceChange = balance - oldBalance;
+  if (balanceChange !== 0) {
+    try {
+      await logSellerRevenue({
+        sellerId: seller._id,
+        amount: balanceChange,
+        type: 'ADMIN_ADJUST',
+        description: `Admin balance reset: ${reason || 'Balance reset by admin'}`,
+        reference: `ADMIN-RESET-${seller._id}-${Date.now()}`,
+        adminId: adminId,
+        balanceBefore: oldBalance,
+        balanceAfter: balance,
+        metadata: {
+          reason: reason || 'Balance reset',
+          oldBalance,
+          newBalance: balance,
+          oldLockedBalance,
+          oldPendingBalance,
+          oldWithdrawableBalance,
+          newLockedBalance: 0,
+          newPendingBalance: 0,
+          newWithdrawableBalance: balance,
+        },
+      });
+      console.log(`[Admin Seller] ✅ Revenue history logged for balance reset - seller ${seller._id}`);
+    } catch (err) {
+      console.error(`[Admin Seller] Failed to log revenue history (non-critical) for seller ${seller._id}:`, {
+        error: err.message,
+        stack: err.stack,
+      });
+    }
+  }
 
   res.status(200).json({
     status: 'success',
@@ -132,6 +167,39 @@ exports.resetLockedBalance = catchAsync(async (req, res, next) => {
   }
 
   await seller.save();
+
+  // Log revenue history with correct balance values - unlocking funds increases balance
+  const balanceChange = oldLockedBalance; // Amount added back to balance
+  if (balanceChange > 0) {
+    try {
+      await logSellerRevenue({
+        sellerId: seller._id,
+        amount: balanceChange,
+        type: 'ADMIN_ADJUST',
+        description: `Admin unlocked funds: ${reason || 'Locked balance reset by admin'}`,
+        reference: `ADMIN-UNLOCK-${seller._id}-${Date.now()}`,
+        adminId: adminId,
+        balanceBefore: oldBalance,
+        balanceAfter: seller.balance,
+        metadata: {
+          reason: reason || 'Locked balance reset',
+          oldBalance,
+          newBalance: seller.balance,
+          oldLockedBalance,
+          newLockedBalance: 0,
+          oldWithdrawableBalance,
+          newWithdrawableBalance: seller.withdrawableBalance,
+          fundsReturned: oldLockedBalance,
+        },
+      });
+      console.log(`[Admin Seller] ✅ Revenue history logged for unlock funds - seller ${seller._id}`);
+    } catch (err) {
+      console.error(`[Admin Seller] Failed to log revenue history (non-critical) for seller ${seller._id}:`, {
+        error: err.message,
+        stack: err.stack,
+      });
+    }
+  }
 
   res.status(200).json({
     status: 'success',

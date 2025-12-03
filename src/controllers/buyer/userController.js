@@ -4,6 +4,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const handleFactory = require('../shared/handleFactory');
 const multer = require('multer');
 const sharp = require('sharp');
+const stream = require('stream');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 const multerStorage = multer.memoryStorage();
@@ -30,12 +31,60 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
   console.log('file', req.file);
   if (!req.file) return next();
 
-  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
-  await sharp(req.file.buffer)
-    .resize(500, 500)
+  // Get Cloudinary instance from app
+  const cloudinary = req.app.get('cloudinary');
+  
+  if (!cloudinary) {
+    // Fallback to local storage if Cloudinary is not configured
+    req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+    await sharp(req.file.buffer)
+      .resize(500, 500)
+      .toFormat('jpeg')
+      .jpeg({ quality: 90 })
+      .toFile(`public/img/users/${req.file.filename}`);
+    return next();
+  }
+
+  // Use Sharp to optimize image before uploading to Cloudinary
+  const optimizedBuffer = await sharp(req.file.buffer)
+    .resize(500, 500, {
+      fit: 'cover',
+      position: 'center',
+    })
     .toFormat('jpeg')
     .jpeg({ quality: 90 })
-    .toFile(`public/img/users/${req.file.filename}`);
+    .toBuffer();
+
+  // Upload to Cloudinary
+  const result = await new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'user-avatars',
+        public_id: `user-${req.user.id}-${Date.now()}`,
+        transformation: [
+          { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+          { quality: 'auto', fetch_format: 'auto' },
+        ],
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) {
+          return reject(new AppError(`Image upload failed: ${error.message}`, 500));
+        }
+        resolve(result);
+      },
+    );
+
+    // Create buffer stream from optimized image
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(optimizedBuffer);
+    bufferStream.pipe(uploadStream);
+  });
+
+  // Store Cloudinary URL in req.file for use in controller
+  req.file.cloudinaryUrl = result.secure_url;
+  req.file.publicId = result.public_id;
+  
   next();
 });
 
@@ -48,17 +97,38 @@ exports.upLoadUserAvatar = catchAsync(async (req, res, next) => {
       ),
     );
   }
-  if (req.file) req.body.photo = req.file.filename;
 
-  const user = await User.findByIdAndUpdate(req.user.id, req.body.photo, {
-    new: true,
-    runValidators: true,
-  });
+  // Check if file was uploaded
+  if (!req.file) {
+    return next(new AppError('Please upload an image file', 400));
+  }
+
+  // Use Cloudinary URL if available, otherwise use local filename
+  const photo = req.file.cloudinaryUrl || req.file.filename;
+
+  // Update user with photo
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { photo },
+    {
+      new: true,
+      runValidators: true,
+      select: '-password -passwordConfirm', // Exclude sensitive fields
+    },
+  );
+
+  if (!user) {
+    return next(new AppError('User not found', 404));
+  }
 
   res.status(200).json({
     status: 'success',
     data: {
       user,
+      imageInfo: req.file.cloudinaryUrl ? {
+        url: req.file.cloudinaryUrl,
+        publicId: req.file.publicId,
+      } : undefined,
     },
   });
 });

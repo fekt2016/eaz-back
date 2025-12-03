@@ -17,12 +17,16 @@ const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
 
+const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+
 router.post('/signup', authController.signup);
 router.post('/email-verification', authController.emailVerification);
 router.get('/email-verification/:token', authController.verifyEmail);
 router.post('/resend-verification', authController.emailVerification);
-router.post('/send-otp', authController.sendOtp);
-router.post('/verify-otp', authController.verifyOtp);
+router.post('/resend-otp', otpLimiter, authController.resendOtp); // ✅ New resend OTP endpoint
+router.post('/verify-account', otpLimiter, authController.verifyAccount); // ✅ New account verification endpoint
+router.post('/send-otp', otpLimiter, authController.sendOtp);
+router.post('/verify-otp', otpLimiter, authController.verifyOtp); // ✅ Add rate limiting
 router.post('/logout', authController.logout);
 
 // router.post('/forgotPassword', authController.forgotPassword);

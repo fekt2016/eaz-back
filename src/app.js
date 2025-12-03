@@ -49,6 +49,7 @@ const wishlistRoutes = require('./routes/buyer/wishlistRoute');
 const addressRoutes = require('./routes/buyer/addressRoutes');
 const browserHistoryRoutes = require('./routes/buyer/browserHistoryRoutes');
 const creditbalanceRoutes = require('./routes/buyer/creditbalanceRoutes');
+const walletRoutes = require('./routes/buyer/walletRoutes');
 const followRoutes = require('./routes/buyer/followRoutes');
 const permissionRoutes = require('./routes/buyer/permissionRoutes');
 const newsletterRoutes = require('./routes/buyer/newsletterRoutes');
@@ -72,6 +73,7 @@ const distanceAnalyzerRoutes = require('./routes/admin/distanceAnalyzerRoutes');
 const adminNeighborhoodRoutes = require('./routes/admin/neighborhoodRoutes');
 const adminReviewRoutes = require('./routes/admin/reviewRoutes');
 const adminPayoutRoutes = require('./routes/admin/payoutRoutes');
+const adminRefundRoutes = require('./routes/admin/refundRoutes');
 
 const productRoutes = require('./routes/shared/productRoutes');
 const categoryRoutes = require('./routes/shared/categoryRoutes');
@@ -85,6 +87,9 @@ const notificationRoutes = require('./routes/shared/notificationRoutes');
 const shippingRoutes = require('./routes/shared/shippingRoutes');
 const locationRoutes = require('./routes/shared/locationRoutes');
 const neighborhoodRoutes = require('./routes/shared/neighborhoodRoutes');
+const deviceSessionRoutes = require('./routes/shared/deviceSessionRoutes');
+const recommendationRoutes = require('./routes/shared/recommendationRoutes');
+const supportRoutes = require('./routes/shared/supportRoutes');
 
 // Import queues
 const dataExportQueue = require('./jobs/queues/dataExportQueue');
@@ -317,6 +322,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from public directory (for user avatars, product images, etc.)
+app.use(express.static(path.join(__dirname, '../../public')));
+
 // 4. Routes - Organized by role
 // Buyer routes
 app.use('/api/v1/users', userRoutes);
@@ -325,6 +333,7 @@ app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/address', addressRoutes);
 app.use('/api/v1/history', browserHistoryRoutes);
 app.use('/api/v1/creditbalance', creditbalanceRoutes);
+app.use('/api/v1/wallet', walletRoutes);
 app.use('/api/v1/follow', followRoutes);
 app.use('/api/v1/permission', permissionRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
@@ -345,6 +354,7 @@ app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
 app.use('/api/v1/admin/reviews', adminReviewRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);
+app.use('/api/v1/admin/refunds', adminRefundRoutes);
 app.use('/api/v1/logs', require('./modules/activityLog/activityLog.routes'));
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
@@ -368,6 +378,9 @@ app.use('/api/v1/notification-settings', notificationRoutes);
 app.use('/api/v1/shipping', shippingRoutes);
 app.use('/api/v1/location', locationRoutes);
 app.use('/api/v1/neighborhoods', neighborhoodRoutes);
+app.use('/api/v1/sessions', deviceSessionRoutes);
+app.use('/api/v1/recommendations', recommendationRoutes);
+app.use('/api/v1/support', supportRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

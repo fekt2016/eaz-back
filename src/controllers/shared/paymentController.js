@@ -12,6 +12,7 @@ const AppError = require('../../utils/errors/appError');
 const { sendPaymentNotification } = require('../../utils/helpers/notificationService');
 const axios = require('axios');
 const mongoose = require('mongoose');
+const { logSellerRevenue } = require('../../services/historyLogger');
 
 exports.getAllPayment = handleFactory.getAll(Payment);
 exports.getPayment = handleFactory.getOne(Payment);
@@ -569,7 +570,51 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
     if (transaction) {
       const reference = transaction.reference;
       const orderId = transaction.metadata?.orderId;
+      const transactionType = transaction.metadata?.type;
 
+      // Handle wallet top-up
+      if (transactionType === 'wallet_topup' && transaction.status === 'success') {
+        console.log(`[Paystack Webhook] Processing wallet top-up: ${reference}`);
+        
+        try {
+          const walletService = require('../../services/walletService');
+          const userId = transaction.metadata?.userId;
+          const amount = transaction.amount / 100; // Convert from smallest currency unit
+
+          if (!userId) {
+            console.error('[Paystack Webhook] User ID not found in wallet top-up metadata');
+            return res.status(200).json({ received: true });
+          }
+
+          // Credit wallet (idempotency check is inside creditWallet)
+          const result = await walletService.creditWallet(
+            userId,
+            amount,
+            'CREDIT_TOPUP',
+            `Wallet top-up via Paystack - ${reference}`,
+            reference,
+            {
+              paystackReference: reference,
+              paystackTransactionId: transaction.id?.toString(),
+              email: transaction.customer?.email,
+            }
+          );
+
+          if (result.isDuplicate) {
+            console.log(`[Paystack Webhook] Wallet top-up ${reference} already processed`);
+          } else {
+            console.log(`[Paystack Webhook] Wallet top-up successful: GH₵${amount} credited to user ${userId}`);
+          }
+
+          return res.status(200).json({ received: true });
+        } catch (error) {
+          console.error('[Paystack Webhook] Error processing wallet top-up:', error);
+          // Don't fail webhook, but log error
+          return res.status(200).json({ received: true });
+        }
+      }
+
+      // Handle order payment
       // Find order
       let order;
       if (orderId) {
@@ -717,295 +762,29 @@ exports.createPaymentRequest = catchAsync(async (req, res, next) => {
   const seller = req.user;
   const { amount, paymentMethod, paymentDetails } = req.body;
 
-  // Validate amount
-  if (amount <= 0) {
-    return next(new AppError('Amount must be greater than 0', 400));
-  }
+  try {
+    // Use shared service function
+    const paymentRequestService = require('../../services/paymentRequestService');
+    const paymentRequest = await paymentRequestService.createPaymentRequest(
+      seller,
+      amount,
+      paymentMethod,
+      paymentDetails
+    );
 
-  // Get current seller balance from seller model (including taxCategory)
-  const currentSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance taxCategory');
-  if (!currentSeller) {
-    return next(new AppError('Seller not found', 404));
-  }
-
-  // Use balance directly from seller model
-  const sellerBalance = currentSeller.balance || 0;
-
-  // Calculate withdrawable balance (balance - lockedBalance - pendingBalance)
-  const withdrawableBalance = Math.max(0, sellerBalance - (currentSeller.lockedBalance || 0) - (currentSeller.pendingBalance || 0));
-
-  // Check available balance (use withdrawableBalance for validation)
-  if (amount > withdrawableBalance) {
-    return next(new AppError(`Insufficient balance. Available: GH₵${withdrawableBalance.toFixed(2)}`, 400));
-  }
-
-  // Use seller's saved payment methods if paymentDetails are not provided or incomplete
-  let finalPaymentDetails = paymentDetails || {};
-  
-  // If paymentDetails is empty or incomplete, fetch from PaymentMethod model first, then fallback to seller.paymentMethods
-  if (!paymentDetails || Object.keys(paymentDetails).length === 0) {
-    // Try to find User account linked to seller (by email)
-    let userAccount = null;
-    if (currentSeller.email) {
-      userAccount = await User.findOne({ email: currentSeller.email });
+    res.status(201).json({
+      status: 'success',
+      data: {
+        paymentRequest,
+      },
+    });
+  } catch (error) {
+    // Pass AppError directly, wrap others
+    if (error instanceof AppError) {
+      return next(error);
     }
-    
-    // Map payment method to PaymentMethod model type
-    const paymentMethodToType = {
-      'bank': 'bank_transfer',
-      'mtn_momo': 'mobile_money',
-      'vodafone_cash': 'mobile_money',
-      'airtel_tigo_money': 'mobile_money',
-    };
-    
-    // Map payment method to provider
-    const paymentMethodToProvider = {
-      'mtn_momo': 'MTN',
-      'vodafone_cash': 'Vodafone',
-      'airtel_tigo_money': 'AirtelTigo',
-    };
-    
-    if (paymentMethod === 'bank') {
-      // Try to get from PaymentMethod model first
-      if (userAccount) {
-        const paymentMethodDoc = await PaymentMethod.findOne({
-          user: userAccount._id,
-          type: 'bank_transfer',
-          isDefault: true,
-        });
-        
-        // If no default, get any bank transfer method
-        if (!paymentMethodDoc) {
-          const anyBankMethod = await PaymentMethod.findOne({
-            user: userAccount._id,
-            type: 'bank_transfer',
-          });
-          if (anyBankMethod && anyBankMethod.accountNumber && anyBankMethod.accountName && anyBankMethod.bankName) {
-            finalPaymentDetails = {
-              accountName: anyBankMethod.accountName,
-              accountNumber: anyBankMethod.accountNumber,
-              bankName: anyBankMethod.bankName,
-              branch: anyBankMethod.branch || '',
-            };
-          }
-        } else if (paymentMethodDoc.accountNumber && paymentMethodDoc.accountName && paymentMethodDoc.bankName) {
-          finalPaymentDetails = {
-            accountName: paymentMethodDoc.accountName,
-            accountNumber: paymentMethodDoc.accountNumber,
-            bankName: paymentMethodDoc.bankName,
-            branch: paymentMethodDoc.branch || '',
-          };
-        }
-      }
-      
-      // Fallback to seller's saved bank account details
-      if (!finalPaymentDetails.accountNumber && currentSeller.paymentMethods?.bankAccount) {
-        const bankAccount = currentSeller.paymentMethods.bankAccount;
-        if (bankAccount.accountNumber && bankAccount.accountName && bankAccount.bankName) {
-          finalPaymentDetails = {
-            accountName: bankAccount.accountName,
-            accountNumber: bankAccount.accountNumber,
-            bankName: bankAccount.bankName,
-            branch: bankAccount.branch || '',
-          };
-        }
-      }
-      
-      if (!finalPaymentDetails.accountNumber) {
-        return next(new AppError('Bank account details not found. Please add bank details in your payment methods.', 400));
-      }
-    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
-      const provider = paymentMethodToProvider[paymentMethod];
-      
-      // Try to get from PaymentMethod model first
-      if (userAccount && provider) {
-        // Try default first
-        let paymentMethodDoc = await PaymentMethod.findOne({
-          user: userAccount._id,
-          type: 'mobile_money',
-          provider: provider,
-          isDefault: true,
-        });
-        
-        // If no default, get any matching provider
-        if (!paymentMethodDoc) {
-          paymentMethodDoc = await PaymentMethod.findOne({
-            user: userAccount._id,
-            type: 'mobile_money',
-            provider: provider,
-          });
-        }
-        
-        if (paymentMethodDoc && paymentMethodDoc.mobileNumber) {
-          finalPaymentDetails = {
-            phone: paymentMethodDoc.mobileNumber,
-            network: paymentMethodDoc.provider,
-            accountName: paymentMethodDoc.name || currentSeller.name || currentSeller.shopName || '',
-          };
-        }
-      }
-      
-      // Fallback to seller's saved mobile money details
-      if (!finalPaymentDetails.phone && currentSeller.paymentMethods?.mobileMoney) {
-        const mobileMoney = currentSeller.paymentMethods.mobileMoney;
-        if (mobileMoney.phone && mobileMoney.network) {
-          // Map saved network to payment method
-          const networkToPaymentMethod = {
-            'mtn': 'mtn_momo',
-            'vodafone': 'vodafone_cash',
-            'airteltigo': 'airtel_tigo_money',
-          };
-          
-          const savedNetwork = mobileMoney.network.toLowerCase();
-          const expectedPaymentMethod = networkToPaymentMethod[savedNetwork];
-          
-          if (expectedPaymentMethod === paymentMethod) {
-            finalPaymentDetails = {
-              phone: mobileMoney.phone,
-              network: mobileMoney.network,
-              accountName: mobileMoney.accountName || '',
-            };
-          }
-        }
-      }
-      
-      if (!finalPaymentDetails.phone) {
-        return next(new AppError('Mobile money details not found. Please add mobile money details in your payment methods.', 400));
-      }
-    } else if (paymentMethod === 'cash') {
-      // Cash pickup requires manual entry, cannot use saved methods
-      if (!paymentDetails || !paymentDetails.pickupLocation || !paymentDetails.contactPerson || !paymentDetails.contactPhone) {
-        return next(new AppError('Cash pickup requires pickup location, contact person, and contact phone. Please fill all cash pickup details.', 400));
-      }
-      finalPaymentDetails = paymentDetails;
-    }
-  } else {
-    // Payment details provided - validate and use them
-    if (paymentMethod === 'bank') {
-      if (!paymentDetails.accountName || !paymentDetails.accountNumber || !paymentDetails.bankName) {
-        return next(new AppError('Please provide all bank details: account name, account number, and bank name.', 400));
-      }
-      finalPaymentDetails = {
-        accountName: paymentDetails.accountName,
-        accountNumber: paymentDetails.accountNumber,
-        bankName: paymentDetails.bankName,
-        branch: paymentDetails.branch || '',
-      };
-    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
-      if (!paymentDetails.phone || !paymentDetails.network) {
-        return next(new AppError('Please provide phone number and network for mobile money.', 400));
-      }
-      finalPaymentDetails = {
-        phone: paymentDetails.phone,
-        network: paymentDetails.network,
-        accountName: paymentDetails.accountName || '',
-      };
-    } else if (paymentMethod === 'cash') {
-      if (!paymentDetails.pickupLocation || !paymentDetails.contactPerson || !paymentDetails.contactPhone) {
-        return next(new AppError('Please provide all cash pickup details: pickup location, contact person, and contact phone.', 400));
-      }
-      finalPaymentDetails = paymentDetails;
-    }
+    return next(new AppError(error.message || 'Failed to create payment request', 500));
   }
-  
-  // Ensure paymentDetails is always populated before creating the request
-  if (!finalPaymentDetails || Object.keys(finalPaymentDetails).length === 0) {
-    return next(new AppError('Payment details are required. Please provide payment information.', 400));
-  }
-
-  // Calculate withholding tax based on seller's tax category (using dynamic rates)
-  const taxService = require('../../services/tax/taxService');
-  const taxCategory = currentSeller.taxCategory || 'individual';
-  const withholdingResult = await taxService.calculateWithholdingTax(amount, taxCategory);
-  const withholdingTax = withholdingResult.withholdingTax;
-  const withholdingTaxRate = withholdingResult.withholdingTaxRate;
-  const amountPaidToSeller = withholdingResult.amountPaidToSeller;
-
-  // Create payment request with withholding tax information
-  const paymentRequest = await PaymentRequest.create({
-    seller: seller.id,
-    amount,
-    amountRequested: amount, // Store original requested amount
-    currency: 'GHS',
-    paymentMethod,
-    paymentDetails: finalPaymentDetails,
-    status: 'pending',
-    withholdingTax,
-    withholdingTaxRate,
-    amountPaidToSeller,
-    sellerBalanceBefore: currentSeller.balance || 0,
-  });
-
-  // Add amount to pendingBalance when withdrawal request is created
-  // This tracks funds awaiting admin approval and OTP verification
-  // IMPORTANT: Total Revenue (balance) should NOT be deducted here - only available balance decreases
-  const oldBalance = currentSeller.balance || 0;
-  const oldPendingBalance = currentSeller.pendingBalance || 0;
-  const oldLockedBalance = currentSeller.lockedBalance || 0;
-  const oldWithdrawableBalance = Math.max(0, oldBalance - oldLockedBalance - oldPendingBalance);
-  
-  // Add to pendingBalance (funds awaiting approval and OTP verification)
-  // This reduces available balance but does NOT affect total revenue (balance)
-  currentSeller.pendingBalance = oldPendingBalance + amount;
-  
-  // CRITICAL: Do NOT modify balance (total revenue) - it should remain unchanged
-  // Only pendingBalance is increased, which reduces withdrawableBalance
-  // Balance will only be deducted when withdrawal is actually paid (in processPaymentRequest)
-  
-  // Recalculate withdrawableBalance explicitly (balance - lockedBalance - pendingBalance)
-  currentSeller.calculateWithdrawableBalance();
-  const newWithdrawableBalance = Math.max(0, currentSeller.balance - currentSeller.lockedBalance - currentSeller.pendingBalance);
-  currentSeller.withdrawableBalance = newWithdrawableBalance;
-  
-  // Verify balance was NOT modified
-  if (currentSeller.balance !== oldBalance) {
-    console.error(`[createPaymentRequest] ERROR: Balance was modified! Old: ${oldBalance}, New: ${currentSeller.balance}`);
-    // Restore balance if it was accidentally modified
-    currentSeller.balance = oldBalance;
-  }
-  
-  console.log(`[createPaymentRequest] Pending balance update for seller ${seller.id}:`);
-  console.log(`  Total Revenue (Balance): ${oldBalance} (UNCHANGED - not deducted)`);
-  console.log(`  Pending Balance: ${oldPendingBalance} + ${amount} = ${currentSeller.pendingBalance}`);
-  console.log(`  Locked Balance: ${oldLockedBalance} (unchanged)`);
-  console.log(`  Available Balance: ${oldWithdrawableBalance} - ${amount} = ${newWithdrawableBalance} (decreased due to pending withdrawal)`);
-  
-  // Auto-update onboarding if bank details are being added
-  if (!currentSeller.requiredSetup.hasAddedBankDetails) {
-    currentSeller.requiredSetup.hasAddedBankDetails = true;
-    
-    // Check if all setup is complete (product not required for verification)
-    const allSetupComplete =
-      currentSeller.requiredSetup.hasAddedBusinessInfo &&
-      currentSeller.requiredSetup.hasAddedBankDetails;
-
-    if (allSetupComplete && currentSeller.onboardingStage === 'profile_incomplete') {
-      currentSeller.onboardingStage = 'pending_verification';
-    }
-  }
-  
-  await currentSeller.save();
-  
-  // Verify the save worked and balance was NOT deducted
-  const savedSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance withdrawableBalance');
-  if (savedSeller) {
-    // Verify balance (total revenue) was NOT modified
-    if (Math.abs((savedSeller.balance || 0) - oldBalance) > 0.01) {
-      console.error(`[createPaymentRequest] ❌ ERROR: Total Revenue (Balance) was modified! Expected: ${oldBalance}, Actual: ${savedSeller.balance}`);
-    } else {
-      console.log(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance): ${savedSeller.balance} (UNCHANGED)`);
-    }
-    console.log(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
-  }
-  // Send confirmation to seller
-  await sendPaymentNotification(seller, 'request_created', paymentRequest);
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      paymentRequest,
-    },
-  });
 });
 
 /**
@@ -1157,6 +936,33 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     console.log(`  Total Balance: ${oldBalance} - ${paymentRequest.amount} = ${seller.balance}`);
     console.log(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
     console.log(`  Available Balance: ${newWithdrawableBalance}`);
+
+    // Log seller revenue history for approved payout
+    try {
+      await logSellerRevenue({
+        sellerId: seller._id,
+        amount: -paymentRequest.amount, // Negative for payout
+        type: 'PAYOUT',
+        description: `Withdrawal approved and paid: GH₵${paymentRequest.amount.toFixed(2)}`,
+        reference: `PAYOUT-APPROVED-${paymentRequest._id}-${Date.now()}`,
+        payoutRequestId: paymentRequest._id,
+        balanceBefore: oldBalance,
+        balanceAfter: seller.balance,
+        metadata: {
+          paymentRequestId: paymentRequest._id.toString(),
+          amount: paymentRequest.amount,
+          paymentMethod: paymentRequest.paymentMethod,
+          status: 'paid',
+          transactionId,
+        },
+      });
+      console.log(`[processPaymentRequest] ✅ Seller revenue history logged for approved payout - seller ${seller._id}`);
+    } catch (historyError) {
+      console.error(`[processPaymentRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+        error: historyError.message,
+        stack: historyError.stack,
+      });
+    }
     
     seller.paymentHistory.push({
       amount: netAmount,

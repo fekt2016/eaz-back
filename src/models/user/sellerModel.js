@@ -225,10 +225,20 @@ const sellerSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date, default: Date },
     otp: {
       type: String,
-      select: false,
+      select: false, // Hashed OTP stored here
     },
     otpExpires: {
       type: Date,
+      select: false,
+    },
+    otpAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    otpLockedUntil: {
+      type: Date,
+      default: null,
       select: false,
     },
     otpType: String,
@@ -416,17 +426,65 @@ sellerSchema.methods.createPasswordResetToken = function () {
   return resetToken;
 };
 
-// OTP methods
+// OTP methods with hashing
 sellerSchema.methods.createOtp = function () {
   // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  this.otp = otp;
-  this.otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes expiration
+  
+  // Hash OTP before storing (SHA-256)
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+  
+  // Store hashed OTP
+  this.otp = hashedOtp;
+  this.otpExpires = Date.now() + (process.env.OTP_EXPIRES_IN || 10) * 60 * 1000; // 10 minutes default
+  this.otpAttempts = 0; // Reset attempts on new OTP
+  this.otpLockedUntil = null; // Clear lockout
+  
+  console.log('[Seller createOtp] Generated OTP (hashed)');
+  
+  // Return plain OTP for sending (not hashed)
   return otp;
 };
 
 sellerSchema.methods.verifyOtp = function (candidateOtp) {
-  return this.otp === candidateOtp && this.otpExpires > Date.now();
+  // Check if account is locked
+  if (this.otpLockedUntil && new Date(this.otpLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil((new Date(this.otpLockedUntil).getTime() - Date.now()) / (1000 * 60));
+    console.log('[Seller verifyOtp] Account locked:', { minutesRemaining });
+    return { valid: false, locked: true, minutesRemaining };
+  }
+  
+  // Check if OTP exists
+  if (!this.otp || !this.otpExpires) {
+    return { valid: false, reason: 'no_otp' };
+  }
+  
+  // Check if expired
+  if (new Date(this.otpExpires).getTime() <= Date.now()) {
+    const minutesExpired = Math.floor((Date.now() - new Date(this.otpExpires).getTime()) / (1000 * 60));
+    return { valid: false, reason: 'expired', minutesExpired };
+  }
+  
+  // Normalize candidate OTP
+  const providedOtp = String(candidateOtp || '').trim().replace(/\D/g, '');
+  
+  if (providedOtp.length === 0 || providedOtp.length !== 6) {
+    return { valid: false, reason: 'invalid_format' };
+  }
+  
+  // Hash candidate OTP and compare
+  const hashedCandidate = crypto.createHash('sha256').update(providedOtp).digest('hex');
+  const otpMatch = this.otp === hashedCandidate;
+  
+  if (!otpMatch) {
+    return { valid: false, reason: 'mismatch' };
+  }
+  
+  // OTP is valid - reset attempts and lockout
+  this.otpAttempts = 0;
+  this.otpLockedUntil = null;
+  
+  return { valid: true };
 };
 sellerSchema.methods.hasSufficientBalance = function (amount) {
   return this.balance >= amount;

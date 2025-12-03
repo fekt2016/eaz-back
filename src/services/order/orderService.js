@@ -6,6 +6,7 @@ const Product = require('../../models/product/productModel');
 const OrderItem = require('../../models/order/OrderItemModel');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
+const { logSellerRevenue } = require('../historyLogger');
 
 /**
  * Calculate seller earnings for a seller order
@@ -210,6 +211,41 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         amount: sellerEarnings,
         transactionId: transaction[0]._id,
       });
+
+      // Log seller revenue history with correct balance values
+      // Pass balanceBefore and balanceAfter to ensure accurate tracking
+      // This is called within the transaction, so we use the calculated values
+      const balanceBeforeValue = oldBalance;
+      const balanceAfterValue = seller.balance;
+      
+      try {
+        await logSellerRevenue({
+          sellerId,
+          amount: sellerEarnings,
+          type: 'ORDER_EARNING',
+          description: `Earnings received from order #${order.orderNumber}`,
+          reference: `ORDER-${order.orderNumber}-${sellerId}`,
+          orderId: mongoose.Types.ObjectId(orderId),
+          balanceBefore: balanceBeforeValue,
+          balanceAfter: balanceAfterValue,
+          metadata: {
+            orderNumber: order.orderNumber,
+            sellerEarnings,
+            commissionRate: sellerOrder.commissionRate !== undefined 
+              ? sellerOrder.commissionRate 
+              : (settings.platformCommissionRate || 0),
+            basePrice: sellerOrder.totalBasePrice || 0,
+            shippingCost: sellerOrder.shippingCost,
+          },
+        });
+        console.log(`[OrderService] ✅ Seller revenue history logged for seller ${sellerId}`);
+      } catch (historyError) {
+        // Log error but don't fail the transaction
+        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${sellerId}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
 
       console.log(`[OrderService] Credited ${sellerEarnings} to seller ${sellerId} for order ${orderId}`);
     }
@@ -432,9 +468,40 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
         continue;
       }
 
+      // Get balance before reversal
+      const balanceBefore = seller.balance || 0;
+      
       // Deduct from seller balance
-      seller.balance = (seller.balance || 0) - transaction.amount;
+      seller.balance = balanceBefore - transaction.amount;
       await seller.save({ session });
+
+      // Log seller revenue history with correct balance values
+      const order = await Order.findById(orderId).session(session);
+      const balanceAfter = seller.balance;
+      
+      try {
+        await logSellerRevenue({
+          sellerId: transaction.seller,
+          amount: -transaction.amount, // Negative for deduction
+          type: 'REFUND_DEDUCTION',
+          description: `Refund deduction for order #${order?.orderNumber || orderId}`,
+          reference: `REFUND-${orderId}-${transaction.seller}-${Date.now()}`,
+          orderId: mongoose.Types.ObjectId(orderId),
+          balanceBefore,
+          balanceAfter,
+          metadata: {
+            reason,
+            originalTransactionId: transaction._id.toString(),
+            orderNumber: order?.orderNumber,
+          },
+        });
+        console.log(`[OrderService] ✅ Seller revenue history logged for refund - seller ${transaction.seller}`);
+      } catch (historyError) {
+        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${transaction.seller}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
 
       // Create reversal transaction
       const reversalTransaction = await Transaction.create(
@@ -482,6 +549,176 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
   } catch (error) {
     await session.abortTransaction();
     console.error('[OrderService] Error reverting seller balances:', error);
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+/**
+ * Revert seller balance for specific items in an order (item-level refund)
+ * @param {String} orderId - Order ID
+ * @param {Array} refundItems - Array of { orderItemId, sellerId, refundAmount, quantity }
+ * @param {String} reason - Reason for reversal
+ * @returns {Promise<Object>} - Summary of balance reversals
+ */
+exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'Item Refunded') => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    if (!refundItems || refundItems.length === 0) {
+      await session.abortTransaction();
+      return {
+        success: false,
+        message: 'No items to revert',
+        reversals: [],
+      };
+    }
+
+    const reversals = [];
+    const sellerRefundMap = new Map(); // Group by seller
+
+    // Group refunds by seller
+    for (const item of refundItems) {
+      const sellerId = item.sellerId.toString();
+      if (!sellerRefundMap.has(sellerId)) {
+        sellerRefundMap.set(sellerId, {
+          sellerId: item.sellerId,
+          totalAmount: 0,
+          items: [],
+        });
+      }
+      const sellerRefund = sellerRefundMap.get(sellerId);
+      sellerRefund.totalAmount += item.refundAmount;
+      sellerRefund.items.push(item);
+    }
+
+    // Process each seller
+    for (const [sellerIdStr, sellerRefund] of sellerRefundMap) {
+      const seller = await Seller.findById(sellerRefund.sellerId).session(session);
+      if (!seller) {
+        console.log(`[OrderService] Seller ${sellerIdStr} not found for item refund`);
+        continue;
+      }
+
+      const refundAmount = sellerRefund.totalAmount;
+
+      // Get balance before reversal
+      const balanceBefore = seller.balance || 0;
+      
+      // Check if seller has sufficient balance
+      if (balanceBefore < refundAmount) {
+        // If insufficient, track negative balance
+        const deficit = refundAmount - balanceBefore;
+        seller.balance = 0;
+        seller.negativeBalance = (seller.negativeBalance || 0) + deficit;
+        console.log(`[OrderService] Insufficient balance for seller ${sellerIdStr}. Deficit: ${deficit}. Negative balance: ${seller.negativeBalance}`);
+      } else {
+        // Deduct from seller balance
+        seller.balance = balanceBefore - refundAmount;
+      }
+      await seller.save({ session });
+
+      // Log seller revenue history with correct balance values
+      const order = await Order.findById(orderId).session(session);
+      const balanceAfter = seller.balance;
+      
+      try {
+        await logSellerRevenue({
+          sellerId: sellerRefund.sellerId,
+          amount: -refundAmount, // Negative for deduction
+          type: 'REFUND_DEDUCTION',
+          description: `Refund deduction for order #${order?.orderNumber || orderId} (${sellerRefund.items.length} items)`,
+          reference: `REFUND-ITEMS-${orderId}-${sellerIdStr}-${Date.now()}`,
+          orderId: mongoose.Types.ObjectId(orderId),
+          balanceBefore,
+          balanceAfter,
+          metadata: {
+            reason,
+            refundItems: sellerRefund.items.map(item => ({
+              orderItemId: item.orderItemId?.toString(),
+              quantity: item.quantity,
+              refundAmount: item.refundAmount,
+            })),
+            orderNumber: order?.orderNumber,
+          },
+        });
+        console.log(`[OrderService] ✅ Seller revenue history logged for item refund - seller ${sellerIdStr}`);
+      } catch (historyError) {
+        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${sellerIdStr}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
+
+      // Find the original credit transaction for this seller and order
+      const originalTransaction = await Transaction.findOne({
+        order: orderId,
+        seller: sellerRefund.sellerId,
+        type: 'credit',
+        status: 'completed',
+      }).sort({ createdAt: -1 }).session(session);
+
+      // Create reversal transaction
+      const reversalTransaction = await Transaction.create(
+        [
+          {
+            seller: sellerRefund.sellerId,
+            sellerOrder: originalTransaction?.sellerOrder || null,
+            order: orderId,
+            type: 'debit',
+            amount: refundAmount,
+            description: `Item Refund: ${reason} - Order #${orderId}`,
+            status: 'completed',
+            metadata: {
+              originalTransactionId: originalTransaction?._id || null,
+              orderId: orderId,
+              reason,
+              refundItems: sellerRefund.items.map(item => ({
+                orderItemId: item.orderItemId,
+                quantity: item.quantity,
+                refundAmount: item.refundAmount,
+              })),
+            },
+          },
+        ],
+        { session }
+      );
+
+      // Update seller order payout status if needed
+      if (originalTransaction?.sellerOrder) {
+        const sellerOrder = await SellerOrder.findById(originalTransaction.sellerOrder).session(session);
+        if (sellerOrder) {
+          // Check if all items in sellerOrder are refunded
+          const allItemsRefunded = sellerRefund.items.every(item => {
+            return sellerOrder.items.some(soItem => soItem.toString() === item.orderItemId.toString());
+          });
+          if (allItemsRefunded) {
+            sellerOrder.payoutStatus = 'hold';
+            await sellerOrder.save({ session });
+          }
+        }
+      }
+
+      reversals.push({
+        sellerId: sellerIdStr,
+        amount: refundAmount,
+        reversalTransactionId: reversalTransaction[0]._id,
+        items: sellerRefund.items,
+      });
+    }
+
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      message: `Reverted balances for ${reversals.length} seller(s)`,
+      reversals,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('[OrderService] Error reverting seller balances for items:', error);
     throw error;
   } finally {
     session.endSession();
@@ -548,6 +785,7 @@ module.exports = {
   creditSellerForOrder: exports.creditSellerForOrder,
   updateSellerBalancesOnOrderCompletion: exports.creditSellerForOrder, // Alias for backward compatibility
   revertSellerBalancesOnRefund: exports.revertSellerBalancesOnRefund,
+  revertSellerBalancesForItems: exports.revertSellerBalancesForItems, // New: item-level refund reversal
   getSellerEarningsForOrder: exports.getSellerEarningsForOrder,
   calculateSellerEarnings,
 };

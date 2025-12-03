@@ -681,32 +681,28 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         newOrder.status = 'pending';
         newOrder.currentStatus = 'pending_payment';
       } else if (paymentMethod === 'credit_balance') {
-        // Credit balance payment - process immediately
-        const Creditbalance = require('../../models/user/creditbalanceModel');
-        const creditBalance = await Creditbalance.findOne({ user: req.user.id }).session(session);
+        // Credit balance payment - process immediately using walletService
+        const walletService = require('../../services/walletService');
+        const reference = `ORDER-${orderNumber}`;
         
-        if (!creditBalance) {
-          throw new AppError('Credit balance account not found', 404);
+        // Deduct from wallet using walletService (includes transaction logging)
+        const debitResult = await walletService.debitWallet(
+          req.user.id,
+          orderTotal,
+          'DEBIT_ORDER',
+          `Order #${orderNumber} - Payment via wallet`,
+          reference,
+          {
+            orderNumber,
+            orderId: newOrder._id.toString(),
+          },
+          newOrder._id
+        );
+        
+        // Check if duplicate transaction (shouldn't happen but safety check)
+        if (debitResult.isDuplicate) {
+          throw new AppError('Transaction already processed', 400);
         }
-        
-        if (creditBalance.balance < orderTotal) {
-          throw new AppError(
-            `Insufficient balance. Your balance is GH₵${creditBalance.balance.toFixed(2)}, but order total is GH₵${orderTotal.toFixed(2)}`,
-            400
-          );
-        }
-        
-        // Deduct from credit balance
-        creditBalance.balance -= orderTotal;
-        creditBalance.availableBalance = creditBalance.balance;
-        creditBalance.transactions.push({
-          amount: -orderTotal,
-          type: 'purchase',
-          description: `Order #${orderNumber} - Payment via credit balance`,
-          reference: orderNumber,
-        });
-        creditBalance.lastUpdated = new Date();
-        await creditBalance.save({ session });
         
         // Update order payment status
         newOrder.paymentStatus = 'paid';
@@ -807,6 +803,57 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Commit transaction
     await session.commitTransaction();
+
+    // Remove ordered products from wishlist
+    try {
+      const WishList = require('../../models/product/wishListModel');
+      const orderedProductIds = orderItems.map(item => item.product.toString());
+      
+      // Find user's wishlist
+      const wishlist = await WishList.findOne({ user: req.user.id });
+      
+      if (wishlist && wishlist.products && wishlist.products.length > 0) {
+        // Get current product IDs in wishlist
+        const wishlistProductIds = wishlist.products.map(item => {
+          const productId = item.product;
+          return productId ? productId.toString() : null;
+        }).filter(id => id !== null);
+        
+        // Find products that are in both wishlist and order
+        const productsToRemove = orderedProductIds.filter(productId => 
+          wishlistProductIds.includes(productId)
+        );
+        
+        if (productsToRemove.length > 0) {
+          // Convert product IDs to ObjectIds for $pull query
+          const productIdsToRemove = productsToRemove.map(id => new mongoose.Types.ObjectId(id));
+          
+          // Remove ordered products from wishlist using $pull with $in
+          const updateResult = await WishList.findOneAndUpdate(
+            { user: req.user.id },
+            {
+              $pull: {
+                products: {
+                  product: { $in: productIdsToRemove }
+                }
+              }
+            },
+            { new: true }
+          );
+          
+          // Check if wishlist is now empty (all items were ordered)
+          if (updateResult && (!updateResult.products || updateResult.products.length === 0)) {
+            console.log(`[createOrder] All wishlist items were ordered and removed for user ${req.user.id}`);
+          } else {
+            const remainingCount = updateResult?.products?.length || 0;
+            console.log(`[createOrder] Removed ${productsToRemove.length} product(s) from wishlist. ${remainingCount} item(s) remaining for user ${req.user.id}`);
+          }
+        }
+      }
+    } catch (wishlistError) {
+      // Don't fail the order if wishlist update fails
+      console.error('[createOrder] Error removing products from wishlist:', wishlistError);
+    }
 
     // Fetch populated order
     const fullOrder = await Order.findById(newOrder._id)

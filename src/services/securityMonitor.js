@@ -272,14 +272,41 @@ const forceLogoutIfCritical = async (user, role) => {
 };
 
 /**
- * Get IP location (placeholder - would use actual geolocation service)
+ * Get IP location using IP geolocation service
  * @param {String} ip - IP address
- * @returns {Promise<String>} - Location string
+ * @returns {Promise<String>} - Location string (e.g., "Accra, Greater Accra, Ghana")
  */
 const getIpLocation = async (ip) => {
-  // TODO: Integrate with IP geolocation service (ipapi.co, ip-api.com, etc.)
-  // For now, return null
-  return null;
+  try {
+    // Skip if IP is invalid or local
+    if (!ip || ip === 'unknown' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+      return 'Local Network';
+    }
+
+    // Use ip-api.com (free tier: 45 requests/minute)
+    // Alternative: ipapi.co, ipgeolocation.io, etc.
+    const axios = require('axios');
+    const response = await axios.get(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,lat,lon`, {
+      timeout: 5000, // 5 second timeout
+    });
+
+    if (response.data && response.data.status === 'success') {
+      const { city, regionName, country } = response.data;
+      const locationParts = [];
+      
+      if (city) locationParts.push(city);
+      if (regionName) locationParts.push(regionName);
+      if (country) locationParts.push(country);
+      
+      return locationParts.length > 0 ? locationParts.join(', ') : 'Unknown Location';
+    }
+
+    return 'Unknown Location';
+  } catch (error) {
+    console.error('[getIpLocation] Error fetching location:', error.message);
+    // Fallback: return IP-based identifier
+    return 'Location Unavailable';
+  }
 };
 
 module.exports = {
