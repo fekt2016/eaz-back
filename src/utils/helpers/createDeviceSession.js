@@ -174,7 +174,7 @@ exports.createDeviceSession = async (req, user, platform = null) => {
  * Blacklist tokens and deactivate device session
  */
 exports.logoutDevice = async (req, deviceId = null) => {
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.eazmain_jwt || req.cookies?.eazseller_jwt || req.cookies?.eazadmin_jwt;
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.main_jwt || req.cookies?.seller_jwt || req.cookies?.admin_jwt;
   const userId = req.user?._id || req.user?.id;
 
   if (!userId) {
@@ -268,7 +268,7 @@ exports.logoutAllDevices = async (req) => {
   await DeviceSession.deactivateAll(userId);
 
   // Blacklist current token
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.eazmain_jwt || req.cookies?.eazseller_jwt || req.cookies?.eazadmin_jwt;
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.main_jwt || req.cookies?.seller_jwt || req.cookies?.admin_jwt;
   if (token) {
     try {
       const decoded = jwt.decode(token);

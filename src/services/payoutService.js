@@ -272,9 +272,36 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
       currency: 'GHS',
     };
 
+    console.log('💳 [PayoutService] Initiating Paystack transfer:', {
+      amount: amountInPesewas,
+      recipientCode,
+      reason,
+      endpoint: PAYSTACK_ENDPOINTS.INITIATE_TRANSFER
+    });
+
     const response = await paystackApi.post(PAYSTACK_ENDPOINTS.INITIATE_TRANSFER, transferData);
 
+    console.log('💳 [PayoutService] Paystack transfer initiated response:', {
+      status: response.data?.status,
+      transferStatus: response.data?.data?.status,
+      transferCode: response.data?.data?.transfer_code,
+      requiresOtp: response.data?.data?.status === 'otp',
+      requiresApproval: response.data?.data?.requires_approval,
+      fullResponse: JSON.stringify(response.data, null, 2)
+    });
+
     if (response.data.status && response.data.data) {
+      const transferStatus = response.data.data.status;
+      
+      // Log OTP generation info
+      if (transferStatus === 'otp' || response.data.data.requires_approval === 1) {
+        console.log('🔐 [PayoutService] ⚠️ PAYSTACK WILL GENERATE AND SEND OTP AUTOMATICALLY');
+        console.log('🔐 [PayoutService] Paystack automatically sends OTP to recipient phone/email when transfer requires OTP');
+        console.log('🔐 [PayoutService] Our backend does NOT generate the OTP - Paystack handles it');
+        console.log('🔐 [PayoutService] Transfer status:', transferStatus);
+        console.log('🔐 [PayoutService] Transfer code:', response.data.data.transfer_code);
+      }
+      
       return {
         transfer_code: response.data.data.transfer_code,
         reference: response.data.data.reference,

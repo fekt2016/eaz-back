@@ -25,6 +25,7 @@ const {
 const { requestRefund, getRefundStatus } = require('../../controllers/buyer/refundController');
 
 const authController = require('../../controllers/buyer/authController');
+const { validateObjectId } = require('../../middleware/validateObjectId');
 
 const router = express.Router();
 
@@ -52,6 +53,7 @@ router.get(
   authController.protect,
   authController.restrictTo('seller'),
   requireVerifiedSeller,
+  validateObjectId('id'), // SECURITY FIX #6
   getOrderBySeller,
 );
 router
@@ -63,7 +65,12 @@ router
   );
 router
   .route('/get-user-order/:id')
-  .get(authController.protect, authController.restrictTo('user'), getUserOrder);
+  .get(
+    authController.protect,
+    authController.restrictTo('user'),
+    validateObjectId('id'), // SECURITY FIX #6
+    getUserOrder
+  );
 
 // Update order shipping address (user only, within 24 hours)
 // Must be before /:id route to avoid route conflicts
@@ -96,6 +103,14 @@ router.post(
   authController.protect,
   authController.restrictTo('user'),
   sendOrderDetailEmail
+);
+
+// Admin payment confirmation route (must be before /:id route)
+router.patch(
+  '/:orderId/confirm-payment',
+  authController.protect,
+  authController.restrictTo('admin'),
+  require('../../controllers/admin/orderController').confirmPayment
 );
 
 // Order Tracking Routes

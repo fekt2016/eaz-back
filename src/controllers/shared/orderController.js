@@ -4,6 +4,7 @@ const OrderItems = require('../../models/order/OrderItemModel');
 const SellerOrder = require('../../models/order/sellerOrderModel');
 const Product = require('../../models/product/productModel');
 const Address = require('../../models/user/addressModel');
+const Admin = require('../../models/user/adminModel');
 const handleFactory = require('../shared/handleFactory');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
@@ -12,14 +13,82 @@ const { generateTrackingNumber } = require('../../services/order/shippingService
 const { populate } = require('../../models/category/categoryModel');
 const CouponBatch = require('../../models/coupon/couponBatchModel');
 const CouponUsage = require('../../models/coupon/couponUsageModel');
+const couponService = require('../../services/coupon/couponService');
 const { sendOrderDetailEmail } = require('../../utils/email/sendGridService');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const notificationService = require('../../services/notification/notificationService');
 
 /**
  * Reduce product stock for order items after payment is confirmed
  * @param {Object} order - The order document with populated orderItems
  * @param {Object} session - MongoDB session (optional)
  */
+/**
+ * Update product totalSold field when an order is placed
+ * @param {Object} order - The order document with populated orderItems
+ */
+exports.updateProductTotalSold = async (order) => {
+  try {
+    // Populate orderItems if not already populated
+    let orderItems;
+    if (order.orderItems && order.orderItems[0] && order.orderItems[0].product) {
+      // Already populated
+      orderItems = order.orderItems;
+    } else {
+      // Need to populate
+      const populatedOrder = await Order.findById(order._id)
+        .populate({
+          path: 'orderItems',
+          select: 'product variant quantity',
+        });
+      orderItems = populatedOrder.orderItems;
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      console.log(`[updateProductTotalSold] No order items found for order ${order._id}`);
+      return;
+    }
+
+    // Group quantities by product ID
+    const productQuantities = new Map();
+
+    for (const orderItem of orderItems) {
+      if (!orderItem || !orderItem.product) {
+        console.warn(`[updateProductTotalSold] Skipping invalid order item:`, orderItem);
+        continue;
+      }
+
+      const productId = orderItem.product._id || orderItem.product;
+      const quantity = orderItem.quantity || 0;
+
+      if (quantity > 0) {
+        const currentTotal = productQuantities.get(productId.toString()) || 0;
+        productQuantities.set(productId.toString(), currentTotal + quantity);
+      }
+    }
+
+    // Update totalSold for each product
+    for (const [productId, totalQuantity] of productQuantities.entries()) {
+      try {
+        await Product.findByIdAndUpdate(
+          productId,
+          { $inc: { totalSold: totalQuantity } },
+          { new: true }
+        );
+        console.log(`[updateProductTotalSold] Updated totalSold for product ${productId} by ${totalQuantity}`);
+      } catch (error) {
+        console.error(`[updateProductTotalSold] Error updating totalSold for product ${productId}:`, error);
+        // Continue with other products even if one fails
+      }
+    }
+
+    console.log(`[updateProductTotalSold] ✅ TotalSold updated successfully for order ${order._id}`);
+  } catch (error) {
+    console.error(`[updateProductTotalSold] Error updating totalSold for order ${order._id}:`, error);
+    // Don't throw - log error but don't fail the order process
+  }
+};
+
 exports.reduceOrderStock = async (order, session = null) => {
   try {
     // Populate orderItems if not already populated
@@ -61,29 +130,79 @@ exports.reduceOrderStock = async (order, session = null) => {
         continue;
       }
 
-      // Reduce stock from variant if variant exists
+      // SECURITY FIX #31: Atomic stock deduction (race condition prevention)
+      // Use findOneAndUpdate with conditional check instead of manual save
       if (variantId && product.variants && product.variants.length > 0) {
         const variant = product.variants.id(variantId);
         if (variant) {
           const oldStock = variant.stock;
-          variant.stock = Math.max(0, variant.stock - quantity);
-          console.log(`[reduceOrderStock] Product ${product.name} - Variant ${variant.name}: ${oldStock} - ${quantity} = ${variant.stock}`);
+
+          // SECURITY: Atomic update with stock check
+          const updateResult = await Product.findOneAndUpdate(
+            {
+              _id: productId,
+              'variants._id': variantId,
+              'variants.stock': { $gte: quantity }, // Only update if stock sufficient
+            },
+            {
+              $inc: { 'variants.$.stock': -quantity },
+            },
+            { session: session || null, new: true }
+          );
+
+          if (!updateResult) {
+            console.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for variant ${variantId}`);
+            throw new Error(`Insufficient stock for ${product.name}`);
+          }
+
+          console.log(`[reduceOrderStock] Product ${product.name} - Variant ${variant.name}: ${oldStock} - ${quantity} (atomic)`);
         } else {
           console.warn(`[reduceOrderStock] Variant ${variantId} not found in product ${product.name}`);
           // Fallback: reduce from first variant if variant not found
           if (product.variants.length > 0) {
             const firstVariant = product.variants[0];
             const oldStock = firstVariant.stock;
-            firstVariant.stock = Math.max(0, firstVariant.stock - quantity);
-            console.log(`[reduceOrderStock] Fallback: Product ${product.name} - First variant ${firstVariant.name}: ${oldStock} - ${quantity} = ${firstVariant.stock}`);
+
+            const updateResult = await Product.findOneAndUpdate(
+              {
+                _id: productId,
+                'variants.0.stock': { $gte: quantity },
+              },
+              {
+                $inc: { 'variants.0.stock': -quantity },
+              },
+              { session: session || null, new: true }
+            );
+
+            if (!updateResult) {
+              console.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for first variant (fallback)`);
+              throw new Error(`Insufficient stock for ${product.name}`);
+            }
+            console.log(`[reduceOrderStock] Fallback: Product ${product.name} - First variant ${firstVariant.name}: ${oldStock} - ${quantity} (atomic)`);
           }
         }
       } else if (product.variants && product.variants.length > 0) {
-        // No variant specified, reduce from first variant
+        // No variant specified, reduce from first variant atomically
         const firstVariant = product.variants[0];
         const oldStock = firstVariant.stock;
-        firstVariant.stock = Math.max(0, firstVariant.stock - quantity);
-        console.log(`[reduceOrderStock] Product ${product.name} - First variant ${firstVariant.name}: ${oldStock} - ${quantity} = ${firstVariant.stock}`);
+
+        const updateResult = await Product.findOneAndUpdate(
+          {
+            _id: productId,
+            'variants.0.stock': { $gte: quantity },
+          },
+          {
+            $inc: { 'variants.0.stock': -quantity },
+          },
+          { session: session || null, new: true }
+        );
+
+        if (!updateResult) {
+          console.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for first variant`);
+          throw new Error(`Insufficient stock for ${product.name}`);
+        }
+
+        console.log(`[reduceOrderStock] Product ${product.name} - First variant: ${oldStock} - ${quantity} (atomic)`);
       } else {
         console.warn(`[reduceOrderStock] Product ${product.name} has no variants`);
         continue;
@@ -111,7 +230,7 @@ exports.reduceOrderStock = async (order, session = null) => {
     }
     order.metadata.inventoryReduced = true;
     order.metadata.inventoryReducedAt = new Date();
-    
+
     if (session) {
       await order.save({ session, validateBeforeSave: false });
     } else {
@@ -164,6 +283,17 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       return next(new AppError('Shipping address is required', 400));
     }
 
+    // SECURITY: Validate address belongs to current user
+    // Prevent address ID manipulation attacks
+    const addressDoc = await Address.findOne({
+      _id: address,
+      user: req.user.id, // CRITICAL: Verify address belongs to user
+    }).session(session);
+
+    if (!addressDoc) {
+      return next(new AppError('Invalid shipping address or address does not belong to you', 403));
+    }
+
     // Generate order number and tracking number
     const orderNumber = await generateOrderNumber();
     const trackingNumber = generateTrackingNumber();
@@ -173,23 +303,70 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Import tax service and platform settings
     const taxService = require('../../services/tax/taxService');
     const PlatformSettings = require('../../models/platform/platformSettingsModel');
-    
+
     // Get platform settings once for all items (cached)
     const platformSettings = await PlatformSettings.getSettings();
     const platformCommissionRate = platformSettings.platformCommissionRate || 0;
-    
-    // Create OrderItems with tax breakdown (using async tax calculations)
+
+    // SECURITY: Fetch product prices from database - NEVER trust frontend prices
+    // Frontend may send manipulated prices - backend MUST fetch from database
+    const productIds = [...new Set(orderItems.map((item) => item.product))];
+    const productsWithPrices = await Product.find({ _id: { $in: productIds } })
+      .populate('seller', '_id role')
+      .select('_id defaultPrice variants isEazShopProduct seller')
+      .session(session);
+
+    // Create product price map for validation
+    const productPriceMap = new Map();
+    productsWithPrices.forEach((product) => {
+      productPriceMap.set(product._id.toString(), {
+        defaultPrice: product.defaultPrice,
+        variants: product.variants,
+      });
+    });
+
+    // Create OrderItems with tax breakdown (using database prices)
     const orderItemsWithTax = await Promise.all(
       orderItems.map(async (item) => {
-        const vatInclusivePrice = item.price || 0;
+        // SECURITY: Fetch price from database, not from frontend
+        const productData = productPriceMap.get(item.product.toString());
+        if (!productData) {
+          throw new AppError(`Product ${item.product} not found`, 404);
+        }
+
+        // SECURITY: Get price from database
+        let vatInclusivePrice = productData.defaultPrice;
+
+        // If variant is specified, get variant price
+        if (item.variant && productData.variants) {
+          const variant = productData.variants.find(
+            (v) => v._id.toString() === item.variant?.toString()
+          );
+          if (variant && variant.price) {
+            vatInclusivePrice = variant.price;
+          }
+        }
+
+        // SECURITY: Validate quantity
+        const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
+        if (quantity !== item.quantity) {
+          throw new AppError(`Invalid quantity for product ${item.product}`, 400);
+        }
+
+        // SECURITY: Log if frontend price doesn't match database price (for fraud detection)
+        if (item.price && Math.abs(item.price - vatInclusivePrice) > 0.01) {
+          console.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${vatInclusivePrice}`);
+          // Don't reject immediately - might be rounding differences, but log for review
+        }
+
         const taxBreakdown = await taxService.extractTaxFromPrice(vatInclusivePrice, platformSettings);
         const covidLevy = await taxService.calculateCovidLevy(taxBreakdown.basePrice, platformSettings);
-        
+
         return {
           product: item.product,
           variant: item.variant?._id,
-          quantity: item.quantity,
-          price: vatInclusivePrice, // VAT-inclusive price
+          quantity: quantity, // SECURITY: Use validated quantity
+          price: vatInclusivePrice, // SECURITY: Use database price, not frontend price
           basePrice: taxBreakdown.basePrice,
           vat: taxBreakdown.vat,
           nhil: taxBreakdown.nhil,
@@ -200,18 +377,14 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         };
       })
     );
-    
-    const orderItemDocs = await OrderItems.insertMany(orderItemsWithTax, { session });
-   
 
-    // Get products with sellers
-    const productIds = [...new Set(orderItems.map((item) => item.product))];
-    const products = await Product.find({ _id: { $in: productIds } })
-      .populate('seller', '_id role')
-      .select('isEazShopProduct seller')
-      .session(session);
+    const orderItemDocs = await OrderItems.insertMany(orderItemsWithTax, { session });
+
+    // SECURITY: Products already fetched above for price validation
+    // Reuse productsWithPrices instead of fetching again
+    const products = productsWithPrices;
     console.log('Found products:', products.length);
-    
+
     // EazShop Seller ID constant
     const EAZSHOP_SELLER_ID = '000000000000000000000001';
 
@@ -219,11 +392,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     const productSellerMap = new Map();
     products.forEach((product) => {
       let sellerId;
-      
+
       // Priority 1: If product is marked as EazShop product, use EazShop seller ID
       if (product.isEazShopProduct) {
         sellerId = EAZSHOP_SELLER_ID;
-      } 
+      }
       // Priority 2: Use the product's seller field
       else if (product.seller?._id) {
         sellerId = product.seller._id.toString();
@@ -232,7 +405,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       else if (product.seller?.toString() === EAZSHOP_SELLER_ID) {
         sellerId = EAZSHOP_SELLER_ID;
       }
-      
+
       productSellerMap.set(
         product._id.toString(),
         sellerId,
@@ -270,111 +443,55 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       overallSubtotal += itemTotal;
     });
 
-    // COUPON VALIDATION AND PROCESSING - FIXED
+    // COUPON VALIDATION AND PROCESSING - V2 (Using new coupon service)
     let couponUsed = null;
     let totalDiscount = 0;
     let couponUsageDoc = null;
+    let couponData = null;
+    let sellerDiscounts = new Map(); // Map of sellerId -> discountAmount
 
     if (couponCode) {
-      // Extract IDs from request
-      const batchId = new mongoose.Types.ObjectId(req.body.batchId);
-      const couponId = new mongoose.Types.ObjectId(req.body.couponId);
+      // Extract product and category IDs for validation
+      const productIds = products.map((p) => p._id);
+      const categoryIds = products.reduce((acc, p) => {
+        if (p.parentCategory) acc.push(p.parentCategory);
+        if (p.subCategory) acc.push(p.subCategory);
+        return acc;
+      }, []);
+      const sellerIds = Array.from(sellerGroups.keys());
 
-      // Find the coupon batch
-      const couponBatch = await CouponBatch.findOne({
-        _id: batchId,
-        isActive: true,
-        validFrom: { $lte: new Date() },
-        expiresAt: { $gte: new Date() },
-      }).session(session);
-
-      if (!couponBatch) {
-        console.log('No valid coupon batch found');
-        throw new AppError('Invalid or expired coupon batch', 400);
-      }
-
-      
-
-      // Find the specific coupon within the batch
-      const coupon = couponBatch.coupons.find(
-        (c) => c._id.toString() === couponId.toString(),
+      // Use new coupon service for validation (validates everything + calculates discount)
+      couponData = await couponService.validateCoupon(
+        couponCode,
+        req.user.id,
+        overallSubtotal,
+        productIds,
+        categoryIds,
+        sellerIds,
+        session
       );
 
-      if (!coupon) {
-        console.log('Coupon not found in batch');
-        throw new AppError('Invalid coupon code', 400);
-      }
+      // Get calculated discount from service (backend-only calculation)
+      totalDiscount = couponData.discountAmount;
 
-      if (coupon.used) {
-        console.log('Coupon already used');
-        throw new AppError('This coupon has already been used', 400);
-      }
-
-   
-
-      // Validate minimum order amount
-      if (
-        couponBatch.minOrderAmount &&
-        overallSubtotal < couponBatch.minOrderAmount
-      ) {
-        console.log('Coupon minimum not met:', {
-          minOrderAmount: couponBatch.minOrderAmount,
-          overallSubtotal,
-        });
-        throw new AppError(
-          `Coupon requires minimum order of GH₵${couponBatch.minOrderAmount.toFixed(2)}`,
-          400,
-        );
-      }
-
-      // Check batch-level usage limit
-      if (couponBatch.coupons.usageCount >= couponBatch.maxUsage) {
-        console.log('Batch usage limit exceeded:', {
-          usageCount: couponBatch.usageCount,
-          maxUsage: couponBatch.maxUsage,
-        });
-        throw new AppError(
-          'This coupon batch has reached its usage limit',
-          400,
-        );
-      }
-      const currentUsage = couponBatch.coupons.reduce(
-        (count, c) => (c.used ? count + 1 : count),
-        0,
+      // Calculate seller-level discounts
+      sellerDiscounts = couponService.calculateSellerDiscounts(
+        totalDiscount,
+        sellerGroups,
+        couponData.sellerId?.toString(),
+        couponData.sellerFunded,
+        couponData.platformFunded
       );
-      // if (currentUsage >= couponBatch.maxUsage) {
-      //   console.log('Batch usage limit exceeded:', {
-      //     currentUsage,
-      //     maxUsage: couponBatch.maxUsage,
-      //   });
-      //   throw new AppError(
-      //     'This coupon batch has reached its usage limit',
-      //     400,
-      //   );
-      // }
 
-      // Calculate discount
-      if (couponBatch.discountType === 'percentage') {
-        totalDiscount = (overallSubtotal * couponBatch.discountValue) / 100;
-      } else {
-        totalDiscount = Math.min(couponBatch.discountValue, overallSubtotal);
-      }
-
-      // Mark coupon as used and update batch
-      coupon.used = true;
-      coupon.usedAt = new Date();
-      couponBatch.usageCount += 1;
-      await couponBatch.save({ session });
-
-      // Set couponUsed reference for the order
-      couponUsed = couponBatch;
+      // Fetch batch for reference (will be marked as used after order creation)
+      couponUsed = await CouponBatch.findById(couponData.batchId).session(session);
     }
 
     // Get delivery method from request body
     const deliveryMethod = req.body.deliveryMethod || 'seller_delivery';
     const pickupCenterId = req.body.pickupCenterId || null;
     const buyerCity = address?.city?.toUpperCase() || 'ACCRA';
-    
+
     // Validate buyer city
     if (!['ACCRA', 'TEMA'].includes(buyerCity)) {
       return next(new AppError('EazShop currently delivers only in Accra and Tema.', 400));
@@ -382,7 +499,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Calculate shipping using the shipping quote service
     const { calculateShippingQuote } = require('../../services/shipping/shippingCalculationService');
-    
+
     // Prepare items for shipping calculation
     const shippingItems = orderItemDocs.map(item => ({
       productId: item.product,
@@ -408,26 +525,24 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     const orderLevelShipping = isDispatchMethod ? shippingQuote.totalShippingFee : 0;
 
     for (const [sellerId, group] of sellerGroups) {
-      const sellerDiscount =
-        totalDiscount > 0
-          ? (group.subtotal / overallSubtotal) * totalDiscount
-          : 0;
+      // Get seller-specific discount from the map (calculated by coupon service)
+      const sellerDiscount = sellerDiscounts.get(sellerId.toString()) || 0;
 
       const sellerSubtotal = group.subtotal - sellerDiscount;
-      
+
       // Calculate tax breakdown for this seller's items
       const sellerItems = group.items.map(itemId => {
         const itemDoc = orderItemDocs.find(doc => doc._id.toString() === itemId.toString());
         return itemDoc;
       }).filter(Boolean);
-      
+
       // Calculate seller-level tax totals
       let sellerTotalBasePrice = 0;
       let sellerTotalVAT = 0;
       let sellerTotalNHIL = 0;
       let sellerTotalGETFund = 0;
       let sellerTotalCovidLevy = 0;
-      
+
       sellerItems.forEach(item => {
         const quantity = item.quantity || 1;
         sellerTotalBasePrice += (item.basePrice || 0) * quantity;
@@ -436,7 +551,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellerTotalGETFund += (item.getfund || 0) * quantity;
         sellerTotalCovidLevy += (item.covidLevy || 0) * quantity;
       });
-      
+
       // Round to 2 decimal places
       sellerTotalBasePrice = Math.round(sellerTotalBasePrice * 100) / 100;
       sellerTotalVAT = Math.round(sellerTotalVAT * 100) / 100;
@@ -444,26 +559,27 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       sellerTotalGETFund = Math.round(sellerTotalGETFund * 100) / 100;
       sellerTotalCovidLevy = Math.round(sellerTotalCovidLevy * 100) / 100;
       const sellerTotalTax = Math.round((sellerTotalVAT + sellerTotalNHIL + sellerTotalGETFund + sellerTotalCovidLevy) * 100) / 100;
-      
+
       // Get shipping fee for this seller from the quote
       const sellerShippingInfo = shippingBreakdown.find(s => s.sellerId === sellerId.toString());
       const shipping = sellerShippingInfo?.shippingFee || 0;
-      
-      // Total for seller order: VAT-inclusive subtotal + shipping + COVID levy
+
+      // Total for seller order: VAT-inclusive subtotal + shipping
       // Note: VAT, NHIL, GETFund are already in the subtotal (VAT-inclusive)
-      const total = sellerSubtotal + shipping + sellerTotalCovidLevy;
+      // COVID levy is included in the VAT-inclusive price, not added separately
+      const total = sellerSubtotal + shipping;
       orderTotal += total;
 
       // Determine if this is an EazShop order
       const isEazShopStore = sellerId === EAZSHOP_SELLER_ID;
-      const sellerProduct = products.find(p => 
-        p.seller?._id?.toString() === sellerId || 
+      const sellerProduct = products.find(p =>
+        p.seller?._id?.toString() === sellerId ||
         p.seller?.toString() === sellerId
       );
-      const isEazShopProduct = sellerProduct?.isEazShopProduct || 
+      const isEazShopProduct = sellerProduct?.isEazShopProduct ||
         sellerProduct?.seller?.role === 'eazshop_store' ||
         isEazShopStore;
-      
+
       // Determine delivery method for this seller
       // Map 'dispatch' to 'eazshop_dispatch' for SellerOrder model
       let sellerDeliveryMethod = deliveryMethod;
@@ -473,7 +589,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         // EazShop products should use dispatch if seller_delivery was selected
         sellerDeliveryMethod = 'eazshop_dispatch';
       }
-      
+
       const sellerOrder = new SellerOrder({
         seller: sellerId,
         items: group.items,
@@ -497,8 +613,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellerType: isEazShopProduct ? 'eazshop' : 'regular',
         deliveryMethod: sellerDeliveryMethod,
         pickupCenterId: deliveryMethod === 'pickup_center' ? pickupCenterId : null,
-        dispatchType: deliveryMethod === 'dispatch' ? 'EAZSHOP' : 
-                     (deliveryMethod === 'seller_delivery' && !isEazShopProduct) ? 'SELLER' : null,
+        dispatchType: deliveryMethod === 'dispatch' ? 'EAZSHOP' :
+          (deliveryMethod === 'seller_delivery' && !isEazShopProduct) ? 'SELLER' : null,
       });
 
       await sellerOrder.save({ session });
@@ -507,43 +623,43 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Calculate total shipping fee
     // For dispatch, add order-level shipping; for others, sum per-seller fees
-    const totalShippingFee = isDispatchMethod 
-      ? orderLevelShipping 
+    const totalShippingFee = isDispatchMethod
+      ? orderLevelShipping
       : shippingBreakdown.reduce((sum, item) => sum + item.shippingFee, 0);
-    
+
     // Add order-level shipping to total if dispatch method
     if (isDispatchMethod) {
       orderTotal += orderLevelShipping;
     }
-    
-    const dispatchType = deliveryMethod === 'dispatch' ? 'EAZSHOP' : 
-                        deliveryMethod === 'seller_delivery' ? 'SELLER' : null;
+
+    const dispatchType = deliveryMethod === 'dispatch' ? 'EAZSHOP' :
+      deliveryMethod === 'seller_delivery' ? 'SELLER' : null;
 
     // Get neighborhood and zone information for dispatch orders
     let neighborhood = null;
     let deliveryZone = null;
     let shippingType = req.body.shippingType || 'standard';
     let deliveryEstimate = null;
-    
+
     // Calculate delivery estimate from shipping options
     const { calculateDeliveryEstimate } = require('../../utils/helpers/shippingHelpers');
     const { getActiveShippingConfig } = require('../../utils/helpers/shippingHelpers');
     const shippingConfig = await getActiveShippingConfig();
     const orderDate = new Date();
-    
+
     if (shippingConfig) {
       deliveryEstimate = calculateDeliveryEstimate(shippingType, orderDate, shippingConfig);
     }
-    
+
     if (deliveryMethod === 'dispatch' && address) {
       try {
         // Extract neighborhood name from address (area field is preferred, fallback to landmark or streetAddress)
         const neighborhoodName = address.area || address.landmark || address.streetAddress?.split(',')[0] || address.streetAddress;
         const city = address.city ? (address.city.charAt(0).toUpperCase() + address.city.slice(1).toLowerCase()) : null;
-        
+
         if (neighborhoodName && city && (city === 'Accra' || city === 'Tema')) {
           const { getZoneFromNeighborhoodName } = require('../../utils/getZoneFromNeighborhood');
-          
+
           const zoneResult = await getZoneFromNeighborhoodName(neighborhoodName, city);
           neighborhood = zoneResult.neighborhood._id;
           deliveryZone = zoneResult.zone.name;
@@ -561,13 +677,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Calculate order-level tax totals (aggregate from all seller orders)
     // We need to fetch the saved seller orders to get their tax breakdowns
     const savedSellerOrders = await SellerOrder.find({ _id: { $in: sellerOrders } }).session(session);
-    
+
     let orderTotalBasePrice = 0;
     let orderTotalVAT = 0;
     let orderTotalNHIL = 0;
     let orderTotalGETFund = 0;
     let orderTotalCovidLevy = 0;
-    
+
     savedSellerOrders.forEach(so => {
       orderTotalBasePrice += so.totalBasePrice || 0;
       orderTotalVAT += so.totalVAT || 0;
@@ -575,7 +691,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderTotalGETFund += so.totalGETFund || 0;
       orderTotalCovidLevy += so.totalCovidLevy || 0;
     });
-    
+
     // Round to 2 decimal places
     orderTotalBasePrice = Math.round(orderTotalBasePrice * 100) / 100;
     orderTotalVAT = Math.round(orderTotalVAT * 100) / 100;
@@ -589,7 +705,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderNumber,
       trackingNumber,
       user: req.user.id,
-      shippingAddress: address,
+      shippingAddress: addressDoc._id, // Use validated address document
       orderItems: orderItemDocs.map((doc) => doc._id),
       orderStatus: 'pending',
       paymentStatus: 'pending',
@@ -597,7 +713,20 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       totalPrice: orderTotal, // Grand total (VAT-inclusive + shipping + COVID levy)
       coupon: couponUsed?._id,
       discountAmount: totalDiscount,
-      paymentMethod: req.body.paymentMethod || 'mobile_money',
+      appliedCouponBatchId: couponData?.batchId || null,
+      appliedCouponId: couponData?.couponId || null,
+      // Normalize payment method to match enum values
+      paymentMethod: (() => {
+        const method = req.body.paymentMethod || 'mobile_money';
+        // Normalize common variations to match enum
+        if (method === 'cod' || method === 'cash_on_delivery') {
+          return 'payment_on_delivery';
+        }
+        if (method === 'bank') {
+          return 'bank_transfer';
+        }
+        return method;
+      })(),
       shippingCost: totalShippingFee,
       shippingFee: totalShippingFee,
       shippingBreakdown: shippingBreakdown,
@@ -623,9 +752,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       // Initialize tracking system - Set status based on payment method
       // COD orders stay pending, Paystack orders wait for payment confirmation
       currentStatus: (() => {
-        const paymentMethod = req.body.paymentMethod || 'mobile_money';
+        // Normalize payment method first
+        let paymentMethod = req.body.paymentMethod || 'mobile_money';
+        if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
+          paymentMethod = 'payment_on_delivery';
+        }
+        if (paymentMethod === 'bank') {
+          paymentMethod = 'bank_transfer';
+        }
         // Cash on Delivery - payment pending until delivery
-        if (paymentMethod === 'payment_on_delivery' || paymentMethod === 'cod') {
+        if (paymentMethod === 'payment_on_delivery') {
           return 'pending_payment';
         }
         // If payment already completed, set to confirmed
@@ -646,7 +782,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             timestamp: new Date(),
           },
         ];
-        
+
         // If payment is already completed, add confirmed entry
         if (req.body.paymentStatus === 'completed') {
           history.push({
@@ -658,11 +794,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             timestamp: req.body.paidAt ? new Date(req.body.paidAt) : new Date(),
           });
         }
-        
+
         return history;
       })(),
     });
-    
+
     // If payment is already completed, update payment status
     if (req.body.paymentStatus === 'completed') {
       newOrder.paymentStatus = 'completed';
@@ -674,8 +810,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       await exports.reduceOrderStock(newOrder, session);
     } else {
       // Set initial status based on payment method
-      const paymentMethod = req.body.paymentMethod || 'mobile_money';
-      if (paymentMethod === 'payment_on_delivery' || paymentMethod === 'cod') {
+      let paymentMethod = req.body.paymentMethod || 'mobile_money';
+      // Normalize payment method to match enum
+      if (paymentMethod === 'cod' || paymentMethod === 'cash_on_delivery') {
+        paymentMethod = 'payment_on_delivery';
+      }
+      if (paymentMethod === 'bank') {
+        paymentMethod = 'bank_transfer';
+      }
+
+      if (paymentMethod === 'payment_on_delivery') {
         // COD orders - payment pending until delivery
         newOrder.paymentStatus = 'pending';
         newOrder.status = 'pending';
@@ -684,7 +828,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         // Credit balance payment - process immediately using walletService
         const walletService = require('../../services/walletService');
         const reference = `ORDER-${orderNumber}`;
-        
+
         // Deduct from wallet using walletService (includes transaction logging)
         const debitResult = await walletService.debitWallet(
           req.user.id,
@@ -698,19 +842,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           },
           newOrder._id
         );
-        
+
         // Check if duplicate transaction (shouldn't happen but safety check)
         if (debitResult.isDuplicate) {
           throw new AppError('Transaction already processed', 400);
         }
-        
+
         // Update order payment status
         newOrder.paymentStatus = 'paid';
         newOrder.status = 'confirmed';
         newOrder.currentStatus = 'confirmed';
         newOrder.paidAt = new Date();
         newOrder.revenueAmount = orderTotal; // Store revenue amount
-        
+
         // Add confirmed tracking entry
         newOrder.trackingHistory.push({
           status: 'confirmed',
@@ -720,7 +864,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           updatedByModel: 'User',
           timestamp: new Date(),
         });
-        
+
         // Add revenue to admin revenue immediately (at payment time)
         const PlatformStats = require('../../models/platform/platformStatsModel');
         const platformStats = await PlatformStats.getStats();
@@ -728,13 +872,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         platformStats.addDailyRevenue(new Date(), orderTotal, 0); // 0 for orders count (will be incremented on delivery)
         platformStats.lastUpdated = new Date();
         await platformStats.save({ session });
-        
+
         // Mark revenue as added
         newOrder.revenueAdded = true;
-        
+
         // Reduce product stock after payment is confirmed
         await exports.reduceOrderStock(newOrder, session);
-        
+
         // Log payment activity
         const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
         logActivityAsync({
@@ -758,9 +902,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         newOrder.currentStatus = 'pending_payment';
       }
     }
-    
+
     await newOrder.save({ session });
-    
+
     // Update sellerOrders with order reference
     for (const sellerOrderId of sellerOrders) {
       await SellerOrder.findByIdAndUpdate(
@@ -770,16 +914,33 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       );
     }
 
-    // Record coupon usage
-    if (couponUsed) {
-      couponUsageDoc = new CouponUsage({
-        couponId: couponUsed._id,
-        userId: req.user.id,
-        orderId: newOrder._id,
-        discountApplied: totalDiscount,
-        usedAt: new Date(),
-      });
-      await couponUsageDoc.save({ session });
+    // Apply coupon to order (atomic operation - marks coupon as used)
+    if (couponData && couponUsed) {
+      try {
+        await couponService.applyCouponToOrder(
+          couponData.batchId,
+          couponData.couponId,
+          req.user.id,
+          newOrder._id,
+          session
+        );
+
+        // Record coupon usage for analytics
+        couponUsageDoc = new CouponUsage({
+          couponId: couponUsed._id,
+          userId: req.user.id,
+          orderId: newOrder._id,
+          discountApplied: totalDiscount,
+          usedAt: new Date(),
+        });
+        await couponUsageDoc.save({ session });
+      } catch (error) {
+        // If coupon application fails, rollback the order
+        throw new AppError(
+          `Failed to apply coupon: ${error.message}`,
+          400
+        );
+      }
     }
 
     // Check product stock availability (but don't reduce yet - will reduce on order completion)
@@ -804,30 +965,139 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Commit transaction
     await session.commitTransaction();
 
+    // Update product totalSold field (after transaction commit to avoid blocking)
+    try {
+      await exports.updateProductTotalSold(newOrder);
+    } catch (totalSoldError) {
+      // Don't fail the order if totalSold update fails
+      console.error('[createOrder] Error updating product totalSold:', totalSoldError);
+    }
+
+    // Create notification for buyer about order placement
+    try {
+      await notificationService.createOrderNotification(
+        req.user.id,
+        newOrder._id,
+        newOrder.orderNumber,
+        'pending'
+      );
+    } catch (notificationError) {
+      // Don't fail the order if notification creation fails
+      console.error('[createOrder] Error creating order notification:', notificationError);
+    }
+
+    // Create notifications for sellers about new orders
+    try {
+      if (!sellerOrders || sellerOrders.length === 0) {
+        console.log('[createOrder] ⚠️ No seller orders found, skipping seller notifications');
+      } else {
+        console.log(`[createOrder] 📦 Found ${sellerOrders.length} seller order IDs:`, sellerOrders);
+
+        // Query seller orders with populated seller field to get seller IDs
+        const populatedSellerOrders = await SellerOrder.find({ _id: { $in: sellerOrders } })
+          .populate('seller', '_id')
+          .lean();
+
+        console.log(`[createOrder] ✅ Found ${populatedSellerOrders.length} populated seller orders for notification`);
+
+        if (populatedSellerOrders.length === 0) {
+          console.warn('[createOrder] ⚠️ No seller orders found after population. Seller order IDs:', sellerOrders);
+        }
+
+        for (const sellerOrder of populatedSellerOrders) {
+          if (sellerOrder.seller && sellerOrder.seller._id) {
+            try {
+              // Ensure seller ID is in the correct format (ObjectId or string)
+              const sellerId = sellerOrder.seller._id.toString ? sellerOrder.seller._id.toString() : sellerOrder.seller._id;
+
+              console.log(`[createOrder] 📧 Creating notification for seller:`, {
+                sellerId,
+                sellerIdType: typeof sellerId,
+                sellerIdValue: sellerId,
+                orderId: newOrder._id.toString(),
+                orderNumber: newOrder.orderNumber
+              });
+
+              await notificationService.createSellerOrderNotification(
+                sellerId,
+                newOrder._id,
+                newOrder.orderNumber,
+                'pending'
+              );
+              console.log(`[createOrder] ✅ Notification created for seller ${sellerId}`);
+            } catch (notifError) {
+              console.error(`[createOrder] ❌ Error creating notification for seller ${sellerOrder.seller._id}:`, notifError.message);
+              console.error('[createOrder] Full error:', notifError);
+            }
+          } else {
+            console.warn(`[createOrder] ⚠️ Seller order ${sellerOrder._id} has no seller field populated. SellerOrder data:`, {
+              _id: sellerOrder._id,
+              seller: sellerOrder.seller,
+              hasSeller: !!sellerOrder.seller
+            });
+          }
+        }
+      }
+    } catch (sellerNotificationError) {
+      // Don't fail the order if seller notification creation fails
+      console.error('[createOrder] ❌ Error creating seller order notification:', sellerNotificationError.message);
+      console.error('[createOrder] Full error stack:', sellerNotificationError.stack);
+    }
+
+    // Create notifications for all active admins about new orders
+    try {
+      // Note: 'active' field has select: false, so we need to explicitly include it with +active
+      const allAdmins = await Admin.find({
+        status: 'active'
+      }).select('+active _id').lean();
+
+      // Filter to only active admins (active defaults to true, but we check explicitly)
+      const activeAdmins = allAdmins.filter(admin => admin.active !== false);
+
+      console.log(`[createOrder] Found ${activeAdmins.length} active admins for notification (out of ${allAdmins.length} total with status 'active')`);
+
+      for (const admin of activeAdmins) {
+        try {
+          await notificationService.createAdminOrderNotification(
+            admin._id,
+            newOrder._id,
+            newOrder.orderNumber,
+            'pending'
+          );
+          console.log(`[createOrder] ✅ Notification created for admin ${admin._id}`);
+        } catch (notifError) {
+          console.error(`[createOrder] Error creating notification for admin ${admin._id}:`, notifError);
+        }
+      }
+    } catch (adminNotificationError) {
+      // Don't fail the order if admin notification creation fails
+      console.error('[createOrder] Error creating admin order notification:', adminNotificationError);
+    }
+
     // Remove ordered products from wishlist
     try {
       const WishList = require('../../models/product/wishListModel');
       const orderedProductIds = orderItems.map(item => item.product.toString());
-      
+
       // Find user's wishlist
       const wishlist = await WishList.findOne({ user: req.user.id });
-      
+
       if (wishlist && wishlist.products && wishlist.products.length > 0) {
         // Get current product IDs in wishlist
         const wishlistProductIds = wishlist.products.map(item => {
           const productId = item.product;
           return productId ? productId.toString() : null;
         }).filter(id => id !== null);
-        
+
         // Find products that are in both wishlist and order
-        const productsToRemove = orderedProductIds.filter(productId => 
+        const productsToRemove = orderedProductIds.filter(productId =>
           wishlistProductIds.includes(productId)
         );
-        
+
         if (productsToRemove.length > 0) {
           // Convert product IDs to ObjectIds for $pull query
           const productIdsToRemove = productsToRemove.map(id => new mongoose.Types.ObjectId(id));
-          
+
           // Remove ordered products from wishlist using $pull with $in
           const updateResult = await WishList.findOneAndUpdate(
             { user: req.user.id },
@@ -840,7 +1110,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             },
             { new: true }
           );
-          
+
           // Check if wishlist is now empty (all items were ordered)
           if (updateResult && (!updateResult.products || updateResult.products.length === 0)) {
             console.log(`[createOrder] All wishlist items were ordered and removed for user ${req.user.id}`);
@@ -895,6 +1165,41 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         itemCount: orderItems.length,
       },
     });
+
+    // Send order confirmation email to buyer
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      const user = fullOrder.user || { email: req.user.email, name: req.user.name };
+      if (user.email) {
+        await emailDispatcher.sendOrderConfirmation(fullOrder, user);
+        console.log(`[createOrder] ✅ Order confirmation email sent to ${user.email}`);
+      }
+    } catch (emailError) {
+      console.error('[createOrder] Error sending order confirmation email:', emailError.message);
+      // Don't fail the order if email fails
+    }
+
+    // Send new order alert emails to sellers
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      const Seller = require('../../models/user/sellerModel');
+
+      if (fullOrder.sellerOrder && fullOrder.sellerOrder.length > 0) {
+        for (const sellerOrder of fullOrder.sellerOrder) {
+          if (sellerOrder.seller && sellerOrder.seller.email) {
+            try {
+              await emailDispatcher.sendSellerNewOrder(sellerOrder.seller, fullOrder);
+              console.log(`[createOrder] ✅ New order email sent to seller ${sellerOrder.seller.email}`);
+            } catch (sellerEmailError) {
+              console.error(`[createOrder] Error sending email to seller ${sellerOrder.seller.email}:`, sellerEmailError.message);
+            }
+          }
+        }
+      }
+    } catch (sellerEmailError) {
+      console.error('[createOrder] Error sending seller order emails:', sellerEmailError.message);
+      // Don't fail the order if email fails
+    }
 
     res.status(201).json({
       status: 'success',
@@ -1048,13 +1353,13 @@ exports.getOrderBySeller = catchAsync(async (req, res, next) => {
 
   // Verify the order belongs to the logged-in seller
   // Handle both ObjectId and string comparisons, and populated vs non-populated seller
-  const sellerId = order.seller?._id 
-    ? order.seller._id.toString() 
+  const sellerId = order.seller?._id
+    ? order.seller._id.toString()
     : order.seller?.toString() || String(order.seller);
-  const userId = req.user?._id 
-    ? req.user._id.toString() 
+  const userId = req.user?._id
+    ? req.user._id.toString()
     : req.user?.id?.toString() || String(req.user.id);
-  
+
   console.log('[getOrderBySeller] Authorization check:', {
     orderId: orderId,
     orderSellerId: sellerId,
@@ -1064,7 +1369,7 @@ exports.getOrderBySeller = catchAsync(async (req, res, next) => {
     userType: typeof req.user.id,
     userRole: req.user.role,
   });
-  
+
   if (sellerId !== userId) {
     console.error('[getOrderBySeller] Authorization failed:', {
       orderSellerId: sellerId,
@@ -1088,7 +1393,12 @@ exports.OrderDeleteOrderItem = catchAsync(async (req, res, next) => {
   next();
 });
 exports.getUserOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id });
+  // SECURITY FIX #9: Validate req.user exists
+  if (!req.user || !req.user.id) {
+    return next(new AppError('User authentication required', 401));
+  }
+
+  const orders = await Order.find({ user: req.user.id });
   if (!orders) return next(new AppError('Order not found', 404));
   res.status(200).json({ status: 'success', data: { orders } });
 });
@@ -1135,10 +1445,15 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
     });
 
   if (!order) return next(new AppError('Order not found', 404));
-  
+
+  // SECURITY: Verify order ownership - prevent users from accessing other users' orders
+  if (order.user._id.toString() !== req.user.id.toString()) {
+    return next(new AppError('You are not authorized to view this order', 403));
+  }
+
   // Convert to object to ensure all fields are included
   let orderData = order.toObject ? order.toObject() : order;
-  
+
   // Check if shippingAddress is a string ID (reference) or an object (embedded)
   // If it's a string ID, populate it from the Address model
   if (orderData.shippingAddress && typeof orderData.shippingAddress === 'string') {
@@ -1156,17 +1471,17 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
       orderData.shippingAddress = orderData.shippingAddress || null;
     }
   }
-  
+
   // Ensure shippingAddress is included (even if null)
   if (!orderData.shippingAddress) {
     console.warn(`[getUserOrder] Shipping address missing for order ${req.params.id}`);
   }
-  
-  res.status(200).json({ 
-    status: 'success', 
-    data: { 
+
+  res.status(200).json({
+    status: 'success',
+    data: {
       order: orderData
-    } 
+    }
   });
 });
 exports.getOrder = handleFactory.getOne(Order, [
@@ -1315,6 +1630,48 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
  * - Deducts order revenue from admin totalRevenue if revenueAdded is true
  */
 exports.deleteOrder = catchAsync(async (req, res, next) => {
+  const { orderItems, shippingAddress } = req.body;
+  const userId = req.user._id;
+
+  // SECURITY FIX #25: Order items validation
+  if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+    return next(new AppError('Order must contain at least one item', 400));
+  }
+
+  // Validate each order item
+  for (const item of orderItems) {
+    // Validate quantity
+    if (!item.quantity || item.quantity <= 0) {
+      return next(new AppError('Item quantity must be greater than zero', 400));
+    }
+
+    if (!Number.isInteger(item.quantity)) {
+      return next(new AppError('Item quantity must be a whole number', 400));
+    }
+
+    // Validate product exists
+    if (!item.product) {
+      return next(new AppError('Product ID is required for all items', 400));
+    }
+
+    // Check product exists and has sufficient stock
+    const Product = require('../../models/product/productModel'); // Assuming Product model is needed here
+    const product = await Product.findById(item.product);
+    if (!product) {
+      return next(new AppError(`Product ${item.product} not found`, 404));
+    }
+
+    // SECURITY: Check stock availability
+    if (product.stock < item.quantity) {
+      return next(
+        new AppError(
+          `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+          400
+        )
+      );
+    }
+  }
+
   const orderId = req.params.id;
   const adminId = req.user?.id;
 
@@ -1361,18 +1718,18 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
   if (order.revenueAdded && order.revenueAmount && order.revenueAmount > 0) {
     const PlatformStats = require('../../models/platform/platformStatsModel');
     const platformStats = await PlatformStats.getStats();
-    
+
     const oldRevenue = platformStats.totalRevenue || 0;
     const deductionAmount = order.revenueAmount;
-    
+
     // Deduct the order's revenue amount
     platformStats.totalRevenue = Math.max(0, oldRevenue - deductionAmount);
     platformStats.lastUpdated = new Date();
     await platformStats.save();
-    
+
     console.log(`[deleteOrder] Deducted GH₵${deductionAmount.toFixed(2)} from admin revenue for deleted order ${orderId}`);
     console.log(`[deleteOrder] Revenue: GH₵${oldRevenue.toFixed(2)} → GH₵${platformStats.totalRevenue.toFixed(2)}`);
-    
+
     // Log activity
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
     logActivityAsync({
@@ -1648,12 +2005,12 @@ exports.updateOrderAddressAndRecalculate = catchAsync(async (req, res, next) => 
 
   // Calculate new shipping fee using neighborhood-based zone
   const newShippingFee = calcShipping(zone, totalWeight, shippingType);
-  
+
   // Calculate delivery estimate from shipping options
   const { calculateDeliveryEstimate, getActiveShippingConfig } = require('../../utils/helpers/shippingHelpers');
   const shippingConfig = await getActiveShippingConfig();
   // Use existing orderDate variable from line 917
-  const deliveryEstimate = shippingConfig 
+  const deliveryEstimate = shippingConfig
     ? calculateDeliveryEstimate(shippingType, orderDate, shippingConfig)
     : (zone.estimatedDays || '2-3');
 
@@ -1809,7 +2166,7 @@ exports.payShippingDifference = catchAsync(async (req, res, next) => {
   // Initialize payment (using Paystack)
   // Use payment controller's initialization method
   const paymentController = require('./paymentController');
-  
+
   // Create payment initialization request
   const paymentData = {
     amount: order.additionalAmount * 100, // Convert to kobo/pesewas
@@ -1826,7 +2183,7 @@ exports.payShippingDifference = catchAsync(async (req, res, next) => {
   // Initialize Paystack payment using payment controller
   const axios = require('axios');
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
-  
+
   try {
     const paymentResponse = await axios.post(
       'https://api.paystack.co/transaction/initialize',

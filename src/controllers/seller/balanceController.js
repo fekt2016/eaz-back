@@ -103,12 +103,12 @@ exports.getSellerTransactions = catchAsync(async (req, res, next) => {
   // Get transactions
   const transactions = await Transaction.find(filter)
     .populate({
-      path: 'order',
-      select: 'orderNumber totalPrice createdAt',
-    })
-    .populate({
       path: 'sellerOrder',
       select: 'subtotal shippingCost tax',
+      populate: {
+        path: 'order',
+        select: 'orderNumber totalPrice createdAt',
+      },
     })
     .sort({ createdAt: -1 })
     .skip(skip)

@@ -120,6 +120,75 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
 
   await order.save();
 
+  // Create notifications for order status change
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    
+    // Notify buyer
+    await notificationService.createOrderNotification(
+      order.user,
+      order._id,
+      order.orderNumber,
+      status
+    );
+
+    // Notify sellers if order is confirmed or delivered
+    if (status === 'confirmed' || status === 'delivered') {
+      const SellerOrder = require('../../models/order/sellerOrderModel');
+      const sellerOrders = await SellerOrder.find({ order: order._id }).populate('seller');
+      
+      for (const sellerOrder of sellerOrders) {
+        if (sellerOrder.seller && sellerOrder.seller._id) {
+          await notificationService.createSellerOrderNotification(
+            sellerOrder.seller._id,
+            order._id,
+            order.orderNumber,
+            status
+          );
+        }
+      }
+    }
+
+    // Create delivery notification if status is out_for_delivery or delivered
+    if (status === 'out_for_delivery' || status === 'delivered') {
+      await notificationService.createDeliveryNotification(
+        order.user,
+        order._id,
+        order.trackingNumber || order.orderNumber,
+        status
+      );
+    }
+  } catch (notificationError) {
+    // Don't fail the order update if notification creation fails
+    console.error('[updateOrderStatus] Error creating notifications:', notificationError);
+  }
+
+  // Send email notifications for order status changes
+  try {
+    const emailDispatcher = require('../../emails/emailDispatcher');
+    const User = require('../../models/user/userModel');
+    
+    // Populate user for email
+    const user = await User.findById(order.user).select('name email').lean();
+    
+    if (user && user.email) {
+      // Send order shipped email
+      if (status === 'out_for_delivery') {
+        await emailDispatcher.sendOrderShipped(order, user);
+        console.log(`[updateOrderStatus] ✅ Order shipped email sent to ${user.email}`);
+      }
+      
+      // Send order delivered email
+      if (status === 'delivered') {
+        await emailDispatcher.sendOrderDelivered(order, user);
+        console.log(`[updateOrderStatus] ✅ Order delivered email sent to ${user.email}`);
+      }
+    }
+  } catch (emailError) {
+    console.error('[updateOrderStatus] Error sending order status emails:', emailError.message);
+    // Don't fail the order update if email fails
+  }
+
   // Sync SellerOrder status with Order status
   try {
     const syncResult = await syncSellerOrderStatus(orderId, status);

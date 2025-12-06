@@ -25,11 +25,13 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const slowDown = require('express-slow-down');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
+const csurf = require('csurf');
 // Bull Board (CommonJS compatible)
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
@@ -59,10 +61,12 @@ const sellerReviewRoutes = require('./routes/seller/reviewRoutes');
 const paymentRequestRoutes = require('./routes/seller/paymentRequestRoutes');
 const sellerPayoutRoutes = require('./routes/seller/payoutRoutes');
 const discountRoutes = require('./routes/seller/discountRoute');
-const couponRoutes = require('./routes/seller/couponRoutes');
+const buyerCouponRoutes = require('./routes/buyer/couponRoutes');
+const sellerCouponRoutes = require('./routes/seller/couponRoutes');
 const shippingSettingsRoutes = require('./routes/seller/shippingSettingsRoutes');
 
 const adminRoutes = require('./routes/admin/adminRoutes');
+const adminCouponRoutes = require('./routes/admin/couponRoutes');
 const analyticsRoutes = require('./routes/admin/analyticsRoutes');
 const pickupCenterRoutes = require('./routes/admin/pickupCenterRoutes');
 const dispatchFeesRoutes = require('./routes/admin/dispatchFeesRoutes');
@@ -84,6 +88,7 @@ const paymentMethodRoutes = require('./routes/shared/paymentMethodRoutes');
 const paymentRoutes = require('./routes/shared/paymentRoutes');
 const searchRoutes = require('./routes/shared/searchRoutes');
 const notificationRoutes = require('./routes/shared/notificationRoutes');
+const notificationsApiRoutes = require('./routes/notification/notificationRoutes');
 const shippingRoutes = require('./routes/shared/shippingRoutes');
 const locationRoutes = require('./routes/shared/locationRoutes');
 const neighborhoodRoutes = require('./routes/shared/neighborhoodRoutes');
@@ -124,6 +129,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // 3. Global Middleware Stack
+// SECURITY FIX #34: Enhanced Helmet security headers
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -133,6 +139,7 @@ app.use(
           "'self'",
           "'unsafe-inline'",
           'https://cdnjs.cloudflare.com',
+          'https://checkout.paystack.com',
         ],
         styleSrc: [
           "'self'",
@@ -154,6 +161,16 @@ app.use(
         ],
       },
     },
+    // SECURITY: Additional Helmet protections
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+    frameguard: { action: 'deny' }, // Prevent clickjacking
+    noSniff: true, // Prevent MIME sniffing
+    xssFilter: true, // XSS protection
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }),
 );
 
@@ -169,7 +186,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// CORS configuration
+// CORS configuration with SECURITY FIX #17
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -178,10 +195,26 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Development: Allow all origins (including localhost with any port)
+    // SECURITY FIX #17: Development - restrict to specific localhost ports (no wildcard)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[CORS] Development mode - allowing origin: ${origin}`);
-      return callback(null, true);
+      const devOrigins = [
+        'http://localhost:5173', // eazmain
+        'http://localhost:5174', // eazadmin
+        'http://localhost:5175', // eazseller
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5175',
+      ];
+
+      if (devOrigins.includes(origin)) {
+        console.log(`[CORS] Development - allowing origin: ${origin}`);
+        return callback(null, true);
+      }
+
+      console.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
+      return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
     }
 
     // Production: Only allow specific origins
@@ -228,19 +261,34 @@ if (isDevelopment) {
 }
 app.set('trust proxy', 1);
 
-// Rate limiting
+// SECURITY FIX #35: Enhanced global rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isProduction ? 1000 : 5000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 500 : 5000, // Stricter in production
   message: {
     error: 'Too many requests from this IP, please try again later',
     retryAfter: 15 * 60,
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for whitelisted IPs (optional)
+  skip: (req) => {
+    // Skip localhost in development
+    if (!isProduction && req.ip === '::1') return true;
+    return false;
+  },
 });
 
 app.use('/api', limiter);
+
+// 🐢 Slow Down Repeated Requests (SECURITY)
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 100, // Allow 100 requests per window
+  delayMs: (hits) => hits * 500, // Add 500ms delay per request after limit
+  maxDelayMs: 20000, // Max 20s delay
+});
+app.use('/api', speedLimiter);
 
 // More aggressive rate limiting for auth endpoints
 const authLimiter = rateLimit({
@@ -256,54 +304,34 @@ const authLimiter = rateLimit({
 app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
 
-// Body parsers
-app.use(
-  express.json({
-    limit: isProduction ? '10mb' : '50mb',
-    verify: (req, res, buf) => {
-      try {
-        JSON.parse(buf);
-      } catch (e) {
-        throw new AppError('Invalid JSON payload', 400);
-      }
-    },
-  }),
-);
-
-app.use(
-  express.urlencoded({
-    extended: true,
-    limit: isProduction ? '10mb' : '50mb',
-    parameterLimit: isProduction ? 100 : 1000,
-  }),
-);
-
+// 📦 Body parsing with strict size limits (SECURITY)
+app.use(express.json({ limit: '20kb' }));
+app.use(express.urlencoded({ extended: true, limit: '20kb' }));
 app.use(cookieParser());
 
-// Security middleware
+// 🧼 Data Sanitization (SECURITY)
 app.use(mongoSanitize());
 app.use(xss());
-app.use(
-  hpp({
-    whitelist: ['price', 'ratingsAverage', 'ratingsQuantity', 'category'],
-  }),
-);
 
-// Compression middleware for production
-if (isProduction) {
-  app.use(
-    compression({
-      level: 6,
-      threshold: 1000,
-      filter: (req, res) => {
-        if (req.headers['x-no-compression']) {
-          return false;
-        }
-        return compression.filter(req, res);
-      },
-    }),
-  );
-}
+// 🚫 HTTP Parameter Pollution Protection (SECURITY)
+app.use(hpp({
+  whitelist: ['price', 'rating', 'category', 'limit', 'page', 'sort'],
+}));
+
+// 🧱 Compression (Performance Optimization)
+app.use(
+  compression({
+    level: 6, // Compression level (0-9)
+    threshold: 1024, // Only compress responses > 1KB
+    filter: (req, res) => {
+      // Don't compress if client doesn't support it
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  })
+);
 
 // Request timing and security headers
 app.use((req, res, next) => {
@@ -339,12 +367,15 @@ app.use('/api/v1/permission', permissionRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
 
 // Seller routes
-app.use('/api/v1/seller', sellerRoutes);
+// IMPORTANT: More specific routes must come BEFORE general routes to avoid route conflicts
+// The sellerRoutes has a catch-all /:id route that would match /coupon if mounted first
+app.use('/api/v1/seller/coupon', sellerCouponRoutes); // Seller routes (manage coupons) - MUST come before sellerRoutes
+app.use('/api/v1/seller/discount', discountRoutes); // Seller routes (manage discounts) - MUST come before sellerRoutes
 app.use('/api/v1/seller/reviews', sellerReviewRoutes);
 app.use('/api/v1/seller/payout', sellerPayoutRoutes);
+app.use('/api/v1/seller', sellerRoutes);
 app.use('/api/v1/paymentrequest', paymentRequestRoutes);
-app.use('/api/v1/discount', discountRoutes);
-app.use('/api/v1/coupon', couponRoutes);
+app.use('/api/v1/coupon', buyerCouponRoutes); // Buyer routes (apply coupons)
 app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 
 // Admin routes
@@ -355,6 +386,7 @@ app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
 app.use('/api/v1/admin/reviews', adminReviewRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);
 app.use('/api/v1/admin/refunds', adminRefundRoutes);
+app.use('/api/v1/admin/coupons', adminCouponRoutes);
 app.use('/api/v1/logs', require('./modules/activityLog/activityLog.routes'));
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
@@ -375,6 +407,7 @@ app.use('/api/v1/paymentmethod', paymentMethodRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/notification-settings', notificationRoutes);
+app.use('/api/v1/notifications', notificationsApiRoutes);
 app.use('/api/v1/shipping', shippingRoutes);
 app.use('/api/v1/location', locationRoutes);
 app.use('/api/v1/neighborhoods', neighborhoodRoutes);
@@ -398,7 +431,22 @@ app.all('*', (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server`, 404));
 });
 
+// 🛡️ CSRF Error Handler (SECURITY)
+app.use((err, req, res, next) => {
+  if (err.code === 'EBADCSRFTOKEN') {
+    console.error('[CSRF] Invalid CSRF token detected:', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method,
+    });
+    return res.status(403).json({
+      status: 'fail',
+      message: 'Invalid CSRF token. Please refresh and try again.',
+    });
+  }
+  next(err);
+});
+
 app.use(globalErrorHandler);
 
 module.exports = app;;
-

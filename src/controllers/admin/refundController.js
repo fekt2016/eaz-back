@@ -266,6 +266,40 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
 
       await refundRequest.save({ session });
 
+      // Notify seller about refund approval
+      try {
+        const notificationService = require('../../services/notification/notificationService');
+        const SellerOrder = require('../../models/order/sellerOrderModel');
+        
+        // Get unique seller IDs from refund items
+        const sellerIds = new Set();
+        for (const item of refundRequest.items) {
+          if (item.sellerId) {
+            sellerIds.add(item.sellerId.toString());
+          }
+        }
+
+        // Notify each seller
+        for (const sellerId of sellerIds) {
+          try {
+            await notificationService.createSellerRefundStatusNotification(
+              sellerId,
+              refundRequest._id,
+              order._id,
+              order.orderNumber,
+              'approved',
+              approvedAmount
+            );
+            console.log(`[Approve Refund] Seller notification created for seller ${sellerId}`);
+          } catch (sellerNotifError) {
+            console.error(`[Approve Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+          }
+        }
+      } catch (sellerNotificationError) {
+        console.error('[Approve Refund] Error creating seller notifications:', sellerNotificationError);
+        // Don't fail refund approval if notification fails
+      }
+
       // Credit buyer wallet
       if (order.paymentStatus === 'paid' || order.paymentStatus === 'completed') {
         const reference = `REFUND-APPROVED-${order.orderNumber}-${refundRequest._id}-${Date.now()}`;
@@ -439,6 +473,26 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
       },
     });
 
+    // Send refund processed email to buyer
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      const User = require('../../models/user/userModel');
+      const user = await User.findById(order.user).select('name email').lean();
+      
+      if (user && user.email) {
+        const refundData = {
+          finalRefundAmount: refundAmount,
+          totalRefundAmount: refundAmount,
+          processedAt: new Date(),
+        };
+        await emailDispatcher.sendRefundProcessed(user, refundData, order);
+        console.log(`[approveRefund] ✅ Refund processed email sent to ${user.email}`);
+      }
+    } catch (emailError) {
+      console.error('[approveRefund] Error sending refund processed email:', emailError.message);
+      // Don't fail refund if email fails
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Refund approved successfully',
@@ -517,6 +571,40 @@ exports.rejectRefund = catchAsync(async (req, res, next) => {
       refundRequest.processedBy = adminId;
       refundRequest.processedByModel = 'Admin';
       await refundRequest.save({ session });
+
+      // Notify seller about refund rejection
+      try {
+        const notificationService = require('../../services/notification/notificationService');
+        const SellerOrder = require('../../models/order/sellerOrderModel');
+        
+        // Get unique seller IDs from refund items
+        const sellerIds = new Set();
+        for (const item of refundRequest.items) {
+          if (item.sellerId) {
+            sellerIds.add(item.sellerId.toString());
+          }
+        }
+
+        // Notify each seller
+        for (const sellerId of sellerIds) {
+          try {
+            await notificationService.createSellerRefundStatusNotification(
+              sellerId,
+              refundRequest._id,
+              order._id,
+              order.orderNumber,
+              'rejected',
+              refundRequest.totalRefundAmount
+            );
+            console.log(`[Reject Refund] Seller notification created for seller ${sellerId}`);
+          } catch (sellerNotifError) {
+            console.error(`[Reject Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+          }
+        }
+      } catch (sellerNotificationError) {
+        console.error('[Reject Refund] Error creating seller notifications:', sellerNotificationError);
+        // Don't fail refund rejection if notification fails
+      }
 
       // Update item-level refund statuses
       for (const item of refundRequest.items) {

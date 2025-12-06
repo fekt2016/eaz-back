@@ -27,40 +27,69 @@ const activityLogger = (action, descriptionCallback = null) => {
 
     const logActivityAfterResponse = () => {
       // Only log if user is authenticated
-      if (!req.user) {
+      if (!req || !req.user) {
         return;
       }
 
-      // Determine role from user
+      // Validate required fields before logging
+      const userId = req.user._id || req.user.id;
+      if (!userId) {
+        console.error('[ActivityLogger] Missing userId');
+        return;
+      }
+
+      // Determine role from user - ensure it's a valid role
       let role = 'buyer';
       if (req.user.role === 'seller') {
         role = 'seller';
       } else if (req.user.role === 'admin') {
         role = 'admin';
+      } else if (req.user.role === 'user' || req.user.role === 'buyer') {
+        role = 'buyer';
       }
 
-      // Generate description
-      let description = action;
+      // Ensure role is valid
+      if (!['buyer', 'seller', 'admin'].includes(role)) {
+        console.error('[ActivityLogger] Invalid role:', req.user.role);
+        role = 'buyer'; // Default fallback
+      }
+
+      // Generate description - ensure it's never empty
+      let description = action || 'Unknown action';
       if (descriptionCallback && typeof descriptionCallback === 'function') {
         try {
-          description = descriptionCallback(req, res);
+          const callbackDescription = descriptionCallback(req, res);
+          if (callbackDescription && typeof callbackDescription === 'string' && callbackDescription.trim()) {
+            description = callbackDescription;
+          }
         } catch (error) {
           console.error('[ActivityLogger] Error in description callback:', error);
-          description = action;
+          // Keep default description
         }
+      }
+
+      // Ensure description is not empty
+      if (!description || typeof description !== 'string' || !description.trim()) {
+        description = action || 'Activity logged';
+      }
+
+      // Ensure action is provided
+      if (!action || typeof action !== 'string' || !action.trim()) {
+        console.error('[ActivityLogger] Missing or invalid action');
+        return;
       }
 
       // Log asynchronously (don't block response)
       logActivityAsync({
-        userId: req.user._id || req.user.id,
+        userId,
         role,
-        action,
-        description,
+        action: action.trim(),
+        description: description.trim(),
         req,
         metadata: {
-          method: req.method,
-          path: req.originalUrl || req.path,
-          statusCode: res.statusCode,
+          method: req.method || 'UNKNOWN',
+          path: req.originalUrl || req.path || 'UNKNOWN',
+          statusCode: res.statusCode || 200,
         },
       });
     };

@@ -25,6 +25,9 @@ router.post('/request/:id/approve', payoutController.approveWithdrawalRequest);
 // Reject withdrawal request
 router.post('/request/:id/reject', payoutController.rejectWithdrawalRequest);
 
+// Reverse withdrawal request (for completed/paid withdrawals)
+router.post('/request/:id/reverse', payoutController.reverseWithdrawal);
+
 // Verify transfer status
 router.post('/request/:id/verify', payoutController.verifyTransferStatus);
 

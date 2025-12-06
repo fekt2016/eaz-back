@@ -247,9 +247,23 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   const oldLockedBalance = currentSeller.lockedBalance || 0;
   const oldWithdrawableBalance = Math.max(0, oldBalance - oldLockedBalance - oldPendingBalance);
   
+  // PROTECTION: Prevent negative pendingBalance
+  if (oldPendingBalance < 0) {
+    console.warn(`[createPaymentRequest] ⚠️ Seller ${seller.id} has negative pendingBalance: ${oldPendingBalance}. Resetting to 0.`);
+    currentSeller.pendingBalance = 0;
+  }
+  
   // Add to pendingBalance (funds awaiting approval and OTP verification)
   // This reduces available balance but does NOT affect total revenue (balance)
-  currentSeller.pendingBalance = oldPendingBalance + amount;
+  const newPendingBalance = oldPendingBalance + amount;
+  
+  // PROTECTION: Prevent double-adding (check if amount already in pendingBalance)
+  // This is a safety check - in normal flow, amount should not already be in pendingBalance
+  if (newPendingBalance > oldBalance) {
+    console.warn(`[createPaymentRequest] ⚠️ New pendingBalance (${newPendingBalance}) exceeds balance (${oldBalance}). This may indicate a double-add.`);
+  }
+  
+  currentSeller.pendingBalance = newPendingBalance;
   
   // CRITICAL: Do NOT modify balance (total revenue) - it should remain unchanged
   // Only pendingBalance is increased, which reduces withdrawableBalance
@@ -299,10 +313,39 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       console.log(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance): ${savedSeller.balance} (UNCHANGED)`);
     }
     console.log(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
+    
+    // Log finance audit
+    try {
+      const financeAudit = require('./financeAuditService');
+      await financeAudit.logWithdrawalCreated(
+        seller.id,
+        amount,
+        paymentRequest._id,
+        oldPendingBalance,
+        savedSeller.pendingBalance
+      );
+    } catch (auditError) {
+      console.error('[createPaymentRequest] Failed to log finance audit (non-critical):', auditError);
+    }
   }
 
   // Send confirmation to seller
   await sendPaymentNotification(seller, 'request_created', paymentRequest);
+
+  // Notify all admins about withdrawal request
+  try {
+    const notificationService = require('../services/notification/notificationService');
+    await notificationService.createWithdrawalRequestNotification(
+      paymentRequest._id,
+      seller.id,
+      currentSeller.shopName || currentSeller.name || 'Seller',
+      amount
+    );
+    console.log(`[Payment Request] Admin notification created for withdrawal ${paymentRequest._id}`);
+  } catch (notificationError) {
+    console.error('[Payment Request] Error creating admin notification:', notificationError);
+    // Don't fail payment request if notification fails
+  }
 
   return paymentRequest;
 };

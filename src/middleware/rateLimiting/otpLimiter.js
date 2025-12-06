@@ -1,32 +1,26 @@
 const rateLimit = require('express-rate-limit');
 
-// Only apply rate limiting in production
+// SECURITY: Always enable rate limiting, but with different limits for dev vs production
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware that skips rate limiting in development
-const skipRateLimit = (req, res, next) => {
-  if (!isProduction) {
-    return next(); // Skip rate limiting in development
-  }
-  // In production, this will be replaced by the actual rate limiter
-};
+// SECURITY FIX #4: Reset password rate limiter - ALWAYS ENABLED
+exports.resetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 5 : 10, // 5 in production, 10 in development
+  message: {
+    error: 'Too many reset attempts, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-exports.resetLimiter = isProduction
-  ? rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // limit each IP to 5 reset attempts per windowMs
-      message: {
-        error: 'Too many reset attempts, please try again later.',
-      },
-    })
-  : skipRateLimit;
-
-exports.otpLimiter = isProduction
-  ? rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 3, // limit each IP to 3 OTP requests per windowMs
-      message: {
-        error: 'Too many OTP requests, please try again later.',
-      },
-    })
-  : skipRateLimit;
+// SECURITY FIX #4: OTP rate limiter - ALWAYS ENABLED
+exports.otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 3 : 10, // 3 in production, 10 in development
+  message: {
+    error: 'Too many OTP requests, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

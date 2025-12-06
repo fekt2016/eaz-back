@@ -63,6 +63,10 @@ const productSchema = new mongoose.Schema(
     },
     variants: [
       {
+        name: {
+          type: String,
+          trim: true,
+        },
         attributes: [
           {
             key: {
@@ -87,6 +91,11 @@ const productSchema = new mongoose.Schema(
           type: Number,
           min: [0, 'Original price must be at least 0'],
         },
+        discount: {
+          type: Number,
+          min: [0, 'Discount must be at least 0'],
+          default: 0,
+        },
         stock: {
           type: Number,
           required: true,
@@ -102,6 +111,10 @@ const productSchema = new mongoose.Schema(
           type: String,
           enum: ['active', 'inactive'],
           default: 'active',
+        },
+        description: {
+          type: String,
+          trim: true,
         },
         images: [
           {
@@ -135,6 +148,14 @@ const productSchema = new mongoose.Schema(
           type: Number,
           default: 5,
           min: 0,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],
@@ -173,6 +194,22 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: ['active', 'inactive', 'draft', 'out_of_stock'],
       default: 'active',
+    },
+    moderationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    moderationNotes: {
+      type: String,
+      trim: true,
+    },
+    moderatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+    },
+    moderatedAt: {
+      type: Date,
     },
     specifications: {
       material: [
@@ -396,6 +433,23 @@ const productSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+// Pre-save middleware - Update variant timestamps
+productSchema.pre('save', function (next) {
+  // Update timestamps for variants
+  if (this.variants && this.variants.length > 0) {
+    const now = new Date();
+    this.variants.forEach((variant) => {
+      // Set createdAt if it doesn't exist (new variant)
+      if (!variant.createdAt) {
+        variant.createdAt = now;
+      }
+      // Always update updatedAt when product is saved
+      variant.updatedAt = now;
+    });
+  }
+  next();
+});
 
 // Pre-save middleware
 productSchema.pre('save', function (next) {
@@ -645,6 +699,131 @@ productSchema.pre('save', async function (next) {
     await this.generateTags();
   }
   next();
+});
+
+// Post-save middleware to maintain category-product relationship
+productSchema.post('save', async function (doc) {
+  const Category = mongoose.model('Category');
+  
+  try {
+    // Add product to subCategory's products array if it exists
+    if (doc.subCategory) {
+      await Category.findByIdAndUpdate(
+        doc.subCategory,
+        { $addToSet: { products: doc._id } }, // $addToSet prevents duplicates
+        { new: true }
+      );
+    }
+    
+    // Also add to parentCategory's products array if it exists
+    if (doc.parentCategory) {
+      await Category.findByIdAndUpdate(
+        doc.parentCategory,
+        { $addToSet: { products: doc._id } }, // $addToSet prevents duplicates
+        { new: true }
+      );
+    }
+  } catch (error) {
+    console.error('Error updating category products array:', error);
+    // Don't throw error to prevent blocking product save
+  }
+});
+
+// Pre-save middleware to handle category changes
+productSchema.pre('save', async function (next) {
+  // Only run if category fields are being modified and product already exists
+  if (!this.isNew && (this.isModified('parentCategory') || this.isModified('subCategory'))) {
+    const Category = mongoose.model('Category');
+    
+    try {
+      // Get the original document
+      const originalDoc = await this.constructor.findById(this._id);
+      
+      if (originalDoc) {
+        // Remove from old categories
+        if (originalDoc.subCategory && originalDoc.subCategory.toString() !== this.subCategory?.toString()) {
+          await Category.findByIdAndUpdate(
+            originalDoc.subCategory,
+            { $pull: { products: this._id } }
+          );
+        }
+        
+        if (originalDoc.parentCategory && originalDoc.parentCategory.toString() !== this.parentCategory?.toString()) {
+          await Category.findByIdAndUpdate(
+            originalDoc.parentCategory,
+            { $pull: { products: this._id } }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error removing product from old categories:', error);
+      // Continue with save even if this fails
+    }
+  }
+  
+  next();
+});
+
+// Post-remove middleware to remove product from categories
+productSchema.post(['findOneAndDelete', 'findOneAndRemove', 'remove'], async function (doc) {
+  const product = doc || this;
+  
+  if (product) {
+    const Category = mongoose.model('Category');
+    
+    try {
+      // Remove from subCategory
+      if (product.subCategory) {
+        await Category.findByIdAndUpdate(
+          product.subCategory,
+          { $pull: { products: product._id } }
+        );
+      }
+      
+      // Remove from parentCategory
+      if (product.parentCategory) {
+        await Category.findByIdAndUpdate(
+          product.parentCategory,
+          { $pull: { products: product._id } }
+        );
+      }
+    } catch (error) {
+      console.error('Error removing product from categories on delete:', error);
+    }
+  }
+});
+
+// Also handle deleteOne
+productSchema.post('deleteOne', async function () {
+  const productId = this.getQuery()._id;
+  
+  if (productId) {
+    const Category = mongoose.model('Category');
+    const Product = mongoose.model('Product');
+    
+    try {
+      const product = await Product.findById(productId);
+      if (product) {
+        // Remove from subCategory
+        if (product.subCategory) {
+          await Category.findByIdAndUpdate(
+            product.subCategory,
+            { $pull: { products: productId } }
+          );
+        }
+        
+        // Remove from parentCategory
+        if (product.parentCategory) {
+          await Category.findByIdAndUpdate(
+            product.parentCategory,
+            { $pull: { products: productId } }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error removing product from categories on deleteOne:', error);
+    }
+  }
 });
 
 // Add a method to generate tags

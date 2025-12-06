@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
 const reviewController = require('../../controllers/shared/reviewController');
+const { validateObjectId } = require('../../middleware/validateObjectId');
 
 const { getAllReview,
   getReview,
@@ -24,15 +25,17 @@ router
 
 router
   .route('/:id')
-  .get(reviewController.getReview)
+  .get(validateObjectId('id'), reviewController.getReview)
   .patch(
     authController.protect,
     authController.restrictTo('user', 'admin'),
+    validateObjectId('id'),
     reviewController.updateReview,
   )
   .delete(
     authController.protect,
     authController.restrictTo('user', 'admin'),
+    validateObjectId('id'),
     reviewController.deleteReview,
   );
 
@@ -42,6 +45,7 @@ router
   .post(
     authController.protect,
     authController.restrictTo('seller', 'admin'),
+    validateObjectId('id'),
     reviewController.replyToReview,
   );
 

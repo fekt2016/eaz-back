@@ -1,5 +1,6 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
+const { optionalAuth } = require('../../middleware/auth/optionalAuth');
 const { getAllProduct,
   deleteProduct,
   createProduct,
@@ -12,7 +13,12 @@ const { getAllProduct,
   getProductReviews,
   getAllPublicProductsBySeller,
   getProductsByCategory,
-  getProductById, } = require('../../controllers/seller/productController');
+  getProductById,
+  getProductVariants,
+  getProductVariant,
+  createProductVariant,
+  updateProductVariant,
+  deleteProductVariant, } = require('../../controllers/seller/productController');
 const { getPublicEazShopProducts } = require('../../controllers/admin/eazshopStoreController');
 
 const router = express.Router();
@@ -25,7 +31,7 @@ router.get('/eazshop', getPublicEazShopProducts);
 
 router
   .route('/')
-  .get(getAllProduct)
+  .get(optionalAuth, getAllProduct)
   .post(
     authController.protect,
     authController.restrictTo('admin', 'seller'),
@@ -36,10 +42,49 @@ router
   );
 // More specific routes should come before generic :id route
 router.route('/:id/reviews').get(getProductReviews);
+
+// Variant routes - must be before /:id route
+router
+  .route('/:id/variants')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    getProductVariants
+  )
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    conditionalUpload,
+    resizeProductImages,
+    createProductVariant
+  );
+
+router
+  .route('/:id/variants/:variantId')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    getProductVariant
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    conditionalUpload,
+    resizeProductImages,
+    updateProductVariant
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'seller'),
+    deleteProductVariant
+  );
+
+// Seller public products route - MUST be before /:id route to avoid route conflicts
 router.route('/:sellerId/public').get(getAllPublicProductsBySeller);
+
 router
   .route('/:id')
-  .get(getProductById)
+  .get(optionalAuth, getProductById)
   .patch(
     authController.protect,
     authController.restrictTo('admin', 'seller'),

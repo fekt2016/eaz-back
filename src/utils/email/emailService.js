@@ -99,6 +99,48 @@ const sendLoginOtpEmail = async (toEmail, otp, name) => {
   return sendGridService.sendLoginOtpEmail(toEmail, otp, name);
 };
 
+/**
+ * Send SMS message (stub implementation)
+ * 
+ * NOTE: This is a placeholder function. SMS functionality needs to be implemented
+ * using a proper SMS service provider (e.g., Twilio, AWS SNS, etc.).
+ * 
+ * Currently, this function logs the SMS message to the console for development.
+ * In production, replace this with actual SMS service integration.
+ * 
+ * @param {Object} data - SMS data
+ * @param {string} data.to - Recipient phone number
+ * @param {string} data.message - SMS message content
+ * @returns {Promise<Object>} SMS service response
+ */
+const sendSMS = async (data) => {
+  const { to, message } = data;
+  
+  if (!to || !message) {
+    throw new Error('SMS requires both "to" (phone number) and "message" fields.');
+  }
+
+  // TODO: Implement actual SMS service integration
+  // Options:
+  // 1. Twilio: https://www.twilio.com/docs/sms
+  // 2. AWS SNS: https://docs.aws.amazon.com/sns/latest/dg/sms_publish-to-phone.html
+  // 3. Other SMS providers
+  
+  // For now, log to console (development only)
+  console.log('[SMS Service] 📱 SMS would be sent:');
+  console.log(`  To: ${to}`);
+  console.log(`  Message: ${message}`);
+  console.log('[SMS Service] ⚠️  SMS service not implemented. Please integrate a proper SMS provider.');
+  
+  // Return a mock success response
+  return {
+    success: true,
+    message: 'SMS logged (SMS service not implemented)',
+    to,
+    messageId: `mock-${Date.now()}`,
+  };
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
@@ -107,6 +149,7 @@ module.exports = {
   sendDataReadyEmail,
   sendLoginEmail,
   sendLoginOtpEmail,
+  sendSMS,
   // Export SendGrid service directly
   get sendGridService() {
     return sendGridService;

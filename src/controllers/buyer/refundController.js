@@ -273,6 +273,77 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
       },
     });
 
+    // Notify all admins about refund request
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      const user = await User.findById(userId).select('name email');
+      await notificationService.createRefundRequestNotification(
+        refundRequest._id,
+        order._id,
+        order.orderNumber,
+        totalRefundAmount,
+        user?.name || user?.email || 'Customer'
+      );
+      console.log(`[Refund Request] Admin notification created for refund ${refundRequest._id}`);
+    } catch (notificationError) {
+      console.error('[Refund Request] Error creating admin notification:', notificationError);
+      // Don't fail refund request if notification fails
+    }
+
+    // Notify sellers about refund request
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      const SellerOrder = require('../../models/order/sellerOrderModel');
+      const user = await User.findById(userId).select('name email');
+      
+      // Get unique seller IDs from refund items
+      const sellerIds = new Set();
+      if (items && items.length > 0) {
+        for (const item of items) {
+          const orderItem = await OrderItems.findById(item.orderItemId);
+          if (orderItem) {
+            // Find which seller this item belongs to
+            const sellerOrder = await SellerOrder.findOne({
+              order: orderId,
+              items: item.orderItemId,
+            }).populate('seller', '_id');
+            
+            if (sellerOrder && sellerOrder.seller && sellerOrder.seller._id) {
+              sellerIds.add(sellerOrder.seller._id.toString());
+            }
+          }
+        }
+      } else {
+        // For whole-order refund, get all sellers from the order
+        const sellerOrders = await SellerOrder.find({ order: orderId }).populate('seller', '_id');
+        sellerOrders.forEach(so => {
+          if (so.seller && so.seller._id) {
+            sellerIds.add(so.seller._id.toString());
+          }
+        });
+      }
+
+      // Notify each seller
+      for (const sellerId of sellerIds) {
+        try {
+          await notificationService.createSellerRefundRequestNotification(
+            sellerId,
+            refundRequest._id,
+            order._id,
+            order.orderNumber,
+            totalRefundAmount,
+            user?.name || user?.email || 'Customer'
+          );
+          console.log(`[Refund Request] Seller notification created for seller ${sellerId}`);
+        } catch (sellerNotifError) {
+          console.error(`[Refund Request] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+        }
+      }
+    } catch (sellerNotificationError) {
+      console.error('[Refund Request] Error creating seller notifications:', sellerNotificationError);
+      // Don't fail refund request if seller notification fails
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Refund request submitted successfully',

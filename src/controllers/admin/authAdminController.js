@@ -10,7 +10,7 @@ const ActivityLog = require('../../models/activityLog/activityLogModel');
 
 exports.signupAdmin = catchAsync(async (req, res, next) => {
   const newAdmin = await Admin.create(req.body);
-  createSendToken(newAdmin, 201, res, null, 'eazadmin_jwt');
+  createSendToken(newAdmin, 201, res, null, 'admin_jwt');
 });
 exports.adminLogin = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
@@ -177,7 +177,7 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
       );
       
       const isProduction = process.env.NODE_ENV === 'production';
-      res.cookie('eazadmin_jwt', token, {
+      res.cookie('admin_jwt', token, {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'none' : 'lax',
@@ -196,11 +196,11 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
       });
     } else {
       // Fallback: create token without device session
-      await createSendToken(admin, 200, res, null, 'eazadmin_jwt', null, null);
+      await createSendToken(admin, 200, res, null, 'admin_jwt', null, null);
     }
   } catch (error) {
     console.error('[Admin Auth] Error in token creation:', error);
-    createSendToken(admin, 200, res, null, 'eazadmin_jwt');
+    createSendToken(admin, 200, res, null, 'admin_jwt');
   }
 });
 
@@ -219,7 +219,7 @@ exports.signupUser = catchAsync(async (req, res, next) => {
     createdBy: admin._id,
   });
 
-  createSendToken(newUser, 201, res, null, 'eazmain_jwt');
+  createSendToken(newUser, 201, res, null, 'main_jwt');
 });
 
 exports.sigupSeller = catchAsync(async (req, res, next) => {
@@ -299,5 +299,5 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   admin.passwordResetToken = undefined;
   admin.passwordResetExpires = undefined;
   await admin.save();
-  createSendToken(admin, 200, res, null, 'eazadmin_jwt');
+  createSendToken(admin, 200, res, null, 'admin_jwt');
 });

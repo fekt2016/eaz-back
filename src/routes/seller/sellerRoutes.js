@@ -5,6 +5,7 @@ const onboardingController = require('../../controllers/seller/onboardingControl
 const balanceController = require('../../controllers/seller/balanceController');
 const sellerAnalyticsController = require('../../controllers/seller/sellerAnalyticsController');
 const sellerRefundController = require('../../controllers/seller/refundController');
+const pickupLocationController = require('../../controllers/seller/pickupLocationController');
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
 const authController = require('../../controllers/buyer/authController');
@@ -188,6 +189,79 @@ router.post(
   '/refunds/:refundId/reject-return',
   authController.restrictTo('seller'),
   sellerRefundController.rejectReturn
+);
+
+// Middleware to map returnId to refundId for compatibility
+const mapReturnIdToRefundId = (req, res, next) => {
+  if (req.params.returnId) {
+    req.params.refundId = req.params.returnId;
+  }
+  next();
+};
+
+// Seller Returns Routes (aliases for /refunds routes for consistency)
+router.get(
+  '/returns',
+  authController.restrictTo('seller'),
+  sellerRefundController.getSellerRefunds
+);
+
+router.get(
+  '/returns/:returnId',
+  authController.restrictTo('seller'),
+  mapReturnIdToRefundId,
+  sellerRefundController.getSellerRefundById
+);
+
+router.patch(
+  '/returns/:returnId/approve',
+  authController.restrictTo('seller'),
+  mapReturnIdToRefundId,
+  sellerRefundController.approveReturn
+);
+
+router.patch(
+  '/returns/:returnId/reject',
+  authController.restrictTo('seller'),
+  mapReturnIdToRefundId,
+  sellerRefundController.rejectReturn
+);
+
+// Pickup Location Routes
+router.get(
+  '/me/pickup-locations',
+  authController.restrictTo('seller'),
+  pickupLocationController.getPickupLocations
+);
+
+router.get(
+  '/me/pickup-locations/:id',
+  authController.restrictTo('seller'),
+  pickupLocationController.getPickupLocationById
+);
+
+router.post(
+  '/me/pickup-locations',
+  authController.restrictTo('seller'),
+  pickupLocationController.createPickupLocation
+);
+
+router.patch(
+  '/me/pickup-locations/:id',
+  authController.restrictTo('seller'),
+  pickupLocationController.updatePickupLocation
+);
+
+router.delete(
+  '/me/pickup-locations/:id',
+  authController.restrictTo('seller'),
+  pickupLocationController.deletePickupLocation
+);
+
+router.patch(
+  '/me/pickup-locations/:id/set-default',
+  authController.restrictTo('seller'),
+  pickupLocationController.setDefaultPickupLocation
 );
 
 router.delete(

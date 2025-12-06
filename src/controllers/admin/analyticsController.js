@@ -1157,7 +1157,7 @@ exports.getInventoryAnalytics = catchAsync(async (req, res, next) => {
 
 /**
  * Record Product View
- * POST /admin/analytics/views
+ * POST /api/v1/analytics/views
  */
 exports.recordView = catchAsync(async (req, res, next) => {
   const { productId, sessionId } = req.body;
@@ -1171,20 +1171,52 @@ exports.recordView = catchAsync(async (req, res, next) => {
     $inc: { views: 1 },
   });
 
-  // Log activity
-  const userId = req.user?.id || null;
-  await ActivityLog.create({
-    userId,
-    userModel: userId ? 'User' : null,
-    action: 'VIEW_PRODUCT',
-    metadata: {
-      productId: productId.toString(),
-      sessionId: sessionId || null,
-    },
-    timestamp: new Date(),
-    ipAddress: req.ip || req.headers['x-forwarded-for'],
-    userAgent: req.headers['user-agent'],
-  });
+  // Log activity using the activity log service (handles all required fields)
+  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+  
+  // Determine role and userId - handle both authenticated and anonymous users
+  let userId = null;
+  let role = 'buyer';
+  
+  if (req.user) {
+    userId = req.user.id || req.user._id;
+    if (req.user.role === 'seller') {
+      role = 'seller';
+    } else if (req.user.role === 'admin') {
+      role = 'admin';
+    } else {
+      role = 'buyer';
+    }
+  }
+  
+  // Get product name for description (optional, don't fail if it doesn't exist)
+  let productName = 'Unknown Product';
+  try {
+    const product = await Product.findById(productId).select('name').lean();
+    if (product && product.name) {
+      productName = product.name;
+    }
+  } catch (err) {
+    // Ignore error, use default name
+  }
+
+  // Only log activity if we have a userId (for authenticated users)
+  // Anonymous users can still record views, but we skip activity logging for them
+  if (userId) {
+    logActivityAsync({
+      userId,
+      role,
+      action: 'VIEW_PRODUCT',
+      description: `${role === 'seller' ? 'Seller' : role === 'admin' ? 'Admin' : 'User'} viewed product: ${productName}`,
+      req,
+      metadata: {
+        productId: productId.toString(),
+        sessionId: sessionId || null,
+      },
+      activityType: 'OTHER',
+      riskLevel: 'low',
+    });
+  }
 
   res.status(200).json({
     status: 'success',

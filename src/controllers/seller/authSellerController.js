@@ -21,26 +21,26 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
     emailVerified: false, // ✅ Changed from true to false
     businessVerified: false,
   };
-  
+
   // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
   req.body.role = 'seller';
-  
+
   const newSeller = await Seller.create(req.body);
   if (!newSeller) {
     return next(new AppError('check your cred and register again', 401));
   }
-  
+
   // Double-check: Ensure role is ALWAYS 'seller' after creation
   if (!newSeller.role || newSeller.role !== 'seller') {
     console.log(`[Seller Auth] Correcting role from "${newSeller.role}" to "seller" for new seller: ${newSeller.email}`);
     newSeller.role = 'seller';
     await newSeller.save({ validateBeforeSave: false });
   }
-  
+
   // ✅ Generate OTP for email verification
   const otp = newSeller.createOtp();
   await newSeller.save({ validateBeforeSave: false });
-  
+
   // Send OTP via email
   try {
     await sendLoginOtpEmail(newSeller.email, otp, newSeller.name || newSeller.shopName);
@@ -49,7 +49,7 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
     console.error('[Seller Signup] Failed to send OTP email:', emailError.message);
     // Don't fail signup if email fails - OTP is still generated
   }
-  
+
   await sellerCustomerModel.create({
     myId: newSeller.id,
   });
@@ -62,6 +62,20 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
     description: `New seller registered: ${newSeller.email}`,
     req,
   });
+
+  // Notify all admins about new seller registration
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    await notificationService.createSellerRegistrationNotification(
+      newSeller._id,
+      newSeller.shopName || newSeller.name,
+      newSeller.email
+    );
+    console.log(`[Seller Signup] Admin notification created for new seller ${newSeller._id}`);
+  } catch (notificationError) {
+    console.error('[Seller Signup] Error creating admin notification:', notificationError);
+    // Don't fail signup if notification fails
+  }
 
   // ✅ Don't create token yet - seller must verify email first
   res.status(201).json({
@@ -173,7 +187,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   }
 
   seller.lastLogin = Date.now();
-  
+
   // Save seller to persist lastLogin and role
   await seller.save({ validateBeforeSave: false });
 
@@ -209,7 +223,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     console.warn(`[Seller Login] CRITICAL RISK detected for seller ${seller.email}. Login allowed but logged.`);
   }
 
-  createSendToken(seller, 200, res, null, 'eazseller_jwt');
+  createSendToken(seller, 200, res, null, 'seller_jwt');
 });
 
 exports.sendOtp = catchAsync(async (req, res, next) => {
@@ -237,16 +251,11 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = seller.createOtp();
   await seller.save({ validateBeforeSave: false });
-  
-  // Console log OTP for development/testing
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('🔐 [SELLER AUTH] OTP GENERATED');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log(`📧 Email: ${seller.email}`);
-  console.log(`🏪 Shop: ${seller.shopName || seller.name}`);
-  console.log(`🔑 OTP Code: ${otp}`);
-  console.log(`⏰ Expires: ${new Date(seller.otpExpires).toLocaleString()}`);
-  console.log('═══════════════════════════════════════════════════════════');
+
+  // SECURITY FIX #5: Log OTP generation without exposing the OTP value
+  console.log('[Seller Auth] OTP generated for seller:', seller._id);
+  console.log('[Seller Auth] Email:', seller.email);
+  console.log('[Seller Auth] Expires:', new Date(seller.otpExpires).toLocaleString());
 
   // Send OTP via email using SendGrid
   if (validator.isEmail(loginId)) {
@@ -262,7 +271,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'OTP sent to your email!',
-    otp, // Remove in production - only for development
+    // SECURITY FIX #5: Don't send OTP in response (removed security risk)
   });
 });
 
@@ -297,18 +306,13 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       );
     }
 
-    // Verify OTP
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('🔍 [SELLER AUTH] OTP VERIFICATION ATTEMPT');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log(`📧 Email: ${seller.email}`);
-    console.log(`🔑 Provided OTP: ${otp}`);
-    console.log(`💾 Stored OTP: ${seller.otp}`);
-    console.log(`⏰ OTP Expires: ${seller.otpExpires ? new Date(seller.otpExpires).toLocaleString() : 'N/A'}`);
-    console.log(`⏰ Current Time: ${new Date().toLocaleString()}`);
-    console.log(`✅ Valid: ${seller.verifyOtp(otp) ? 'YES' : 'NO'}`);
-    console.log('═══════════════════════════════════════════════════════════');
-    
+    // SECURITY FIX #5: Log OTP verification attempt without exposing OTP values
+    console.log('[Seller Auth] OTP verification attempt for seller:', seller._id);
+    console.log('[Seller Auth] Email:', seller.email);
+    console.log('[Seller Auth] OTP Expires:', seller.otpExpires ? new Date(seller.otpExpires).toLocaleString() : 'N/A');
+    console.log('[Seller Auth] Current Time:', new Date().toLocaleString());
+    console.log('[Seller Auth] Valid:', seller.verifyOtp(otp) ? 'YES' : 'NO');
+
     if (!seller.verifyOtp(otp)) {
       return next(new AppError('OTP is invalid or has expired', 401));
     }
@@ -323,21 +327,21 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     seller.otp = undefined;
     seller.otpExpires = undefined;
     seller.lastLogin = Date.now();
-    
+
     // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
     // This is critical for proper authorization
     if (!seller.role || seller.role !== 'seller') {
       console.log(`[Seller Auth] Correcting role from "${seller.role}" to "seller" for: ${seller.email}`);
       seller.role = 'seller';
     }
-    
+
     // Mark email as verified when OTP is verified (since OTP is sent to email)
     if (!seller.verification?.emailVerified) {
       seller.verification = seller.verification || {};
       seller.verification.emailVerified = true;
       console.log('[Seller Auth] Email marked as verified for:', seller.email);
     }
-    
+
     await seller.save({ validateBeforeSave: false });
     console.log('[Seller Auth] OTP verified successfully for:', seller.email);
     console.log('[Seller Auth] Seller role:', seller.role);
@@ -374,7 +378,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     const token = signToken(seller._id, seller.role, sessionData?.deviceId);
-    
+
     // Set cookie (same as createSendToken)
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
@@ -384,15 +388,15 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       path: '/',
       expires: new Date(
         Date.now() +
-          (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
+        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
       ),
       // Set domain for production to allow cookie sharing across subdomains
       // Only set in production, leave undefined in development (localhost)
       ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
     };
 
-    res.cookie('eazseller_jwt', token, cookieOptions);
-    console.log(`[Seller Auth] JWT cookie set (eazseller_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}`);
+    res.cookie('seller_jwt', token, cookieOptions);
+    console.log(`[Seller Auth] JWT cookie set (seller_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}`);
 
     // Remove sensitive data
     seller.password = undefined;
@@ -486,7 +490,7 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
   } else {
     seller = await Seller.findById(req.user.id);
   }
-  
+
   if (!seller) {
     return next(new AppError('No seller found', 404));
   }
@@ -515,13 +519,11 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
   // Generate new OTP (clears old one and resets attempts)
   const otp = seller.createOtp();
   await seller.save({ validateBeforeSave: false });
-  
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('🔐 [SELLER VERIFICATION] EMAIL OTP GENERATED');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log(`📧 Email: ${seller.email}`);
-  console.log(`⏰ Expires: ${new Date(seller.otpExpires).toLocaleString()}`);
-  console.log('═══════════════════════════════════════════════════════════');
+
+  // SECURITY FIX #5: Log OTP generation without exposing OTP value
+  console.log('[Seller Verification] OTP generated for seller:', seller._id);
+  console.log('[Seller Verification] Email:', seller.email);
+  console.log('[Seller Verification] Expires:', new Date(seller.otpExpires).toLocaleString());
 
   // Send OTP via email
   try {
@@ -570,12 +572,10 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const otp = seller.createOtp();
   await seller.save({ validateBeforeSave: false });
 
-  // Log OTP to console for development
-  console.log('========================================');
-  console.log(`[Resend OTP - Seller] 🔐 OTP PIN: ${otp}`);
-  console.log(`[Resend OTP - Seller] User: ${seller.email}`);
-  console.log(`[Resend OTP - Seller] OTP expires in 10 minutes`);
-  console.log('========================================');
+  // SECURITY FIX #5: Log OTP generation without exposing OTP value
+  console.log('[Resend OTP - Seller] OTP generated for seller:', seller._id);
+  console.log('[Resend OTP - Seller] Email:', seller.email);
+  console.log('[Resend OTP - Seller] Expires in 10 minutes');
 
   // Send OTP via email
   try {
@@ -661,21 +661,21 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   seller.passwordResetToken = undefined;
   seller.passwordResetExpires = undefined;
   await seller.save();
-  
+
   // Invalidate all sessions on password reset
   const DeviceSession = require('../../models/user/deviceSessionModel');
   const TokenBlacklist = require('../../models/user/tokenBlackListModal');
   await DeviceSession.deactivateAll(seller._id);
   await TokenBlacklist.invalidateAllSessions(seller._id);
-  
+
   //3) Update changedPasswordAt property for the seller
   //4) Log the seller in, send JWT (with new device session)
   try {
-    await createSendToken(seller, 200, res, null, 'eazseller_jwt', req, 'eazseller');
+    await createSendToken(seller, 200, res, null, 'seller_jwt', req, 'eazseller');
   } catch (error) {
     // Fallback to old method if device session creation fails
     console.error('[Seller Auth] Error creating device session on password reset:', error);
-    createSendToken(seller, 200, res, null, 'eazseller_jwt');
+    createSendToken(seller, 200, res, null, 'seller_jwt');
   }
 });
 
@@ -696,7 +696,7 @@ exports.logout = catchAsync(async (req, res, next) => {
   }
 
   // 2. Always clear cookies as a security measure
-  res.cookie('eazseller_jwt', 'loggedout', {
+  res.cookie('seller_jwt', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

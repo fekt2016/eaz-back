@@ -139,12 +139,17 @@ class Server {
     try {
       await connectDatabase();
       
-      // Initialize cron jobs after database connection (only in production)
+      // Initialize cron jobs after database connection
       require('./cron/tokenCleanup');
+      
+      // Initialize withdrawal cleanup job (runs in all environments)
+      const { startCleanupJob } = require('./jobs/withdrawalCleanupJob');
+      startCleanupJob();
+      
       if (process.env.NODE_ENV === 'production') {
         console.log('✅ Cron jobs initialized');
       } else {
-        console.log('⚠️  Cron jobs disabled in development mode');
+        console.log('✅ Cron jobs initialized (including withdrawal cleanup)');
       }
       
       await this.startServer();

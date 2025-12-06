@@ -29,11 +29,25 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     return next(new AppError('Order ID, amount, and email are required', 400));
   }
 
-  // Verify order exists and belongs to user
-  const order = await Order.findById(orderId);
+  // Verify order exists and belongs  // Fetch order to verify amount
+  const order = await Order.findById(orderId).populate('user', 'email name');
+
   if (!order) {
     return next(new AppError('Order not found', 404));
   }
+
+  // SECURITY FIX #15: Server-side amount validation
+  // NEVER trust frontend amount - always use server-side order total
+  const serverAmount = order.totalPrice;
+
+  // Validate that frontend amount matches (if provided)
+  if (amount && Math.abs(parseFloat(amount) - serverAmount) > 0.01) {
+    console.warn(`[Payment Init] Amount mismatch for order ${orderId}: Frontend=${amount}, Server=${serverAmount}`);
+    return next(new AppError('Payment amount does not match order total', 400));
+  }
+
+  // SECURITY: Use server amount for Paystack, not frontend amount
+  const paystackAmount = Math.round(serverAmount * 100); // Convert to kobo/pesewas
 
   if (order.user.toString() !== req.user.id.toString()) {
     return next(new AppError('You are not authorized to pay for this order', 403));
@@ -54,62 +68,62 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // FORCE use of eazmain port (5173) - this is the customer-facing app
   // NEVER use admin port (5174) for Paystack callbacks
   // We check environment variables but ALWAYS validate and force eazmain
-  
+
   // Check environment variables for logging purposes
   const envMainAppUrl = process.env.MAIN_APP_URL;
   const envEazmainUrl = process.env.EAZMAIN_URL;
   const envFrontendUrl = process.env.FRONTEND_URL;
-  
+
   console.log('[Paystack Initialize] 🔍 Environment Variables:', {
     MAIN_APP_URL: envMainAppUrl || 'NOT SET',
     EAZMAIN_URL: envEazmainUrl || 'NOT SET',
     FRONTEND_URL: envFrontendUrl || 'NOT SET',
   });
-  
+
   // Try to use MAIN_APP_URL or EAZMAIN_URL if they're set and valid (point to eazmain)
   let baseUrl = null;
-  if (envMainAppUrl && 
-      !envMainAppUrl.includes('admin') && 
-      !envMainAppUrl.includes('eazadmin') && 
-      !envMainAppUrl.includes(':5174') &&
-      (envMainAppUrl.includes(':5173') || envMainAppUrl.includes('eazmain'))) {
+  if (envMainAppUrl &&
+    !envMainAppUrl.includes('admin') &&
+    !envMainAppUrl.includes('eazadmin') &&
+    !envMainAppUrl.includes(':5174') &&
+    (envMainAppUrl.includes(':5173') || envMainAppUrl.includes('eazmain'))) {
     baseUrl = envMainAppUrl;
     console.log('[Paystack Initialize] ✅ Using MAIN_APP_URL:', baseUrl);
-  } else if (envEazmainUrl && 
-             !envEazmainUrl.includes('admin') && 
-             !envEazmainUrl.includes('eazadmin') && 
-             !envEazmainUrl.includes(':5174')) {
+  } else if (envEazmainUrl &&
+    !envEazmainUrl.includes('admin') &&
+    !envEazmainUrl.includes('eazadmin') &&
+    !envEazmainUrl.includes(':5174')) {
     baseUrl = envEazmainUrl;
     console.log('[Paystack Initialize] ✅ Using EAZMAIN_URL:', baseUrl);
-  } else if (envFrontendUrl && 
-             !envFrontendUrl.includes('admin') && 
-             !envFrontendUrl.includes('eazadmin') && 
-             !envFrontendUrl.includes(':5174') &&
-             (envFrontendUrl.includes(':5173') || envFrontendUrl.includes('eazmain'))) {
+  } else if (envFrontendUrl &&
+    !envFrontendUrl.includes('admin') &&
+    !envFrontendUrl.includes('eazadmin') &&
+    !envFrontendUrl.includes(':5174') &&
+    (envFrontendUrl.includes(':5173') || envFrontendUrl.includes('eazmain'))) {
     baseUrl = envFrontendUrl;
     console.log('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain):', baseUrl);
   }
-  
+
   // ALWAYS default to eazmain port (5173) if no valid URL found
   // This is the customer app - NEVER use admin port (5174)
   if (!baseUrl) {
     baseUrl = 'http://localhost:5173';
     console.log('[Paystack Initialize] ✅ Using default eazmain URL (port 5173):', baseUrl);
   }
-  
+
   // FINAL VALIDATION: Force to eazmain if URL points to admin
-  if (baseUrl.includes('/admin') || 
-      baseUrl.includes('eazadmin') || 
-      baseUrl.includes(':5174') ||
-      baseUrl.toLowerCase().includes('admin')) {
+  if (baseUrl.includes('/admin') ||
+    baseUrl.includes('eazadmin') ||
+    baseUrl.includes(':5174') ||
+    baseUrl.toLowerCase().includes('admin')) {
     console.error('[Paystack Initialize] ❌ CRITICAL: Base URL points to admin! Forcing to eazmain.');
     baseUrl = 'http://localhost:5173';
     console.log('[Paystack Initialize] ✅ FORCED to eazmain (port 5173):', baseUrl);
   }
-  
+
   // Remove trailing slash and ensure clean URL
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-  
+
   // Final sanity check - ensure we're using port 5173 (eazmain), not 5174 (admin)
   if (cleanBaseUrl.includes(':5174')) {
     console.error('[Paystack Initialize] ❌ CRITICAL: URL still contains admin port 5174!');
@@ -119,13 +133,13 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   } else {
     baseUrl = cleanBaseUrl;
   }
-  
+
   // Construct callback URL with orderId parameter
   // Paystack will append: &reference=xxx&trxref=xxx (since we already have ?orderId=)
   // Final URL: http://localhost:5173/order-confirmation?orderId=XXX&reference=YYY&trxref=YYY
   // baseUrl is already cleaned above, so use it directly
   const callbackUrl = `${baseUrl}/order-confirmation?orderId=${order._id}`;
-  
+
   // CRITICAL: Log all environment variables for debugging BEFORE validation
   console.log('[Paystack Initialize] 🔍 Environment Variables Check:', {
     MAIN_APP_URL: process.env.MAIN_APP_URL || 'NOT SET',
@@ -135,21 +149,21 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     selectedBaseUrl: baseUrl,
     finalCallbackUrl: callbackUrl,
   });
-  
+
   // Final validation of the complete callback URL
   // CRITICAL: If callback URL points to admin, FORCE it to eazmain instead of throwing error
-  if (callbackUrl.includes('/admin') || 
-      callbackUrl.includes('eazadmin') || 
-      callbackUrl.includes(':5174') ||
-      callbackUrl.toLowerCase().includes('admin')) {
+  if (callbackUrl.includes('/admin') ||
+    callbackUrl.includes('eazadmin') ||
+    callbackUrl.includes(':5174') ||
+    callbackUrl.toLowerCase().includes('admin')) {
     console.error('[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!', callbackUrl);
     console.error('[Paystack Initialize] ⚠️ FORCING redirect to eazmain (port 5173) instead');
-    
+
     // FORCE use of eazmain port (5173) - NEVER use admin port (5174)
     const forcedBaseUrl = 'http://localhost:5173';
     const forcedCallbackUrl = `${forcedBaseUrl}/order-confirmation?orderId=${order._id}`;
     console.log('[Paystack Initialize] ✅ Using FORCED safe callback URL:', forcedCallbackUrl);
-    
+
     // Update callbackUrl to use the forced safe URL
     const safePayload = {
       email,
@@ -166,9 +180,9 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       },
       callback_url: forcedCallbackUrl, // Use forced safe URL
     };
-    
+
     console.log('[Paystack Initialize] Paystack Payload (with forced URL):', safePayload.callback_url);
-    
+
     try {
       const response = await axios.post(
         'https://api.paystack.co/transaction/initialize',
@@ -210,11 +224,11 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       );
     }
   }
-  
+
   console.log('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
   console.log('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
   console.log('[Paystack Initialize] ⚠️ VERIFY: This URL MUST point to eazmain (port 5173), NOT eazadmin (port 5174)');
-  
+
   const payload = {
     email,
     amount: Math.round(amount), // Amount in kobo/pesewas
@@ -230,7 +244,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     },
     callback_url: callbackUrl,
   };
-  
+
   console.log('[Paystack Initialize] Paystack Payload callback_url:', payload.callback_url);
   console.log('[Paystack Initialize] Order ID:', order._id.toString());
 
@@ -343,7 +357,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     // Check if payment was successful
     if (transaction.status === 'success') {
       console.log(`[Payment Verification] Payment successful for order: ${order._id}`);
-      
+
       // Prevent double updates - if already paid, return existing order
       if (order.paymentStatus === 'paid') {
         console.log(`[Payment Verification] Order ${order._id} already paid, returning existing order`);
@@ -365,20 +379,20 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
           },
         });
       }
-      
+
       // Update order payment status
       order.paymentStatus = 'paid';
       order.paymentReference = reference;
       order.paymentMethod = 'paystack';
-      
+
       // Update order status to confirmed (IMPORTANT - this is what admin/seller see)
       order.status = 'confirmed';
       order.currentStatus = 'confirmed';
       order.orderStatus = 'confirmed'; // CRITICAL: Set to confirmed for admin/seller pages
-      
+
       // Set seller payout status to pending (will be paid on delivery)
       order.sellerPayoutStatus = 'pending';
-      
+
       // Store revenue amount
       order.revenueAmount = order.totalPrice || 0;
 
@@ -388,12 +402,12 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
       // Update tracking system: Add confirmed entry if not already present
       order.trackingHistory = order.trackingHistory || [];
-      
+
       // Check if confirmed entry already exists
       const hasConfirmed = order.trackingHistory.some(
         entry => entry.status === 'confirmed'
       );
-      
+
       if (!hasConfirmed) {
         // Add confirmed entry (order is confirmed after payment)
         order.trackingHistory.push({
@@ -410,22 +424,22 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       if (!order.revenueAdded) {
         const PlatformStats = require('../../models/platform/platformStatsModel');
         const orderTotal = order.totalPrice || 0;
-        
+
         if (orderTotal > 0) {
           const platformStats = await PlatformStats.getStats();
           platformStats.totalRevenue = (platformStats.totalRevenue || 0) + orderTotal;
           platformStats.addDailyRevenue(new Date(), orderTotal, 0); // 0 for orders count (will be incremented on delivery)
           platformStats.lastUpdated = new Date();
           await platformStats.save();
-          
+
           // Store revenue amount on order
           order.revenueAmount = orderTotal;
           order.revenueAdded = true;
-          
+
           console.log(`[Payment Verification] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
         }
       }
-      
+
       // Log payment activity
       const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
       logActivityAsync({
@@ -445,7 +459,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
       await order.save({ validateBeforeSave: false });
       console.log(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
-      
+
       // Reduce product stock after payment is confirmed
       const orderController = require('./orderController');
       await orderController.reduceOrderStock(order);
@@ -454,14 +468,14 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       try {
         const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
         const SellerOrder = require('../../models/order/sellerOrderModel');
-        
+
         // Sync SellerOrder status to 'confirmed'
         const syncResult = await syncSellerOrderStatus(order._id, 'confirmed');
         console.log(`[Payment Verification] SellerOrder status sync result:`, syncResult);
-        
+
         // Update SellerOrder payment status (but DO NOT credit seller balance - that happens on delivery)
         const sellerOrders = await SellerOrder.find({ order: order._id });
-        
+
         for (const sellerOrder of sellerOrders) {
           // Update SellerOrder payment status and status
           if (sellerOrder.sellerPaymentStatus !== 'paid') {
@@ -473,7 +487,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
             console.log(`[Payment Verification] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
           }
         }
-        
+
         // NOTE: Sellers are NOT credited here - they are credited when order is delivered
         // This prevents seller payout before delivery
       } catch (error) {
@@ -518,10 +532,10 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       order.paymentStatus = transaction.status === 'failed' ? 'failed' : 'pending';
       await order.save();
 
-      const statusMessage = transaction.status === 'pending' 
+      const statusMessage = transaction.status === 'pending'
         ? 'Payment is still pending. Please wait for confirmation.'
         : 'Payment was not successful';
-      
+
       return next(new AppError(statusMessage, 400));
     }
   } catch (error) {
@@ -543,10 +557,10 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     }
 
     // Return more specific error message
-    const errorMessage = error.response?.data?.message 
-      || error.message 
+    const errorMessage = error.response?.data?.message
+      || error.message
       || 'Payment verification failed. Please try again or contact support.';
-    
+
     return next(new AppError(errorMessage, error.response?.status || 500));
   }
 });
@@ -575,7 +589,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
       // Handle wallet top-up
       if (transactionType === 'wallet_topup' && transaction.status === 'success') {
         console.log(`[Paystack Webhook] Processing wallet top-up: ${reference}`);
-        
+
         try {
           const walletService = require('../../services/walletService');
           const userId = transaction.metadata?.userId;
@@ -625,13 +639,13 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
 
       if (order && transaction.status === 'success') {
         console.log(`[Paystack Webhook] Processing successful payment for order: ${order._id}`);
-        
+
         // Prevent double updates - if already paid, skip
         if (order.paymentStatus === 'paid') {
           console.log(`[Paystack Webhook] Order ${order._id} already paid, skipping update`);
           return res.status(200).json({ received: true });
         }
-        
+
         // Update order payment status
         order.paymentStatus = 'paid';
         order.paymentReference = reference;
@@ -643,21 +657,21 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         order.status = 'confirmed';
         order.currentStatus = 'confirmed';
         order.orderStatus = 'confirmed'; // CRITICAL: Set to confirmed for admin/seller pages
-        
+
         // Set seller payout status to pending (will be paid on delivery)
         order.sellerPayoutStatus = 'pending';
-        
+
         // Store revenue amount
         order.revenueAmount = order.totalPrice || 0;
 
         // Update tracking system: Add confirmed entry if not already present
         order.trackingHistory = order.trackingHistory || [];
-        
+
         // Check if confirmed entry already exists
         const hasConfirmed = order.trackingHistory.some(
           entry => entry.status === 'confirmed'
         );
-        
+
         if (!hasConfirmed) {
           // Add confirmed entry (order is confirmed after payment)
           order.trackingHistory.push({
@@ -674,22 +688,22 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         if (!order.revenueAdded) {
           const PlatformStats = require('../../models/platform/platformStatsModel');
           const orderTotal = order.totalPrice || 0;
-          
+
           if (orderTotal > 0) {
             const platformStats = await PlatformStats.getStats();
             platformStats.totalRevenue = (platformStats.totalRevenue || 0) + orderTotal;
             platformStats.addDailyRevenue(new Date(), orderTotal, 0); // 0 for orders count (will be incremented on delivery)
             platformStats.lastUpdated = new Date();
             await platformStats.save();
-            
+
             // Store revenue amount on order
             order.revenueAmount = orderTotal;
             order.revenueAdded = true;
-            
+
             console.log(`[Paystack Webhook] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
           }
         }
-        
+
         // Log payment activity
         const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
         logActivityAsync({
@@ -710,19 +724,19 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
 
         await order.save({ validateBeforeSave: false });
         console.log(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
-        
+
         // Sync SellerOrder status and payment status (DO NOT credit sellers - they get paid on delivery)
         try {
           const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
           const SellerOrder = require('../../models/order/sellerOrderModel');
-          
+
           // Sync SellerOrder status to 'confirmed'
           const syncResult = await syncSellerOrderStatus(order._id, 'confirmed');
           console.log(`[Paystack Webhook] SellerOrder status sync result:`, syncResult);
-          
+
           // Update SellerOrder payment status (but DO NOT credit seller balance - that happens on delivery)
           const sellerOrders = await SellerOrder.find({ order: order._id });
-          
+
           for (const sellerOrder of sellerOrders) {
             // Update SellerOrder payment status and status
             if (sellerOrder.sellerPaymentStatus !== 'paid') {
@@ -734,7 +748,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
               console.log(`[Paystack Webhook] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
             }
           }
-          
+
           // NOTE: Sellers are NOT credited here - they are credited when order is delivered
           // This prevents seller payout before delivery
         } catch (error) {
@@ -795,7 +809,7 @@ exports.createPaymentRequest = catchAsync(async (req, res, next) => {
 exports.getSellerRequests = catchAsync(async (req, res, next) => {
   const seller = req.user;
   // Only return active requests for sellers (hide deactivated ones)
-  const requests = await PaymentRequest.find({ 
+  const requests = await PaymentRequest.find({
     seller: seller.id,
     isActive: { $ne: false } // Include null/undefined (legacy requests) and true, exclude false
   }).sort('-createdAt');
@@ -921,17 +935,17 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     // This is when money actually leaves the seller's account
     const oldBalance = seller.balance || 0;
     const oldLockedBalance = seller.lockedBalance || 0;
-    
+
     // Deduct from total balance (money actually leaves)
     seller.balance = oldBalance - paymentRequest.amount;
     // Deduct from locked balance (unlock the funds)
     seller.lockedBalance = Math.max(0, oldLockedBalance - paymentRequest.amount);
-    
+
     // Recalculate withdrawableBalance
     seller.calculateWithdrawableBalance();
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
-    
+
     console.log(`[processPaymentRequest] Withdrawal approved for seller ${seller._id}:`);
     console.log(`  Total Balance: ${oldBalance} - ${paymentRequest.amount} = ${seller.balance}`);
     console.log(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
@@ -963,7 +977,7 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
         stack: historyError.stack,
       });
     }
-    
+
     seller.paymentHistory.push({
       amount: netAmount,
       method: paymentRequest.paymentMethod,
@@ -981,12 +995,12 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     // Balance was never deducted when creating the request, so we don't add it back
     const oldLockedBalance = seller.lockedBalance || 0;
     seller.lockedBalance = Math.max(0, oldLockedBalance - paymentRequest.amount);
-    
+
     // Recalculate withdrawableBalance
     seller.calculateWithdrawableBalance();
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
-    
+
     console.log(`[processPaymentRequest] Withdrawal rejected for seller ${seller._id}:`);
     console.log(`  Total Balance: ${seller.balance} (unchanged)`);
     console.log(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
@@ -1085,27 +1099,27 @@ exports.deletePaymentRequest = catchAsync(async (req, res, next) => {
     // Deduct amount from pendingBalance when payment request is cancelled
     const amount = paymentRequest.amount || 0;
     const oldPendingBalance = seller.pendingBalance || 0;
-    
+
     if (amount > oldPendingBalance) {
       await session.abortTransaction();
       return next(new AppError('Insufficient pending balance. Please contact support.', 400));
     }
-    
+
     seller.pendingBalance = Math.max(0, oldPendingBalance - amount);
-    
+
     // Recalculate withdrawableBalance explicitly
     seller.calculateWithdrawableBalance();
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance - seller.pendingBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
-    
+
     console.log(`[deletePaymentRequest] Pending balance deduction for seller ${sellerId}:`);
     console.log(`  Total Balance: ${seller.balance} (unchanged)`);
     console.log(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
     console.log(`  Locked Balance: ${seller.lockedBalance} (unchanged)`);
     console.log(`  Available Balance: ${newWithdrawableBalance}`);
-    
+
     await seller.save({ session });
-    
+
     // Verify the save worked
     const savedSeller = await Seller.findById(sellerId).session(session).select('balance lockedBalance pendingBalance withdrawableBalance');
     if (savedSeller) {
@@ -1146,11 +1160,11 @@ exports.deletePaymentRequest = catchAsync(async (req, res, next) => {
   } catch (error) {
     await session.abortTransaction();
     console.error('[deletePaymentRequest] Error:', error);
-    
+
     if (error instanceof AppError) {
       return next(error);
     }
-    
+
     return next(new AppError('Failed to delete payment request', 500));
   } finally {
     session.endSession();

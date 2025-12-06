@@ -101,8 +101,8 @@ exports.logoutAll = catchAsync(async (req, res, next) => {
     
     // Clear JWT cookie
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieName = req.headers['x-platform'] === 'eazseller' ? 'eazseller_jwt' : 
-                      req.headers['x-platform'] === 'eazadmin' ? 'eazadmin_jwt' : 'eazmain_jwt';
+    const cookieName = req.headers['x-platform'] === 'eazseller' ? 'seller_jwt' : 
+                      req.headers['x-platform'] === 'eazadmin' ? 'admin_jwt' : 'main_jwt';
     
     res.cookie(cookieName, 'loggedout', {
       expires: new Date(Date.now() + 10 * 1000),

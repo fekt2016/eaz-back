@@ -126,8 +126,24 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
     seller.requiredSetup.hasAddedBankDetails;
 
   // Auto-update onboardingStage
+  const wasPendingVerification = seller.onboardingStage === 'pending_verification';
   if (allSetupComplete && seller.onboardingStage === 'profile_incomplete') {
     seller.onboardingStage = 'pending_verification';
+    
+    // Notify admins when seller submits verification documents
+    if (!wasPendingVerification) {
+      try {
+        const notificationService = require('../../services/notification/notificationService');
+        await notificationService.createSellerVerificationSubmissionNotification(
+          seller._id,
+          seller.shopName || seller.name
+        );
+        console.log(`[Onboarding] Admin notification created for seller verification submission ${seller._id}`);
+      } catch (notificationError) {
+        console.error('[Onboarding] Error creating admin notification:', notificationError);
+        // Don't fail onboarding if notification fails
+      }
+    }
   }
 
   await seller.save({ validateBeforeSave: false });
@@ -194,6 +210,21 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
     return next(new AppError('Seller not found', 404));
   }
 
+  // Notify seller about verification approval
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    await notificationService.createVerificationNotification(
+      updatedSeller._id,
+      'seller',
+      updatedSeller._id,
+      'approved'
+    );
+    console.log(`[Approve Seller Verification] Notification created for seller ${updatedSeller._id}`);
+  } catch (notificationError) {
+    console.error('[Approve Seller Verification] Error creating notification:', notificationError);
+    // Don't fail verification approval if notification fails
+  }
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -232,6 +263,21 @@ exports.rejectSellerVerification = catchAsync(async (req, res, next) => {
 
   if (!seller) {
     return next(new AppError('Seller not found', 404));
+  }
+
+  // Notify seller about verification rejection
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    await notificationService.createVerificationNotification(
+      seller._id,
+      'seller',
+      seller._id,
+      'rejected'
+    );
+    console.log(`[Reject Seller Verification] Notification created for seller ${seller._id}`);
+  } catch (notificationError) {
+    console.error('[Reject Seller Verification] Error creating notification:', notificationError);
+    // Don't fail verification rejection if notification fails
   }
 
   res.status(200).json({

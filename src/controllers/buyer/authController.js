@@ -103,11 +103,11 @@ exports.signup = catchAsync(async (req, res, next) => {
     const otp = newUser.createOtp();
     await newUser.save({ validateBeforeSave: false });
 
-    // Log OTP to console for development
+    // SECURITY FIX #5: Log OTP generation without exposing the actual OTP value
     console.log('========================================');
-    console.log(`[Buyer Signup] 🔐 OTP PIN: ${otp}`);
+    console.log('[Buyer Signup] OTP generated for user:', newUser._id);
     console.log(`[Buyer Signup] User: ${newUser.email || newUser.phone}`);
-    console.log(`[Buyer Signup] OTP expires in 10 minutes`);
+    console.log('[Buyer Signup] OTP expires in 10 minutes');
     console.log('========================================');
 
     // Send OTP via email
@@ -240,7 +240,8 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
-  console.log('otp', otp);
+  // SECURITY FIX #5: Don't log actual OTP value
+  console.log('[Auth] OTP generated for user:', user._id);
 
   // Send OTP via email using SendGrid
   if (validator.isEmail(loginId)) {
@@ -256,7 +257,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'OTP sent to your email or phone!',
-    otp, // Remove in production - only for development
+    // SECURITY FIX #5: Don't send OTP in response (removed security risk)
   });
 });
 
@@ -264,7 +265,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
   console.log('req.body', req.body);
   try {
     const { loginId, otp, password, redirectTo } = req.body;
- 
+
 
     if (!loginId || !otp || !password) {
       return next(
@@ -311,7 +312,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     // ✅ ENFORCE: User must login with the method they verified
     const isEmailLogin = validator.isEmail(loginId);
     const isPhoneLogin = validator.isMobilePhone(loginId);
-    
+
     if (user.emailVerified && !user.phoneVerified) {
       // Only email verified - must login with email
       if (!isEmailLogin) {
@@ -339,29 +340,29 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     const verifiedBy = [];
     if (user.emailVerified) verifiedBy.push('email');
     if (user.phoneVerified) verifiedBy.push('phone');
-    
-    console.log('[verifyOtp] User found:', { 
-      id: user._id, 
-      email: user.email, 
-      phone: user.phone, 
+
+    console.log('[verifyOtp] User found:', {
+      id: user._id,
+      email: user.email,
+      phone: user.phone,
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
       verifiedBy: verifiedBy, // ✅ Shows which method(s) verified the account
       isVerified: user.emailVerified || user.phoneVerified,
       loginMethod: isEmailLogin ? 'email' : isPhoneLogin ? 'phone' : 'unknown',
-      hasOtp: !!user.otp 
+      hasOtp: !!user.otp
     });
 
     // Verify OTP - normalize input (trim and remove non-digits)
     const otpString = String(otp || '').trim().replace(/\D/g, '');
-    
+
     if (!otpString || otpString.length === 0 || otpString.length !== 6) {
       return next(new AppError('Please provide a valid 6-digit OTP code', 400));
     }
-    
+
     // Verify OTP (returns object with valid, reason, etc.)
     const otpResult = user.verifyOtp(otpString);
-    
+
     // Handle account lockout
     if (otpResult.locked) {
       return next(
@@ -371,12 +372,12 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         )
       );
     }
-    
+
     // Handle failed OTP verification
     if (!otpResult.valid) {
       // Increment failed attempts
       user.otpAttempts = (user.otpAttempts || 0) + 1;
-      
+
       // Lock account after 5 failed attempts
       if (user.otpAttempts >= 5) {
         user.otpLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -388,13 +389,13 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
           )
         );
       }
-      
+
       await user.save({ validateBeforeSave: false });
-      
+
       // Provide specific error message
       const attemptsRemaining = 5 - user.otpAttempts;
       let errorMessage = 'Invalid OTP code.';
-      
+
       if (otpResult.reason === 'expired') {
         errorMessage = `OTP expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
       } else if (otpResult.reason === 'no_otp') {
@@ -404,17 +405,17 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       } else {
         errorMessage = `Invalid OTP. You have ${attemptsRemaining} attempt(s) remaining.`;
       }
-      
+
       return next(new AppError(errorMessage, 401));
     }
-    
+
     // OTP is valid - save user (attempts already reset in verifyOtp method)
     await user.save({ validateBeforeSave: false });
-    
+
     // Verify password
     const passwordValid = await user.correctPassword(password);
     console.log('[verifyOtp] Password verification result:', passwordValid);
-    
+
     if (!passwordValid) {
       console.log('[verifyOtp] Password validation failed');
       return next(new AppError('Incorrect password', 401));
@@ -573,7 +574,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     const token = signToken(user._id, user.role, sessionData?.deviceId);
-    
+
     // Set cookie (same as createSendToken)
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
@@ -583,15 +584,15 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       path: '/', // Available on all paths
       expires: new Date(
         Date.now() +
-          (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
+        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
       ),
       // Set domain for production to allow cookie sharing across subdomains
       // Only set in production, leave undefined in development (localhost)
       ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
     };
 
-    res.cookie('eazmain_jwt', token, cookieOptions);
-    console.log(`[Auth] JWT cookie set (eazmain_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
+    res.cookie('main_jwt', token, cookieOptions);
+    console.log(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
 
     // Remove sensitive data
     user.password = undefined;
@@ -600,7 +601,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Reuse verifiedBy from earlier in the function (already declared at line 328)
     // verifiedBy is already populated with the verification methods
-    
+
     // Create safe user payload
     const safeUserPayload = {
       id: user._id,
@@ -650,7 +651,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
 exports.logout = catchAsync(async (req, res, next) => {
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
   // Logout device session with timeout
   const { logoutDevice } = require('../../utils/helpers/createDeviceSession');
   try {
@@ -658,7 +659,7 @@ exports.logout = catchAsync(async (req, res, next) => {
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Logout device timeout')), 3000);
     });
-    
+
     await Promise.race([
       logoutDevice(req),
       timeoutPromise,
@@ -667,7 +668,7 @@ exports.logout = catchAsync(async (req, res, next) => {
     console.error('[Auth] Error logging out device session:', error.message);
     // Continue with cookie clearing even if device session logout fails or times out
   }
-  
+
   // Log activity if user is authenticated (non-blocking)
   if (req.user) {
     try {
@@ -683,9 +684,9 @@ exports.logout = catchAsync(async (req, res, next) => {
       // Don't block logout if activity logging fails
     }
   }
-  
+
   // Clear JWT cookie with same settings as creation
-  res.cookie('eazmain_jwt', 'loggedout', {
+  res.cookie('main_jwt', 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000), // Expire immediately (10 seconds)
     httpOnly: true,
     secure: isProduction,
@@ -707,37 +708,150 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Extract token from Authorization header or cookie
   // Priority: 1) Authorization header, 2) Cookie
   let token = extractToken(req.headers.authorization);
-  
+
   // Fallback to cookie if Authorization header is missing
   // Check for app-specific cookie based on route path
   // IMPORTANT: Each app (eazmain, eazseller, eazadmin) uses its own cookie
-  // Note: /api/v1/paymentrequest is used by sellers, so it should use eazseller_jwt
-  const cookieName = fullPath.startsWith('/api/v1/seller') ? 'eazseller_jwt' :
-                     fullPath.startsWith('/api/v1/admin') ? 'eazadmin_jwt' :
-                     fullPath.startsWith('/api/v1/paymentrequest') ? 'eazseller_jwt' : // Payment requests are seller routes
-                     'eazmain_jwt'; // Default to buyer/eazmain
-  
-  // Security: For seller routes, ONLY accept eazseller_jwt, never eazmain_jwt
-  if (fullPath.startsWith('/api/v1/seller') || fullPath.startsWith('/api/v1/paymentrequest')) {
-    // Explicitly check for eazseller_jwt only
-    if (req.cookies && req.cookies.eazmain_jwt) {
-      console.warn(`[Auth] ⚠️ SECURITY: Seller route detected eazmain_jwt cookie - ignoring it. Route: ${fullPath}`);
-      // Don't use eazmain_jwt for seller routes - this prevents cross-app authentication
+  // Note: /api/v1/paymentrequest and /api/v1/support/seller are used by sellers, so they should use seller_jwt
+  // Also check for seller order routes: /api/v1/order/get-seller-orders and /api/v1/order/seller-order
+  // Product variant routes are also seller routes: /api/v1/product/:id/variants
+  const isSellerRoute = fullPath.startsWith('/api/v1/seller') ||
+    fullPath.startsWith('/api/v1/support/seller') ||
+    fullPath.startsWith('/api/v1/paymentrequest') ||
+    fullPath.includes('/order/get-seller-orders') ||
+    fullPath.includes('/order/seller-order/') ||
+    fullPath.includes('/product/') && fullPath.includes('/variants');
+
+  const isAdminRoute = fullPath.startsWith('/api/v1/admin') ||
+    fullPath.startsWith('/api/v1/support/admin');
+
+  // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
+  // Check for support ticket creation - can be used by any authenticated user
+  const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
+
+  const cookieName = isSellerRoute ? 'seller_jwt' :
+    isAdminRoute ? 'admin_jwt' :
+      'main_jwt'; // Default to buyer/eazmain
+
+  // Enhanced debug logging for verify-otp and payout routes
+  if (fullPath.includes('/verify-otp') || fullPath.includes('/payout')) {
+    console.log(`[Auth] 🔍 Payout/OTP route detected:`, {
+      fullPath,
+      method,
+      isSellerRoute,
+      cookieName,
+      hasAuthHeader: !!req.headers.authorization,
+      cookieKeys: req.cookies ? Object.keys(req.cookies) : 'none',
+      seller_jwt: req.cookies?.seller_jwt ? 'present' : 'missing',
+      main_jwt: req.cookies?.main_jwt ? 'present' : 'missing'
+    });
+  }
+
+  // Debug logging for route detection
+  if (fullPath.includes('/order/')) {
+    console.log(`[Auth] Order route detected: ${fullPath}, isSellerRoute: ${isSellerRoute}, cookieName: ${cookieName}`);
+  }
+
+  // Security: For seller routes, ONLY accept seller_jwt, never main_jwt
+  if (isSellerRoute) {
+    // Explicitly check for seller_jwt only
+    if (req.cookies && req.cookies.main_jwt) {
+      console.warn(`[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: ${fullPath}`);
+      // Don't use main_jwt for seller routes - this prevents cross-app authentication
     }
   }
-  
+
   if (!token) {
-    if (req.cookies && req.cookies[cookieName]) {
+    // For shared support routes, check multiple cookies (seller, buyer, admin)
+    if (isSharedSupportRoute && req.cookies) {
+      // Try seller_jwt first (sellers creating tickets)
+      if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+        console.log(`[Auth] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
+      }
+      // Then try admin_jwt (admins creating tickets)
+      else if (req.cookies.admin_jwt) {
+        token = req.cookies.admin_jwt;
+        console.log(`[Auth] ✅ Token found in admin_jwt cookie for ${method} ${fullPath}`);
+      }
+      // Finally try main_jwt (buyers creating tickets)
+      else if (req.cookies.main_jwt) {
+        token = req.cookies.main_jwt;
+        console.log(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
+      }
+    }
+
+    // For specific routes, use the determined cookie name
+    if (!token && req.cookies && req.cookies[cookieName]) {
       token = req.cookies[cookieName];
       console.log(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
-    } else {
-      // Debug: Log cookie information
-      console.log(`[Auth] ❌ No token found for protected route: ${method} ${fullPath}`);
-      console.log(`[Auth] Authorization header: ${req.headers.authorization ? 'present' : 'missing'}`);
-      console.log(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
-      console.log(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
+    }
+
+    // If still no token found
+    if (!token) {
+      // Enhanced debug logging for verify-otp routes
+      const isVerifyOtpRoute = fullPath.includes('/verify-otp');
+
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : 'protected'} route`);
+      console.error('═══════════════════════════════════════════════════════════');
+
+      if (isVerifyOtpRoute) {
+        console.error(`[Auth] Route: ${method} ${fullPath}`);
+        console.error(`[Auth] Request details:`, {
+          url: req.url,
+          originalUrl: req.originalUrl,
+          path: req.path,
+          method: req.method,
+          timestamp: new Date().toISOString()
+        });
+        console.error(`[Auth] Headers:`, {
+          authorization: req.headers.authorization ? {
+            present: true,
+            length: req.headers.authorization.length,
+            prefix: req.headers.authorization.substring(0, 20) + '...',
+            full: req.headers.authorization // Log full header for debugging
+          } : 'missing',
+          cookie: req.headers.cookie ? {
+            present: true,
+            length: req.headers.cookie.length,
+            cookieString: req.headers.cookie // Log full cookie string for debugging
+          } : 'missing'
+        });
+        console.error(`[Auth] Cookies (parsed):`, req.cookies ? {
+          keys: Object.keys(req.cookies),
+          seller_jwt: req.cookies.seller_jwt ? {
+            present: true,
+            length: req.cookies.seller_jwt.length,
+            prefix: req.cookies.seller_jwt.substring(0, 20) + '...'
+          } : 'missing',
+          main_jwt: req.cookies.main_jwt ? 'present' : 'missing',
+          admin_jwt: req.cookies.admin_jwt ? 'present' : 'missing',
+          allCookies: req.cookies // Log all cookies for debugging
+        } : 'undefined');
+        console.error(`[Auth] Route Detection:`, {
+          isSellerRoute,
+          cookieName,
+          isSharedSupportRoute
+        });
+      } else {
+        // Standard logging for other routes
+        console.log(`[Auth] ❌ No token found for protected route: ${method} ${fullPath}`);
+        console.log(`[Auth] Authorization header: ${req.headers.authorization ? 'present' : 'missing'}`);
+        console.log(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
+      }
+
+      if (isSharedSupportRoute) {
+        console.log(`[Auth] Shared route - checked seller_jwt: ${req.cookies?.seller_jwt ? 'present' : 'missing'}, admin_jwt: ${req.cookies?.admin_jwt ? 'present' : 'missing'}, main_jwt: ${req.cookies?.main_jwt ? 'present' : 'missing'}`);
+      } else {
+        console.log(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
+      }
       // Log all cookies for debugging (but don't log values for security)
       console.log(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
+
+      console.error(`[Auth] 🛑 RETURNING 401 - No token found`);
+      console.error('═══════════════════════════════════════════════════════════');
+
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401),
       );
@@ -767,6 +881,14 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Find user
   const currentUser = await findUserByToken(decoded);
   if (!currentUser) {
+    const isVerifyOtpRoute = fullPath.includes('/verify-otp');
+    if (isVerifyOtpRoute) {
+      console.error(`[Auth] ❌ User not found for token in verify-otp route:`, {
+        userId: decoded.id,
+        role: decoded.role,
+        fullPath
+      });
+    }
     return next(
       new AppError('The user belonging to this token no longer exists', 401),
     );
@@ -774,6 +896,13 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Check password change timestamp
   if (currentUser.changedPasswordAfter(decoded.iat)) {
+    const isVerifyOtpRoute = fullPath.includes('/verify-otp');
+    if (isVerifyOtpRoute) {
+      console.error(`[Auth] ❌ Password changed after token issued for verify-otp route:`, {
+        userId: currentUser.id,
+        fullPath
+      });
+    }
     return next(
       new AppError('User recently changed password! Please log in again', 401),
     );
@@ -784,9 +913,51 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (decoded.deviceId) {
     req.user.deviceId = decoded.deviceId;
   }
-  console.log(
-    `Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`,
-  );
+
+  // CRITICAL: Verify role matches route requirements
+  // For seller routes, ensure user is actually a seller
+  // Check for seller routes including order routes
+  const isSellerRouteCheck = fullPath.startsWith('/api/v1/seller') ||
+    fullPath.startsWith('/api/v1/support/seller') ||
+    fullPath.startsWith('/api/v1/paymentrequest') ||
+    fullPath.includes('/order/get-seller-orders') ||
+    fullPath.includes('/order/seller-order/');
+
+  if (isSellerRouteCheck) {
+    if (currentUser.role !== 'seller') {
+      console.error(`[Auth] ❌ SECURITY: Seller route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
+      return next(
+        new AppError(`You do not have permission to perform this action. Required role: seller, Your role: ${currentUser.role}`, 403)
+      );
+    }
+  }
+
+  // For admin routes, ensure user is actually an admin
+  const isAdminRouteCheck = fullPath.startsWith('/api/v1/admin') ||
+    fullPath.startsWith('/api/v1/support/admin');
+
+  if (isAdminRouteCheck) {
+    if (currentUser.role !== 'admin') {
+      console.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
+      return next(
+        new AppError(`You do not have permission to perform this action. Required role: admin, Your role: ${currentUser.role}`, 403)
+      );
+    }
+  }
+
+  // Enhanced logging for verify-otp routes
+  if (fullPath.includes('/verify-otp')) {
+    console.log(`[Auth] ✅ Authentication successful for verify-otp:`, {
+      userId: currentUser.id,
+      role: currentUser.role,
+      email: currentUser.email || currentUser.phone,
+      fullPath
+    });
+  } else {
+    console.log(
+      `Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`,
+    );
+  }
   next();
 });
 
@@ -799,19 +970,19 @@ exports.restrictTo = (...roles) => {
         new AppError('You are not authenticated. Please log in to get access.', 401),
       );
     }
-    
+
     // Get role from user object, fallback to 'user' if not set
     const userRole = req.user.role || 'user';
-    
+
     console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}`);
-    
+
     if (!roles.includes(userRole)) {
       console.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, User ID: ${req.user.id}`);
       return next(
         new AppError(`You do not have permission to perform this action. Required role: ${roles.join(' or ')}, Your role: ${userRole}`, 403),
       );
     }
-    
+
     console.log(`[restrictTo] ✅ Permission granted - User role: ${userRole} matches required roles`);
     next();
   };
@@ -897,14 +1068,17 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
     user.otpVerified = true;
     //   // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    // Save reset token to user document
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-    await user.save();
 
+    user.resetPasswordToken = resetToken;
+    user.resetTokenExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save({ validateBeforeSave: false });
+
+    // SECURITY FIX #14: Do NOT send resetToken in response
+    // Token should only be sent via email/SMS, never in API response
     res.status(200).json({
-      message: 'OTP verified successfully',
-      resetToken,
+      status: 'success',
+      message: 'Password reset instructions sent successfully',
+      // SECURITY: resetToken intentionally omitted from response
     });
   } catch (error) {
     console.error('Verify OTP error:', error);
@@ -1016,7 +1190,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
 
-  createSendToken(user, 200, res, null, 'eazmain_jwt');
+  createSendToken(user, 200, res, null, 'main_jwt');
 });
 
 // Resend OTP endpoint for buyers
@@ -1136,7 +1310,7 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
 
   // Normalize OTP
   const otpString = String(otp || '').trim().replace(/\D/g, '');
-  
+
   if (!otpString || otpString.length !== 6) {
     return next(new AppError('Please provide a valid 6-digit verification code', 400));
   }
@@ -1158,7 +1332,7 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
   if (!otpResult.valid) {
     // Increment failed attempts
     user.otpAttempts = (user.otpAttempts || 0) + 1;
-    
+
     // Lock account after 5 failed attempts
     if (user.otpAttempts >= 5) {
       user.otpLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
@@ -1170,13 +1344,13 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
         )
       );
     }
-    
+
     await user.save({ validateBeforeSave: false });
-    
+
     // Provide specific error message
     const attemptsRemaining = 5 - user.otpAttempts;
     let errorMessage = 'Invalid verification code.';
-    
+
     if (otpResult.reason === 'expired') {
       errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
     } else if (otpResult.reason === 'no_otp') {
@@ -1186,7 +1360,7 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
     } else {
       errorMessage = `Invalid code. You have ${attemptsRemaining} attempt(s) remaining.`;
     }
-    
+
     return next(new AppError(errorMessage, 401));
   }
 
@@ -1197,20 +1371,20 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
   if (phone) {
     user.phoneVerified = true;
   }
-  
+
   // Clear OTP fields
   user.otp = undefined;
   user.otpExpires = undefined;
   user.otpAttempts = 0;
   user.otpLockedUntil = null;
-  
+
   await user.save({ validateBeforeSave: false });
 
   // Determine which verification method was used
   const verifiedBy = [];
   if (user.emailVerified) verifiedBy.push('email');
   if (user.phoneVerified) verifiedBy.push('phone');
-  
+
   // Determine which login method to use based on verification
   let loginMethod = 'either';
   if (user.emailVerified && !user.phoneVerified) {
@@ -1218,7 +1392,7 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
   } else if (user.phoneVerified && !user.emailVerified) {
     loginMethod = 'phone';
   }
-  
+
   res.status(200).json({
     status: 'success',
     message: 'Account verified successfully! You can now log in.',

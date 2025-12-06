@@ -420,19 +420,49 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       `Payout for ${seller.shopName || seller.name} - Request #${withdrawalRequest._id}`
     );
 
+    console.log('💳 [approveWithdrawalRequest] Paystack transfer initiated:', {
+      transferCode: transferResult.transfer_code,
+      status: transferResult.status,
+      transferData: transferResult.transfer_data
+    });
+
     // Check if transfer requires PIN (for mobile money transfers)
     // For mobile money, Paystack typically requires PIN via SMS
     // Check transfer_data for requires_approval or otp status
     const transferData = transferResult.transfer_data || {};
-    const requiresPin = transferResult.status === 'otp' || 
+    const paystackStatus = transferResult.status; // This is Paystack's actual status
+    
+    // CRITICAL: Check Paystack's ACTUAL status, not our assumptions
+    const requiresPin = paystackStatus === 'otp' || 
                         transferData.requires_approval === 1 ||
                         transferData.requires_approval === true ||
-                        (isMobileMoney && (transferResult.status === 'pending' || transferResult.status === 'otp'));
+                        (isMobileMoney && (paystackStatus === 'pending' || paystackStatus === 'otp'));
+
+    console.log('💳 [approveWithdrawalRequest] Paystack transfer status analysis:', {
+      paystackStatus: paystackStatus,
+      isMobileMoney: isMobileMoney,
+      requiresPin: requiresPin,
+      transferDataRequiresApproval: transferData.requires_approval,
+      willSetStatusToAwaitingOtp: (isMobileMoney || requiresPin)
+    });
 
     // For mobile money, always require PIN and set status to processing
     // For bank transfers, set status based on transfer result
     const finalRequiresPin = isMobileMoney ? true : requiresPin;
-    const finalStatus = isMobileMoney ? 'processing' : (requiresPin ? 'processing' : 'processing');
+    
+    // IMPORTANT: Only set to 'awaiting_paystack_otp' if Paystack status is actually 'otp'
+    // Otherwise, Paystack won't accept OTP verification
+    const shouldAwaitOtp = (isMobileMoney || requiresPin) && paystackStatus === 'otp';
+    const finalStatus = shouldAwaitOtp ? 'awaiting_paystack_otp' : 
+                       (isMobileMoney ? 'processing' : (requiresPin ? 'processing' : 'paid'));
+    
+    console.log('💳 [approveWithdrawalRequest] Setting withdrawal status:', {
+      finalStatus: finalStatus,
+      shouldAwaitOtp: shouldAwaitOtp,
+      paystackStatus: paystackStatus,
+      reason: shouldAwaitOtp ? 'Paystack status is "otp" - will await OTP' : 
+              `Paystack status is "${paystackStatus}" - cannot await OTP`
+    });
 
     // Security check: Double-check status before updating (prevent race conditions)
     const currentRequest = await PaymentRequest.findById(id).session(session);
@@ -501,8 +531,9 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     if (isPaymentRequest) {
       // Update PaymentRequest
       const paymentRequest = await PaymentRequest.findById(id).session(session);
-      // For mobile money, set to awaiting_paystack_otp; for bank, can be paid
-      paymentRequest.status = isMobileMoney || finalRequiresPin ? 'awaiting_paystack_otp' : 'paid';
+      // Set status based on Paystack's actual transfer status
+      // Only set to 'awaiting_paystack_otp' if Paystack status is 'otp'
+      paymentRequest.status = finalStatus;
       paymentRequest.paystackTransferCode = transferResult.transfer_code;
       paymentRequest.transactionId = transferResult.reference;
       paymentRequest.processedAt = new Date();
@@ -528,7 +559,9 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     } else {
       // Update WithdrawalRequest
       // Set to 'awaiting_paystack_otp' for mobile money or if PIN is required
-      withdrawalRequest.status = (isMobileMoney || finalRequiresPin) ? 'awaiting_paystack_otp' : 'processing';
+      // Set status based on Paystack's actual transfer status
+      // Only set to 'awaiting_paystack_otp' if Paystack status is 'otp'
+      withdrawalRequest.status = finalStatus;
       withdrawalRequest.paystackRecipientCode = recipientCode;
       withdrawalRequest.paystackTransferId = transferResult.transfer_id;
       withdrawalRequest.paystackTransferCode = transferResult.transfer_code;
@@ -680,6 +713,16 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       .select('balance lockedBalance pendingBalance withdrawableBalance')
       .lean();
     
+    // Send withdrawal request confirmation email to seller
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      await emailDispatcher.sendWithdrawalRequest(seller, withdrawalRequest);
+      console.log(`[approveWithdrawalRequest] ✅ Withdrawal request email sent to seller ${seller.email}`);
+    } catch (emailError) {
+      console.error('[approveWithdrawalRequest] Error sending withdrawal request email:', emailError.message);
+      // Don't fail withdrawal if email fails
+    }
+    
     res.status(200).json({
       status: 'success',
       message: message,
@@ -794,29 +837,67 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       return next(new AppError('Seller not found', 404));
     }
 
-    // Refund the amount back to seller balance
+    // CRITICAL FIX: Refund from pendingBalance, not balance
+    // When withdrawal is rejected, the amount is in pendingBalance, not balance
+    const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+    const oldPendingBalance = seller.pendingBalance || 0;
     const oldBalance = seller.balance || 0;
-    seller.balance += withdrawalRequest.amount;
+    
+    // Validate pendingBalance has the amount
+    if (amountRequested > oldPendingBalance) {
+      console.warn(`[rejectWithdrawalRequest] Pending balance (${oldPendingBalance}) is less than requested amount (${amountRequested}). Proceeding with refund anyway.`);
+    }
+    
+    // Refund from pendingBalance (the amount was moved to pendingBalance when request was created)
+    seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+    
+    // Balance should NOT be modified - it was never deducted
+    // Only pendingBalance is refunded, which increases available balance
+    
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
-
+    
+    console.log(`[rejectWithdrawalRequest] Pending balance refund for seller ${seller._id}:`);
+    console.log(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
+    console.log(`  Total Balance: ${oldBalance} (unchanged)`);
+    console.log(`  Available Balance: ${seller.withdrawableBalance}`);
+    
+    // Log finance audit
+    try {
+      const financeAudit = require('../../services/financeAuditService');
+      await financeAudit.logWithdrawalRefunded(
+        seller._id,
+        amountRequested,
+        withdrawalRequest._id,
+        oldPendingBalance,
+        seller.pendingBalance,
+        `Rejected by admin: ${reason || 'No reason provided'}`
+      );
+    } catch (auditError) {
+      console.error('[rejectWithdrawalRequest] Failed to log finance audit (non-critical):', auditError);
+    }
+    
     // Log seller revenue history for rejected withdrawal refund
+    // Note: This is a pendingBalance refund, not a balance refund
     try {
       await logSellerRevenue({
         sellerId: seller._id,
-        amount: withdrawalRequest.amount, // Positive for refund
+        amount: 0, // No balance change - only pendingBalance refund
         type: 'REVERSAL',
-        description: `Withdrawal rejected by admin - Refund: GH₵${withdrawalRequest.amount.toFixed(2)}`,
+        description: `Withdrawal rejected by admin - PendingBalance refund: GH₵${amountRequested.toFixed(2)}`,
         reference: `WITHDRAWAL-REJECTED-${withdrawalRequest._id}-${Date.now()}`,
         payoutRequestId: withdrawalRequest._id,
         adminId: adminId,
         balanceBefore: oldBalance,
-        balanceAfter: seller.balance,
+        balanceAfter: seller.balance, // Balance unchanged
         metadata: {
           withdrawalRequestId: withdrawalRequest._id.toString(),
           rejectionReason: req.body.reason || 'Rejected by admin',
           rejectedBy: adminId,
           isPaymentRequest,
+          pendingBalanceBefore: oldPendingBalance,
+          pendingBalanceAfter: seller.pendingBalance,
+          refundType: 'pendingBalance_refund', // Indicates this is a pendingBalance refund
         },
       });
       console.log(`[rejectWithdrawalRequest] ✅ Seller revenue history logged for rejected withdrawal refund - seller ${seller._id}`);
@@ -887,7 +968,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     }
 
     // Create AdminActionLog entry
-    const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+    // amountRequested already declared at line 832
 
     await AdminActionLog.create([{
       adminId: admin._id,
@@ -912,6 +993,21 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
 
     await session.commitTransaction();
 
+    // Send withdrawal rejected email to seller
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      const Seller = require('../../models/user/sellerModel');
+      const seller = await Seller.findById(withdrawalRequest.seller).select('name email shopName').lean();
+      
+      if (seller && seller.email) {
+        await emailDispatcher.sendWithdrawalRejected(seller, withdrawalRequest, reason || 'Rejected by admin');
+        console.log(`[rejectWithdrawalRequest] ✅ Withdrawal rejected email sent to seller ${seller.email}`);
+      }
+    } catch (emailError) {
+      console.error('[rejectWithdrawalRequest] Error sending withdrawal rejected email:', emailError.message);
+      // Don't fail rejection if email fails
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Withdrawal request rejected',
@@ -923,6 +1019,244 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     await session.abortTransaction();
     console.error('[rejectWithdrawalRequest] Error:', error);
     return next(new AppError('Failed to reject withdrawal request', 500));
+  } finally {
+    session.endSession();
+  }
+});
+
+/**
+ * Reverse a completed withdrawal
+ * POST /api/v1/admin/payout/request/:id/reverse
+ * Body: { reason: string (required) }
+ * 
+ * This function reverses a completed/paid withdrawal by:
+ * 1. Refunding the amount back to seller's balance
+ * 2. Updating reversal fields (reversed, reversedAt, reversedBy, reverseReason)
+ * 3. Creating transaction records
+ * 4. Logging activity
+ */
+exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const adminId = req.user.id;
+
+  // Role restriction: Only superadmin and admin can reverse withdrawals
+  if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+    return next(new AppError('Not authorized to reverse withdrawals. Only superadmin and admin can reverse.', 403));
+  }
+
+  // Validate reason
+  if (!reason || reason.trim().length === 0) {
+    return next(new AppError('Reversal reason is required', 400));
+  }
+
+  // Get full admin details for tracking
+  const admin = await Admin.findById(adminId);
+  if (!admin) {
+    return next(new AppError('Admin not found', 404));
+  }
+
+  // Capture IP address and user agent
+  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  let withdrawalRequest = null;
+  let isPaymentRequest = false;
+
+  try {
+    // Try PaymentRequest first, then WithdrawalRequest
+    withdrawalRequest = await PaymentRequest.findById(id).session(session);
+    isPaymentRequest = true;
+
+    if (!withdrawalRequest) {
+      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
+      isPaymentRequest = false;
+    }
+
+    if (!withdrawalRequest) {
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request not found', 404));
+    }
+
+    // Check if already reversed
+    if (withdrawalRequest.reversed === true) {
+      await session.abortTransaction();
+      return next(new AppError('This withdrawal has already been reversed', 400));
+    }
+
+    // Only allow reversing completed/paid withdrawals
+    const reversibleStatuses = ['paid', 'approved', 'success', 'processing'];
+    if (!reversibleStatuses.includes(withdrawalRequest.status)) {
+      await session.abortTransaction();
+      return next(
+        new AppError(
+          `Cannot reverse withdrawal with status: ${withdrawalRequest.status}. Only completed/paid withdrawals can be reversed.`,
+          400
+        )
+      );
+    }
+
+    // Get seller
+    const seller = await Seller.findById(withdrawalRequest.seller).session(session);
+    if (!seller) {
+      await session.abortTransaction();
+      return next(new AppError('Seller not found', 404));
+    }
+
+    // Calculate amounts
+    const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+    const withholdingTax = withdrawalRequest.withholdingTax || 0;
+    const amountPaidToSeller = withdrawalRequest.amountPaidToSeller || (amountRequested - withholdingTax);
+
+    // CRITICAL FIX: For completed/paid withdrawals, refund to balance
+    // For pending/processing withdrawals, refund from pendingBalance
+    const oldBalance = seller.balance || 0;
+    const oldPendingBalance = seller.pendingBalance || 0;
+    
+    // Check if withdrawal was already paid (balance was deducted)
+    const wasPaid = ['paid', 'success'].includes(withdrawalRequest.status);
+    
+    if (wasPaid) {
+      // Refund to balance (money was already deducted from balance)
+      seller.balance = oldBalance + amountRequested;
+    } else {
+      // Refund from pendingBalance (money was in pendingBalance, not deducted from balance)
+      if (oldPendingBalance >= amountRequested) {
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+      } else {
+        console.warn(`[reverseWithdrawal] Pending balance (${oldPendingBalance}) is less than requested amount (${amountRequested})`);
+        seller.pendingBalance = 0;
+      }
+    }
+    
+    // Recalculate withdrawableBalance
+    seller.calculateWithdrawableBalance();
+    await seller.save({ session });
+    
+    console.log(`[reverseWithdrawal] Refund for seller ${seller._id}:`, {
+      wasPaid,
+      amountRequested,
+      oldBalance,
+      newBalance: seller.balance,
+      oldPendingBalance,
+      newPendingBalance: seller.pendingBalance,
+    });
+
+    // Update withdrawal request with reversal fields
+    withdrawalRequest.reversed = true;
+    withdrawalRequest.reversedAt = new Date();
+    withdrawalRequest.reversedBy = adminId; // Admin who reversed the withdrawal
+    withdrawalRequest.reverseReason = reason.trim();
+    withdrawalRequest.status = 'reversed'; // Update status to reversed
+
+    // Add to audit history
+    if (!withdrawalRequest.auditHistory) {
+      withdrawalRequest.auditHistory = [];
+    }
+    withdrawalRequest.auditHistory.push({
+      action: 'reversed',
+      adminId: admin._id,
+      name: admin.name || admin.email,
+      role: admin.role,
+      timestamp: new Date(),
+      ipAddress: ipAddress,
+      userAgent: userAgent,
+    });
+
+    await withdrawalRequest.save({ session });
+
+    // Create transaction record for reversal
+    await Transaction.create(
+      [
+        {
+          seller: withdrawalRequest.seller,
+          amount: amountRequested,
+          type: 'credit',
+          description: `Withdrawal Reversal - Refund for Request #${withdrawalRequest._id}. Reason: ${reason}`,
+          status: 'completed',
+          metadata: {
+            withdrawalRequestId: withdrawalRequest._id,
+            action: 'withdrawal_reversal',
+            reversedAt: new Date(),
+            reversedBy: adminId,
+            reverseReason: reason,
+            originalAmount: amountRequested,
+            withholdingTax: withholdingTax,
+            amountPaidToSeller: amountPaidToSeller,
+          },
+        },
+      ],
+      { session }
+    );
+
+    // Log seller revenue history
+    try {
+      await logSellerRevenue({
+        sellerId: withdrawalRequest.seller,
+        amount: amountRequested, // Positive for refund
+        type: 'REVERSAL',
+        description: `Withdrawal reversed by admin - Refund: GH₵${amountRequested.toFixed(2)}. Reason: ${reason}`,
+        reference: `WITHDRAWAL-REVERSE-${withdrawalRequest._id}-${Date.now()}`,
+        balanceBefore: oldBalance,
+        balanceAfter: seller.balance,
+        metadata: {
+          withdrawalRequestId: withdrawalRequest._id.toString(),
+          action: 'withdrawal_reversal',
+          originalAmount: amountRequested,
+          withholdingTax: withholdingTax,
+          amountPaidToSeller: amountPaidToSeller,
+          reversedBy: adminId,
+          reverseReason: reason,
+        },
+      });
+      console.log(`[reverseWithdrawal] ✅ Seller revenue history logged for withdrawal reversal - seller ${withdrawalRequest.seller}`);
+    } catch (historyError) {
+      console.error(`[reverseWithdrawal] Failed to log seller revenue history (non-critical):`, {
+        error: historyError.message,
+        stack: historyError.stack,
+      });
+    }
+
+    await session.commitTransaction();
+
+    // Log activity
+    const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+    logActivityAsync({
+      userId: adminId,
+      role: 'admin',
+      action: 'WITHDRAWAL_REVERSED',
+      description: `Admin reversed withdrawal request #${withdrawalRequest._id} - Amount: GH₵${amountRequested}. Reason: ${reason}`,
+      req,
+      metadata: {
+        withdrawalRequestId: withdrawalRequest._id,
+        amount: amountRequested,
+        reverseReason: reason,
+        sellerId: withdrawalRequest.seller,
+      },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Withdrawal reversed successfully. Amount has been refunded to seller balance.',
+      data: {
+        withdrawalRequest,
+        refundedAmount: amountRequested,
+        sellerBalanceBefore: oldBalance,
+        sellerBalanceAfter: seller.balance,
+      },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('[reverseWithdrawal] Error:', error);
+
+    if (error instanceof AppError) {
+      return next(error);
+    }
+
+    return next(new AppError('Failed to reverse withdrawal', 500));
   } finally {
     session.endSession();
   }

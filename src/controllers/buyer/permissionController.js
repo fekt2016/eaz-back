@@ -6,17 +6,43 @@ const dataExportQueue = require('../../jobs/queues/dataExportQueue');
 const mongoose = require('mongoose');
 const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
-// Get permissions
+// Get permissions - creates default permissions if not found
 exports.getPermissions = catchAsync(async (req, res, next) => {
   try {
-    const permissions = await Permission.findOne({ user: req.user.id });
+    let permissions = await Permission.findOne({ user: req.user.id });
 
+    // If permissions don't exist, create default permissions
     if (!permissions) {
-      return res.status(404).json({ message: 'Permissions not found' });
+      permissions = await Permission.create({
+        user: req.user.id,
+        emailPreferences: {
+          promotions: true,
+          newsletters: false,
+          accountUpdates: true,
+        },
+        smsPreferences: {
+          promotions: false,
+          orderUpdates: true,
+        },
+        dataSharing: {
+          analytics: true,
+          personalizedAds: false,
+          thirdParties: false,
+        },
+        locationAccess: 'limited',
+        socialMediaSharing: false,
+        accountVisibility: 'standard',
+      });
     }
-    res.status(200).json(permissions);
+
+    // Return consistent API response format
+    res.status(200).json({
+      status: 'success',
+      data: permissions,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('[getPermissions] Error:', error);
+    return next(new AppError('Failed to fetch permissions', 500));
   }
 });
 

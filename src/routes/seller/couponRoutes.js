@@ -1,27 +1,19 @@
+/**
+ * Seller Coupon Routes
+ * Routes for sellers to create and manage coupon batches
+ */
 const express = require('express');
 const { getSellerCouponBatches,
   getCouponBatch,
   createCouponBatch,
   updateCouponBatch,
   deleteCouponBatch,
-  applyCoupon,
-  applyUserCoupon, } = require('../../controllers/seller/couponController');
+  assignCouponToBuyer,
+  getEligibleBuyers,
+  sendCouponEmail, } = require('../../controllers/seller/couponController');
 const authController = require('../../controllers/buyer/authController');
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 const router = express.Router();
-
-router.post(
-  '/apply',
-  authController.protect,
-  authController.restrictTo('user'),
-  applyCoupon,
-);
-router.post(
-  '/apply-user-coupon',
-  authController.protect,
-  authController.restrictTo('user'),
-  applyUserCoupon,
-);
 
 // Helper middleware to apply requireVerifiedSeller only for sellers
 const requireVerifiedSellerIfSeller = (req, res, next) => {
@@ -31,16 +23,19 @@ const requireVerifiedSellerIfSeller = (req, res, next) => {
   next(); // Admin can access without verification
 };
 
-//Admin/SellerRoutes (require verification for sellers)
+// All seller coupon routes require authentication and seller/admin role
 router.use(authController.protect);
 router.use(authController.restrictTo('seller', 'admin'));
 router.use(requireVerifiedSellerIfSeller);
 
 router.route('/').get(getSellerCouponBatches).post(createCouponBatch);
+router.get('/eligible-buyers', getEligibleBuyers);
+router.post('/send-email', sendCouponEmail);
 router
   .route('/:id')
   .patch(updateCouponBatch)
   .get(getCouponBatch)
   .delete(deleteCouponBatch);
+router.post('/:batchId/assign', assignCouponToBuyer);
 
-module.exports = router;;
+module.exports = router;

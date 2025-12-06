@@ -10,6 +10,7 @@ const adminAuditLogController = require('../../controllers/admin/adminAuditLogCo
 const analyticsController = require('../../controllers/admin/analyticsController');
 const sessionManagementController = require('../../controllers/admin/sessionManagementController');
 const historyController = require('../../controllers/admin/historyController');
+const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
@@ -407,6 +408,31 @@ router
     authController.protect,
     authController.restrictTo('admin'),
     historyController.getHistoryStats
+  );
+
+// Product Moderation Routes - MUST come before /:id route
+router
+  .route('/products/pending')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.getPendingProducts
+  );
+
+router
+  .route('/products/:id/approve')
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.approveProduct
+  );
+
+router
+  .route('/products/:id/reject')
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    productController.rejectProduct
   );
 
 // Generic /:id route - MUST be last to avoid matching specific routes like /wallet-history

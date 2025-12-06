@@ -39,34 +39,33 @@ const sendErrorDev = (err, res) => {
     message: err.message,
     stack: err.stack,
   };
-  
+
   // Include custom error properties if they exist (for OTP expiration, etc.)
   if (err.code) errorResponse.code = err.code;
   if (err.isExpired !== undefined) errorResponse.isExpired = err.isExpired;
   if (err.isInvalid !== undefined) errorResponse.isInvalid = err.isInvalid;
-  
+
   res.status(err.statusCode).json(errorResponse);
 };
 
 const sendErrorProd = (err, res) => {
+  // SECURITY FIX #18/#19: Production error sanitization
   if (err.isOperational) {
-    const errorResponse = {
+    // Operational errors: trusted errors we can send to client
+    res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
-    };
-    
-    // Include custom error properties if they exist (for OTP expiration, etc.)
-    if (err.code) errorResponse.code = err.code;
-    if (err.isExpired !== undefined) errorResponse.isExpired = err.isExpired;
-    if (err.isInvalid !== undefined) errorResponse.isInvalid = err.isInvalid;
-    
-    res.status(err.statusCode).json(errorResponse);
+      // SECURITY: Never send stack trace or error details in production
+    });
   } else {
-    console.error('ERROR 🔥', err);
+    // Programming or unknown errors: don't leak error details
+    console.error('❌ ERROR:', err); // Log full error server-side only
 
+    // SECURITY: Send generic message to client
     res.status(500).json({
       status: 'error',
-      message: 'Something went very wrong!',
+      message: 'Something went wrong. Please try again later.',
+      // SECURITY: No stack trace, no error details, no internal info
     });
   }
 };

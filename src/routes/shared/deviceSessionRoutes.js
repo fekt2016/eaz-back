@@ -7,9 +7,9 @@ const router = express.Router();
 
 // All routes require authentication
 // The protect middleware automatically handles different cookies based on route path:
-// - /api/v1/seller routes use eazseller_jwt
-// - /api/v1/admin routes use eazadmin_jwt
-// - Default uses eazmain_jwt
+// - /api/v1/seller routes use seller_jwt
+// - /api/v1/admin routes use admin_jwt
+// - Default uses main_jwt
 
 // GET /api/v1/sessions/my-devices - Get all active sessions
 router.get(
@@ -43,7 +43,7 @@ router.delete(
   deviceSessionController.logoutAll,
 );
 
-// Seller routes (using same protect - it handles eazseller_jwt cookie automatically)
+// Seller routes (using same protect - it handles seller_jwt cookie automatically)
 router.get(
   '/seller/my-devices',
   protect,
@@ -72,7 +72,7 @@ router.delete(
   deviceSessionController.logoutAll,
 );
 
-// Admin routes (using same protect - it handles eazadmin_jwt cookie automatically)
+// Admin routes (using same protect - it handles admin_jwt cookie automatically)
 router.get(
   '/admin/my-devices',
   protect,

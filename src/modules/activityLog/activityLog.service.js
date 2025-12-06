@@ -21,9 +21,13 @@ const getIpAddress = (req) => {
 /**
  * Extract platform from request headers
  * @param {Object} req - Express request object
- * @returns {String} - Platform name
+ * @returns {String} - Platform name (always returns a valid platform)
  */
 const getPlatform = (req) => {
+  if (!req || !req.headers) {
+    return 'eazmain'; // Default if req is invalid
+  }
+  
   const platformHeader = req.headers['x-platform'] || req.headers['platform'];
   
   if (platformHeader) {
@@ -33,16 +37,26 @@ const getPlatform = (req) => {
     }
   }
   
-  // Fallback: try to detect from user agent or referer
-  const userAgent = req.headers['user-agent'] || '';
-  if (userAgent.includes('admin') || req.originalUrl?.includes('/admin')) {
+  // Fallback: try to detect from URL path
+  const url = req.originalUrl || req.url || '';
+  if (url.includes('/admin') || url.includes('/api/v1/admin')) {
     return 'eazadmin';
   }
-  if (userAgent.includes('seller') || req.originalUrl?.includes('/seller')) {
+  if (url.includes('/seller') || url.includes('/api/v1/seller') || url.includes('/dashboard')) {
     return 'eazseller';
   }
   
-  return 'eazmain'; // Default to main app
+  // Fallback: try to detect from user agent
+  const userAgent = req.headers['user-agent'] || '';
+  if (userAgent.includes('admin')) {
+    return 'eazadmin';
+  }
+  if (userAgent.includes('seller')) {
+    return 'eazseller';
+  }
+  
+  // Default to eazmain - always return a valid platform
+  return 'eazmain';
 };
 
 /**
@@ -70,11 +84,38 @@ const getUserModel = (role) => {
  * @param {Object} params.metadata - Additional metadata (optional)
  * @returns {Promise<Object>} - Created activity log
  */
-const logActivity = async ({ userId, role, action, description, req = null, metadata = {}, activityType = 'OTHER', riskLevel = 'low', previousIp = null, location = null }) => {
+const logActivity = async ({ userId, role, action, description, req = null, metadata = {}, activityType = 'OTHER', riskLevel = 'low', previousIp = null, location = null, platform: providedPlatform = null }) => {
   try {
+    // Validate required fields
+    if (!userId) {
+      console.error('[ActivityLog] Missing required field: userId');
+      return null;
+    }
+    if (!role) {
+      console.error('[ActivityLog] Missing required field: role');
+      return null;
+    }
+    if (!action) {
+      console.error('[ActivityLog] Missing required field: action');
+      return null;
+    }
+    if (!description) {
+      console.error('[ActivityLog] Missing required field: description');
+      return null;
+    }
+
     const ipAddress = req ? getIpAddress(req) : null;
     const userAgent = req?.headers['user-agent'] || null;
-    const platform = req ? getPlatform(req) : 'eazmain';
+    
+    // Get platform - use provided platform, or extract from req, or default to 'eazmain'
+    let platform = providedPlatform;
+    if (!platform && req) {
+      platform = getPlatform(req);
+    }
+    if (!platform || !['eazmain', 'eazseller', 'eazadmin'].includes(platform)) {
+      platform = 'eazmain'; // Default fallback
+    }
+    
     const userModel = getUserModel(role);
 
     const activityLog = await ActivityLog.create({
@@ -94,7 +135,7 @@ const logActivity = async ({ userId, role, action, description, req = null, meta
       timestamp: new Date(),
     });
 
-    console.log(`[ActivityLog] Logged: ${action} (${activityType}) by ${role} (${userId}) - Risk: ${riskLevel}`);
+    console.log(`[ActivityLog] Logged: ${action} (${activityType}) by ${role} (${userId}) - Risk: ${riskLevel} - Platform: ${platform}`);
     
     return activityLog;
   } catch (error) {

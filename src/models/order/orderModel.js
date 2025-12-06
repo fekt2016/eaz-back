@@ -54,6 +54,30 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       comment: 'Grand total including all taxes and shipping',
     },
+    // Coupon fields
+    coupon: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CouponBatch',
+      default: null,
+      comment: 'Reference to coupon batch used (legacy field)',
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      comment: 'Total discount amount applied from coupon',
+    },
+    appliedCouponBatchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CouponBatch',
+      default: null,
+      comment: 'Coupon batch ID that was applied',
+    },
+    appliedCouponId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      comment: 'Specific coupon ID within the batch that was used',
+    },
     // Tax breakdown fields (Ghana GRA)
     totalBasePrice: {
       type: Number,

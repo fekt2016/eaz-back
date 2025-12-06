@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.post(
   '/views',
-  authController.protect,
-  authController.restrictTo('user'),
+  // Allow both authenticated and anonymous users to record views
+  // Remove authentication requirement - product views should be trackable for all users
   analyticsController.recordView,
 );
 

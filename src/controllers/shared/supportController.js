@@ -139,6 +139,24 @@ exports.createTicket = catchAsync(async (req, res, next) => {
   ticket.lastMessageAt = new Date();
   await ticket.save();
 
+  // Notify all admins about new support ticket (only if not created by admin)
+  if (role !== 'admin') {
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      await notificationService.createSupportTicketNotification(
+        ticket._id,
+        ticket.ticketNumber || ticket._id.toString(),
+        ticket.title,
+        userName,
+        role
+      );
+      console.log(`[Support Ticket] Admin notification created for ticket ${ticket._id}`);
+    } catch (notificationError) {
+      console.error('[Support Ticket] Error creating admin notification:', notificationError);
+      // Don't fail ticket creation if notification fails
+    }
+  }
+
   res.status(201).json({
     status: 'success',
     message: 'Support ticket created successfully',
@@ -469,6 +487,61 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
       ticket.status = 'in_progress';
     }
   }
+
+  // Notify ticket owner if someone else replied
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    
+    // Only notify if the reply is from a different user
+    if (ticket.userId.toString() !== req.user.id.toString() || ticket.userModel !== userModel) {
+      // Determine who replied
+      const replierName = req.user.role === 'admin' 
+        ? 'Admin' 
+        : req.user.role === 'seller' 
+          ? (req.user.shopName || req.user.name || 'Seller')
+          : (req.user.name || 'Customer');
+      
+      await notificationService.createSupportNotification(
+        ticket.userId,
+        ticket._id,
+        ticket.role,
+        `${replierName} replied to your support ticket: "${ticket.title}"`
+      );
+      console.log(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
+    }
+    
+    // If ticket is related to seller's order/product, notify the seller
+    if (ticket.role === 'buyer' && (ticket.relatedOrderId || ticket.relatedProductId)) {
+      const SellerOrder = require('../../models/order/sellerOrderModel');
+      const Product = mongoose.model('Product');
+      let sellerId = null;
+      
+      if (ticket.relatedOrderId) {
+        const sellerOrder = await SellerOrder.findOne({ order: ticket.relatedOrderId }).select('seller');
+        if (sellerOrder) sellerId = sellerOrder.seller;
+      } else if (ticket.relatedProductId) {
+        const product = await Product.findById(ticket.relatedProductId).select('seller');
+        if (product) sellerId = product.seller;
+      }
+      
+      if (sellerId && sellerId.toString() !== req.user.id.toString()) {
+        const replierName = req.user.role === 'admin' 
+          ? 'Admin' 
+          : (req.user.name || 'Customer');
+        
+        await notificationService.createSupportNotification(
+          sellerId,
+          ticket._id,
+          'seller',
+          `${replierName} replied to a support ticket related to your order/product: "${ticket.title}"`
+        );
+        console.log(`[Support Reply] Notification created for seller ${sellerId}`);
+      }
+    }
+  } catch (notificationError) {
+    console.error('[Support Reply] Error creating notifications:', notificationError);
+    // Don't fail ticket reply if notification fails
+  }
   
   await ticket.save();
 
@@ -537,22 +610,32 @@ exports.updateTicketStatus = catchAsync(async (req, res, next) => {
 /**
  * Get all tickets (Admin only)
  * GET /api/v1/support/admin/tickets
+ * Returns ALL tickets in the system (buyers, sellers, admins)
  */
 exports.getAllTickets = catchAsync(async (req, res, next) => {
+  // Verify admin role
+  if (req.user.role !== 'admin') {
+    return next(new AppError('Only admins can access all tickets', 403));
+  }
+
   const {
     status,
     department,
     priority,
-    role,
+    role, // Filter by user role (buyer, seller, admin)
+    userModel, // Filter by userModel (User, Seller, Admin)
     assignedTo,
     page = 1,
     limit = 20,
     search,
   } = req.query;
 
-  // Build query
+  // Build query - NO filtering by userId or userModel by default
+  // Admins should see ALL tickets from ALL users (buyers, sellers, admins)
+  // Start with empty query object - this will match ALL tickets
   const query = {};
 
+  // Apply filters if provided
   if (status) {
     query.status = status;
   }
@@ -562,14 +645,20 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
   if (priority) {
     query.priority = priority;
   }
+  // Filter by user role if provided (buyer, seller, admin)
   if (role) {
     query.role = role;
+  }
+  // Filter by userModel if provided (User, Seller, Admin)
+  if (userModel) {
+    query.userModel = userModel;
   }
   if (assignedTo) {
     query.assignedTo = assignedTo === 'unassigned' ? null : assignedTo;
   }
 
   // Search in title or ticket number
+  // MongoDB will AND the $or with other query conditions automatically
   if (search) {
     query.$or = [
       { title: { $regex: search, $options: 'i' } },
@@ -577,23 +666,55 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
     ];
   }
 
+  // Debug logging for admin queries
+  console.log('[getAllTickets] Admin user:', {
+    id: req.user.id,
+    role: req.user.role,
+    email: req.user.email,
+  });
+  console.log('[getAllTickets] Query parameters:', {
+    status,
+    department,
+    priority,
+    role,
+    userModel,
+    assignedTo,
+    search,
+    page,
+    limit,
+  });
+  console.log('[getAllTickets] Final query:', JSON.stringify(query, null, 2));
+
   // Pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const limitNum = parseInt(limit);
 
-  // Get tickets
+  // Get total count first (before pagination)
+  const total = await SupportTicket.countDocuments(query);
+  console.log('[getAllTickets] Total tickets found:', total);
+
+  // Get tickets - NO filtering by userId, returns ALL tickets
   const tickets = await SupportTicket.find(query)
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limitNum)
-    .populate('userId', 'name email')
-    .populate('relatedOrderId', 'orderNumber')
+    .populate('userId', 'name email phone')
+    .populate('relatedOrderId', 'orderNumber totalPrice')
     .populate('relatedPayoutId', 'amount status')
+    .populate('relatedProductId', 'name imageCover slug')
     .populate('assignedTo', 'name email')
     .lean();
 
-  // Get total count
-  const total = await SupportTicket.countDocuments(query);
+  console.log('[getAllTickets] Tickets returned:', tickets.length);
+  if (tickets.length > 0) {
+    console.log('[getAllTickets] Sample ticket:', {
+      id: tickets[0]._id,
+      title: tickets[0].title,
+      userId: tickets[0].userId,
+      userModel: tickets[0].userModel,
+      role: tickets[0].role,
+    });
+  }
 
   res.status(200).json({
     status: 'success',
@@ -706,28 +827,29 @@ exports.getSellerTickets = catchAsync(async (req, res, next) => {
   const sellerProducts = await Product.find({ seller: sellerId }).select('_id');
   const productIds = sellerProducts.map((p) => p._id.toString());
 
-  // Build query - tickets related to seller's orders OR products
-  const query = {
-    $or: [
-      ...(orderIds.length > 0 ? [{ relatedOrderId: { $in: orderIds } }] : []),
-      ...(productIds.length > 0 ? [{ relatedProductId: { $in: productIds } }] : []),
-    ],
-  };
+  // Build query - tickets that are:
+  // 1. Created by the seller themselves (userId === sellerId && userModel === 'Seller'), OR
+  // 2. Related to seller's orders, OR
+  // 3. Related to seller's products
+  const queryConditions = [
+    // Tickets created by seller
+    { userId: sellerId, userModel: 'Seller' },
+  ];
 
-  // If no orders or products, return empty result
-  if (orderIds.length === 0 && productIds.length === 0) {
-    return res.status(200).json({
-      status: 'success',
-      results: 0,
-      total: 0,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: 0,
-      data: {
-        tickets: [],
-      },
-    });
+  // Add order-related tickets if seller has orders
+  if (orderIds.length > 0) {
+    queryConditions.push({ relatedOrderId: { $in: orderIds } });
   }
+
+  // Add product-related tickets if seller has products
+  if (productIds.length > 0) {
+    queryConditions.push({ relatedProductId: { $in: productIds } });
+  }
+
+  // Build query with $or
+  const query = {
+    $or: queryConditions,
+  };
 
   if (status) {
     query.status = status;
@@ -808,7 +930,17 @@ exports.getSellerTicketById = catchAsync(async (req, res, next) => {
     return next(new AppError('Ticket not found', 404));
   }
 
-  // Validate authorization - ticket must be related to seller's order or product
+  // Check if seller created this ticket themselves
+  const isTicketCreator = ticket.userId && (
+    (ticket.userId._id && ticket.userId._id.toString() === sellerId.toString()) ||
+    (ticket.userId.toString && ticket.userId.toString() === sellerId.toString()) ||
+    (ticket.userId === sellerId.toString())
+  ) && ticket.userModel === 'Seller';
+
+  // Validate authorization - ticket must be:
+  // 1. Created by the seller themselves, OR
+  // 2. Related to seller's order, OR
+  // 3. Related to seller's product
   // Handle both populated and non-populated cases
   const ticketOrderId = ticket.relatedOrderId?._id 
     ? ticket.relatedOrderId._id.toString() 
@@ -820,8 +952,9 @@ exports.getSellerTicketById = catchAsync(async (req, res, next) => {
   const isOrderRelated = ticketOrderId && orderIds.includes(ticketOrderId);
   const isProductRelated = ticketProductId && productIds.includes(ticketProductId);
 
-  if (!isOrderRelated && !isProductRelated) {
-    return next(new AppError('Not authorized to view this ticket', 403));
+  // Allow access if seller created the ticket, or if it's related to their orders/products
+  if (!isTicketCreator && !isOrderRelated && !isProductRelated) {
+    return next(new AppError('You are not authorized to view this ticket. Please ensure you are logged in as a seller.', 403));
   }
 
   // Get messages (exclude internal notes for sellers)

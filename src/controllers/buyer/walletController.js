@@ -59,8 +59,26 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
   const { amount, email } = req.body;
   const userId = req.user.id;
 
-  if (!amount || amount <= 0) {
-    return next(new AppError('Invalid amount', 400));
+  // SECURITY FIX #12: Wallet amount validation
+  if (!amount) {
+    return next(new AppError('Amount is required', 400));
+  }
+
+  // Validate amount is a number
+  const numAmount = parseFloat(amount);
+  if (isNaN(numAmount)) {
+    return next(new AppError('Amount must be a valid number', 400));
+  }
+
+  // Validate amount is positive
+  if (numAmount <= 0) {
+    return next(new AppError('Amount must be greater than zero', 400));
+  }
+
+  // Validate maximum top-up amount (GH₵10,000)
+  const MAX_TOPUP = 10000;
+  if (numAmount > MAX_TOPUP) {
+    return next(new AppError(`Maximum top-up amount is GH₵${MAX_TOPUP}`, 400));
   }
 
   // Validate email
@@ -194,7 +212,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
 
   // Verify with Paystack
   const { paystackApi } = require('../../config/paystack');
-  
+
   try {
     const response = await paystackApi.get(`/transaction/verify/${reference}`);
 
@@ -207,7 +225,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
 
     // Transaction data is in response.data.data
     const transaction = response.data.data;
-    
+
     if (!transaction) {
       console.error('[Wallet] Paystack response missing transaction data:', response.data);
       return next(new AppError('Invalid response from payment service', 500));
@@ -226,7 +244,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
 
     // Get amount and convert from kobo to GHS
     const amount = transaction.amount ? transaction.amount / 100 : 0;
-    
+
     // Get userId from metadata
     const userId = transaction.metadata?.userId || req.user?.id;
 

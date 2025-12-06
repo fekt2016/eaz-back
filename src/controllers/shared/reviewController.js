@@ -52,7 +52,7 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
   // VERIFY PURCHASE: Check if user purchased the product
   const Order = require('../../models/order/orderModel');
   const OrderItem = require('../../models/order/OrderItemModel');
-  
+
   let purchaseOrder = null;
   let verifiedPurchase = false;
 
@@ -71,7 +71,7 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
     // Check if order contains this product
     const orderItems = await OrderItem.find({ _id: { $in: purchaseOrder.orderItems } });
     const hasProduct = orderItems.some(item => item.product.toString() === product.toString());
-    
+
     if (!hasProduct) {
       return next(new AppError('This product is not in the specified order', 400));
     }
@@ -87,7 +87,7 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
     for (const userOrder of userOrders) {
       const orderItems = await OrderItem.find({ _id: { $in: userOrder.orderItems } });
       const hasProduct = orderItems.some(item => item.product.toString() === product.toString());
-      
+
       if (hasProduct) {
         purchaseOrder = userOrder;
         verifiedPurchase = true;
@@ -147,6 +147,11 @@ exports.updateReview = catchAsync(async (req, res, next) => {
     return next(new AppError('Review not found', 404));
   }
 
+  // SECURITY FIX #10: Verify review ownership
+  if (review.user.toString() !== req.user.id.toString()) {
+    return next(new AppError('You are not authorized to update this review', 403));
+  }
+
   // SECURITY: Check if user owns the review or is admin
   if (review.user.toString() !== req.user.id && req.user.role !== 'admin') {
     return next(new AppError('You can only update your own reviews', 403));
@@ -189,6 +194,11 @@ exports.deleteReview = catchAsync(async (req, res, next) => {
 
   if (!review) {
     return next(new AppError('Review not found', 404));
+  }
+
+  // SECURITY FIX #10: Verify review ownership
+  if (review.user.toString() !== req.user.id.toString()) {
+    return next(new AppError('You are not authorized to delete this review', 403));
   }
 
   // SECURITY: Check if user owns the review or is admin
@@ -261,6 +271,23 @@ exports.flagReview = catchAsync(async (req, res, next) => {
   review.flaggedReason = flaggedReason;
   review.moderationNotes = moderationNotes || review.moderationNotes;
   await review.save();
+
+  // Notify all admins about flagged review
+  try {
+    const notificationService = require('../../services/notification/notificationService');
+    const Product = require('../../models/product/productModel');
+    const product = await Product.findById(review.product).select('name');
+    await notificationService.createReviewFlagNotification(
+      review._id,
+      review.product,
+      product?.name || 'Product',
+      flaggedReason || 'Inappropriate content'
+    );
+    console.log(`[Review Flag] Admin notification created for review ${review._id}`);
+  } catch (notificationError) {
+    console.error('[Review Flag] Error creating admin notification:', notificationError);
+    // Don't fail review flagging if notification fails
+  }
 
   res.status(200).json({
     status: 'success',

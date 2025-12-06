@@ -1,0 +1,114 @@
+/**
+ * Script to update all products' moderationStatus to 'approved'
+ * 
+ * Usage: node src/scripts/updateProductModerationStatus.js
+ */
+
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const Product = require('../models/product/productModel');
+
+// Load environment variables
+dotenv.config({ path: './.env' });
+
+// Database connection
+const DB = process.env.MONGO_URL.replace(
+  '<PASSWORD>',
+  process.env.DATABASE_PASSWORD
+);
+
+/**
+ * Update all products' moderationStatus to 'approved'
+ */
+async function updateProductModerationStatus() {
+  try {
+    console.log('🔌 Connecting to database...');
+    await mongoose.connect(DB, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ Database connected successfully\n');
+
+    // Count products before update
+    const totalProducts = await Product.countDocuments();
+    console.log(`📊 Total products in database: ${totalProducts}`);
+
+    // Count products by moderation status
+    const statusCounts = await Product.aggregate([
+      {
+        $group: {
+          _id: '$moderationStatus',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    console.log('\n📋 Current moderation status distribution:');
+    statusCounts.forEach((status) => {
+      const statusLabel = status._id || 'undefined';
+      console.log(`   ${statusLabel}: ${status.count}`);
+    });
+
+    // Update all products to 'approved'
+    console.log('\n🔄 Updating all products to moderationStatus: "approved"...');
+    const updateResult = await Product.updateMany(
+      {}, // Update all products
+      {
+        $set: {
+          moderationStatus: 'approved',
+        },
+      }
+    );
+
+    console.log(`\n✅ Update completed successfully!`);
+    console.log(`   Products matched: ${updateResult.matchedCount}`);
+    console.log(`   Products modified: ${updateResult.modifiedCount}`);
+
+    // Verify the update
+    const approvedCount = await Product.countDocuments({
+      moderationStatus: 'approved',
+    });
+    const undefinedCount = await Product.countDocuments({
+      $or: [
+        { moderationStatus: { $exists: false } },
+        { moderationStatus: null },
+      ],
+    });
+    const pendingCount = await Product.countDocuments({
+      moderationStatus: 'pending',
+    });
+    const rejectedCount = await Product.countDocuments({
+      moderationStatus: 'rejected',
+    });
+
+    console.log('\n📊 Final moderation status distribution:');
+    console.log(`   approved: ${approvedCount}`);
+    if (undefinedCount > 0) {
+      console.log(`   undefined: ${undefinedCount}`);
+    }
+    if (pendingCount > 0) {
+      console.log(`   pending: ${pendingCount}`);
+    }
+    if (rejectedCount > 0) {
+      console.log(`   rejected: ${rejectedCount}`);
+    }
+
+    // Close connection
+    await mongoose.connection.close();
+    console.log('\n✅ Database connection closed');
+    console.log('✅ Script completed successfully!\n');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error updating products:', error);
+    await mongoose.connection.close();
+    process.exit(1);
+  }
+}
+
+// Run the script
+if (require.main === module) {
+  updateProductModerationStatus();
+}
+
+module.exports = updateProductModerationStatus;
+

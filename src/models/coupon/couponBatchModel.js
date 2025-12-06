@@ -10,7 +10,21 @@ const couponSchema = new mongoose.Schema({
   seller: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Seller',
-    required: [true, 'Seller reference is required'],
+    required: function() {
+      // Seller is required only if not a global coupon
+      return !this.global;
+    },
+    comment: 'Seller who owns this coupon. Not required for global coupons.',
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    refPath: 'createdByModel',
+    comment: 'User/admin who created this coupon',
+  },
+  createdByModel: {
+    type: String,
+    enum: ['Seller', 'Admin'],
+    default: 'Seller',
   },
   discountValue: {
     type: Number,
@@ -48,6 +62,55 @@ const couponSchema = new mongoose.Schema({
     min: [0, 'Minimum order amount cannot be negative'],
     default: 0,
   },
+  maxDiscountAmount: {
+    type: Number,
+    min: [0, 'Maximum discount amount cannot be negative'],
+    default: null, // null means no limit
+    comment: 'Maximum discount cap for percentage coupons',
+  },
+  applicableProducts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product',
+    },
+  ],
+  applicableCategories: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+    },
+  ],
+  sellerFunded: {
+    type: Boolean,
+    default: true,
+    comment: 'If true, seller pays for discount. If false, platform pays.',
+  },
+  platformFunded: {
+    type: Boolean,
+    default: false,
+    comment: 'If true, platform pays for discount. Used for global coupons.',
+  },
+  global: {
+    type: Boolean,
+    default: false,
+    comment: 'If true, this is a platform-wide coupon created by admin',
+  },
+  isPublic: {
+    type: Boolean,
+    default: false,
+    comment: 'If true, coupons in this batch are visible to all users (public/promotional). If false, only recipients can see them.',
+  },
+  maxUsagePerUser: {
+    type: Number,
+    min: [1, 'Max usage per user must be at least 1'],
+    default: 1,
+    comment: 'Maximum times a single user can use this coupon',
+  },
+  stackingAllowed: {
+    type: Boolean,
+    default: false,
+    comment: 'Whether this coupon can be used with other coupons',
+  },
   isActive: {
     type: Boolean,
     default: true,
@@ -78,6 +141,12 @@ const couponSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
+      userUsageCount: {
+        type: Map,
+        of: Number,
+        default: new Map(),
+        comment: 'Track usage count per user: Map<userId, count>',
+      },
       orders: [
         {
           type: mongoose.Schema.Types.ObjectId,
@@ -101,166 +170,9 @@ couponSchema.pre('save', function (next) {
   next();
 });
 
-// Static method for coupon validation
-couponSchema.statics.validateCoupon = async function (
-  code,
-  userId,
-  orderAmount,
-) {
-  const batch = await this.findOne({
-    'coupons.code': code,
-    validFrom: { $lte: new Date() },
-    expiresAt: { $gte: new Date() },
-    isActive: true,
-  });
-
-  if (!batch) {
-    throw new Error('Coupon not found or expired');
-  }
-
-  const coupon = batch.coupons.find((c) => {
-    console.log('code', c.code, code);
-    return c.code === code;
-  });
-  console.log('coupon', coupon);
-  if (!coupon || coupon.used) {
-    throw new Error('Invalid coupon code');
-  }
-
-  if (coupon.recipient && coupon.recipient.toString() !== userId.toString()) {
-    throw new Error('This coupon is not assigned to you');
-  }
-
-  if (coupon.usageCount >= batch.maxUsage) {
-    throw new Error('Coupon usage limit reached');
-  }
-
-  if (orderAmount < batch.minOrderAmount) {
-    throw new Error(
-      `Minimum order amount of ${batch.minOrderAmount.toFixed(2)} required`,
-    );
-  }
-
-  return {
-    batchId: batch._id,
-    couponId: coupon._id,
-    discountValue: batch.discountValue,
-    discountType: batch.discountType,
-  };
-};
-
-// Static method to apply coupon
-couponSchema.statics.applyCoupon = async function (
-  batchId,
-  couponId,
-  userId,
-  orderId,
-) {
-  const result = await this.updateOne(
-    {
-      _id: batchId,
-      'coupons._id': couponId,
-      'coupons.usageCount': { $lt: '$maxUsage' },
-    },
-    {
-      $inc: { 'coupons.$.usageCount': 1 },
-      $set: {
-        'coupons.$.lastUsedAt': new Date(),
-        'coupons.$.lastUsedBy': userId,
-      },
-      $addToSet: {
-        'coupons.$.orders': orderId,
-      },
-    },
-  );
-
-  if (result.nModified === 0) {
-    throw new Error('Failed to apply coupon');
-  }
-
-  return true;
-};
-
-couponSchema.statics.validateUserCoupon = async function (code, userId) {
-  const batch = await this.findOne({
-    'coupons.code': code,
-    validFrom: { $lte: new Date() },
-    expiresAt: { $gte: new Date() },
-    isActive: true,
-  });
-  // console.log('batch', batch);
-  if (!batch) {
-    throw new Error('Coupon not found or expired');
-  }
-
-  if (batch.maxUsage === 0) {
-    throw new Error('Coupon usage limit reached');
-  }
-  if (batch.used === true) {
-    throw new Error('This coupon has already been used');
-  }
-
-  const coupon = batch.coupons.find((c) => c.code === code);
-  if (!coupon || coupon.used) {
-    throw new Error('Invalid coupon code');
-  }
-
-  if (coupon.recipient && coupon.recipient.toString() !== userId.toString()) {
-    throw new Error('This coupon is not assigned to you');
-  }
-
-  if (coupon.usageCount >= batch.maxUsage) {
-    throw new Error('Coupon usage limit reached');
-  }
-
-  return {
-    discountValue: batch.discountValue,
-    discountType: batch.discountType,
-    couponId: coupon._id,
-    batchId: batch._id,
-    sellerId: batch.seller,
-    maxUsage: batch.maxUsage,
-    usageCount: coupon.usageCount,
-    isActive: batch.isActive,
-    expiresAt: batch.expiresAt,
-    minOrderAmount: batch.minOrderAmount,
-  };
-};
-couponSchema.statics.markCouponAsUsed = async function (
-  batchId,
-  couponId,
-  userId,
-) {
-  console.log('batchId', batchId);
-  console.log('couponId', couponId);
-  console.log('userId', userId);
-  try {
-    const batch = await this.findById(batchId);
-    console.log('batch found', batch);
-    if (!batch) {
-      throw new Error('Coupon batch not found');
-    }
-
-    const coupon = batch.coupons.find(
-      (c) => c._id.toString() === couponId.toString(),
-    );
-    if (!coupon) {
-      throw new Error('Coupon not found in batch');
-    }
-    console.log('coupon found', coupon);
-
-    coupon.used = true;
-    coupon.usedAt = new Date();
-    coupon.lastUsedBy = userId;
-
-    // Save the updated batch
-    const result = await batch.save();
-
-    console.log('Coupon marked as used:', result);
-  } catch (err) {
-    console.log(err);
-  }
-};
+// Note: All coupon validation and application logic has been moved to
+// backend/src/services/coupon/couponService.js for better maintainability
+// and to fix critical bugs. The old static methods have been removed.
 
 const CouponBatch = mongoose.model('CouponBatch', couponSchema);
 module.exports = CouponBatch;;

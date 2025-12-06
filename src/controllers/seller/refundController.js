@@ -2,6 +2,7 @@ const RefundRequest = require('../../models/refund/refundRequestModel');
 const Order = require('../../models/order/orderModel');
 const OrderItems = require('../../models/order/OrderItemModel');
 const SellerOrder = require('../../models/order/sellerOrderModel');
+const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
@@ -248,6 +249,25 @@ exports.approveReturn = catchAsync(async (req, res, next) => {
       },
     });
 
+    // Notify all admins about seller's return approval decision
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      const seller = await Seller.findById(sellerId).select('shopName name');
+      await notificationService.createSellerReturnDecisionNotification(
+        refundRequest._id,
+        order._id,
+        order.orderNumber,
+        seller?.shopName || seller?.name || 'Seller',
+        'approve',
+        sellerItems.length,
+        notes || ''
+      );
+      console.log(`[Seller Return Approval] Admin notification created for refund ${refundRequest._id}`);
+    } catch (notificationError) {
+      console.error('[Seller Return Approval] Error creating admin notification:', notificationError);
+      // Don't fail the operation if notification fails
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'Return request approved. Awaiting admin review for refund processing.',
@@ -367,6 +387,25 @@ exports.rejectReturn = catchAsync(async (req, res, next) => {
         rejectionReason: reason || notes,
       },
     });
+
+    // Notify all admins about seller's return rejection decision
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      const seller = await Seller.findById(sellerId).select('shopName name');
+      await notificationService.createSellerReturnDecisionNotification(
+        refundRequest._id,
+        order._id,
+        order.orderNumber,
+        seller?.shopName || seller?.name || 'Seller',
+        'reject',
+        sellerItems.length,
+        reason || notes || ''
+      );
+      console.log(`[Seller Return Rejection] Admin notification created for refund ${refundRequest._id}`);
+    } catch (notificationError) {
+      console.error('[Seller Return Rejection] Error creating admin notification:', notificationError);
+      // Don't fail the operation if notification fails
+    }
 
     res.status(200).json({
       status: 'success',

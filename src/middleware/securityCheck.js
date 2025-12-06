@@ -26,7 +26,7 @@ exports.checkCriticalRisk = catchAsync(async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
     } else {
       // Try to get from cookies
-      const cookieName = role === 'admin' ? 'eazadmin_jwt' : role === 'seller' ? 'eazseller_jwt' : 'eazmain_jwt';
+      const cookieName = role === 'admin' ? 'admin_jwt' : role === 'seller' ? 'seller_jwt' : 'main_jwt';
       token = req.cookies?.[cookieName];
     }
 
@@ -47,7 +47,7 @@ exports.checkCriticalRisk = catchAsync(async (req, res, next) => {
     }
 
     // Clear cookies
-    const cookieName = role === 'admin' ? 'eazadmin_jwt' : role === 'seller' ? 'eazseller_jwt' : 'eazmain_jwt';
+    const cookieName = role === 'admin' ? 'admin_jwt' : role === 'seller' ? 'seller_jwt' : 'main_jwt';
     res.clearCookie(cookieName, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

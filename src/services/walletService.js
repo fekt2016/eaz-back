@@ -112,6 +112,24 @@ async function creditWallet(userId, amount, type, description, reference = null,
       console.error('[WalletService] Failed to log wallet history (non-critical):', err);
     });
 
+    // Send wallet credit email for significant transactions (not for every small operation)
+    // Only send for: topups, refunds, and adjustments (not for internal operations)
+    if (type === 'CREDIT_TOPUP' || type === 'CREDIT_REFUND' || type === 'CREDIT_ADJUSTMENT') {
+      try {
+        const emailDispatcher = require('../emails/emailDispatcher');
+        const User = require('../models/user/userModel');
+        const user = await User.findById(userId).select('name email').lean();
+        
+        if (user && user.email) {
+          await emailDispatcher.sendWalletCredit(user, amount, description);
+          console.log(`[WalletService] ✅ Wallet credit email sent to ${user.email}`);
+        }
+      } catch (emailError) {
+        console.error('[WalletService] Error sending wallet credit email:', emailError.message);
+        // Don't fail wallet operation if email fails
+      }
+    }
+
     return {
       wallet,
       transaction: transaction[0],
@@ -225,6 +243,24 @@ async function debitWallet(userId, amount, type, description, reference = null, 
     }).catch(err => {
       console.error('[WalletService] Failed to log wallet history (non-critical):', err);
     });
+
+    // Send wallet debit email for order payments (not for every small operation)
+    // Only send for: order payments and significant adjustments
+    if (type === 'DEBIT_ORDER' || (type === 'DEBIT_ADJUSTMENT' && amount >= 10)) {
+      try {
+        const emailDispatcher = require('../emails/emailDispatcher');
+        const User = require('../models/user/userModel');
+        const user = await User.findById(userId).select('name email').lean();
+        
+        if (user && user.email) {
+          await emailDispatcher.sendWalletDebit(user, amount, description);
+          console.log(`[WalletService] ✅ Wallet debit email sent to ${user.email}`);
+        }
+      } catch (emailError) {
+        console.error('[WalletService] Error sending wallet debit email:', emailError.message);
+        // Don't fail wallet operation if email fails
+      }
+    }
 
     return {
       wallet,

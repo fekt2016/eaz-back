@@ -39,6 +39,93 @@ const sellerSchema = new mongoose.Schema(
       },
       default: {},
     },
+    pickupLocations: [
+      {
+        name: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 100,
+        },
+        region: {
+          type: String,
+          required: true,
+          enum: [
+            'Greater Accra',
+            'Ashanti',
+            'Central',
+            'Eastern',
+            'Western',
+            'Western North',
+            'Volta',
+            'Oti',
+            'Bono',
+            'Bono East',
+            'Ahafo',
+            'Northern',
+            'Savannah',
+            'North East',
+            'Upper East',
+            'Upper West',
+          ],
+        },
+        city: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 100,
+        },
+        address: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 500,
+        },
+        latitude: {
+          type: Number,
+          default: null,
+        },
+        longitude: {
+          type: Number,
+          default: null,
+        },
+        digitalAddress: {
+          type: String,
+          trim: true,
+          maxlength: 15,
+          default: null,
+          validate: {
+            validator: function(v) {
+              if (!v) return true; // Optional field
+              return /^[A-Z]{2}-\d{3}-\d{4}$/.test(v.toUpperCase());
+            },
+            message: 'Digital address must be in format AA-123-4567',
+          },
+        },
+        contactName: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 100,
+        },
+        contactPhone: {
+          type: String,
+          required: true,
+          trim: true,
+          maxlength: 20,
+        },
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+        notes: {
+          type: String,
+          trim: true,
+          maxlength: 1000,
+          default: '',
+        },
+      },
+    ],
     shopDescription: String,
     digitalAddress: String,
     socialMediaLinks: {
@@ -112,6 +199,12 @@ const sellerSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: [0, 'Pending balance cannot be negative'],
+      validate: {
+        validator: function(value) {
+          return value >= 0;
+        },
+        message: 'Pending balance cannot be negative'
+      }
     },
   lockedReason: {
       type: String,
@@ -511,7 +604,14 @@ sellerSchema.methods.releaseFunds = function (amount) {
 // lockedBalance = funds locked by admin due to disputes/issues between buyer and seller
 // pendingBalance = funds in withdrawal requests awaiting admin approval and OTP verification
 sellerSchema.methods.calculateWithdrawableBalance = function () {
-  this.withdrawableBalance = Math.max(0, this.balance - this.lockedBalance - (this.pendingBalance || 0));
+  // PROTECTION: Ensure pendingBalance is never negative
+  const safePendingBalance = Math.max(0, this.pendingBalance || 0);
+  if (this.pendingBalance < 0) {
+    console.warn(`[Seller Model] ⚠️ Negative pendingBalance detected for seller ${this._id}: ${this.pendingBalance}. Resetting to 0.`);
+    this.pendingBalance = 0;
+  }
+  
+  this.withdrawableBalance = Math.max(0, this.balance - this.lockedBalance - safePendingBalance);
   return this.withdrawableBalance;
 };
 

@@ -28,8 +28,24 @@ const paymentRequestSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'paid', 'rejected', 'success', 'failed', 'processing', 'approved', 'awaiting_paystack_otp'],
+    enum: ['pending', 'paid', 'rejected', 'success', 'failed', 'processing', 'approved', 'awaiting_paystack_otp', 'otp_expired', 'reversed'],
     default: 'pending',
+  },
+  // ===== Withdrawal Reversal Fields =====
+  reversed: {
+    type: Boolean,
+    default: false,
+  },
+  reversedAt: {
+    type: Date,
+  },
+  reversedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Seller',
+  },
+  reverseReason: {
+    type: String,
+    default: null,
   },
   transactionId: String,
   rejectionReason: String,
@@ -57,6 +73,12 @@ const paymentRequestSchema = new mongoose.Schema({
   },
   paystackReference: {
     type: String,
+    default: null,
+  },
+  // OTP session status tracking
+  otpSessionStatus: {
+    type: String,
+    enum: ['active', 'abandoned', 'expired', null],
     default: null,
   },
   // PIN requirement for mobile money transfers
