@@ -34,7 +34,7 @@ class Server {
       // Validate port number
       if (isNaN(port) || port < 1 || port > 65535) {
         throw new Error(
-          `Invalid port number: ${process.env.PORT}. Port must be between 1 and 65535.`,
+          `Invalid port numbers: ${process.env.PORT}. Port must be between 1 and 65535.`,
         );
       }
 
