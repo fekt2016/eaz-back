@@ -28,20 +28,20 @@ const adminActionLogSchema = new mongoose.Schema({
   },
   actionType: {
     type: String,
-    enum: ['WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED'],
+    enum: ['WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'PAYOUT_VERIFICATION_APPROVED', 'PAYOUT_VERIFICATION_REJECTED'],
     required: true,
     index: true,
   },
   withdrawalId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
+    required: false, // Not required for payout verification actions
     index: true,
-    comment: 'Reference to PaymentRequest or WithdrawalRequest',
+    comment: 'Reference to PaymentRequest or WithdrawalRequest (null for payout verification)',
   },
   withdrawalType: {
     type: String,
     enum: ['PaymentRequest', 'WithdrawalRequest'],
-    required: true,
+    required: false, // Not required for payout verification actions
   },
   sellerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -49,9 +49,19 @@ const adminActionLogSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  oldStatus: {
+    type: String,
+    required: false,
+    comment: 'Previous payout status (for payout verification actions)',
+  },
+  newStatus: {
+    type: String,
+    required: false,
+    comment: 'New payout status (for payout verification actions)',
+  },
   amountRequested: {
     type: Number,
-    required: true,
+    required: false, // Not required for payout verification actions
     min: 0,
   },
   amountPaid: {

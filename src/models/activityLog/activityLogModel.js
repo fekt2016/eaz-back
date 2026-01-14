@@ -6,7 +6,6 @@ const activityLogSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'userModel',
       required: true,
-      index: true,
     },
     userModel: {
       type: String,
@@ -17,12 +16,10 @@ const activityLogSchema = new mongoose.Schema(
       type: String,
       enum: ['buyer', 'seller', 'admin'],
       required: true,
-      index: true,
     },
     action: {
       type: String,
       required: true,
-      index: true,
     },
     description: {
       type: String,
@@ -33,11 +30,9 @@ const activityLogSchema = new mongoose.Schema(
       type: String,
       enum: ['LOGIN', 'LOGOUT', 'IP_CHANGE', 'DEVICE_CHANGE', 'SUSPICIOUS', 'FAILED_LOGIN', 'SECURITY_ALERT', 'PASSWORD_CHANGE', 'ACCOUNT_LOCKED', 'OTHER'],
       default: 'OTHER',
-      index: true,
     },
     ipAddress: {
       type: String,
-      index: true,
     },
     // New field for tracking previous IP
     previousIp: {
@@ -55,13 +50,11 @@ const activityLogSchema = new mongoose.Schema(
       type: String,
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'low',
-      index: true,
     },
     platform: {
       type: String,
       enum: ['eazmain', 'eazseller', 'eazadmin'],
       required: true,
-      index: true,
     },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
@@ -70,7 +63,6 @@ const activityLogSchema = new mongoose.Schema(
     timestamp: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {
@@ -80,11 +72,8 @@ const activityLogSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for efficient security queries
-activityLogSchema.index({ userId: 1, activityType: 1, timestamp: -1 });
-activityLogSchema.index({ riskLevel: 1, timestamp: -1 });
-activityLogSchema.index({ ipAddress: 1, timestamp: -1 });
-activityLogSchema.index({ userId: 1, ipAddress: 1 });
+// Indexes for efficient security queriesyLogSchema.index({ userId: 1, activityType: 1, timestamp: -1 });
+
 
 // Virtual for user details
 activityLogSchema.virtual('user', {

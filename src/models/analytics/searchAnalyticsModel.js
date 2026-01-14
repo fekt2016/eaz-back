@@ -18,7 +18,6 @@ const searchAnalyticsSchema = new mongoose.Schema(
       required: true,
       trim: true,
       lowercase: true,
-      index: true,
     },
     count: {
       type: Number,
@@ -59,10 +58,8 @@ const searchAnalyticsSchema = new mongoose.Schema(
   },
 );
 
-// Indexes for performance
-searchAnalyticsSchema.index({ count: -1, lastSearched: -1 }); // For trending
-searchAnalyticsSchema.index({ normalizedKeyword: 1 }); // For quick lookups
-searchAnalyticsSchema.index({ lastSearched: -1 }); // For recent searches
+
+
 
 // Static method to record a search
 searchAnalyticsSchema.statics.recordSearch = async function (

@@ -17,9 +17,27 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: Number,
       unique: true,
-      required: [true, 'Please provide your phone number'],
+      sparse: true, // Allow multiple null values (unique only for non-null values)
+      required: false, // Phone is optional - email-only login is supported
     },
     photo: { type: String, default: 'default.jpg' },
+    gender: {
+      type: String,
+      enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+      default: null,
+    },
+    dateOfBirth: {
+      type: Date,
+      default: null,
+      validate: {
+        validator: function (date) {
+          if (!date) return true; // Allow null/undefined
+          // Ensure date is not in the future
+          return date <= new Date();
+        },
+        message: 'Date of birth cannot be in the future',
+      },
+    },
     password: {
       type: String,
       required: [true, 'Please provide a password'],
@@ -50,19 +68,33 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date, default: Date.now() },
     passwordResetToken: String,
     passwordResetExpires: Date,
+    pin: {
+      type: String,
+      select: false, // Don't return PIN in queries by default
+    },
+    pinChangedAt: { type: Date, default: null },
     active: { type: Boolean, default: true, select: false },
     status: {
       type: String,
       enum: ['active', 'deactive', 'pending'],
       default: 'active',
     },
-    // twoFactorEnabled: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-    // twoFactorSecret: String,
-    // twoFactorTempSecret: String, // For setup process
-    // twoFactorBackupCodes: [String],
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorSecret: {
+      type: String,
+      select: false, // Don't return in queries by default
+    },
+    twoFactorTempSecret: {
+      type: String,
+      select: false, // For setup process
+    },
+    twoFactorBackupCodes: {
+      type: [String],
+      select: false,
+    },
     permissions: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Permission',
@@ -135,6 +167,12 @@ const userSchema = new mongoose.Schema(
     emailVerificationExpires: Date,
     createdAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now },
+    // SECURITY FIX #9: Session activity tracking for timeout
+    lastActivity: { 
+      type: Date, 
+      default: Date.now,
+      select: false, // Don't return in queries by default
+    },
   },
   {
     toJSON: {
@@ -145,7 +183,10 @@ const userSchema = new mongoose.Schema(
         delete ret.passwordConfirm;
         delete ret.passwordResetToken;
         delete ret.passwordResetExpires;
+        delete ret.pin;
         delete ret.twoFactorSecret;
+        delete ret.twoFactorTempSecret;
+        delete ret.twoFactorBackupCodes;
         delete ret.twoFactorTempSecret;
         delete ret.twoFactorBackupCodes;
         delete ret.otp;
@@ -206,6 +247,10 @@ userSchema.virtual('securitySettings').get(function () {
   return {
     twoFactorEnabled: this.twoFactorEnabled,
     lastPasswordChange: this.passwordChangedAt,
+    // Check pinChangedAt instead of pin since pin is select: false
+    // If pinChangedAt exists, user has a PIN set
+    hasPin: !!this.pinChangedAt,
+    lastPinChange: this.pinChangedAt,
     // Add other security-related fields as needed
   };
 });
@@ -218,10 +263,35 @@ userSchema.pre('save', async function (next) {
   this.passwordConfirm = undefined;
   next();
 });
+
+// Hash PIN before saving
+userSchema.pre('save', async function (next) {
+  // Only run this function if PIN was actually modified
+  if (!this.isModified('pin')) return next();
+  // Hash the PIN with bcrypt (same strength as password)
+  if (this.pin) {
+    this.pin = await bcrypt.hash(this.pin, 12);
+  }
+  next();
+});
 userSchema.pre('save', function (next) {
   if (!this.isModified('password') || this.isNew) return next();
   // -1s to make sure the token is created after the password has been changed
   this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+// Update PIN changed timestamp
+userSchema.pre('save', function (next) {
+  // Skip for new documents (they'll set it when PIN is first created)
+  if (this.isNew) return next();
+  
+  // If PIN is being set or modified, update timestamp
+  if (this.isModified('pin') && this.pin) {
+    // If pinChangedAt doesn't exist, this is the first time setting PIN
+    // If it exists, this is a PIN reset
+    this.pinChangedAt = Date.now();
+  }
   next();
 });
 userSchema.pre(/^find/, function (next) {
@@ -245,6 +315,14 @@ userSchema.methods.correctPassword = async function (candidatePassword) {
   console.log('userPassword', this.password);
   return await bcrypt.compare(candidatePassword, this.password);
 };
+
+// Verify PIN method
+userSchema.methods.correctPin = async function (candidatePin) {
+  if (!this.pin) {
+    return false;
+  }
+  return await bcrypt.compare(candidatePin, this.pin);
+};
 userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
@@ -264,7 +342,8 @@ userSchema.methods.createPasswordResetToken = function () {
     .update(resetToken)
     .digest('hex');
 
-  this.passwordResetExpires = Date.now() + 10 * 60 * 6000;
+  // Fix: 10 minutes = 10 * 60 * 1000 milliseconds (not 6000)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
   return resetToken;
 };

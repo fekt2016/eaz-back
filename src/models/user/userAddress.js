@@ -16,13 +16,3 @@ const userAddressSchema = new mongoose.Schema({
     default: false,
   },
 });
-
-// {
-//   userId: ObjectId, // Reference to User
-//   street: String,
-//   city: String,
-//   state: String,
-//   postalCode: String,
-//   country: String,
-//   isDefault: Boolean
-// }

@@ -7,7 +7,6 @@ const trendingProductsSchema = new mongoose.Schema(
       ref: 'Product',
       required: true,
       unique: true,
-      index: true,
     },
     views24h: {
       type: Number,
@@ -33,12 +32,10 @@ const trendingProductsSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
-      index: true,
     },
     lastComputed: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {
@@ -46,9 +43,7 @@ const trendingProductsSchema = new mongoose.Schema(
   }
 );
 
-// Index for efficient trending queries
-trendingProductsSchema.index({ trendingScore: -1, lastComputed: -1 });
-trendingProductsSchema.index({ lastComputed: -1 });
+
 
 // Method to calculate trending score
 trendingProductsSchema.methods.calculateScore = function () {

@@ -2,23 +2,43 @@ const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
 const { format } = require('date-fns');
-
-
-
+const { checkFeature, FEATURES } = require('../featureFlags');
+const { safeFs, safePath } = require('../safePath');
 
 exports.generateUserDataArchive = async (userData) => {
+  // FEATURE FLAG: Check if data export and file uploads are enabled
+  if (!checkFeature(FEATURES.DATA_EXPORT, 'generateDataExport')) {
+    throw new Error('Data export feature is disabled');
+  }
+
+  if (!checkFeature(FEATURES.FILE_UPLOADS, 'generateDataExport')) {
+    throw new Error('File uploads feature is disabled');
+  }
+
   return new Promise((resolve, reject) => {
     try {
-      // Create export directory if not exists
-      const exportDir = path.join(__dirname, '../exports');
-      if (!fs.existsSync(exportDir)) {
-        fs.mkdirSync(exportDir, { recursive: true });
+      // Create export directory if not exists - USE SAFE VERSIONS
+      const exportDir = safePath.joinSafe(__dirname, '../exports');
+      if (!exportDir) {
+        return reject(new Error('Failed to resolve export directory path'));
+      }
+      
+      if (!safeFs.existsSyncSafe(exportDir, { label: 'export directory' })) {
+        try {
+          fs.mkdirSync(exportDir, { recursive: true });
+        } catch (mkdirError) {
+          return reject(new Error(`Failed to create export directory: ${mkdirError.message}`));
+        }
       }
 
       // Create file name
       const timestamp = format(new Date(), 'yyyyMMdd-HHmmss');
       const fileName = `user-data-${timestamp}.zip`;
-      const filePath = path.join(exportDir, fileName);
+      const filePath = safePath.joinSafe(exportDir, fileName);
+      
+      if (!filePath) {
+        return reject(new Error('Failed to resolve export file path'));
+      }
 
       // Create write stream
       const output = fs.createWriteStream(filePath);
@@ -26,6 +46,18 @@ exports.generateUserDataArchive = async (userData) => {
 
       output.on('close', () => {
         console.log(`Archive created: ${archive.pointer()} bytes`);
+        
+        // VALIDATION: Ensure filePath and fileName are strings
+        if (typeof filePath !== 'string' || typeof fileName !== 'string') {
+          reject(new Error(
+            `generateUserDataArchive: Invalid return values - ` +
+            `filePath type: ${typeof filePath}, fileName type: ${typeof fileName}`
+          ));
+          return;
+        }
+        
+        console.log(`[generateUserDataArchive] ✅ Returning filePath: ${filePath} (type: ${typeof filePath})`);
+        console.log(`[generateUserDataArchive] ✅ Returning fileName: ${fileName} (type: ${typeof fileName})`);
         resolve({ filePath, fileName });
       });
 

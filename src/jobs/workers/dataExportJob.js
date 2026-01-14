@@ -3,10 +3,37 @@ const Permission = require('../../models/user/permissionModel');
 const { generateUserDataArchive } = require('../../utils/helpers/generateDataExport');
 const { uploadToCloudStorage } = require('../../utils/storage/cloudStorage');
 const { sendDataReadyEmail } = require('../../utils/email/emailService');
+const { checkFeature, FEATURES } = require('../../utils/featureFlags');
+const { toPathString } = require('../../utils/safePath');
 const mongoose = require('mongoose');
 
 // Modified to accept cloudinary as a parameter
 exports.processDataExportJob = async (job, cloudinary) => {
+  // FEATURE FLAG: Check if data export is enabled
+  if (!checkFeature(FEATURES.DATA_EXPORT, 'DataExportJob')) {
+    const { userId, exportId } = job.data;
+    console.warn(`[DataExportJob] Feature disabled. Marking export ${exportId} as failed for user ${userId}`);
+    
+    // Mark export as failed gracefully
+    if (userId && exportId) {
+      try {
+        await User.updateOne(
+          { _id: userId, 'dataExports.exportId': exportId },
+          { $set: { 'dataExports.$.status': 'failed' } },
+        );
+      } catch (updateError) {
+        console.error('[DataExportJob] Error updating export status:', updateError.message);
+      }
+    }
+    
+    // Return success to prevent job retry, but log that feature is disabled
+    return { 
+      success: false, 
+      reason: 'Feature disabled',
+      message: 'Data export feature is temporarily unavailable' 
+    };
+  }
+
   const { userId, exportId, email } = job.data;
 
   try {
@@ -32,7 +59,35 @@ exports.processDataExportJob = async (job, cloudinary) => {
     };
 
     // 2. Create archive
-    const { filePath, fileName } = await generateUserDataArchive(userData);
+    const archiveResult = await generateUserDataArchive(userData);
+    
+    // 🔍 DEBUG: Log archive result
+    console.log('[dataExportJob] DEBUG - Archive result:', {
+      type: typeof archiveResult,
+      hasFilePath: archiveResult && 'filePath' in archiveResult,
+      hasFileName: archiveResult && 'fileName' in archiveResult,
+    });
+
+    // SAFE PATH EXTRACTION: Use toPathString to handle object or string
+    const filePath = toPathString(archiveResult?.filePath || archiveResult, { 
+      label: 'data export archive',
+      allowEmpty: false 
+    });
+    const fileName = archiveResult?.fileName || 'user-data-export.zip';
+
+    if (!filePath) {
+      throw new Error(
+        `Invalid filePath from generateUserDataArchive: could not extract string path. ` +
+        `Received: ${typeof archiveResult} with keys: ${archiveResult ? Object.keys(archiveResult).join(', ') : 'null'}`
+      );
+    }
+
+    console.log('[dataExportJob] ✅ Extracted paths:', {
+      filePath: filePath.substring(0, 50) + '...',
+      filePathType: typeof filePath,
+      fileName: fileName,
+      fileNameType: typeof fileName,
+    });
 
     // 3. Upload to cloud storage (passing cloudinary instance)
     const downloadUrl = await uploadToCloudStorage(
@@ -56,7 +111,23 @@ exports.processDataExportJob = async (job, cloudinary) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Export job failed:', error);
+    // Enhanced error logging for ERR_INVALID_ARG_TYPE
+    if (error.message && error.message.includes('ERR_INVALID_ARG_TYPE')) {
+      console.error('\n🚨 ERR_INVALID_ARG_TYPE DETECTED IN DATA EXPORT JOB - FULL STACK TRACE:');
+      console.error('================================================');
+      console.error('Error Message:', error.message);
+      console.error('Error Name:', error.name);
+      console.error('Error Code:', error.code);
+      console.error('\nFull Stack Trace:');
+      console.error(error.stack);
+      console.error('\nJob Data:', JSON.stringify(job.data, null, 2));
+      console.error('================================================\n');
+    } else {
+      console.error('Export job failed:', error);
+      if (error.stack) {
+        console.error('Stack trace:', error.stack);
+      }
+    }
 
     // Update status to failed
     if (userId) {

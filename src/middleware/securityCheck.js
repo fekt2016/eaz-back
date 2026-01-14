@@ -20,15 +20,9 @@ exports.checkCriticalRisk = catchAsync(async (req, res, next) => {
   const logoutCheck = await securityMonitor.forceLogoutIfCritical(req.user, role);
 
   if (logoutCheck.shouldLogout) {
-    // Extract token from request
-    let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    } else {
-      // Try to get from cookies
-      const cookieName = role === 'admin' ? 'admin_jwt' : role === 'seller' ? 'seller_jwt' : 'main_jwt';
-      token = req.cookies?.[cookieName];
-    }
+    // SECURITY: Cookie-only authentication - extract token ONLY from cookies
+    const cookieName = role === 'admin' ? 'admin_jwt' : role === 'seller' ? 'seller_jwt' : 'main_jwt';
+    const token = req.cookies?.[cookieName];
 
     // Blacklist the token
     if (token) {

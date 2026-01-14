@@ -45,8 +45,46 @@ const AppError = require('../../utils/errors/appError');
  * @param {Object} options - Cloudinary upload options
  * @param {Object} cloudinary - Cloudinary instance from app
  * @returns {Promise<Object>} Cloudinary upload result
+ * @throws {AppError} If fileBuffer is invalid
  */
 const uploadFileToCloudinary = (fileBuffer, options, cloudinary) => {
+  // DEFENSIVE CHECK: Ensure fileBuffer is a Buffer
+  if (!fileBuffer) {
+    throw new AppError('File buffer is required', 400);
+  }
+
+  // If it's already a Buffer, use it directly
+  if (fileBuffer instanceof Buffer) {
+    // Buffer is valid, proceed
+  } 
+  // If it's an object with a buffer property, extract it
+  else if (fileBuffer && typeof fileBuffer === 'object' && fileBuffer.buffer) {
+    if (!(fileBuffer.buffer instanceof Buffer)) {
+      throw new AppError(
+        `Invalid file buffer: expected Buffer, got ${typeof fileBuffer.buffer}. ` +
+        `If you have a file path, use cloudinary.uploader.upload(filePath, options) instead.`,
+        400
+      );
+    }
+    fileBuffer = fileBuffer.buffer; // Extract the buffer
+  }
+  // If it's a string, it's a file path - this function expects a buffer
+  else if (typeof fileBuffer === 'string') {
+    throw new AppError(
+      `Invalid argument: expected Buffer, got string (file path). ` +
+      `For file paths, use cloudinary.uploader.upload(filePath, options) instead of uploadFileToCloudinary.`,
+      400
+    );
+  }
+  // Invalid type
+  else {
+    throw new AppError(
+      `Invalid file buffer: expected Buffer, got ${typeof fileBuffer}. ` +
+      `If you passed req.file, use req.file.buffer instead.`,
+      400
+    );
+  }
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       options,
@@ -73,6 +111,19 @@ const uploadFileToCloudinary = (fileBuffer, options, cloudinary) => {
  */
 const uploadMultipleFiles = async (files, options, cloudinary) => {
   const uploadPromises = files.map((file, index) => {
+    // DEFENSIVE CHECK: Ensure file has a buffer
+    if (!file || !file.buffer) {
+      throw new AppError(`File at index ${index} is missing or has no buffer`, 400);
+    }
+
+    // Validate buffer is actually a Buffer
+    if (!(file.buffer instanceof Buffer)) {
+      throw new AppError(
+        `Invalid file buffer at index ${index}: expected Buffer, got ${typeof file.buffer}`,
+        400
+      );
+    }
+
     const fileOptions = typeof options === 'function' 
       ? options(file, index) 
       : { ...options, public_id: `${options.public_id || 'file'}-${index}` };
@@ -140,6 +191,20 @@ const cloudinaryUpload = (config = {}) => {
       };
 
       try {
+        // DEFENSIVE CHECK: Ensure file has a buffer
+        if (!file || !file.buffer) {
+          return next(new AppError(`File ${fieldName} is missing or has no buffer`, 400));
+        }
+
+        // Validate buffer is actually a Buffer
+        if (!(file.buffer instanceof Buffer)) {
+          return next(new AppError(
+            `Invalid file buffer for ${fieldName}: expected Buffer, got ${typeof file.buffer}. ` +
+            `If using disk storage, use req.file.path instead.`,
+            400
+          ));
+        }
+
         // Upload file
         const result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
         
@@ -240,6 +305,20 @@ const uploadMultipleFields = (fieldConfigs, defaultOptions = {}) => {
       };
 
       try {
+        // DEFENSIVE CHECK: Ensure file has a buffer
+        if (!file || !file.buffer) {
+          return next(new AppError(`File ${fieldName} is missing or has no buffer`, 400));
+        }
+
+        // Validate buffer is actually a Buffer
+        if (!(file.buffer instanceof Buffer)) {
+          return next(new AppError(
+            `Invalid file buffer for ${fieldName}: expected Buffer, got ${typeof file.buffer}. ` +
+            `If using disk storage, use req.file.path instead.`,
+            400
+          ));
+        }
+
         const result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
         
         uploadResults[fieldName] = {

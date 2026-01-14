@@ -11,7 +11,6 @@ const walletHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
     type: {
       type: String,
@@ -24,7 +23,6 @@ const walletHistorySchema = new mongoose.Schema(
         'TRANSFER',
       ],
       required: true,
-      index: true,
     },
     amount: {
       type: Number,
@@ -45,7 +43,6 @@ const walletHistorySchema = new mongoose.Schema(
     },
     reference: {
       type: String,
-      index: true,
       sparse: true,
       comment: 'Unique reference for idempotency (Paystack ref, order ref, etc.)',
     },
@@ -57,14 +54,12 @@ const walletHistorySchema = new mongoose.Schema(
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
-      index: true,
       sparse: true,
       comment: 'Related order ID if transaction is order-related',
     },
     refundId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RefundRequest',
-      index: true,
       sparse: true,
       comment: 'Related refund ID if transaction is refund-related',
     },
@@ -86,12 +81,8 @@ const walletHistorySchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for efficient queries
-walletHistorySchema.index({ userId: 1, createdAt: -1 });
-walletHistorySchema.index({ userId: 1, type: 1, createdAt: -1 });
-walletHistorySchema.index({ reference: 1 }, { unique: true, sparse: true });
-walletHistorySchema.index({ orderId: 1 });
-walletHistorySchema.index({ refundId: 1 });
+
+
 
 // Virtual for transaction direction
 walletHistorySchema.virtual('isCredit').get(function () {

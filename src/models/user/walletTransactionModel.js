@@ -6,7 +6,6 @@ const walletTransactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
-      index: true,
     },
     amount: {
       type: Number,
@@ -22,7 +21,6 @@ const walletTransactionSchema = new mongoose.Schema(
         'CREDIT_ADJUSTMENT', // Admin added money
       ],
       required: true,
-      index: true,
     },
     description: {
       type: String,
@@ -30,13 +28,11 @@ const walletTransactionSchema = new mongoose.Schema(
     },
     reference: {
       type: String,
-      index: true,
       sparse: true, // Allow null but index when present
     },
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
-      index: true,
       sparse: true,
     },
     balanceBefore: {
@@ -57,11 +53,7 @@ const walletTransactionSchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for efficient queries
-walletTransactionSchema.index({ user: 1, createdAt: -1 });
-walletTransactionSchema.index({ user: 1, type: 1, createdAt: -1 });
-walletTransactionSchema.index({ reference: 1 }, { unique: true, sparse: true });
-walletTransactionSchema.index({ orderId: 1 });
+
 
 // Virtual for transaction direction (credit/debit)
 walletTransactionSchema.virtual('isCredit').get(function () {

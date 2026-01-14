@@ -22,41 +22,143 @@ exports.updatePayment = handleFactory.updateOne(Payment);
 
 // Initialize Paystack payment for mobile money
 exports.initializePaystack = catchAsync(async (req, res, next) => {
-  const { orderId, amount, email } = req.body;
+  // 🔍 DEBUG: Log the entire request body to see what we received
+  console.log('[initializePaystack] 🔍 DEBUG - Request received:');
+  console.log('[initializePaystack] Request body:', JSON.stringify(req.body, null, 2));
+  console.log('[initializePaystack] Request body keys:', Object.keys(req.body || {}));
+  console.log('[initializePaystack] orderId:', req.body?.orderId, '(type:', typeof req.body?.orderId, ')');
+  console.log('[initializePaystack] amount:', req.body?.amount, '(type:', typeof req.body?.amount, ')');
+  console.log('[initializePaystack] email:', req.body?.email, '(type:', typeof req.body?.email, ')');
 
-  // Validate input
-  if (!orderId || !amount || !email) {
-    return next(new AppError('Order ID, amount, and email are required', 400));
+  const { orderId, email } = req.body;
+
+  // SECURITY: Do NOT accept amount from request body - always calculate from order
+  // Enhanced validation
+  const missingFields = [];
+  if (!orderId) missingFields.push('orderId');
+  if (!email || email.trim() === '') missingFields.push('email');
+
+  if (missingFields.length > 0) {
+    console.error('[initializePaystack] ❌ Missing required fields:', missingFields);
+    return next(
+      new AppError(
+        'Invalid request. Please provide all required information.',
+        400
+      )
+    );
   }
 
   // Verify order exists and belongs  // Fetch order to verify amount
   const order = await Order.findById(orderId).populate('user', 'email name');
 
   if (!order) {
-    return next(new AppError('Order not found', 404));
+    return next(new AppError('Requested resource not found', 404));
+  }
+
+  // SECURITY FIX: Verify order is unpaid before allowing payment initialization
+  if (order.paymentStatus !== 'pending') {
+    console.error(`[Payment Init] ❌ Order ${orderId} payment status is not pending:`, order.paymentStatus);
+    if (order.paymentStatus === 'paid') {
+      return next(new AppError('This action cannot be completed', 400));
+    }
+    return next(new AppError('This action cannot be completed at this time', 400));
   }
 
   // SECURITY FIX #15: Server-side amount validation
   // NEVER trust frontend amount - always use server-side order total
   const serverAmount = order.totalPrice;
 
-  // Validate that frontend amount matches (if provided)
-  if (amount && Math.abs(parseFloat(amount) - serverAmount) > 0.01) {
-    console.warn(`[Payment Init] Amount mismatch for order ${orderId}: Frontend=${amount}, Server=${serverAmount}`);
-    return next(new AppError('Payment amount does not match order total', 400));
+  // CRITICAL: Log order details for debugging
+  console.log(`[Payment Init] 🔍 Order ${orderId} details:`, {
+    totalPrice: order.totalPrice,
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    shippingFee: order.shippingFee,
+    discountAmount: order.discountAmount,
+    tax: order.tax,
+    orderItemsCount: order.orderItems?.length || 0,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+  });
+
+  // CRITICAL: Validate that order has a valid totalPrice
+  if (!serverAmount || serverAmount === null || serverAmount === undefined || isNaN(serverAmount)) {
+    console.error(`[Payment Init] ❌ Order ${orderId} has invalid totalPrice:`, serverAmount);
+    console.error(`[Payment Init] Order details:`, {
+      totalPrice: order.totalPrice,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      orderItems: order.orderItems?.length || 0,
+    });
+    return next(new AppError('Invalid request. Please try again or contact support.', 400));
   }
+
+  if (serverAmount <= 0) {
+    console.error(`[Payment Init] ❌ Order ${orderId} has zero or negative totalPrice:`, serverAmount);
+    console.error(`[Payment Init] Order details:`, {
+      totalPrice: order.totalPrice,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      discountAmount: order.discountAmount,
+      orderItems: order.orderItems?.length || 0,
+    });
+    return next(new AppError('Invalid request. Please try again or contact support.', 400));
+  }
+
+  // SECURITY: Ignore any amount sent in request body - always use server-calculated amount
+  // Frontend should not send amount at all, but if it does, we ignore it for security
 
   // SECURITY: Use server amount for Paystack, not frontend amount
   const paystackAmount = Math.round(serverAmount * 100); // Convert to kobo/pesewas
 
-  if (order.user.toString() !== req.user.id.toString()) {
-    return next(new AppError('You are not authorized to pay for this order', 403));
+  // CRITICAL: Validate Paystack amount is valid (must be > 0 after conversion)
+  if (!paystackAmount || paystackAmount <= 0 || isNaN(paystackAmount)) {
+    console.error(`[Payment Init] ❌ Invalid Paystack amount calculated:`, {
+      serverAmount,
+      paystackAmount,
+      orderId,
+    });
+    return next(new AppError('Invalid request. Please try again or contact support.', 400));
   }
+
+  // DEBUG: Log user IDs to identify authorization issue
+  console.log('[Payment Init] 🔍 DEBUG - User Authorization Check:');
+  console.log('[Payment Init] ORDER USER:', order.user.toString(), 'Type:', typeof order.user);
+  console.log('[Payment Init] REQUEST USER:', req.user.id.toString(), 'Type:', typeof req.user.id);
+  console.log('[Payment Init] Order User ID (raw):', order.user);
+  console.log('[Payment Init] Request User ID (raw):', req.user.id);
+  console.log('[Payment Init] Are they equal?', order.user.toString() === req.user.id.toString());
+  console.log('[Payment Init] Order ID:', orderId);
+  console.log('[Payment Init] Request headers:', {
+    authorization: req.headers.authorization ? 'Bearer ***' : 'MISSING',
+    cookie: req.headers.cookie ? 'Present' : 'MISSING',
+  });
+
+  // Handle populated user object (from .populate('user'))
+  const orderUserId = order.user?._id 
+    ? order.user._id.toString() 
+    : order.user?.id 
+    ? order.user.id.toString()
+    : order.user?.toString() || String(order.user);
+  
+  const requestUserId = req.user?._id 
+    ? req.user._id.toString()
+    : req.user?.id?.toString() || String(req.user.id);
+
+  if (orderUserId !== requestUserId) {
+    console.error('[Payment Init] ❌ AUTHORIZATION FAILED:');
+    console.error('[Payment Init] Order belongs to user:', orderUserId);
+    console.error('[Payment Init] Request is from user:', requestUserId);
+    console.error('[Payment Init] These do not match!');
+    return next(new AppError('You do not have permission to perform this action', 403));
+  }
+
+  console.log('[Payment Init] ✅ Authorization check passed');
 
   // Get Paystack secret key from environment
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
-    return next(new AppError('Paystack is not configured. Please contact support.', 500));
+    return next(new AppError('Service temporarily unavailable. Please contact support.', 500));
   }
 
   // Prepare Paystack initialization request payload
@@ -167,7 +269,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     // Update callbackUrl to use the forced safe URL
     const safePayload = {
       email,
-      amount: Math.round(amount),
+      amount: paystackAmount, // Use server-calculated amount in kobo/pesewas
       metadata: {
         orderId: order._id.toString(),
         custom_fields: [
@@ -231,7 +333,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
   const payload = {
     email,
-    amount: Math.round(amount), // Amount in kobo/pesewas
+    amount: paystackAmount, // Use server-calculated amount in kobo/pesewas
     metadata: {
       orderId: order._id.toString(),
       custom_fields: [
@@ -297,13 +399,13 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
   // Validate input
   if (!reference) {
-    return next(new AppError('Payment reference is required', 400));
+    return next(new AppError('Invalid request. Please provide all required information.', 400));
   }
 
   // Get Paystack secret key from environment
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
-    return next(new AppError('Paystack is not configured. Please contact support.', 500));
+    return next(new AppError('Service temporarily unavailable. Please contact support.', 500));
   }
 
   try {
@@ -332,7 +434,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     // Check if response has the expected structure
     if (!response.data || response.data.status !== true || !response.data.data) {
       console.error(`[Payment Verification] Invalid response structure:`, response.data);
-      return next(new AppError('Invalid response from payment gateway', 400));
+      return next(new AppError('Request could not be processed. Please try again.', 400));
     }
 
     const transaction = response.data.data;
@@ -351,7 +453,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
     if (!order) {
       console.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
-      return next(new AppError('Order not found', 404));
+      return next(new AppError('Requested resource not found', 404));
     }
 
     // Check if payment was successful
@@ -461,8 +563,24 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       console.log(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
 
       // Reduce product stock after payment is confirmed
+      const stockService = require('../../services/stock/stockService');
+      try {
+        await stockService.reduceOrderStock(order);
+      } catch (stockError) {
+        // Log error but don't fail payment - stock reduction is critical but payment should still succeed
+        console.error('[Payment Verification] Error reducing stock:', stockError);
+        // Optionally, you could send an alert to admins here
+      }
+
+      // Update product totalSold count after payment is confirmed
       const orderController = require('./orderController');
-      await orderController.reduceOrderStock(order);
+      try {
+        await orderController.updateProductTotalSold(order);
+        console.log(`[Payment Verification] Updated totalSold for products in order ${order._id}`);
+      } catch (soldError) {
+        // Log error but don't fail payment - sold count update is non-critical
+        console.error('[Payment Verification] Error updating product totalSold:', soldError);
+      }
 
       // Sync SellerOrder status and payment status (DO NOT credit sellers - they get paid on delivery)
       try {
@@ -549,11 +667,11 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
     // Handle specific Paystack API errors
     if (error.response?.status === 404) {
-      return next(new AppError('Payment reference not found. Please check your payment details.', 404));
+      return next(new AppError('Requested resource not found', 404));
     }
 
     if (error.response?.status === 401) {
-      return next(new AppError('Payment gateway authentication failed. Please contact support.', 500));
+      return next(new AppError('Service temporarily unavailable. Please contact support.', 500));
     }
 
     // Return more specific error message
@@ -566,16 +684,15 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 });
 
 // Paystack webhook handler (for server-to-server callbacks)
+// SECURITY FIX #8: Signature verification is now handled by verifyPaystackWebhook middleware
 exports.paystackWebhook = catchAsync(async (req, res, next) => {
-  const hash = req.headers['x-paystack-signature'];
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
   if (!PAYSTACK_SECRET_KEY) {
-    return next(new AppError('Paystack is not configured', 500));
+    return next(new AppError('Service temporarily unavailable. Please contact support.', 500));
   }
 
-  // Parse webhook event (body is already parsed by express.json() middleware)
-  // Note: For production, verify webhook signature using crypto
+  // Parse webhook event (body is already parsed and verified by verifyPaystackWebhook middleware)
   const event = req.body;
 
   // Handle successful payment event
@@ -725,6 +842,26 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         await order.save({ validateBeforeSave: false });
         console.log(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
 
+        // Reduce product stock after payment is confirmed
+        const stockService = require('../../services/stock/stockService');
+        try {
+          await stockService.reduceOrderStock(order);
+        } catch (stockError) {
+          // Log error but don't fail webhook - stock reduction is critical but payment should still succeed
+          console.error('[Paystack Webhook] Error reducing stock:', stockError);
+          // Optionally, you could send an alert to admins here
+        }
+
+        // Update product totalSold count after payment is confirmed
+        const orderController = require('./orderController');
+        try {
+          await orderController.updateProductTotalSold(order);
+          console.log(`[Paystack Webhook] Updated totalSold for products in order ${order._id}`);
+        } catch (soldError) {
+          // Log error but don't fail webhook - sold count update is non-critical
+          console.error('[Paystack Webhook] Error updating product totalSold:', soldError);
+        }
+
         // Sync SellerOrder status and payment status (DO NOT credit sellers - they get paid on delivery)
         try {
           const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
@@ -835,7 +972,7 @@ exports.getRequestById = catchAsync(async (req, res, next) => {
   });
 
   if (!request) {
-    return next(new AppError('Payment request not found', 404));
+    return next(new AppError('Requested resource not found', 404));
   }
 
   res.status(200).json({
@@ -857,7 +994,7 @@ exports.getPaymentRequestByIdAdmin = catchAsync(async (req, res, next) => {
     .populate('user', 'name email phone');
 
   if (!request) {
-    return next(new AppError('Payment request not found', 404));
+    return next(new AppError('Requested resource not found', 404));
   }
 
   res.status(200).json({
@@ -898,7 +1035,7 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
   // Validate status
   if (!['paid', 'rejected'].includes(status)) {
     return next(
-      new AppError('Invalid status. Must be "paid" or "rejected"', 400),
+      new AppError('Invalid request. Please provide valid information.', 400),
     );
   }
 
@@ -907,13 +1044,13 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     'seller',
   );
   if (!paymentRequest) {
-    return next(new AppError('Payment request not found', 404));
+    return next(new AppError('Requested resource not found', 404));
   }
 
   // Only pending requests can be processed
   if (paymentRequest.status !== 'pending') {
     return next(
-      new AppError('This payment request has already been processed', 400),
+      new AppError('This action cannot be completed', 400),
     );
   }
 
@@ -1042,7 +1179,7 @@ exports.deletePaymentRequest = catchAsync(async (req, res, next) => {
 
     if (!paymentRequest) {
       await session.abortTransaction();
-      return next(new AppError('Payment request not found', 404));
+      return next(new AppError('Requested resource not found', 404));
     }
 
     // Security check: Only allow deactivation if status is "pending"

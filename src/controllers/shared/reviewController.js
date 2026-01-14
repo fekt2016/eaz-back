@@ -24,9 +24,22 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
   if (!req.body.user) req.body.user = req.user.id;
 
   // Validate required fields
-  const { rating, review, title, product, user, order, images } = req.body;
+  const { rating, review, title, product, user, order, orderItem, variantSKU, images } = req.body;
   if (!rating || !review || !title) {
     return next(new AppError('Please provide rating, title, and comment', 400));
+  }
+
+  // SECURITY FIX #10: Sanitize user-generated content to prevent XSS
+  const { sanitizeReview, sanitizeTitle } = require('../../utils/helpers/sanitizeUserContent');
+  const sanitizedReview = sanitizeReview(review);
+  const sanitizedTitle = sanitizeTitle(title);
+  
+  // Validate sanitized content is not empty
+  if (!sanitizedReview || sanitizedReview.trim().length === 0) {
+    return next(new AppError('Review comment cannot be empty', 400));
+  }
+  if (!sanitizedTitle || sanitizedTitle.trim().length === 0) {
+    return next(new AppError('Review title cannot be empty', 400));
   }
 
   // Validate rating range (0.5 increments)
@@ -55,75 +68,134 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
 
   let purchaseOrder = null;
   let verifiedPurchase = false;
+  let selectedOrderItem = null; // Declare outside if/else for scope
 
+  // CRITICAL FIX: Order status must be 'delivered' ONLY (not 'completed' or 'paid')
+  // This ensures reviews can only be created after actual delivery
   if (order) {
-    // If order ID is provided, verify it belongs to user and contains the product
+    // If order ID is provided, verify it belongs to user and is DELIVERED
     purchaseOrder = await Order.findOne({
       _id: order,
       user: req.user.id,
-      status: { $in: ['delivered', 'completed', 'paid'] },
+      $or: [
+        { status: 'delivered' },
+        { currentStatus: 'delivered' },
+      ],
     }).populate('orderItems');
 
     if (!purchaseOrder) {
-      return next(new AppError('Order not found or does not belong to you', 404));
+      return next(new AppError('Order not found, does not belong to you, or has not been delivered yet. Only delivered orders can be reviewed.', 403));
+    }
+
+    // CRITICAL: Order must be delivered (check both status fields)
+    const isDelivered = purchaseOrder.status === 'delivered' || purchaseOrder.currentStatus === 'delivered';
+    if (!isDelivered) {
+      return next(new AppError('Only delivered orders can be reviewed. Please wait until your order is delivered.', 403));
     }
 
     // Check if order contains this product
     const orderItems = await OrderItem.find({ _id: { $in: purchaseOrder.orderItems } });
-    const hasProduct = orderItems.some(item => item.product.toString() === product.toString());
+    const matchingItems = orderItems.filter(item => item.product.toString() === product.toString());
 
-    if (!hasProduct) {
+    if (matchingItems.length === 0) {
       return next(new AppError('This product is not in the specified order', 400));
+    }
+
+    // If orderItem ID is provided, verify it exists and matches
+    if (orderItem) {
+      selectedOrderItem = matchingItems.find(item => item._id.toString() === orderItem.toString());
+      if (!selectedOrderItem) {
+        return next(new AppError('The specified order item does not match this product in the order', 400));
+      }
+    } else {
+      // If no orderItem specified, use the first matching item
+      selectedOrderItem = matchingItems[0];
     }
 
     verifiedPurchase = true;
   } else {
-    // If no order specified, check if user has any completed order with this product
+    // If no order specified, check if user has any DELIVERED order with this product
     const userOrders = await Order.find({
       user: req.user.id,
-      status: { $in: ['delivered', 'completed', 'paid'] },
+      $or: [
+        { status: 'delivered' },
+        { currentStatus: 'delivered' },
+      ],
     }).populate('orderItems');
 
     for (const userOrder of userOrders) {
       const orderItems = await OrderItem.find({ _id: { $in: userOrder.orderItems } });
-      const hasProduct = orderItems.some(item => item.product.toString() === product.toString());
+      const matchingItems = orderItems.filter(item => item.product.toString() === product.toString());
 
-      if (hasProduct) {
+      if (matchingItems.length > 0) {
         purchaseOrder = userOrder;
+        // If orderItem specified, verify it matches
+        if (orderItem) {
+          const selectedItem = matchingItems.find(item => item._id.toString() === orderItem.toString());
+          if (!selectedItem) {
+            continue; // Try next order
+          }
+          selectedOrderItem = selectedItem;
+        } else {
+          selectedOrderItem = matchingItems[0];
+        }
         verifiedPurchase = true;
         break;
       }
     }
 
-    if (!purchaseOrder) {
-      return next(new AppError('You can only review products you have purchased', 403));
+    if (!purchaseOrder || !selectedOrderItem) {
+      return next(new AppError('You can only review products you have purchased and that have been delivered', 403));
     }
   }
 
-  // Check if user already reviewed this product (with order check if provided)
-  const existingReviewQuery = { product, user: req.user.id };
-  if (purchaseOrder) {
+  // Check if user already reviewed this order item (enforce one review per order item)
+  const existingReviewQuery = { user: req.user.id };
+  if (selectedOrderItem) {
+    // Use orderItem for precise duplicate prevention (one review per order item)
+    existingReviewQuery.orderItem = selectedOrderItem._id;
+  } else if (purchaseOrder) {
+    // Fallback to product+order if orderItem not available
+    existingReviewQuery.product = product;
     existingReviewQuery.order = purchaseOrder._id;
+  } else {
+    existingReviewQuery.product = product;
   }
 
   const existingReview = await Review.findOne(existingReviewQuery);
 
   if (existingReview) {
-    return next(new AppError('You have already reviewed this product for this order', 400));
+    return next(new AppError('You have already reviewed this order item', 400));
   }
 
   try {
     const newReview = await Review.create({
       rating,
-      review,
-      title,
+      review: sanitizedReview, // SECURITY FIX #10: Use sanitized review
+      title: sanitizedTitle, // SECURITY FIX #10: Use sanitized title
       product,
       user,
       order: purchaseOrder ? purchaseOrder._id : undefined,
+      orderItem: selectedOrderItem ? selectedOrderItem._id : undefined,
+      variantSKU: selectedOrderItem ? selectedOrderItem.sku : variantSKU || undefined,
       images: images || [],
       verifiedPurchase,
       status: 'pending', // New reviews start as pending
     });
+
+    // Trigger seller rating recalculation (system-derived)
+    try {
+      const sellerRatingService = require('../../services/sellerRatingService');
+      if (productExists.seller) {
+        // Recalculate seller rating asynchronously (don't block response)
+        sellerRatingService.updateSellerRating(productExists.seller._id).catch(err => {
+          console.error('[Review] Error updating seller rating:', err);
+        });
+      }
+    } catch (ratingError) {
+      // Don't fail review creation if rating update fails
+      console.error('[Review] Error triggering seller rating update:', ratingError);
+    }
 
     res.status(201).json({
       status: 'success',
@@ -133,7 +205,7 @@ exports.createUserReview = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return next(new AppError('You have already reviewed this product', 400));
+      return next(new AppError('You have already reviewed this order item', 400));
     }
     next(error);
   }
@@ -157,8 +229,28 @@ exports.updateReview = catchAsync(async (req, res, next) => {
     return next(new AppError('You can only update your own reviews', 403));
   }
 
+  // CRITICAL FIX: Prevent editing after seller reply (best practice)
+  if (review.sellerReply && review.sellerReply.reply) {
+    return next(new AppError('You cannot edit a review after the seller has replied to it', 403));
+  }
+
   // Don't allow changing product, user, or order
   const { product, user, order, ...updateData } = req.body;
+
+  // SECURITY FIX #10: Sanitize user-generated content if being updated
+  const { sanitizeReview, sanitizeTitle } = require('../../utils/helpers/sanitizeUserContent');
+  if (updateData.review) {
+    updateData.review = sanitizeReview(updateData.review);
+    if (!updateData.review || updateData.review.trim().length === 0) {
+      return next(new AppError('Review comment cannot be empty', 400));
+    }
+  }
+  if (updateData.title) {
+    updateData.title = sanitizeTitle(updateData.title);
+    if (!updateData.title || updateData.title.trim().length === 0) {
+      return next(new AppError('Review title cannot be empty', 400));
+    }
+  }
 
   // Validate rating if being updated (0.5 increments)
   if (updateData.rating !== undefined) {
@@ -228,6 +320,20 @@ exports.approveReview = catchAsync(async (req, res, next) => {
 
   // Recalculate product ratings
   await Review.calcAverageRatings(review.product);
+
+  // Trigger seller rating recalculation (system-derived)
+  try {
+    const Product = require('../../models/product/productModel');
+    const sellerRatingService = require('../../services/sellerRatingService');
+    const product = await Product.findById(review.product).select('seller');
+    if (product && product.seller) {
+      sellerRatingService.updateSellerRating(product.seller).catch(err => {
+        console.error('[Review Approval] Error updating seller rating:', err);
+      });
+    }
+  } catch (ratingError) {
+    console.error('[Review Approval] Error triggering seller rating update:', ratingError);
+  }
 
   res.status(200).json({
     status: 'success',
@@ -329,6 +435,13 @@ exports.replyToReview = catchAsync(async (req, res, next) => {
     return next(new AppError('Reply cannot be empty', 400));
   }
 
+  // SECURITY FIX #10: Sanitize seller reply to prevent XSS
+  const { sanitizeText } = require('../../utils/helpers/sanitizeUserContent');
+  const sanitizedReply = sanitizeText(reply);
+  if (!sanitizedReply || sanitizedReply.trim().length === 0) {
+    return next(new AppError('Reply cannot be empty', 400));
+  }
+
   // Check if user is the seller of the product
   const product = await Product.findById(review.product).populate('seller');
   if (!product || !product.seller) {
@@ -340,7 +453,7 @@ exports.replyToReview = catchAsync(async (req, res, next) => {
   }
 
   review.sellerReply = {
-    reply: reply.trim(),
+    reply: sanitizedReply.trim(), // SECURITY FIX #10: Use sanitized reply
     repliedAt: new Date(),
     repliedBy: product.seller._id,
   };

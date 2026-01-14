@@ -28,6 +28,12 @@ const sellerSchema = new mongoose.Schema(
       validate: [validator.isEmail, 'Please provide a valid email'],
       maxlength: [100, 'Email must be less than 50 characters'],
     },
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: [20, 'Phone number must be less than 20 characters'],
+      default: undefined,
+    },
     shopLocation: {
       type: {
         street: String,
@@ -225,6 +231,17 @@ const sellerSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Withdrawable balance cannot be negative'],
     },
+    lastBalanceResetBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+      comment: 'Admin who last reset the seller balance',
+    },
+    lastBalanceResetAt: {
+      type: Date,
+      default: null,
+      comment: 'Timestamp when balance was last reset',
+    },
     taxCategory: {
       type: String,
       enum: ['individual', 'company'],
@@ -234,7 +251,6 @@ const sellerSchema = new mongoose.Schema(
     paystackRecipientCode: {
       type: String,
       default: null,
-      index: true,
     },
     paymentHistory: [
       {
@@ -278,28 +294,50 @@ const sellerSchema = new mongoose.Schema(
             'Standard Chartered',
             'First National Bank',
           ],
-          default: '',
+          default: undefined, // Changed from '' to undefined to avoid enum validation on empty
         },
         bankCode: { type: String, default: '' }, // Paystack bank code (e.g., '044', '050')
         branch: { type: String, default: '' },
+        // Per-payment-method payout status
+        payoutStatus: {
+          type: String,
+          enum: ['pending', 'verified', 'rejected'],
+          default: 'pending',
+          comment: 'Payout verification status for this specific bank account',
+        },
+        payoutVerifiedAt: { type: Date, default: null },
+        payoutVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+        payoutRejectionReason: { type: String, default: null },
       },
       mobileMoney: {
-        accountName: { type: String, },
+        accountName: { type: String, default: '' },
         phone: {
           type: String,
           validate: {
             validator: function (v) {
+              // Only validate if value is provided (not empty/undefined)
+              if (!v || v === '') return true;
               return /^0(24|54|55|59|20|50|27|57|26|56|23|28)\d{7}$/.test(v);
             },
             message: 'Invalid mobile money number',
           },
-          default: '',
+          default: undefined, // Changed from '' to undefined
         },
         network: {
           type: String,
           enum: ['MTN', 'vodafone', 'airteltigo'],
-          default: '',
+          default: undefined, // Changed from '' to undefined to avoid enum validation on empty
         },
+        // Per-payment-method payout status
+        payoutStatus: {
+          type: String,
+          enum: ['pending', 'verified', 'rejected'],
+          default: 'pending',
+          comment: 'Payout verification status for this specific mobile money account',
+        },
+        payoutVerifiedAt: { type: Date, default: null },
+        payoutVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+        payoutRejectionReason: { type: String, default: null },
       },
     },
     productCount: {
@@ -335,6 +373,23 @@ const sellerSchema = new mongoose.Schema(
       select: false,
     },
     otpType: String,
+    // Two-Factor Authentication (2FA) fields - matching buyer model
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorSecret: {
+      type: String,
+      select: false, // Don't return in queries by default
+    },
+    twoFactorTempSecret: {
+      type: String,
+      select: false, // For setup process
+    },
+    twoFactorBackupCodes: {
+      type: [String],
+      select: false,
+    },
     // Onboarding & Verification System
     onboardingStage: {
       type: String,
@@ -345,10 +400,59 @@ const sellerSchema = new mongoose.Schema(
       emailVerified: { type: Boolean, default: false },
       businessVerified: { type: Boolean, default: false },
     },
+    // NOTE: Global payoutStatus removed - use individual payment method payoutStatus instead
+    // Check paymentMethods.bankAccount.payoutStatus and paymentMethods.mobileMoney.payoutStatus
+    payoutVerificationHistory: [
+      {
+        action: {
+          type: String,
+          enum: ['verified', 'rejected'],
+          required: true,
+        },
+        adminId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Admin',
+          required: true,
+        },
+        reason: {
+          type: String,
+          default: null,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        paymentMethod: {
+          type: String,
+          enum: ['bank', 'mtn_momo', 'vodafone_cash', 'airtel_tigo_money'],
+        },
+        paymentDetails: {
+          type: mongoose.Schema.Types.Mixed,
+        },
+      },
+    ],
     requiredSetup: {
       hasAddedBusinessInfo: { type: Boolean, default: false },
       hasAddedBankDetails: { type: Boolean, default: false },
       hasAddedFirstProduct: { type: Boolean, default: false },
+    },
+    notificationSettings: {
+      email: {
+        orderUpdates: { type: Boolean, default: true },
+        paymentNotifications: { type: Boolean, default: true },
+        productAlerts: { type: Boolean, default: true },
+        accountSecurity: { type: Boolean, default: true },
+        marketingEmails: { type: Boolean, default: false },
+      },
+      push: {
+        orderUpdates: { type: Boolean, default: true },
+        newMessages: { type: Boolean, default: true },
+        systemAlerts: { type: Boolean, default: true },
+      },
+      sms: {
+        criticalAlerts: { type: Boolean, default: true },
+        securityNotifications: { type: Boolean, default: true },
+      },
     },
     createdAt: {
       type: Date,
@@ -359,6 +463,12 @@ const sellerSchema = new mongoose.Schema(
       default: Date.now(),
     },
     lastLogin: { type: Date, default: Date.now() },
+    // SECURITY FIX #9: Session activity tracking for timeout
+    lastActivity: { 
+      type: Date, 
+      default: Date.now,
+      select: false, // Don't return in queries by default
+    },
   },
   {
     timestamps: true,
@@ -377,10 +487,106 @@ sellerSchema.virtual('orders', {
   foreignField: 'seller',
   localField: '_id',
 });
+
+/**
+ * Compute isSetupComplete - backend-driven setup completion check
+ * Returns true if ALL of the following are true:
+ * 1. All 3 business documents are uploaded AND verified
+ * 2. At least one payment method exists AND is verified
+ * 3. Email is verified OR phone exists
+ */
+sellerSchema.methods.computeIsSetupComplete = function() {
+  // Helper function to get document status
+  const getDocumentStatus = (document) => {
+    if (!document) return null;
+    if (typeof document === 'string') return null; // Old format, can't determine status
+    return document.status || null;
+  };
+
+  // 1. Check documents: All 3 must exist, have URLs, AND be verified
+  const businessCertStatus = getDocumentStatus(this.verificationDocuments?.businessCert);
+  const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
+  const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
+
+  const allDocumentsUploaded = 
+    (this.verificationDocuments?.businessCert && 
+     (typeof this.verificationDocuments.businessCert === 'string' || 
+      this.verificationDocuments.businessCert.url)) &&
+    (this.verificationDocuments?.idProof && 
+     (typeof this.verificationDocuments.idProof === 'string' || 
+      this.verificationDocuments.idProof.url)) &&
+    (this.verificationDocuments?.addresProof && 
+     (typeof this.verificationDocuments.addresProof === 'string' || 
+      this.verificationDocuments.addresProof.url));
+
+  const allDocumentsVerified = 
+    businessCertStatus === 'verified' &&
+    idProofStatus === 'verified' &&
+    addresProofStatus === 'verified';
+
+  const documentsComplete = allDocumentsUploaded && allDocumentsVerified;
+
+  // 2. Check payment method: At least one exists AND is verified
+  const bankAccountPayoutStatus = this.paymentMethods?.bankAccount?.payoutStatus;
+  const mobileMoneyPayoutStatus = this.paymentMethods?.mobileMoney?.payoutStatus;
+  const hasPaymentMethodVerified = 
+    bankAccountPayoutStatus === 'verified' || 
+    mobileMoneyPayoutStatus === 'verified';
+
+  // 3. Check contact: Email verified OR phone exists
+  const isEmailVerified = this.verification?.emailVerified === true;
+  const isPhoneVerified = this.phone && this.phone.trim() !== '';
+  const contactComplete = isEmailVerified || isPhoneVerified;
+
+  // All three must be complete
+  return documentsComplete && hasPaymentMethodVerified && contactComplete;
+};
 sellerSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   this.passwordConfirm = undefined;
+  next();
+});
+
+// Pre-save hook to clean up empty paymentMethods that would fail validation
+sellerSchema.pre('save', function (next) {
+  if (this.paymentMethods) {
+    // Clean up bankAccount if it has empty enum fields
+    if (this.paymentMethods.bankAccount) {
+      if (!this.paymentMethods.bankAccount.bankName || this.paymentMethods.bankAccount.bankName === '') {
+        this.paymentMethods.bankAccount.bankName = undefined;
+      }
+      // Remove bankAccount if all fields are empty
+      const hasBankData = this.paymentMethods.bankAccount.bankName || 
+                         this.paymentMethods.bankAccount.accountNumber || 
+                         this.paymentMethods.bankAccount.accountName;
+      if (!hasBankData) {
+        this.paymentMethods.bankAccount = undefined;
+      }
+    }
+    
+    // Clean up mobileMoney if it has empty enum fields
+    if (this.paymentMethods.mobileMoney) {
+      if (!this.paymentMethods.mobileMoney.phone || this.paymentMethods.mobileMoney.phone === '') {
+        this.paymentMethods.mobileMoney.phone = undefined;
+      }
+      if (!this.paymentMethods.mobileMoney.network || this.paymentMethods.mobileMoney.network === '') {
+        this.paymentMethods.mobileMoney.network = undefined;
+      }
+      // Remove mobileMoney if all fields are empty
+      const hasMobileData = this.paymentMethods.mobileMoney.phone || 
+                           this.paymentMethods.mobileMoney.network || 
+                           this.paymentMethods.mobileMoney.accountName;
+      if (!hasMobileData) {
+        this.paymentMethods.mobileMoney = undefined;
+      }
+    }
+    
+    // Remove paymentMethods entirely if both bankAccount and mobileMoney are empty
+    if (!this.paymentMethods.bankAccount && !this.paymentMethods.mobileMoney) {
+      this.paymentMethods = undefined;
+    }
+  }
   next();
 });
 
@@ -510,12 +716,13 @@ sellerSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
 };
 
 sellerSchema.methods.createPasswordResetToken = function () {
-  resetToken = crypto.randomBytes(32).toString('hex');
+  const resetToken = crypto.randomBytes(32).toString('hex');
   this.passwordResetToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  this.passwordResetExpires = Date.now() + 10 * 60 * 6000;
+  // Fix: 10 minutes = 10 * 60 * 1000 milliseconds (not 6000)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };
 
@@ -620,6 +827,169 @@ sellerSchema.pre('save', function (next) {
   if (this.isModified('balance') || this.isModified('lockedBalance') || this.isModified('pendingBalance')) {
     this.calculateWithdrawableBalance();
   }
+  next();
+});
+
+// Pre-save hook to detect payout detail changes and reset verification
+sellerSchema.pre('save', async function (next) {
+  // Check if paymentMethods are modified
+  if (!this.isModified('paymentMethods')) {
+    return next();
+  }
+
+  // Get the original document to compare
+  if (this.isNew) {
+    return next(); // New seller, no previous payout to compare
+  }
+
+  try {
+    const originalSeller = await this.constructor.findById(this._id).select('paymentMethods');
+    if (!originalSeller) {
+      return next(); // Original not found, skip check
+    }
+
+    // Compare bank account details
+    const bankAccountChanged = 
+      (this.paymentMethods?.bankAccount?.accountNumber || '') !== (originalSeller.paymentMethods?.bankAccount?.accountNumber || '') ||
+      (this.paymentMethods?.bankAccount?.accountName || '') !== (originalSeller.paymentMethods?.bankAccount?.accountName || '') ||
+      (this.paymentMethods?.bankAccount?.bankName || '') !== (originalSeller.paymentMethods?.bankAccount?.bankName || '');
+
+    // Compare mobile money details
+    const mobileMoneyChanged =
+      (this.paymentMethods?.mobileMoney?.phone || '') !== (originalSeller.paymentMethods?.mobileMoney?.phone || '') ||
+      (this.paymentMethods?.mobileMoney?.network || '') !== (originalSeller.paymentMethods?.mobileMoney?.network || '') ||
+      (this.paymentMethods?.mobileMoney?.accountName || '') !== (originalSeller.paymentMethods?.mobileMoney?.accountName || '');
+
+    // If bank account details changed, reset bank account payout status
+    if (bankAccountChanged && this.paymentMethods?.bankAccount) {
+      const bankStatus = originalSeller.paymentMethods?.bankAccount?.payoutStatus;
+      if (bankStatus === 'verified' || bankStatus === 'rejected') {
+        this.paymentMethods.bankAccount.payoutStatus = 'pending';
+        this.paymentMethods.bankAccount.payoutVerifiedAt = null;
+        this.paymentMethods.bankAccount.payoutVerifiedBy = null;
+        this.paymentMethods.bankAccount.payoutRejectionReason = null;
+      }
+    }
+
+    // If mobile money details changed, reset mobile money payout status
+    if (mobileMoneyChanged && this.paymentMethods?.mobileMoney) {
+      const mobileStatus = originalSeller.paymentMethods?.mobileMoney?.payoutStatus;
+      if (mobileStatus === 'verified' || mobileStatus === 'rejected') {
+        this.paymentMethods.mobileMoney.payoutStatus = 'pending';
+        this.paymentMethods.mobileMoney.payoutVerifiedAt = null;
+        this.paymentMethods.mobileMoney.payoutVerifiedBy = null;
+        this.paymentMethods.mobileMoney.payoutRejectionReason = null;
+      }
+    }
+
+    // No global payoutStatus - each payment method has its own payoutStatus
+
+    // Also reset PaymentMethod verificationStatus for matching records
+    // This keeps PaymentMethod and Seller payout status in sync
+    try {
+      const PaymentMethod = mongoose.model('PaymentMethod');
+      const User = mongoose.model('User');
+      
+      // Find User account for this seller (if exists)
+      const userAccount = await User.findOne({ email: this.email });
+      if (userAccount) {
+        // Find matching PaymentMethod records and reset their verification status
+        let matchingPaymentMethods = [];
+        
+        // Check bank account changes
+        if (bankAccountChanged && this.paymentMethods?.bankAccount?.accountNumber) {
+          const accountNumber = this.paymentMethods.bankAccount.accountNumber.replace(/\s+/g, '');
+          const bankMethods = await PaymentMethod.find({
+            user: userAccount._id,
+            type: 'bank_transfer',
+            accountNumber: accountNumber,
+          });
+          matchingPaymentMethods.push(...bankMethods);
+        }
+        
+        // Check mobile money changes
+        if (mobileMoneyChanged && this.paymentMethods?.mobileMoney?.phone) {
+          const normalizedPhone = this.paymentMethods.mobileMoney.phone.replace(/\D/g, '');
+          const mobileMethods = await PaymentMethod.find({
+            user: userAccount._id,
+            type: 'mobile_money',
+            mobileNumber: normalizedPhone,
+          });
+          matchingPaymentMethods.push(...mobileMethods);
+        }
+        
+        // Reset verification status for all matching PaymentMethod records
+        if (matchingPaymentMethods.length > 0) {
+          for (const pm of matchingPaymentMethods) {
+            pm.verificationStatus = 'pending';
+            pm.verifiedAt = null;
+            pm.verifiedBy = null;
+            pm.rejectionReason = null;
+            
+            // Add to verification history
+            if (!pm.verificationHistory) {
+              pm.verificationHistory = [];
+            }
+            pm.verificationHistory.push({
+              status: 'pending',
+              adminId: null, // System-initiated reset
+              reason: 'Payment details changed - verification reset',
+              timestamp: new Date(),
+            });
+            
+            await pm.save({ validateBeforeSave: false });
+          }
+          console.log(`[Seller Model] Reset ${matchingPaymentMethods.length} PaymentMethod verification status(es) for seller ${this._id}`);
+        }
+      }
+    } catch (paymentMethodError) {
+      console.error('[Seller Model] Error resetting PaymentMethod verification status:', paymentMethodError);
+      // Don't fail seller save if PaymentMethod update fails
+    }
+
+    // Add to verification history only if payment methods actually changed
+    if (bankAccountChanged || mobileMoneyChanged) {
+      if (!this.payoutVerificationHistory) {
+        this.payoutVerificationHistory = [];
+      }
+      this.payoutVerificationHistory.push({
+        action: 'rejected', // Treat as rejection due to change
+        adminId: null, // System-initiated
+        reason: 'Payout details changed - verification reset',
+        timestamp: new Date(),
+        paymentMethod: this.paymentMethods?.bankAccount ? 'bank' : 
+                      this.paymentMethods?.mobileMoney ? 
+                        (this.paymentMethods.mobileMoney.network === 'MTN' ? 'mtn_momo' :
+                         this.paymentMethods.mobileMoney.network === 'Vodafone' ? 'vodafone_cash' :
+                         'airtel_tigo_money') : null,
+        paymentDetails: this.paymentMethods?.bankAccount || this.paymentMethods?.mobileMoney,
+      });
+
+      console.log(`[Seller Model] Payout details changed for seller ${this._id}. Verification reset to pending.`);
+
+      // Check for pending withdrawals and log warning
+      try {
+        const PaymentRequest = mongoose.model('PaymentRequest');
+        const pendingWithdrawals = await PaymentRequest.countDocuments({
+          seller: this._id,
+          status: 'pending',
+          isActive: true,
+        });
+
+        if (pendingWithdrawals > 0) {
+          console.warn(`[Seller Model] ⚠️ Seller ${this._id} has ${pendingWithdrawals} pending withdrawal(s). These should be reviewed as payout details have changed.`);
+          // Note: We don't automatically cancel withdrawals, but admin should review them
+        }
+      } catch (withdrawalCheckError) {
+        console.error('[Seller Model] Error checking pending withdrawals:', withdrawalCheckError);
+        // Don't fail save if withdrawal check fails
+      }
+    }
+  } catch (error) {
+    console.error('[Seller Model] Error checking payout detail changes:', error);
+    // Don't fail save if check fails
+  }
+
   next();
 });
 

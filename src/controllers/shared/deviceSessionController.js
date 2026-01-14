@@ -8,12 +8,19 @@ const jwt = require('jsonwebtoken');
 
 /**
  * Get all active device sessions for the current user
+ * Returns devices from all platforms (saysay, eazmainapp, eazmain, etc.)
  */
 exports.getMyDevices = catchAsync(async (req, res, next) => {
   const userId = req.user._id || req.user.id;
-  const platform = req.headers['x-platform'] || 'eazmain';
+  const requestedPlatform = req.headers['x-platform'] || 'eazmain';
 
-  const sessions = await DeviceSession.findActiveSessions(userId, platform);
+  // CRITICAL: Query for all active sessions regardless of platform
+  // This ensures users can see all their devices (mobile, web, etc.)
+  // If you want platform-specific filtering, pass null to findActiveSessions
+  const sessions = await DeviceSession.findActiveSessions(userId, null);
+  
+  // Log for debugging
+  console.log(`[getMyDevices] Found ${sessions.length} active sessions for user ${userId} (requested platform: ${requestedPlatform})`);
 
   const devices = sessions.map((session) => {
     const uaInfo = parseUserAgent(session.userAgent);

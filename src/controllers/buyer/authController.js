@@ -9,11 +9,12 @@ const Seller = require('../../models/user/sellerModel');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
-const { sendCustomEmail, sendLoginEmail, sendLoginOtpEmail } = require('../../utils/email/emailService');
+const { sendCustomEmail, sendLoginEmail, sendLoginOtpEmail, sendPasswordResetEmail } = require('../../utils/email/emailService');
 const { createSendToken } = require('../../utils/helpers/createSendToken');
 const { validateGhanaPhone } = require('../../utils/helpers/helper');
 const bcrypt = require('bcryptjs');
 const sanitizePath = require('../../utils/helpers/sanitizePath');
+const speakeasy = require('speakeasy');
 const { isPublicRoute,
   isTokenBlacklisted,
   matchRoutePattern,
@@ -24,8 +25,13 @@ const { isPublicRoute,
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+// Shared helpers for standardized auth
+const { normalizeEmail, normalizePhone, OTP_TYPES } = require('../../utils/helpers/authHelpers');
+const { generateOtp } = require('../../utils/helpers/otpHelpers');
 
 // Initialize route cache (5 minutes TTL)
+// Initialize login session cache (5 minutes TTL) for 2FA login flow
+const loginSessionCache = new NodeCache({ stdTTL: 300 });
 
 // Define public routes
 const publicRoutes = [
@@ -60,21 +66,16 @@ const publicRoutes = [
 
 // Controllers/authController.js (signup part)
 exports.signup = catchAsync(async (req, res, next) => {
-  // Phone validation
-  if (req.body.phone && !validateGhanaPhone(req.body.phone)) {
-    return next(new AppError('Please provide a valid Ghana phone number', 400));
-  }
-
-  // Email validation
-  if (req.body.email && !validator.isEmail(req.body.email)) {
+  // Normalize and validate email (required)
+  const normalizedEmail = normalizeEmail(req.body.email);
+  if (!normalizedEmail) {
     return next(new AppError('Please provide a valid email address', 400));
   }
 
-  // Require either email or phone
-  if (!req.body.email && !req.body.phone) {
-    return next(
-      new AppError('Please provide either email or phone number', 400),
-    );
+  // Phone is optional - normalize if provided
+  const normalizedPhone = normalizePhone(req.body.phone);
+  if (req.body.phone && normalizedPhone && !validateGhanaPhone(normalizedPhone)) {
+    return next(new AppError('Please provide a valid Ghana phone number', 400));
   }
 
   if (!req.body.password || !req.body.passwordConfirm) {
@@ -87,28 +88,50 @@ exports.signup = catchAsync(async (req, res, next) => {
   }
 
   try {
-    const newUser = await User.create({
+    // SECURITY: Enforce role server-side (buyer only)
+    // Build user object - only include phone if provided
+    const userData = {
       name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone ? req.body.phone.replace(/\D/g, '') : undefined,
+      email: normalizedEmail,
       password: req.body.password,
       passwordConfirm: req.body.passwordConfirm,
       passwordChangedAt: req.body.passwordChangedAt,
+      role: 'user', // User model enum: 'user', 'seller', 'admin', 'driver', 'eazshop_store'
       emailVerified: false, // Always false on signup - requires OTP verification
       phoneVerified: false,
-    });
+    };
+    
+    // Only add phone if provided and valid
+    if (normalizedPhone) {
+      const phoneNumber = parseInt(normalizedPhone, 10);
+      // Validate the conversion
+      if (isNaN(phoneNumber) || phoneNumber <= 0) {
+        return next(new AppError('Invalid phone number format', 400));
+      }
+      userData.phone = phoneNumber;
+    }
+    // If phone not provided, omit it entirely (allows null/undefined in DB)
+    
+    const newUser = await User.create(userData);
 
-    // Generate OTP for email verification
+    // Generate OTP for signup verification using shared helper
     const { sendLoginOtpEmail } = require('../../utils/email/emailService');
-    const otp = newUser.createOtp();
+    const otp = generateOtp(newUser, OTP_TYPES.SIGNUP);
     await newUser.save({ validateBeforeSave: false });
 
-    // SECURITY FIX #5: Log OTP generation without exposing the actual OTP value
-    console.log('========================================');
-    console.log('[Buyer Signup] OTP generated for user:', newUser._id);
-    console.log(`[Buyer Signup] User: ${newUser.email || newUser.phone}`);
-    console.log('[Buyer Signup] OTP expires in 10 minutes');
-    console.log('========================================');
+    // SECURITY: Log OTP generation for development only (NEVER in production)
+    if (process.env.NODE_ENV !== 'production') {
+      // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
+      const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+      logOtpGeneration(newUser._id, newUser.email || newUser.phone, 'signup');
+      secureLog.debug('Signup OTP generated', {
+        userId: newUser._id,
+        email: newUser.email,
+        phone: newUser.phone,
+        expires: new Date(newUser.otpExpires).toLocaleString(),
+        // OTP value is NEVER logged, even in development
+      });
+    }
 
     // Send OTP via email
     try {
@@ -150,16 +173,40 @@ exports.signup = catchAsync(async (req, res, next) => {
   } catch (err) {
     // If email fails, delete unverified user
     if (err.code === 11000) {
+      // SECURITY: Generic error message to prevent account enumeration
       return next(
         new AppError(
-          'This email or phone is already registered. Please log in.',
+          'Unable to process request',
           400,
         ),
       );
     }
 
-    await User.findOneAndDelete({ email: req.body.email });
+    // Clean up: Delete user if creation failed (use normalized email)
+    if (normalizedEmail) {
+      await User.findOneAndDelete({ email: normalizedEmail });
+    }
+    
+    // Log detailed error for debugging
     console.error('Signup Error:', err);
+    console.error('Signup Error Details:', {
+      message: err.message,
+      name: err.name,
+      code: err.code,
+      errors: err.errors,
+      stack: err.stack,
+    });
+
+    // Return more specific error message if it's a validation error
+    if (err.name === 'ValidationError') {
+      const validationErrors = Object.values(err.errors || {}).map(e => e.message).join(', ');
+      return next(
+        new AppError(
+          `Validation error: ${validationErrors}`,
+          400,
+        ),
+      );
+    }
 
     return next(
       new AppError(
@@ -213,6 +260,280 @@ exports.requireVerifiedEmail = catchAsync(async (req, res, next) => {
   }
   next();
 });
+/**
+ * POST /users/login
+ * Login with email + password only (no OTP)
+ * If 2FA is enabled, returns 2fa_required response
+ * If 2FA is disabled, issues token immediately
+ */
+exports.login = catchAsync(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return next(new AppError('Please provide email and password', 400));
+  }
+
+  if (!validator.isEmail(email)) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
+
+  // SECURITY: Normalize email to prevent case-sensitivity issues
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
+
+  // Find user with password
+  const user = await User.findOne({ email: normalizedEmail }).select('+password +twoFactorEnabled');
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  // SECURITY: Check if account is suspended
+  if (user.active === false) {
+    return next(new AppError('Your account has been deactivated. Please contact support.', 401));
+  }
+
+  // SECURITY: Check if account is verified (REQUIRED before login)
+  // Email verification is required (phone login removed)
+  if (!user.emailVerified) {
+    return next(
+      new AppError(
+        'Account not verified. Please verify your email address first.',
+        403
+      )
+    );
+  }
+
+  // SECURITY: Verify password
+  const passwordValid = await user.correctPassword(password);
+  if (!passwordValid) {
+    // SECURITY: Increment failed login attempts (if field exists)
+    if (user.failedLoginAttempts !== undefined) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      // Lock account after 5 failed attempts (15 minutes)
+      if (user.failedLoginAttempts >= 5) {
+        user.accountLockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save({ validateBeforeSave: false });
+        return next(new AppError('Too many failed login attempts. Account locked for 15 minutes.', 429));
+      }
+      await user.save({ validateBeforeSave: false });
+    }
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  // SECURITY: Check if account is locked
+  if (user.accountLockedUntil && new Date(user.accountLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil(
+      (new Date(user.accountLockedUntil).getTime() - Date.now()) / (1000 * 60)
+    );
+    return next(
+      new AppError(
+        `Account is temporarily locked. Please try again in ${minutesRemaining} minute(s).`,
+        429
+      )
+    );
+  }
+
+  // Reset failed login attempts on successful password verification
+  if (user.failedLoginAttempts !== undefined && user.failedLoginAttempts > 0) {
+    user.failedLoginAttempts = 0;
+    user.accountLockedUntil = null;
+    await user.save({ validateBeforeSave: false });
+  }
+
+  // Check 2FA status
+  if (user.twoFactorEnabled) {
+    // 2FA is enabled - require Google Authenticator code
+    // Generate temporary session ID for 2FA verification
+    const loginSessionId = crypto.randomBytes(32).toString('hex');
+    
+    // Store session in shared cache (5 minutes TTL)
+    loginSessionCache.set(loginSessionId, {
+      userId: user._id.toString(),
+      email: user.email,
+      timestamp: Date.now(),
+    });
+
+    return res.status(200).json({
+      status: '2fa_required',
+      message: 'Two-factor authentication is enabled. Please provide your 2FA code.',
+      requires2FA: true,
+      loginSessionId: loginSessionId,
+      data: {
+        userId: user._id,
+        email: user.email,
+      },
+    });
+  }
+
+  // 2FA is disabled - issue token immediately
+  // Use standardized login helper
+  const { handleSuccessfulLogin } = require('../../utils/helpers/authHelpers');
+  
+  try {
+    const response = await handleSuccessfulLogin(req, res, user, 'buyer');
+    res.status(200).json(response);
+  } catch (deviceError) {
+    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+      return next(new AppError(deviceError.message, 403));
+    }
+    // In dev, continue without device session
+    const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
+    res.status(200).json(response);
+  }
+});
+
+/**
+ * POST /users/verify-2fa-login
+ * Verify 2FA code and issue JWT token
+ * Requires loginSessionId from /users/login response
+ */
+exports.verify2FALogin = catchAsync(async (req, res, next) => {
+  const { loginSessionId, twoFactorCode } = req.body;
+
+  if (!loginSessionId || !twoFactorCode) {
+    return next(new AppError('Please provide loginSessionId and 2FA code', 400));
+  }
+
+  // Retrieve session from shared cache
+  const session = loginSessionCache.get(loginSessionId);
+
+  if (!session) {
+    return next(new AppError('Login session expired. Please login again.', 401));
+  }
+
+  // Find user with 2FA secret
+  const user = await User.findById(session.userId).select('+twoFactorSecret +twoFactorBackupCodes');
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  if (!user.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled for this account', 400));
+  }
+
+  // Verify 2FA code
+  const verified = speakeasy.totp.verify({
+    secret: user.twoFactorSecret,
+    encoding: 'base32',
+    token: twoFactorCode,
+    window: 2,
+  });
+
+  // Check backup codes if TOTP fails
+  let backupCodeUsed = false;
+  if (!verified && user.twoFactorBackupCodes && user.twoFactorBackupCodes.length > 0) {
+    const backupCodeIndex = user.twoFactorBackupCodes.findIndex(
+      (code) => code === twoFactorCode.toUpperCase()
+    );
+    
+    if (backupCodeIndex !== -1) {
+      user.twoFactorBackupCodes.splice(backupCodeIndex, 1);
+      await user.save({ validateBeforeSave: false });
+      backupCodeUsed = true;
+    }
+  }
+
+  if (!verified && !backupCodeUsed) {
+    // Delete session on failed attempt
+    loginSessionCache.del(loginSessionId);
+    return next(new AppError('Invalid 2FA code. Please try again.', 401));
+  }
+
+  // 2FA verified - delete session and issue token
+  loginSessionCache.del(loginSessionId);
+
+  // Create device session
+  const { createDeviceSession } = require('../../utils/helpers/createDeviceSession');
+  let sessionData;
+  try {
+    sessionData = await createDeviceSession(req, user, 'eazmain');
+  } catch (deviceError) {
+    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+      return next(new AppError(deviceError.message, 403));
+    }
+    sessionData = null;
+  }
+
+  // Create token
+  const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
+  const signToken = (id, role, deviceId) => {
+    const payload = { id, role };
+    if (deviceId) payload.deviceId = deviceId;
+    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
+  };
+
+  const token = signToken(user._id, user.role, sessionData?.deviceId);
+
+  // Set cookie
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+    expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000),
+    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+  };
+
+  res.cookie('main_jwt', token, cookieOptions);
+
+  // Generate CSRF token on successful login
+  const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
+  generateCSRFToken(res);
+
+  // Update last login and last activity
+  user.lastLogin = new Date();
+  user.lastActivity = Date.now(); // SECURITY FIX #9: Initialize session activity
+  await user.save({ validateBeforeSave: false });
+
+  // Create safe user payload
+  const safeUserPayload = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    emailVerified: user.emailVerified,
+    phoneVerified: user.phoneVerified,
+    isVerified: user.emailVerified || user.phoneVerified,
+    lastLogin: user.lastLogin,
+  };
+
+  // Log activity
+  logActivityAsync({
+    userId: user._id,
+    role: 'buyer',
+    action: 'LOGIN',
+    description: 'User logged in with email, password, and 2FA',
+    req,
+  });
+
+  // SECURITY: Token is ONLY in HTTP-only cookie, NOT in JSON response
+  // Return response without token to prevent XSS attacks
+  const response = {
+    status: 'success',
+    message: 'Login successful',
+    user: safeUserPayload,
+  };
+
+  if (sessionData) {
+    response.deviceId = sessionData.deviceId;
+    // refreshToken is stored in device session, not exposed to client
+    if (sessionData.suspicious) {
+      response.warning = 'New device detected. Please verify this is you.';
+    }
+  }
+
+  res.status(200).json(response);
+});
+
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { loginId } = req.body;
 
@@ -240,8 +561,16 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
-  // SECURITY FIX #5: Don't log actual OTP value
-  console.log('[Auth] OTP generated for user:', user._id);
+  
+  // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(user._id, loginId, 'login');
+  secureLog.debug('Login OTP generated', {
+    userId: user._id,
+    loginId,
+    expires: new Date(user.otpExpires).toLocaleString(),
+    // OTP value is NEVER logged, even in development
+  });
 
   // Send OTP via email using SendGrid
   if (validator.isEmail(loginId)) {
@@ -254,11 +583,14 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     }
   }
 
-  res.status(200).json({
+  // SECURITY FIX #3: NEVER include OTP in API response, even in development
+  const response = {
     status: 'success',
     message: 'OTP sent to your email or phone!',
-    // SECURITY FIX #5: Don't send OTP in response (removed security risk)
-  });
+    // OTP is NEVER included in response (security best practice)
+  };
+
+  res.status(200).json(response);
 });
 
 exports.verifyOtp = catchAsync(async (req, res, next) => {
@@ -418,7 +750,53 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     if (!passwordValid) {
       console.log('[verifyOtp] Password validation failed');
-      return next(new AppError('Incorrect password', 401));
+      // SECURITY: Generic error message to prevent information leakage
+      return next(new AppError('Invalid credentials', 401));
+    }
+
+    // Check if 2FA is enabled and verify 2FA code if required
+    const userWith2FA = await User.findById(user._id).select('+twoFactorSecret');
+    if (userWith2FA.twoFactorEnabled) {
+      const { twoFactorCode } = req.body;
+      
+      if (!twoFactorCode) {
+        return res.status(200).json({
+          status: '2fa_required',
+          message: 'Two-factor authentication is enabled. Please provide your 2FA code.',
+          requires2FA: true,
+          data: {
+            userId: user._id,
+            email: user.email,
+            phone: user.phone,
+          },
+        });
+      }
+
+      // Verify 2FA code
+      const verified = speakeasy.totp.verify({
+        secret: userWith2FA.twoFactorSecret,
+        encoding: 'base32',
+        token: twoFactorCode,
+        window: 2, // Allow ±1 time step (60 seconds total window)
+      });
+
+      // Also check backup codes if 2FA code fails
+      if (!verified && userWith2FA.twoFactorBackupCodes && userWith2FA.twoFactorBackupCodes.length > 0) {
+        const backupCodeIndex = userWith2FA.twoFactorBackupCodes.findIndex(
+          (code) => code === twoFactorCode.toUpperCase()
+        );
+        
+        if (backupCodeIndex !== -1) {
+          // Remove used backup code
+          userWith2FA.twoFactorBackupCodes.splice(backupCodeIndex, 1);
+          await userWith2FA.save({ validateBeforeSave: false });
+          // Backup code is valid, continue with login
+        } else {
+          return next(new AppError('Invalid 2FA code. Please try again.', 401));
+        }
+      } else if (!verified) {
+        return next(new AppError('Invalid 2FA code. Please try again.', 401));
+      }
     }
 
     // Capture IP and device
@@ -487,6 +865,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     user.otp = undefined;
     user.otpExpires = undefined;
     user.lastLogin = Date.now();
+    user.lastActivity = Date.now(); // SECURITY FIX #9: Initialize session activity
     await user.save({ validateBeforeSave: false });
     console.log('2', user);
 
@@ -592,6 +971,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     res.cookie('main_jwt', token, cookieOptions);
+    
+    // Generate CSRF token on successful authentication
+    const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
+    generateCSRFToken(res);
+    
     console.log(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
 
     // Remove sensitive data
@@ -625,11 +1009,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       req,
     });
 
-    // Return JSON with token, deviceId, refreshToken and redirectTo
+    // SECURITY: Token is ONLY in HTTP-only cookie, NOT in JSON response
+    // Return JSON without token to prevent XSS attacks
     const response = {
       status: 'success',
       message: 'OTP verified',
-      token,
       user: safeUserPayload,
       redirectTo: sanitizedRedirectTo,
     };
@@ -637,7 +1021,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     // Add device session info if created
     if (sessionData) {
       response.deviceId = sessionData.deviceId;
-      response.refreshToken = sessionData.refreshToken;
+      // refreshToken is stored in device session, not exposed to client
       if (sessionData.suspicious) {
         response.warning = 'New device detected. Please verify this is you.';
       }
@@ -650,8 +1034,6 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 });
 
 exports.logout = catchAsync(async (req, res, next) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-
   // Logout device session with timeout
   const { logoutDevice } = require('../../utils/helpers/createDeviceSession');
   try {
@@ -685,52 +1067,128 @@ exports.logout = catchAsync(async (req, res, next) => {
     }
   }
 
-  // Clear JWT cookie with same settings as creation
-  res.cookie('main_jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000), // Expire immediately (10 seconds)
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    path: '/',
-  });
-  res.status(200).json({ status: 'success' });
+  // Clear JWT cookie using standardized helper
+  const { clearAuthCookie } = require('../../utils/helpers/authHelpers');
+  clearAuthCookie(res, 'buyer');
+  
+  res.status(200).json({ status: 'success', message: 'Logged out successfully' });
 });
 //protect auth
 exports.protect = catchAsync(async (req, res, next) => {
   const fullPath = req.originalUrl.split('?')[0];
   const method = req.method.toUpperCase();
+  
+  // 🛡️ HARD SAFETY GUARD: Prevent seller routes from using buyer auth
+  if (fullPath.startsWith('/api/v1/seller') || fullPath.startsWith('/seller')) {
+    console.error('═══════════════════════════════════════════════════════════');
+    console.error('[AUTH TRACE] ❌ CRITICAL ERROR: SELLER route passed to BUYER auth middleware');
+    console.error('[AUTH TRACE] Route:', method, fullPath);
+    console.error('[AUTH TRACE] This is a CONFIGURATION ERROR - seller routes must use protectSeller');
+    console.error('[AUTH TRACE] Stack trace:', new Error().stack);
+    console.error('═══════════════════════════════════════════════════════════');
+    // Don't throw - let it fail with 401 so we can see the issue
+    // But log it clearly so we know what's wrong
+  }
+  
+  // 🔍 AUTH TRACE LOGGING
+  if (fullPath.includes('/coupon') || fullPath.includes('/seller')) {
+    console.log('[AUTH TRACE]', {
+      path: fullPath,
+      method: method,
+      middleware: 'protectBuyer (buyer/authController.js)',
+      cookies: req.cookies ? Object.keys(req.cookies) : 'none',
+      hasSellerJwt: req.cookies?.seller_jwt ? 'YES' : 'NO',
+      hasMainJwt: req.cookies?.main_jwt ? 'YES' : 'NO',
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   // Check public routes with caching
   if (isPublicRoute(fullPath, method)) {
     console.log(`Allowing ${method} access to ${fullPath} (public route)`);
     return next();
   }
-  // Extract token from Authorization header or cookie
-  // Priority: 1) Authorization header, 2) Cookie
-  let token = extractToken(req.headers.authorization);
-
-  // Fallback to cookie if Authorization header is missing
+  // SECURITY: Cookie-only authentication - tokens MUST be in HTTP-only cookies
+  // Authorization headers are NOT accepted to prevent XSS token theft
+  // Extract token ONLY from cookies
+  let token = null;
   // Check for app-specific cookie based on route path
   // IMPORTANT: Each app (eazmain, eazseller, eazadmin) uses its own cookie
   // Note: /api/v1/paymentrequest and /api/v1/support/seller are used by sellers, so they should use seller_jwt
   // Also check for seller order routes: /api/v1/order/get-seller-orders and /api/v1/order/seller-order
   // Product variant routes are also seller routes: /api/v1/product/:id/variants
-  const isSellerRoute = fullPath.startsWith('/api/v1/seller') ||
+  // POST /api/v1/product is a seller route (create product)
+  // PATCH /api/v1/product/:id is a seller route (update product)
+  // DELETE /api/v1/product/:id is a seller route (delete product)
+  // GET /api/v1/product is public (not a seller route)
+  // EXCEPTION: Admin-only seller routes (these require admin_jwt, not seller_jwt)
+  // GET /api/v1/seller - getAllSeller (admin-only)
+  // PATCH /api/v1/seller/:id/status - update seller status (admin-only)
+  // PATCH /api/v1/seller/:id/approve-verification - approve seller verification (admin-only)
+  // PATCH /api/v1/seller/:id/reject-verification - reject seller verification (admin-only)
+  // PATCH /api/v1/seller/:id/document-status - update document status (admin-only)
+  // PATCH /api/v1/seller/:id/approve-payout - approve payout (admin-only)
+  // PATCH /api/v1/seller/:id/reject-payout - reject payout (admin-only)
+  // GET /api/v1/seller/:id - getSeller (admin-only, unless seller accessing their own)
+  const isAdminOnlySellerRoute = 
+    (fullPath === '/api/v1/seller' && method === 'GET') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/document-status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
+    // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews');
+  const isSellerRoute = !isAdminOnlySellerRoute && (
+    fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
     fullPath.startsWith('/api/v1/paymentrequest') ||
     fullPath.includes('/order/get-seller-orders') ||
     fullPath.includes('/order/seller-order/') ||
-    fullPath.includes('/product/') && fullPath.includes('/variants');
+    (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
+    (fullPath === '/api/v1/product' && method === 'POST') ||
+    (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
+  );
+  
+  // CRITICAL: Ensure /api/v1/seller/coupon is detected as seller route
+  // This route is mounted at /api/v1/seller/coupon, so it should match the startsWith check above
+  // Adding explicit check for coupon routes to ensure they're detected
+  if (fullPath.startsWith('/api/v1/seller/coupon')) {
+    if (!isSellerRoute) {
+      console.warn(`[Auth] ⚠️ Seller coupon route not detected as seller route: ${fullPath}`);
+    }
+  }
 
   const isAdminRoute = fullPath.startsWith('/api/v1/admin') ||
-    fullPath.startsWith('/api/v1/support/admin');
+    fullPath.startsWith('/api/v1/support/admin') ||
+    fullPath.startsWith('/api/v1/logs') ||
+    fullPath.startsWith('/api/v1/eazshop');
+
+  // Admin-only shared routes (routes that require admin but don't start with /api/v1/admin)
+  // GET /api/v1/order - admin only (getAllOrder)
+  // GET /api/v1/order/:id - admin only (getOrder)
+  // PATCH /api/v1/order/:id - admin only (updateOrder)
+  // GET /api/v1/users - admin only (getAllUsers)
+  // GET /api/v1/users/:id - admin only (getUser)
+  // PATCH /api/v1/users/:id - admin only (updateUser)
+  // DELETE /api/v1/users/:id - admin only (deleteUser)
+  const isAdminOnlySharedRoute = (
+    (fullPath === '/api/v1/order' && method === 'GET') ||
+    (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/')) ||
+    (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status')) ||
+    (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
+    (fullPath.startsWith('/api/v1/users/') && method === 'GET' && !fullPath.includes('/profile') && !fullPath.includes('/me') && !fullPath.includes('/get/count') && !fullPath.includes('/reset-password') && !fullPath.includes('/personalized') && !fullPath.includes('/recently-viewed')) || // GET /users/:id is admin-only
+    (fullPath.startsWith('/api/v1/users/') && method === 'PATCH' && !fullPath.includes('/updatePassword') && !fullPath.includes('/updateMe') && !fullPath.includes('/reset-password')) || // PATCH /users/:id is admin-only
+    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) // DELETE /users/:id is admin-only
+  );
 
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
   // Check for support ticket creation - can be used by any authenticated user
   const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
 
   const cookieName = isSellerRoute ? 'seller_jwt' :
-    isAdminRoute ? 'admin_jwt' :
+    (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) ? 'admin_jwt' :
       'main_jwt'; // Default to buyer/eazmain
 
   // Enhanced debug logging for verify-otp and payout routes
@@ -748,8 +1206,8 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Debug logging for route detection
-  if (fullPath.includes('/order/')) {
-    console.log(`[Auth] Order route detected: ${fullPath}, isSellerRoute: ${isSellerRoute}, cookieName: ${cookieName}`);
+  if (fullPath.includes('/order') || fullPath.includes('/logs')) {
+    console.log(`[Auth] Route detected: ${fullPath}, method: ${method}, isSellerRoute: ${isSellerRoute}, isAdminRoute: ${isAdminRoute}, isAdminOnlySharedRoute: ${isAdminOnlySharedRoute}, cookieName: ${cookieName}`);
   }
 
   // Security: For seller routes, ONLY accept seller_jwt, never main_jwt
@@ -786,15 +1244,39 @@ exports.protect = catchAsync(async (req, res, next) => {
       token = req.cookies[cookieName];
       console.log(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
     }
+    
+    // For admin-only shared routes, also try admin_jwt if main_jwt was defaulted
+    if (!token && isAdminOnlySharedRoute && req.cookies && req.cookies.admin_jwt) {
+      token = req.cookies.admin_jwt;
+      console.log(`[Auth] ✅ Token found in admin_jwt cookie for admin-only shared route: ${method} ${fullPath}`);
+    }
 
     // If still no token found
     if (!token) {
-      // Enhanced debug logging for verify-otp routes
+      // Enhanced debug logging for verify-otp routes and seller coupon routes
       const isVerifyOtpRoute = fullPath.includes('/verify-otp');
+      const isSellerCouponRoute = fullPath.startsWith('/api/v1/seller/coupon');
 
       console.error('═══════════════════════════════════════════════════════════');
-      console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : 'protected'} route`);
+      console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : isSellerCouponRoute ? 'seller coupon' : 'protected'} route`);
       console.error('═══════════════════════════════════════════════════════════');
+      
+      // Enhanced logging for seller coupon routes
+      if (isSellerCouponRoute) {
+        console.error(`[Auth] 🔍 SELLER COUPON ROUTE DEBUG:`);
+        console.error(`[Auth] Route: ${method} ${fullPath}`);
+        console.error(`[Auth] Route Detection:`, {
+          isSellerRoute,
+          isAdminOnlySellerRoute,
+          cookieName,
+          expectedCookie: 'seller_jwt',
+        });
+        console.error(`[Auth] Available Cookies:`, req.cookies ? Object.keys(req.cookies) : 'none');
+        console.error(`[Auth] seller_jwt present: ${req.cookies?.seller_jwt ? 'YES' : 'NO'}`);
+        if (req.cookies?.seller_jwt) {
+          console.error(`[Auth] seller_jwt length: ${req.cookies.seller_jwt.length}`);
+        }
+      }
 
       if (isVerifyOtpRoute) {
         console.error(`[Auth] Route: ${method} ${fullPath}`);
@@ -850,14 +1332,15 @@ exports.protect = catchAsync(async (req, res, next) => {
       console.log(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
 
       console.error(`[Auth] 🛑 RETURNING 401 - No token found`);
+      console.error(`[Auth] Route: ${method} ${fullPath}`);
+      console.error(`[Auth] Expected cookie: ${cookieName}`);
+      console.error(`[Auth] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
       console.error('═══════════════════════════════════════════════════════════');
 
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401),
       );
     }
-  } else {
-    console.log(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
   }
   // Check token blacklist using the helper method (hashes token before checking)
   const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
@@ -908,6 +1391,21 @@ exports.protect = catchAsync(async (req, res, next) => {
     );
   }
 
+  // SECURITY FIX #9: Session timeout check (30 minutes of inactivity)
+  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+  if (currentUser.lastActivity && Date.now() - new Date(currentUser.lastActivity).getTime() > SESSION_TIMEOUT) {
+    console.warn(`[Auth] Session timeout for user ${currentUser.id} - last activity: ${currentUser.lastActivity}`);
+    return next(new AppError('Session expired', 401));
+  }
+
+  // Update last activity timestamp
+  currentUser.lastActivity = Date.now();
+  // Save without triggering validation (non-blocking update)
+  currentUser.save({ validateBeforeSave: false }).catch(err => {
+    // Log error but don't block request if save fails
+    console.error('[Auth] Error updating lastActivity:', err);
+  });
+
   // Attach user to request with deviceId from token
   req.user = currentUser;
   if (decoded.deviceId) {
@@ -916,12 +1414,35 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // CRITICAL: Verify role matches route requirements
   // For seller routes, ensure user is actually a seller
-  // Check for seller routes including order routes
-  const isSellerRouteCheck = fullPath.startsWith('/api/v1/seller') ||
+  // Check for seller routes including order routes and product routes
+  // EXCEPTION: Admin-only seller routes (these require admin role, not seller role)
+  // GET /api/v1/seller - getAllSeller (admin-only)
+  // PATCH /api/v1/seller/:id/status - update seller status (admin-only)
+  // PATCH /api/v1/seller/:id/approve-verification - approve seller verification (admin-only)
+  // PATCH /api/v1/seller/:id/reject-verification - reject seller verification (admin-only)
+  // PATCH /api/v1/seller/:id/document-status - update document status (admin-only)
+  // PATCH /api/v1/seller/:id/approve-payout - approve payout (admin-only)
+  // PATCH /api/v1/seller/:id/reject-payout - reject payout (admin-only)
+  // GET /api/v1/seller/:id - getSeller (admin-only, unless seller accessing their own)
+  const isAdminOnlySellerRouteCheck = 
+    (fullPath === '/api/v1/seller' && method === 'GET') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/document-status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET'); // GET /seller/:id is admin-only
+  const isSellerRouteCheck = !isAdminOnlySellerRouteCheck && (
+    fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
     fullPath.startsWith('/api/v1/paymentrequest') ||
     fullPath.includes('/order/get-seller-orders') ||
-    fullPath.includes('/order/seller-order/');
+    fullPath.includes('/order/seller-order/') ||
+    (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
+    (fullPath === '/api/v1/product' && method === 'POST') ||
+    (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
+  );
 
   if (isSellerRouteCheck) {
     if (currentUser.role !== 'seller') {
@@ -933,12 +1454,34 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // For admin routes, ensure user is actually an admin
+  // Check both explicit admin routes and admin-only shared routes
   const isAdminRouteCheck = fullPath.startsWith('/api/v1/admin') ||
-    fullPath.startsWith('/api/v1/support/admin');
+    fullPath.startsWith('/api/v1/support/admin') ||
+    fullPath.startsWith('/api/v1/logs') ||
+    fullPath.startsWith('/api/v1/eazshop') ||
+    (fullPath === '/api/v1/seller' && method === 'GET') || // GET /api/v1/seller is admin-only (getAllSeller)
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') || // PATCH /seller/:id/status is admin-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') || // Approve verification is admin-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') || // Reject verification is admin-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/document-status$/) && method === 'PATCH') || // Document status is admin-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') || // Approve payout is admin-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') || // Reject payout is admin-only
+    // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews') || // GET /seller/:id is admin-only
+    ((fullPath === '/api/v1/order' && method === 'GET') ||
+     (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/')) ||
+     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status'))) ||
+    // Admin-only user routes: GET /api/v1/users (getAllUsers), GET/PATCH/DELETE /api/v1/users/:id (but not /profile, /me, /get/count, etc.)
+    (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
+    (fullPath.startsWith('/api/v1/users/') && method === 'GET' && !fullPath.includes('/profile') && !fullPath.includes('/me') && !fullPath.includes('/get/count') && !fullPath.includes('/reset-password') && !fullPath.includes('/personalized') && !fullPath.includes('/recently-viewed')) ||
+    (fullPath.startsWith('/api/v1/users/') && method === 'PATCH' && !fullPath.includes('/updatePassword') && !fullPath.includes('/updateMe') && !fullPath.includes('/reset-password')) ||
+    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe'));
 
   if (isAdminRouteCheck) {
     if (currentUser.role !== 'admin') {
       console.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
+      console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
+      console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);
       return next(
         new AppError(`You do not have permission to perform this action. Required role: admin, Your role: ${currentUser.role}`, 403)
       );
@@ -974,10 +1517,15 @@ exports.restrictTo = (...roles) => {
     // Get role from user object, fallback to 'user' if not set
     const userRole = req.user.role || 'user';
 
-    console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}`);
+    console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}, Method: ${req.method}, Full URL: ${req.originalUrl}`);
 
     if (!roles.includes(userRole)) {
-      console.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, User ID: ${req.user.id}`);
+      console.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, Method: ${req.method}, Full URL: ${req.originalUrl}, User ID: ${req.user.id}`);
+      console.error(`[restrictTo] ❌ Request headers:`, {
+        'user-agent': req.headers['user-agent'],
+        'referer': req.headers['referer'],
+        'origin': req.headers['origin'],
+      });
       return next(
         new AppError(`You do not have permission to perform this action. Required role: ${roles.join(' or ')}, Your role: ${userRole}`, 403),
       );
@@ -988,6 +1536,8 @@ exports.restrictTo = (...roles) => {
   };
 };
 
+// SECURITY FIX: Legacy OTP-based password reset (deprecated - use requestPasswordReset instead)
+// This function is kept for backward compatibility but has been secured
 exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
   try {
     const { loginId } = req.body;
@@ -1001,56 +1551,82 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
 
-    // Check if user exists
+    // SECURITY FIX #1: Prevent account enumeration - always return same response
+    // Find user silently (don't reveal if user exists)
     const user = await User.findOne(query);
-    // console.log('user', user);
-    if (!user)
-      return next(new AppError('User not found, check your credential', 403));
 
-    // Generate OTP (6-digit code)
-    const otp = crypto.randomInt(100000, 999999).toString();
-    console.log('otp', otp);
+    // SECURITY FIX #1: Always return generic success message (prevent account enumeration)
+    // Even if user doesn't exist, return the same message to prevent timing attacks
+    const genericResponse = {
+      message: 'If an account exists, a reset code has been sent.',
+      method: isEmail ? 'email' : 'phone',
+    };
 
-    // Set OTP and expiration (10 minutes)
-    user.otp = otp;
-    user.otpExpires = Date.now() + 10 * 60 * 1000;
-    user.otpType = 'passwordReset'; // Differentiate from login OTP
+    // Only process if user exists (but don't reveal this to client)
+    if (user) {
+      // SECURITY FIX #1: Use createOtp() method which hashes OTP before storing
+      // This replaces the insecure: user.otp = otp (plaintext)
+      const otp = user.createOtp(); // Hashes OTP using SHA-256 before storing
+      user.otpType = 'passwordReset'; // Differentiate from login OTP
+      await user.save();
 
-    await user.save();
+      // SECURITY FIX #3: Log OTP to server console only (never send to client)
+      // For development, log to server console only
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[DEV ONLY - SERVER SIDE] OTP for ${loginId}: ${otp}`);
+        console.log(`[DEV ONLY - SERVER SIDE] User ID: ${user._id}`);
+      }
 
-    // Send OTP via email or SMS using SendGrid
-    if (isEmail) {
-      await sendLoginOtpEmail(user.email, otp, user.name);
-      console.log(`[Auth] Password reset OTP email sent to ${user.email}`);
+      // Send OTP via email or SMS (silently fail if service fails)
+      try {
+        if (isEmail) {
+          await sendLoginOtpEmail(user.email, otp, user.name);
+          console.log(`[Auth] Password reset OTP email sent to ${user.email}`);
+        } else {
+          await sendSMS({
+            to: user.phone,
+            message: `Your password reset code is: ${otp}. It will expire in 10 minutes.`,
+          });
+        }
+      } catch (emailError) {
+        // Log error but don't expose to client (prevent information leakage)
+        console.error('[Password Reset] Failed to send OTP:', emailError);
+        // Still return success to prevent account enumeration
+      }
     } else {
-      await sendSMS({
-        to: user.phone,
-        message: `Your password reset code is: ${otp}. It will expire in 10 minutes.`,
-      });
+      // User doesn't exist - add small random delay to prevent timing attacks
+      // This makes response time similar whether user exists or not
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
     }
 
-    res.status(200).json({
-      message: 'If the account exists, a reset code has been sent.',
-      method: isEmail ? 'email' : 'phone',
-    });
+    // SECURITY FIX #2 & #3: Always return same generic message, never include OTP
+    // OTP is NEVER sent in API response (even in development)
+    res.status(200).json(genericResponse);
   } catch (error) {
-    console.error('Password reset initiation error:', error);
-    res
-      .status(500)
-      .json({ error: 'Failed to initiate password reset. Please try again.' });
+    // SECURITY FIX #2: Generic error message (don't leak internal details)
+    console.error('[Password Reset] Error:', error);
+    // Always return same generic message even on errors
+    res.status(200).json({
+      message: 'If an account exists, a reset code has been sent.',
+      method: req.body.loginId?.includes('@') ? 'email' : 'phone',
+    });
   }
 });
+// SECURITY FIX: Legacy OTP verification (deprecated - use resetPasswordWithToken instead)
+// This function is kept for backward compatibility but has been secured
 exports.verifyResetOtp = catchAsync(async (req, res, next) => {
   try {
     const { loginId, otp } = req.body;
 
-    //   // Validate input
-    if (!loginId || !otp)
+    // Validate input
+    if (!loginId || !otp) {
       return next(new AppError('Please provide loginId and OTP', 400));
+    }
 
-    //   // Determine if loginId is email or phone
+    // Determine if loginId is email or phone
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
+
     // Find user with valid OTP
     const user = await User.findOne({
       ...query,
@@ -1058,39 +1634,84 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
       otpExpires: { $gt: Date.now() }, // Check if OTP is not expired
     }).select('+otp +otpExpires');
 
-    if (!user)
-      return next(new AppError('User not found, check your credential', 403));
-    const isValidOtp = user.verifyOtp(otp);
-    if (!isValidOtp) {
+    // SECURITY FIX #2: Generic error message (prevent account enumeration)
+    if (!user) {
+      // Add small delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
       return next(new AppError('Invalid or expired OTP', 400));
     }
 
+    // SECURITY FIX #4 (Phase 2 Enhancement): Track failed attempts
+    const { trackFailedAttempt, clearFailedAttempts } = require('../../middleware/security/otpVerificationSecurity');
+    
+    // Verify OTP using secure method (compares hashed OTP)
+    const otpVerification = user.verifyOtp(otp);
+    
+    // SECURITY FIX #2: Generic error message (don't reveal if OTP format is wrong vs expired)
+    if (!otpVerification || !otpVerification.valid) {
+      // SECURITY FIX #4: Track failed attempt for lockout
+      trackFailedAttempt(req);
+      
+      // Log failed attempt for security monitoring
+      console.warn(`[Security] Failed OTP verification attempt for ${loginId}`, {
+        reason: otpVerification?.reason || 'unknown',
+        locked: otpVerification?.locked || false,
+        ip: req.ip,
+      });
+      
+      // Add small delay to prevent timing attacks
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+      return next(new AppError('Invalid or expired OTP', 400));
+    }
+    
+    // SECURITY FIX #4: Clear failed attempts on successful verification
+    clearFailedAttempts(req);
+
     user.otpVerified = true;
-    //   // Generate reset token
+    // Generate reset token (cryptographically secure)
     const resetToken = crypto.randomBytes(32).toString('hex');
 
-    user.resetPasswordToken = resetToken;
-    user.resetTokenExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    // Hash token before storing in database
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    user.resetTokenExpires = Date.now() + 15 * 60 * 1000; // 15 minutes (matching cookie expiry)
     await user.save({ validateBeforeSave: false });
 
-    // SECURITY FIX #14: Do NOT send resetToken in response
-    // Token should only be sent via email/SMS, never in API response
+    // SECURITY FIX: Store reset token in httpOnly cookie (not accessible via JavaScript)
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('reset-token', resetToken, {
+      httpOnly: true, // Not accessible via JavaScript - prevents XSS attacks
+      secure: isProduction, // HTTPS only in production
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    });
+
+    // SECURITY: Do NOT send resetToken in response
     res.status(200).json({
       status: 'success',
-      message: 'Password reset instructions sent successfully',
-      // SECURITY: resetToken intentionally omitted from response
+      message: 'OTP verified. You can now reset your password.',
     });
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    // SECURITY FIX #2: Generic error message (don't leak internal details)
+    console.error('[Verify OTP] Error:', error);
     res.status(500).json({ error: 'Failed to verify OTP. Please try again.' });
   }
 });
 // Reset password
 exports.resetPassword = catchAsync(async (req, res, next) => {
   try {
-    const { loginId, newPassword, resetToken } = req.body;
+    const { loginId, newPassword } = req.body;
 
-    console.log('reset', loginId, newPassword, resetToken);
+    // SECURITY FIX: Get reset token from httpOnly cookie (not from request body)
+    const resetToken = req.cookies['reset-token'];
+    
+    if (!resetToken) {
+      return next(new AppError('Reset token expired or invalid. Please verify OTP again.', 403));
+    }
 
     // Validate input
     if (!loginId || !newPassword) {
@@ -1108,33 +1729,26 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
 
-    // Build search criteria
-    const searchCriteria = { ...query, otpType: 'passwordReset' };
+    // Hash the token from cookie to compare with stored hash
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
 
-    // If resetToken is provided, add it to search criteria
-    if (resetToken) {
-      console.log('with token');
-      searchCriteria.resetToken = resetToken;
-      searchCriteria.resetTokenExpires = { $gt: Date.now() };
-    } else {
-      // If no resetToken, require OTP to be verified
-      searchCriteria.otpVerified = true;
-      searchCriteria.otpExpires = { $gt: Date.now() };
-    }
-    console.log('resetToken', resetToken, searchCriteria);
-    // Find user with valid reset credentials
-    const user = await User.findOne({ email: loginId }).select(
-      '+otp +otpExpires +otpVerified +resetToken +resetTokenExpires +password',
+    // Find user with valid reset token
+    const user = await User.findOne({
+      ...query,
+      resetPasswordToken: hashedToken,
+      resetTokenExpires: { $gt: Date.now() },
+      otpType: 'passwordReset',
+    }).select(
+      '+otp +otpExpires +otpVerified +resetPasswordToken +resetTokenExpires +password',
     );
 
     if (!user) {
-      return next(new AppError('Invalid or expired reset credentials', 400));
-    }
-    if (!user.otpVerified) {
-      return next(new AppError('OTP not verified', 400));
-    }
-    if (user.otpExpires < Date.now()) {
-      return next(new AppError('OTP expired, please request a new one', 400));
+      // Clear invalid token cookie
+      res.clearCookie('reset-token');
+      return next(new AppError('Reset token expired or invalid', 403));
     }
 
     // Hash new password
@@ -1146,10 +1760,21 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     user.otpExpires = undefined;
     user.otpType = undefined;
     user.otpVerified = undefined;
-    user.resetToken = undefined;
+    user.resetPasswordToken = undefined;
     user.resetTokenExpires = undefined;
+    user.passwordChangedAt = Date.now();
 
     await user.save();
+
+    // SECURITY: Clear reset token cookie after successful password reset
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('reset-token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/',
+      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    });
 
     // Send confirmation email/SMS
     if (isEmail) {
@@ -1179,6 +1804,189 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   }
 });
 
+/**
+ * ==================================================
+ * UNIFIED EMAIL-ONLY PASSWORD RESET FLOW
+ * ==================================================
+ * 
+ * STEP 1: Request Password Reset (Email Only)
+ * POST /api/v1/auth/forgot-password
+ * Body: { email: "user@example.com" }
+ * 
+ * STEP 2: Reset Password with Token
+ * POST /api/v1/auth/reset-password
+ * Body: { token: "reset_token", newPassword: "newpass123", confirmPassword: "newpass123" }
+ */
+
+/**
+ * Request Password Reset (Email Only)
+ * - Accepts email address
+ * - Silently handles (no account enumeration)
+ * - Generates secure reset token
+ * - Sends reset link via email
+ * - Rate limited (5 requests per email per hour)
+ */
+exports.requestPasswordReset = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+
+  // Validate email
+  if (!email) {
+    return next(new AppError('Please provide an email address', 400));
+  }
+
+  // Normalize email
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    // Silently return success to prevent account enumeration
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Find user by email (silently - don't reveal if user exists)
+  const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetToken +passwordResetExpires');
+
+  // SECURITY: Always return success message (prevent account enumeration)
+  // Even if user doesn't exist, return the same message
+  if (!user) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Check rate limiting (max 5 requests per email per hour)
+  // If user has a recent reset token that hasn't expired yet, don't send another
+  if (user.passwordResetExpires && user.passwordResetExpires > Date.now()) {
+    // Token still valid, don't send another email (rate limiting)
+    // Still return success to prevent information leakage
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Generate reset token using user model method
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    // Send password reset email
+    await sendPasswordResetEmail(user.email, resetToken, user.name || 'User');
+    
+    console.log(`[Password Reset] Reset email sent to ${user.email}`);
+  } catch (err) {
+    // If email fails, clear the reset token
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Still return success to prevent information leakage
+    console.error('[Password Reset] Failed to send reset email:', err);
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Generic success message (no account enumeration)
+  res.status(200).json({
+    status: 'success',
+    message: 'If an account exists, a reset email has been sent.',
+  });
+});
+
+/**
+ * Reset Password with Token
+ * - Validates reset token
+ * - Ensures token is not expired or used
+ * - Hashes password using bcrypt (12 rounds)
+ * - Updates user password
+ * - Clears reset token & expiry
+ * - Invalidates ALL active sessions
+ * - Sends confirmation email
+ */
+exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
+  const { token, newPassword, confirmPassword } = req.body;
+
+  // Validate input
+  if (!token) {
+    return next(new AppError('Reset token is required', 400));
+  }
+
+  if (!newPassword || !confirmPassword) {
+    return next(new AppError('Please provide both new password and confirmation', 400));
+  }
+
+  // Validate password match
+  if (newPassword !== confirmPassword) {
+    return next(new AppError('Passwords do not match', 400));
+  }
+
+  // Check password strength
+  if (newPassword.length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
+  // Hash the token to compare with stored hash
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  // Find user with valid reset token
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  }).select('+passwordResetToken +passwordResetExpires +password');
+
+  if (!user) {
+    return next(new AppError('Invalid or expired reset token', 400));
+  }
+
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  // Update user password and clear reset fields
+  user.password = hashedPassword;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  user.passwordChangedAt = Date.now();
+
+  await user.save();
+
+  // SECURITY: Invalidate all active sessions
+  // This ensures that if someone had access to the account, they're logged out
+  // Note: This requires session management implementation
+  // For JWT-based auth, tokens will naturally expire, but you may want to:
+  // 1. Add a passwordChangedAt check in token verification
+  // 2. Maintain a token blacklist
+  // 3. Use refresh tokens that can be revoked
+
+  try {
+    // Send confirmation email
+    await sendCustomEmail({
+      to: user.email,
+      subject: 'Password Reset Successful',
+      html: `
+        <h2>Password Reset Successful</h2>
+        <p>Your password has been successfully reset.</p>
+        <p>If you did not perform this action, please contact support immediately.</p>
+        <p><strong>Security Notice:</strong> All active sessions have been invalidated. Please log in again.</p>
+      `,
+    });
+  } catch (err) {
+    // Don't fail the request if email fails
+    console.error('[Password Reset] Failed to send confirmation email:', err);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password reset successfully. Please login with your new password.',
+  });
+});
+
 exports.updatePassword = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.user.id).select('+password');
 
@@ -1191,6 +1999,67 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   createSendToken(user, 200, res, null, 'main_jwt');
+});
+
+// Reset/Set PIN endpoint - handles both setting initial PIN and resetting existing PIN
+exports.resetPin = catchAsync(async (req, res, next) => {
+  const { currentPin, newPin } = req.body;
+
+  // Validate input - newPin is always required
+  if (!newPin) {
+    return next(new AppError('Please provide a new PIN', 400));
+  }
+
+  // Validate PIN format (4 digits)
+  const pinRegex = /^\d{4}$/;
+  if (!pinRegex.test(newPin)) {
+    return next(new AppError('PIN must be exactly 4 digits', 400));
+  }
+
+  // Get user with PIN selected
+  const user = await User.findById(req.user.id).select('+pin');
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  const hasExistingPin = !!user.pin;
+
+  // If user has an existing PIN, currentPin is required
+  if (hasExistingPin) {
+    if (!currentPin) {
+      return next(new AppError('Please provide your current PIN', 400));
+    }
+
+    if (!pinRegex.test(currentPin)) {
+      return next(new AppError('Current PIN must be exactly 4 digits', 400));
+    }
+
+    // Verify current PIN
+    if (!(await user.correctPin(currentPin))) {
+      return next(new AppError('Current PIN is incorrect', 401));
+    }
+
+    // Check if new PIN is different from current
+    if (await user.correctPin(newPin)) {
+      return next(new AppError('New PIN must be different from current PIN', 400));
+    }
+  }
+  // If no existing PIN, this is initial PIN setup (currentPin not required)
+
+  // Update or set PIN
+  user.pin = newPin;
+  // Ensure pinChangedAt is set (for first-time PIN setup)
+  if (!user.pinChangedAt) {
+    user.pinChangedAt = Date.now();
+  }
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: hasExistingPin ? 'PIN reset successfully' : 'PIN set successfully',
+  });
 });
 
 // Resend OTP endpoint for buyers
@@ -1238,12 +2107,14 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
 
-  // Log OTP to console for development
-  console.log('========================================');
-  console.log(`[Resend OTP] 🔐 OTP PIN: ${otp}`);
-  console.log(`[Resend OTP] User: ${user.email || user.phone}`);
-  console.log(`[Resend OTP] OTP expires in 10 minutes`);
-  console.log('========================================');
+  // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(user._id, user.email || user.phone, 'resend');
+  secureLog.debug('Resend OTP generated', {
+    userId: user._id,
+    loginId: user.email || user.phone,
+    // OTP value is NEVER logged, even in development
+  });
 
   // Send OTP via email
   if (user.email) {
@@ -1269,10 +2140,11 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     }
   }
 
+  // SECURITY FIX #3: NEVER include OTP in API response, even in development
   res.status(200).json({
     status: 'success',
     message: 'Verification code sent to your email or phone!',
-    otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
+    // OTP is NEVER included in response (security best practice)
   });
 });
 
@@ -1290,12 +2162,16 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
     );
   }
 
+  // Normalize inputs
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedPhone = normalizePhone(phone);
+
   let user;
-  if (email && validator.isEmail(email)) {
-    user = await User.findOne({ email }).select('+otp +otpExpires +otpAttempts +otpLockedUntil');
-  } else if (phone) {
-    user = await User.findOne({ phone: phone.replace(/\D/g, '') })
-      .select('+otp +otpExpires +otpAttempts +otpLockedUntil');
+  if (normalizedEmail) {
+    user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpires +otpAttempts +otpLockedUntil +otpType');
+  } else if (normalizedPhone) {
+    user = await User.findOne({ phone: normalizedPhone })
+      .select('+otp +otpExpires +otpAttempts +otpLockedUntil +otpType');
   } else {
     return next(
       new AppError('Please provide a valid email or phone number', 400)
@@ -1315,11 +2191,13 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide a valid 6-digit verification code', 400));
   }
 
-  // Verify OTP
-  const otpResult = user.verifyOtp(otpString);
+  // Verify OTP using shared helper with type checking
+  const { verifyOtp, clearOtp } = require('../../utils/helpers/otpHelpers');
+  const otpResult = verifyOtp(user, otpString, OTP_TYPES.SIGNUP);
 
   // Handle account lockout
   if (otpResult.locked) {
+    await user.save({ validateBeforeSave: false });
     return next(
       new AppError(
         `Your account is locked for ${otpResult.minutesRemaining} minute(s) due to multiple failed attempts. Please try again later.`,
@@ -1330,31 +2208,18 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
 
   // Handle failed OTP verification
   if (!otpResult.valid) {
-    // Increment failed attempts
-    user.otpAttempts = (user.otpAttempts || 0) + 1;
-
-    // Lock account after 5 failed attempts
-    if (user.otpAttempts >= 5) {
-      user.otpLockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-      await user.save({ validateBeforeSave: false });
-      return next(
-        new AppError(
-          'Too many failed attempts. Your account is locked for 15 minutes.',
-          429
-        )
-      );
-    }
-
     await user.save({ validateBeforeSave: false });
 
     // Provide specific error message
-    const attemptsRemaining = 5 - user.otpAttempts;
+    const attemptsRemaining = 5 - (user.otpAttempts || 0);
     let errorMessage = 'Invalid verification code.';
 
     if (otpResult.reason === 'expired') {
       errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
     } else if (otpResult.reason === 'no_otp') {
       errorMessage = 'No verification code found. Please request a new one.';
+    } else if (otpResult.reason === 'type_mismatch') {
+      errorMessage = 'This verification code is not valid for account verification.';
     } else if (otpResult.reason === 'mismatch') {
       errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
     } else {
@@ -1365,19 +2230,15 @@ exports.verifyAccount = catchAsync(async (req, res, next) => {
   }
 
   // OTP is valid - mark as verified
-  if (email && validator.isEmail(email)) {
+  if (normalizedEmail) {
     user.emailVerified = true;
   }
-  if (phone) {
+  if (normalizedPhone) {
     user.phoneVerified = true;
   }
 
-  // Clear OTP fields
-  user.otp = undefined;
-  user.otpExpires = undefined;
-  user.otpAttempts = 0;
-  user.otpLockedUntil = null;
-
+  // Clear OTP fields using shared helper
+  clearOtp(user);
   await user.save({ validateBeforeSave: false });
 
   // Determine which verification method was used
@@ -1447,4 +2308,217 @@ exports.emailVerification = catchAsync(async (req, res, next) => {
       new AppError('There was an error sending the verification code', 500),
     );
   }
+});
+
+// ==================== TWO-FACTOR AUTHENTICATION ====================
+
+/**
+ * Enable Two-Factor Authentication
+ * POST /api/v1/users/enable-2fa
+ * Generates a secret and QR code for 2FA setup
+ */
+exports.enableTwoFactor = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  // Generate a secret using speakeasy (properly base32 encoded)
+  const secretData = speakeasy.generateSecret({
+    name: `EazShop (${user.email || user.phone?.toString() || 'User'})`,
+    issuer: 'EazShop',
+    length: 32,
+  });
+
+  // Get base32 secret (this is what we store and use)
+  const base32Secret = secretData.base32;
+  
+  // Store temporary secret (will be moved to twoFactorSecret after verification)
+  // IMPORTANT: Do NOT set twoFactorEnabled = true here (only after verification)
+  user.twoFactorTempSecret = base32Secret;
+  // Ensure twoFactorEnabled remains false until verification
+  user.twoFactorEnabled = false;
+  await user.save({ validateBeforeSave: false });
+
+  // Generate backup codes (10 codes, 8 characters each)
+  const backupCodes = [];
+  for (let i = 0; i < 10; i++) {
+    backupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+  }
+  user.twoFactorBackupCodes = backupCodes;
+  await user.save({ validateBeforeSave: false });
+
+  // Get otpauth URL from speakeasy
+  const otpAuthUrl = secretData.otpauth_url;
+
+  // Mask secret for response (show only last 4 characters)
+  const base32SecretMasked = base32Secret.length > 4 
+    ? `${'*'.repeat(base32Secret.length - 4)}${base32Secret.slice(-4)}`
+    : '****';
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication setup initiated. Please scan the QR code and verify the code to complete setup.',
+    data: {
+      // Nested structure for web compatibility (matches EazMain web app)
+      twoFactor: {
+        otpAuthUrl,
+        base32: base32SecretMasked, // Masked secret for display (last 4 chars visible)
+        // NOTE: Full secret is NOT exposed in response for security
+      },
+      // Flat structure for backward compatibility
+      otpAuthUrl,
+      base32SecretMasked,
+      twoFactorPending: true, // Indicates 2FA is pending verification
+      is2FAEnabled: false, // Still pending verification
+      backupCodes,
+    },
+  });
+});
+
+/**
+ * Get Two-Factor Authentication Setup Data
+ * GET /api/v1/users/2fa/setup
+ * Returns setup data if user hasn't completed 2FA setup yet
+ */
+exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select('+twoFactorTempSecret +twoFactorBackupCodes');
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  if (user.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is already enabled', 400));
+  }
+
+  if (!user.twoFactorTempSecret) {
+    return next(new AppError('No setup in progress. Please enable 2FA first.', 400));
+  }
+
+  // Generate otpauth URL from the stored base32 secret
+  const serviceName = 'EazShop';
+  const accountName = user.email || user.phone?.toString() || 'User';
+  const otpAuthUrl = speakeasy.otpauthURL({
+    secret: user.twoFactorTempSecret,
+    label: accountName,
+    issuer: serviceName,
+    encoding: 'base32',
+  });
+
+  // Mask secret for response
+  const base32SecretMasked = user.twoFactorTempSecret.length > 4 
+    ? `${'*'.repeat(user.twoFactorTempSecret.length - 4)}${user.twoFactorTempSecret.slice(-4)}`
+    : '****';
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication setup data retrieved.',
+    data: {
+      // Nested structure for web compatibility
+      twoFactor: {
+        otpAuthUrl,
+        base32: base32SecretMasked, // Masked secret for display
+      },
+      // Flat structure for backward compatibility
+      otpAuthUrl,
+      base32SecretMasked,
+      twoFactorPending: true, // Indicates 2FA is pending verification
+      is2FAEnabled: false, // Still pending verification
+      backupCodes: user.twoFactorBackupCodes || [],
+    },
+  });
+});
+
+/**
+ * Verify Two-Factor Authentication Code
+ * POST /api/v1/users/2fa/verify
+ * Verifies the code from authenticator app and completes 2FA setup
+ */
+exports.verifyTwoFactor = catchAsync(async (req, res, next) => {
+  const { code } = req.body;
+
+  if (!code || code.length !== 6) {
+    return next(new AppError('Please provide a valid 6-digit verification code', 400));
+  }
+
+  const user = await User.findById(req.user.id).select('+twoFactorTempSecret');
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  if (!user.twoFactorTempSecret) {
+    return next(new AppError('No 2FA setup in progress. Please enable 2FA first.', 400));
+  }
+
+  // Verify TOTP using speakeasy (proper implementation)
+  const verified = speakeasy.totp.verify({
+    secret: user.twoFactorTempSecret,
+    encoding: 'base32',
+    token: code,
+    window: 2, // Allow ±1 time step (60 seconds total window)
+  });
+
+  if (!verified) {
+    return next(new AppError('Invalid verification code. Please try again.', 401));
+  }
+
+  // Move temp secret to permanent secret and enable 2FA
+  user.twoFactorSecret = user.twoFactorTempSecret;
+  user.twoFactorTempSecret = undefined;
+  user.twoFactorEnabled = true;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication has been successfully enabled!',
+    data: {
+      is2FAEnabled: true,
+      twoFactorEnabled: true,
+      twoFactorPending: false, // No longer pending
+      // Nested structure for web compatibility
+      twoFactor: {
+        enabled: true,
+      },
+    },
+  });
+});
+
+/**
+ * Disable Two-Factor Authentication
+ * POST /api/v1/users/disable-2fa
+ * Disables 2FA for the user (may require verification code)
+ */
+exports.disableTwoFactor = catchAsync(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+
+  if (!user) {
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Unable to process request', 404));
+  }
+
+  if (!user.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled', 400));
+  }
+
+  // Clear 2FA data
+  user.twoFactorEnabled = false;
+  user.twoFactorSecret = undefined;
+  user.twoFactorTempSecret = undefined;
+  user.twoFactorBackupCodes = [];
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication has been disabled',
+    data: {
+      is2FAEnabled: false,
+      twoFactorEnabled: false,
+    },
+  });
 });

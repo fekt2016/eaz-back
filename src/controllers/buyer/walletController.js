@@ -11,12 +11,28 @@ exports.getWalletBalance = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
   const wallet = await walletService.getWalletBalance(userId);
 
+  // Calculate availableBalance to ensure it's correct (double-check)
+  const calculatedAvailableBalance = Math.max(0, (wallet.balance || 0) - (wallet.holdAmount || 0));
+  const finalAvailableBalance = wallet.availableBalance !== undefined 
+    ? wallet.availableBalance 
+    : calculatedAvailableBalance;
+
+  // Log wallet details for debugging
+  console.log(`[getWalletBalance] User ${userId} wallet details:`, {
+    balance: wallet.balance || 0,
+    holdAmount: wallet.holdAmount || 0,
+    availableBalance: finalAvailableBalance,
+    calculatedAvailableBalance,
+    currency: wallet.currency || 'GHS',
+    lastUpdated: wallet.lastUpdated,
+  });
+
   res.status(200).json({
     status: 'success',
     data: {
       wallet: {
         balance: wallet.balance || 0,
-        availableBalance: wallet.availableBalance || 0,
+        availableBalance: finalAvailableBalance,
         holdAmount: wallet.holdAmount || 0,
         currency: wallet.currency || 'GHS',
         lastUpdated: wallet.lastUpdated,
@@ -97,10 +113,48 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
   const reference = `WALLET-TOPUP-${userId}-${Date.now()}`;
 
   try {
-    // Get frontend URL for callback - use WALLET_CALLBACK_URL if provided, otherwise fallback
-    const walletCallbackUrl = process.env.WALLET_CALLBACK_URL;
-    const frontendUrl = process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
-    const callbackUrl = walletCallbackUrl || `${frontendUrl}/wallet/topup-success?reference=${reference}`;
+    // Detect if request is from mobile app
+    const userAgent = req.headers['user-agent'] || '';
+    const platformHeader = (req.headers['x-platform'] || '').toLowerCase();
+    const isMobileHeader = req.headers['x-mobile'] === 'true';
+    const isMobileApp = 
+      platformHeader === 'eazmainapp' ||
+      isMobileHeader ||
+      userAgent.includes('EazMainApp') ||
+      userAgent.includes('ReactNative') ||
+      userAgent.includes('Expo') ||
+      req.body.isMobile === true ||
+      req.query.isMobile === 'true';
+
+    // Get callback URL based on platform
+    // IMPORTANT: Use HTTP/HTTPS callback URL for BOTH mobile and web (like checkout does)
+    // This ensures WebView can properly detect the redirect
+    // Paystack will append: &reference=xxx&trxref=xxx to the callback URL
+    let callbackUrl;
+    
+    // For mobile app, use HTTP callback URL (same pattern as checkout)
+    // The WebView will detect the redirect and navigate to TopupSuccess screen
+    if (isMobileApp) {
+      // Use HTTP callback URL for mobile app (same as checkout pattern)
+      // This works better than deep links because WebView can navigate to HTTP URLs
+      // Format: http://localhost:5173/wallet/topup-success?reference=xxx
+      // Paystack will append: &reference=YYY&trxref=YYY
+      // Final: http://localhost:5173/wallet/topup-success?reference=xxx&reference=YYY&trxref=YYY
+      // FIX: Use /wallet/topup-success to match the frontend route
+      const frontendUrl = process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+      const cleanBaseUrl = frontendUrl.replace(/\/$/, '');
+      callbackUrl = `${cleanBaseUrl}/wallet/topup-success?reference=${reference}`;
+      console.log('[Wallet] Mobile app detected, using HTTP callback URL (like checkout):', callbackUrl);
+      console.log('[Wallet] WebView will detect redirect to this URL and navigate to TopupSuccess');
+    } else {
+      // Use web URL for web app
+      // FIX: Use /wallet/topup-success to match the frontend route
+      const walletCallbackUrl = process.env.WALLET_CALLBACK_URL;
+      const frontendUrl = process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+      const cleanBaseUrl = frontendUrl.replace(/\/$/, '');
+      callbackUrl = walletCallbackUrl || `${cleanBaseUrl}/wallet/topup-success?reference=${reference}`;
+      console.log('[Wallet] Web app detected, using web callback:', callbackUrl);
+    }
 
     // Validate amount is within Paystack limits (minimum 1 GHS = 100 kobo)
     const amountInKobo = Math.round(amount * 100);

@@ -6,19 +6,16 @@ const productRelationsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
-      index: true,
     },
     relatedProductId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
       required: true,
-      index: true,
     },
     relationType: {
       type: String,
       enum: ['also_bought', 'also_viewed', 'similar'],
       required: true,
-      index: true,
     },
     frequency: {
       type: Number,
@@ -34,7 +31,6 @@ const productRelationsSchema = new mongoose.Schema(
     lastUpdated: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   {
@@ -42,15 +38,7 @@ const productRelationsSchema = new mongoose.Schema(
   }
 );
 
-// Compound unique index to prevent duplicates
-productRelationsSchema.index(
-  { productId: 1, relatedProductId: 1, relationType: 1 },
-  { unique: true }
-);
 
-// Index for efficient queries
-productRelationsSchema.index({ productId: 1, relationType: 1, score: -1 });
-productRelationsSchema.index({ lastUpdated: -1 });
 
 const ProductRelations = mongoose.model('ProductRelations', productRelationsSchema);
 

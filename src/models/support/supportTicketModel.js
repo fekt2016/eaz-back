@@ -20,7 +20,6 @@ const supportTicketSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'userModel',
       required: true,
-      index: true,
     },
     userModel: {
       type: String,
@@ -52,14 +51,12 @@ const supportTicketSchema = new mongoose.Schema(
         'Orders',
         'General',
       ],
-      index: true,
     },
     priority: {
       type: String,
       required: true,
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium',
-      index: true,
     },
     issueType: {
       type: String,
@@ -103,7 +100,6 @@ const supportTicketSchema = new mongoose.Schema(
       required: true,
       enum: ['open', 'in_progress', 'awaiting_user', 'escalated', 'resolved', 'closed'],
       default: 'open',
-      index: true,
     },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
@@ -153,11 +149,8 @@ const supportTicketSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for efficient queries
-supportTicketSchema.index({ userId: 1, createdAt: -1 });
-supportTicketSchema.index({ status: 1, priority: -1, createdAt: -1 });
-supportTicketSchema.index({ department: 1, status: 1 });
-supportTicketSchema.index({ assignedTo: 1, status: 1 });
+
+
 
 // Virtual for message count
 supportTicketSchema.virtual('messageCount', {

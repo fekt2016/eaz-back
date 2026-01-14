@@ -11,7 +11,6 @@ const sellerRevenueHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Seller',
       required: true,
-      index: true,
     },
     type: {
       type: String,
@@ -31,7 +30,6 @@ const sellerRevenueHistorySchema = new mongoose.Schema(
         'PAYOUT_ABANDONED',
       ],
       required: true,
-      index: true,
     },
     amount: {
       type: Number,
@@ -52,7 +50,6 @@ const sellerRevenueHistorySchema = new mongoose.Schema(
     },
     reference: {
       type: String,
-      index: true,
       sparse: true,
       comment: 'Unique reference for idempotency (order ref, payout ref, etc.)',
     },
@@ -64,28 +61,24 @@ const sellerRevenueHistorySchema = new mongoose.Schema(
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
-      index: true,
       sparse: true,
       comment: 'Related order ID if transaction is order-related',
     },
     refundId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'RefundRequest',
-      index: true,
       sparse: true,
       comment: 'Related refund ID if transaction is refund-related',
     },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
-      index: true,
       sparse: true,
       comment: 'Admin ID if transaction was initiated by admin',
     },
     payoutRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'PaymentRequest',
-      index: true,
       sparse: true,
       comment: 'Related payout request ID if transaction is payout-related',
     },
@@ -100,13 +93,8 @@ const sellerRevenueHistorySchema = new mongoose.Schema(
   }
 );
 
-// Compound indexes for efficient queries
-sellerRevenueHistorySchema.index({ sellerId: 1, createdAt: -1 });
-sellerRevenueHistorySchema.index({ sellerId: 1, type: 1, createdAt: -1 });
-sellerRevenueHistorySchema.index({ reference: 1 }, { unique: true, sparse: true });
-sellerRevenueHistorySchema.index({ orderId: 1 });
-sellerRevenueHistorySchema.index({ refundId: 1 });
-sellerRevenueHistorySchema.index({ payoutRequestId: 1 });
+
+
 
 // Virtual for transaction direction
 sellerRevenueHistorySchema.virtual('isCredit').get(function () {

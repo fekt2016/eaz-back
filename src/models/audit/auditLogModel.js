@@ -13,12 +13,10 @@ const auditLogSchema = new mongoose.Schema({
     action: {
         type: String,
         required: true,
-        index: true,
     },
     resource: {
         type: String,
         required: true,
-        index: true,
     },
     resourceId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -38,14 +36,11 @@ const auditLogSchema = new mongoose.Schema({
     timestamp: {
         type: Date,
         default: Date.now,
-        index: true,
     },
 });
 
-// Index for efficient querying
-auditLogSchema.index({ user: 1, timestamp: -1 });
-auditLogSchema.index({ action: 1, timestamp: -1 });
-auditLogSchema.index({ resource: 1, resourceId: 1 });
+
+
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 

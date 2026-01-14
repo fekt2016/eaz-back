@@ -28,26 +28,30 @@ exports.addHistoryItem = catchAsync(async (req, res, next) => {
     viewedAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // 24 hours
   });
 
-  if (!existingEntry) {
-    await BrowserHistory.create({
-      user: req.user.id,
-      type,
-      itemId,
-      itemData,
+  // If entry already exists within 24 hours, return success with skipped flag
+  // This is NOT an error condition - it's expected behavior
+  if (existingEntry) {
+    return res.status(200).json({
+      status: 'success',
+      skipped: true,
+      reason: 'ALREADY_VIEWED',
+      message: 'Item already viewed within the last 24 hours',
+      data: null,
     });
   }
 
-  if (existingEntry) {
-    return next(
-      new AppError(
-        'You have already viewed this item in the last 24 hours',
-        400,
-      ),
-    );
-  }
+  // Create new history entry
+  await BrowserHistory.create({
+    user: req.user.id,
+    type,
+    itemId,
+    itemData,
+  });
 
+  // Return success response for newly created entry
   res.status(201).json({
     status: 'success',
+    skipped: false,
     data: null,
   });
 });

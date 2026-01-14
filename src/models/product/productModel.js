@@ -211,6 +211,13 @@ const productSchema = new mongoose.Schema(
     moderatedAt: {
       type: Date,
     },
+    // Visibility control: Products are only visible to buyers if seller is verified
+    // This field is automatically managed based on seller.verificationStatus
+    isVisible: {
+      type: Boolean,
+      default: false,
+      index: true, // Index for performance on buyer queries
+    },
     specifications: {
       material: [
         {
@@ -495,6 +502,38 @@ productSchema.pre('save', function (next) {
     this.totalViews * 0.1 + this.totalSold * 0.5 + this.ratingsAverage * 10;
 
   next();
+});
+
+// Post-save middleware: Update isVisible based on seller verification status
+// This ensures products automatically become visible when seller gets verified
+productSchema.post('save', async function (doc) {
+  // Only update if seller is populated or we can fetch it
+  if (doc.seller) {
+    try {
+      const Seller = mongoose.model('Seller');
+      const seller = await Seller.findById(doc.seller);
+      
+      if (seller) {
+        // Product is visible if: seller is verified AND product is active AND moderation is approved
+        const shouldBeVisible = 
+          seller.verificationStatus === 'verified' &&
+          doc.status === 'active' &&
+          doc.moderationStatus === 'approved';
+        
+        // Only update if visibility needs to change (avoid infinite loop)
+        if (doc.isVisible !== shouldBeVisible) {
+          await mongoose.model('Product').findByIdAndUpdate(
+            doc._id,
+            { isVisible: shouldBeVisible },
+            { runValidators: false } // Skip validators to avoid triggering save again
+          );
+        }
+      }
+    } catch (error) {
+      // Don't fail product save if visibility update fails
+      console.error('[Product] Error updating visibility:', error);
+    }
+  }
 });
 
 // Virtual populate
@@ -900,6 +939,9 @@ productSchema.index(
 productSchema.index({ seller: 1, status: 1 });
 productSchema.index({ parentCategory: 1, status: 1 });
 productSchema.index({ subCategory: 1, status: 1 });
+// PERFORMANCE FIX: Compound index for category-counts aggregation
+// This index helps the $group stage in getProductCountByCategory
+productSchema.index({ parentCategory: 1, subCategory: 1 });
 productSchema.index({ categoryPath: 1, status: 1 });
 productSchema.index({ price: 1, status: 1 });
 productSchema.index({ minPrice: 1, maxPrice: 1, status: 1 });
@@ -914,6 +956,10 @@ productSchema.index({
 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ updatedAt: -1 });
+// Index for buyer queries: isVisible + status + moderationStatus
+productSchema.index({ isVisible: 1, status: 1, moderationStatus: 1 });
+// Compound index for seller verification filtering
+productSchema.index({ seller: 1, isVisible: 1, status: 1 });
 
 // Static methods
 productSchema.statics.calcAverageRatings = async function (productId) {

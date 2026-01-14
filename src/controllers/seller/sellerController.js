@@ -6,6 +6,7 @@ const Product = require('../../models/product/productModel');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 const AppError = require('../../utils/errors/appError');
 const multer = require('multer');
+const mongoose = require('mongoose');
 const { uploadMultipleFields } = require('../../middleware/upload/cloudinaryUpload');
 
 exports.getSellerProducts = catchAsync(async (req, res, next) => {
@@ -18,6 +19,12 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     .limitFields()
     .paginate();
 
+  // Ensure variants are included in the response (needed for stock calculation)
+  // If fields are specified, make sure variants is included
+  if (req.query.fields && !req.query.fields.includes('variants')) {
+    features.query = features.query.select(req.query.fields + ' variants');
+  }
+
   const sellerProducts = await features.query.populate({
     path: 'parentCategory subCategory',
     select: 'name slug',
@@ -27,19 +34,58 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     return next(new AppError('No product found on this Seller Id', 400));
   }
 
+  // Calculate totalStock for each product if not already calculated (virtual should handle this)
+  // But ensure variants are included in the response
+  const productsWithStock = sellerProducts.map((product) => {
+    const productObj = product.toObject ? product.toObject() : product;
+    // Calculate totalStock from variants if virtual didn't work
+    if (productObj.variants && Array.isArray(productObj.variants)) {
+      productObj.totalStock = productObj.variants.reduce(
+        (sum, variant) => sum + (variant.stock || 0),
+        0
+      );
+    } else if (productObj.totalStock === undefined) {
+      productObj.totalStock = 0;
+    }
+    return productObj;
+  });
+
   res.status(200).json({
     status: 'success',
-    result: sellerProducts.length,
+    result: productsWithStock.length,
     data: {
-      data: sellerProducts,
+      data: productsWithStock,
     },
   });
 });
 exports.getSellerProductById = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id);
+  // Route uses :productId, but we'll check both for compatibility
+  const productId = req.params.productId || req.params.id;
+  
+  if (!productId) {
+    return next(new AppError('Product ID is required', 400));
+  }
+
+  // Verify the product belongs to the seller (unless admin)
+  const product = await Product.findById(productId)
+    .populate({
+      path: 'parentCategory',
+      select: 'name slug',
+    })
+    .populate({
+      path: 'subCategory',
+      select: 'name slug',
+    });
+
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
   }
+
+  // Check if seller owns this product (unless admin)
+  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+    return next(new AppError('You do not have permission to access this product', 403));
+  }
+
   res.status(200).json({ status: 'success', data: { product } });
 });
 exports.SellerDeleteProduct = catchAsync(async (req, res, next) => {
@@ -181,7 +227,7 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 exports.updateMe = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
   console.log("body",req.body);
-  let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks } = req.body;
+  let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks, paymentMethods } = req.body;
 
   // Parse JSON strings if they exist (from FormData)
   // Support shopAddress, location (legacy), and shopLocation (new) for backward compatibility
@@ -200,28 +246,84 @@ exports.updateMe = catchAsync(async (req, res, next) => {
       socialMediaLinks = undefined;
     }
   }
+  // Parse paymentMethods if it's a string
+  if (typeof paymentMethods === 'string') {
+    try {
+      paymentMethods = JSON.parse(paymentMethods);
+    } catch (e) {
+      paymentMethods = undefined;
+    }
+  }
 
   // Build update object
   const updateData = {};
   
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email;
-  if (phone !== undefined) updateData.phone = phone;
+  // Phone: always update if provided (even if empty string, to allow clearing)
+  if (phone !== undefined) {
+    const trimmedPhone = phone ? phone.toString().trim() : '';
+    if (trimmedPhone) {
+      updateData.phone = trimmedPhone;
+    } else {
+      // Allow setting phone to empty string to clear it
+      updateData.phone = '';
+    }
+  }
   if (shopName !== undefined) updateData.shopName = shopName;
   if (shopDescription !== undefined) updateData.shopDescription = shopDescription;
   if (digitalAddress !== undefined) updateData.digitalAddress = digitalAddress;
   
+  console.log('[updateMe] Request body phone:', phone, 'Type:', typeof phone);
+  console.log('[updateMe] Update data:', JSON.stringify(updateData, null, 2));
+  console.log('[updateMe] Phone in updateData:', updateData.phone);
+  
   // Update shopLocation (shop address) if provided
   if (addressData && typeof addressData === 'object') {
+    // Normalize city to lowercase
+    let normalizedCity = addressData.city;
+    if (normalizedCity) {
+      normalizedCity = normalizedCity.toLowerCase().trim();
+    }
+    
+    // Normalize region to lowercase and handle "greater accra region" -> "greater accra"
+    let normalizedRegion = addressData.region;
+    if (normalizedRegion) {
+      const normalizedRegionLower = normalizedRegion.toLowerCase().trim();
+      if (normalizedRegionLower === 'greater accra region') {
+        normalizedRegion = 'greater accra';
+      } else {
+        normalizedRegion = normalizedRegionLower;
+      }
+    }
+    
+    // Normalize country to lowercase
+    let normalizedCountry = addressData.country || 'Ghana';
+    if (normalizedCountry) {
+      normalizedCountry = normalizedCountry.toLowerCase().trim();
+    }
+    
+    // Normalize town to lowercase
+    let normalizedTown = addressData.town;
+    if (normalizedTown) {
+      normalizedTown = normalizedTown.toLowerCase().trim();
+    }
+    
+    // Normalize street to lowercase
+    let normalizedStreet = addressData.street;
+    if (normalizedStreet) {
+      normalizedStreet = normalizedStreet.toLowerCase().trim();
+    }
+    
     updateData.shopLocation = {
-      street: addressData.street || undefined,
-      city: addressData.city || undefined,
-      town: addressData.town || undefined,
+      street: normalizedStreet || undefined,
+      city: normalizedCity || undefined,
+      town: normalizedTown || undefined,
       state: addressData.state || undefined,
-      region: addressData.region || undefined,
+      region: normalizedRegion || undefined,
       zipCode: addressData.zipCode || undefined,
       postalCode: addressData.postalCode || undefined,
-      country: addressData.country || 'Ghana',
+      country: normalizedCountry,
     };
   }
 
@@ -233,6 +335,100 @@ exports.updateMe = catchAsync(async (req, res, next) => {
       twitter: socialMediaLinks.twitter || undefined,
       TikTok: socialMediaLinks.TikTok || undefined,
     };
+  }
+
+  // Handle payment methods update
+  // Sellers can update their payment methods even when deactivated/rejected
+  // The pre-save hook will automatically reset individual payment method payoutStatus to 'pending' if payment methods change
+  if (paymentMethods && typeof paymentMethods === 'object') {
+    const { bankAccount, mobileMoney } = paymentMethods;
+    
+    // Initialize paymentMethods object if not exists
+    if (!updateData.paymentMethods) {
+      updateData.paymentMethods = {};
+    }
+    
+    // Clean and validate bank account data
+    if (bankAccount !== undefined) {
+      const hasBankData = bankAccount && (bankAccount.bankName || bankAccount.accountNumber || bankAccount.accountName);
+      if (hasBankData) {
+        // SECURITY: Check for duplicate bank account across all sellers (only if account number changed)
+        if (bankAccount.accountNumber) {
+          const normalizedAccountNumber = bankAccount.accountNumber.replace(/\s+/g, '').toLowerCase();
+          const originalAccountNumber = (originalBankAccount?.accountNumber || '').replace(/\s+/g, '').toLowerCase();
+          
+          // Only check for duplicates if the account number is different from current
+          if (normalizedAccountNumber !== originalAccountNumber) {
+            const Seller = require('../../models/user/sellerModel');
+            const otherSeller = await Seller.findOne({
+              _id: { $ne: sellerId },
+              'paymentMethods.bankAccount.accountNumber': { $exists: true },
+            }).select('paymentMethods name shopName');
+            
+            if (otherSeller?.paymentMethods?.bankAccount?.accountNumber) {
+              const otherAccountNumber = otherSeller.paymentMethods.bankAccount.accountNumber.replace(/\s+/g, '').toLowerCase();
+              if (otherAccountNumber === normalizedAccountNumber) {
+                return next(new AppError(
+                  `This bank account number is already registered to another seller (${otherSeller.name || otherSeller.shopName}). Each seller must use a unique bank account.`,
+                  400
+                ));
+              }
+            }
+          }
+        }
+        
+        updateData.paymentMethods.bankAccount = {
+          accountNumber: bankAccount.accountNumber || '',
+          accountName: bankAccount.accountName || '',
+          bankName: bankAccount.bankName || undefined,
+          bankCode: bankAccount.bankCode || '',
+          branch: bankAccount.branch || '',
+        };
+      } else {
+        // If all bank fields are empty, remove bank account
+        updateData.paymentMethods.bankAccount = undefined;
+      }
+    }
+    
+    // Clean and validate mobile money data
+    if (mobileMoney !== undefined) {
+      const hasMobileData = mobileMoney && (mobileMoney.phone || mobileMoney.network || mobileMoney.accountName);
+      if (hasMobileData) {
+        // SECURITY: Check for duplicate mobile money number across all sellers (only if phone changed)
+        if (mobileMoney.phone) {
+          const normalizedPhone = mobileMoney.phone.replace(/\D/g, '').toLowerCase();
+          const originalPhone = (originalMobileMoney?.phone || '').replace(/\D/g, '').toLowerCase();
+          
+          // Only check for duplicates if the phone number is different from current
+          if (normalizedPhone !== originalPhone) {
+            const Seller = require('../../models/user/sellerModel');
+            const otherSeller = await Seller.findOne({
+              _id: { $ne: sellerId },
+              'paymentMethods.mobileMoney.phone': { $exists: true },
+            }).select('paymentMethods name shopName');
+            
+            if (otherSeller?.paymentMethods?.mobileMoney?.phone) {
+              const otherPhone = otherSeller.paymentMethods.mobileMoney.phone.replace(/\D/g, '').toLowerCase();
+              if (otherPhone === normalizedPhone) {
+                return next(new AppError(
+                  `This mobile money number is already registered to another seller (${otherSeller.name || otherSeller.shopName}). Each seller must use a unique mobile money number.`,
+                  400
+                ));
+              }
+            }
+          }
+        }
+        
+        updateData.paymentMethods.mobileMoney = {
+          accountName: mobileMoney.accountName || '',
+          phone: mobileMoney.phone || undefined,
+          network: mobileMoney.network || undefined,
+        };
+      } else {
+        // If all mobile fields are empty, remove mobile money
+        updateData.paymentMethods.mobileMoney = undefined;
+      }
+    }
   }
 
   // Handle file uploads - files are already uploaded by middleware
@@ -276,7 +472,52 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     }
   }
 
-  // Update seller
+  // Get current seller first
+  const currentSeller = await Seller.findById(sellerId);
+  if (!currentSeller) return next(new AppError('No seller found with that ID', 404));
+
+  // Check if payment methods are being updated
+  const isUpdatingPaymentMethods = updateData.paymentMethods !== undefined;
+  
+  // Store original payment methods for duplicate checking
+  const originalBankAccount = currentSeller.paymentMethods?.bankAccount;
+  const originalMobileMoney = currentSeller.paymentMethods?.mobileMoney;
+
+  // If updating payment methods, we need to use save() to trigger pre-save hooks
+  // which will reset individual payment method payoutStatus to 'pending' if details changed
+  if (isUpdatingPaymentMethods) {
+    // Update payment methods directly on the document
+    if (updateData.paymentMethods.bankAccount !== undefined) {
+      currentSeller.paymentMethods = currentSeller.paymentMethods || {};
+      currentSeller.paymentMethods.bankAccount = updateData.paymentMethods.bankAccount;
+    }
+    if (updateData.paymentMethods.mobileMoney !== undefined) {
+      currentSeller.paymentMethods = currentSeller.paymentMethods || {};
+      currentSeller.paymentMethods.mobileMoney = updateData.paymentMethods.mobileMoney;
+    }
+    
+    // Remove paymentMethods from updateData since we're handling it separately
+    delete updateData.paymentMethods;
+    
+    // Update other fields
+    Object.keys(updateData).forEach(key => {
+      if (key !== 'paymentMethods') {
+        currentSeller[key] = updateData[key];
+      }
+    });
+    
+    // Save to trigger pre-save hooks (which will reset payoutStatus if payment methods changed)
+    await currentSeller.save({ validateBeforeSave: true });
+    
+    // Return updated seller
+    const updatedSeller = await Seller.findById(sellerId);
+    res.status(200).json({ status: 'success', data: { seller: updatedSeller } });
+    return;
+  }
+
+  // Standard update for non-paymentMethods fields
+  console.log('[updateMe] About to update seller with data:', JSON.stringify(updateData, null, 2));
+  console.log('[updateMe] Phone field in updateData:', updateData.phone);
   const seller = await Seller.findByIdAndUpdate(
     sellerId,
     updateData,
@@ -286,6 +527,9 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     },
   );
   if (!seller) return next(new AppError('No seller found with that ID', 404));
+  
+  console.log('[updateMe] Seller updated successfully. New phone value:', seller.phone);
+  console.log('[updateMe] Full seller object phone:', JSON.stringify(seller.phone));
 
   // Auto-update onboarding if business info is complete
   const hasBusinessInfo =
@@ -726,9 +970,11 @@ exports.getMySellerProfile = catchAsync(async (req, res, next) => {
     data: { seller: result },
   });
 });
-// Override getAllSeller to include balance fields
+// Override getAllSeller to include balance fields and verification status
 exports.getAllSeller = catchAsync(async (req, res, next) => {
   let filter = {};
+  
+  // Search filter
   if (req.query.search) {
     const search = req.query.search;
     filter = {
@@ -740,8 +986,21 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
       ],
     };
   }
+  
+  // Verification status filter
+  if (req.query.verificationStatus) {
+    filter.verificationStatus = req.query.verificationStatus;
+  }
+  
+  // Onboarding stage filter
+  if (req.query.onboardingStage) {
+    filter.onboardingStage = req.query.onboardingStage;
+  }
 
-  let query = Seller.find(filter).select('name shopName email balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin');
+  // Build select fields - include verification status fields for admin UI
+  const selectFields = 'name shopName email balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin verificationStatus onboardingStage verifiedBy verifiedAt verificationDocuments';
+  
+  let query = Seller.find(filter).select(selectFields);
 
   const features = new APIFeature(query, req.query)
     .filter()
@@ -756,20 +1015,80 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
     seller.calculateWithdrawableBalance();
   });
 
+  // Get order counts for all sellers
+  const SellerOrder = require('../../models/order/sellerOrderModel');
+  const sellerIds = results.map(seller => seller._id);
+  
+  // Aggregate order counts per seller
+  const orderCounts = await SellerOrder.aggregate([
+    {
+      $match: {
+        seller: { $in: sellerIds }
+      }
+    },
+    {
+      $group: {
+        _id: '$seller',
+        orderCount: { $sum: 1 }
+      }
+    }
+  ]);
+
+  // Create a map of sellerId -> orderCount
+  const orderCountMap = {};
+  orderCounts.forEach(item => {
+    orderCountMap[item._id.toString()] = item.orderCount;
+  });
+
+  // Add orderCount to each seller result
+  const resultsWithOrderCount = results.map(seller => {
+    const sellerDoc = seller.toObject ? seller.toObject() : seller;
+    sellerDoc.orderCount = orderCountMap[seller._id.toString()] || 0;
+    return sellerDoc;
+  });
+
   const meta = await features.getMeta();
 
   res.status(200).json({
     status: 'success',
-    results: results.length,
+    results: resultsWithOrderCount.length,
     meta,
     data: {
-      results,
+      results: resultsWithOrderCount,
     },
   });
 });
-exports.getSeller = handleFactory.getOne(Seller, {
-  path: 'verifiedBy',
-  select: 'name email',
+// Override getSeller to include computed isSetupComplete field
+exports.getSeller = catchAsync(async (req, res, next) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next(new AppError('Invalid ID format', 400));
+  }
+
+  const seller = await Seller.findById(req.params.id)
+    .populate({
+      path: 'verifiedBy',
+      select: 'name email',
+    })
+    .select('+verificationDocuments +paymentMethods'); // Include fields needed for isSetupComplete
+
+  if (!seller) {
+    return next(new AppError('Seller with this ID is not found', 404));
+  }
+
+  // Convert to object and add computed field
+  const sellerData = seller.toObject ? seller.toObject() : seller;
+  
+  // ✅ BACKEND-DRIVEN: Add isSetupComplete from backend computation
+  sellerData.isSetupComplete = seller.computeIsSetupComplete();
+
+  res.status(200).json({ 
+    status: 'success', 
+    data: { 
+      data: sellerData,
+      // Also include at top level for easier access
+      isSetupComplete: sellerData.isSetupComplete,
+    } 
+  });
 });
 exports.updateSeller = handleFactory.updateOne(Seller);
 exports.deleteSeller = handleFactory.deleteOne(Seller);

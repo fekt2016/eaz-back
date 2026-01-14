@@ -7,7 +7,6 @@ const deviceSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: [true, 'User ID is required'],
       refPath: 'userModel',
-      index: true,
     },
     userModel: {
       type: String,
@@ -19,7 +18,6 @@ const deviceSessionSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Device ID is required'],
       unique: true,
-      index: true,
     },
     ipAddress: {
       type: String,
@@ -56,7 +54,6 @@ const deviceSessionSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
-      index: true,
     },
     expiresAt: {
       type: Date,
@@ -76,10 +73,7 @@ const deviceSessionSchema = new mongoose.Schema(
   },
 );
 
-// Compound index for faster queries
-deviceSessionSchema.index({ userId: 1, deviceId: 1 });
-deviceSessionSchema.index({ userId: 1, isActive: 1 });
-deviceSessionSchema.index({ userId: 1, platform: 1 });
+
 
 // Pre-save hook to hash refresh token
 deviceSessionSchema.pre('save', async function (next) {

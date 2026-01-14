@@ -146,7 +146,21 @@ exports.createCouponBatch = catchAsync(async (req, res, next) => {
 });
 
 exports.getSellerCouponBatches = catchAsync(async (req, res, next) => {
-  const batches = await CouponBatch.find({ seller: req.user.id })
+  // Defensive check (should never happen if middleware works correctly)
+  if (!req.user || !req.user.id) {
+    console.error('[getSellerCouponBatches] ❌ No user found in request');
+    console.error('[getSellerCouponBatches] req.user:', req.user);
+    return next(new AppError('Authentication required', 401));
+  }
+
+  const sellerId = req.user.id || req.user._id;
+  
+  if (!sellerId) {
+    console.error('[getSellerCouponBatches] ❌ No seller ID found in req.user');
+    return next(new AppError('Seller ID not found', 401));
+  }
+
+  const batches = await CouponBatch.find({ seller: sellerId })
     .sort('-createdAt')
     .populate('coupons.recipient', 'name email')
     .populate('coupons.lastUsedBy', 'name email');

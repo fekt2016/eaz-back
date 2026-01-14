@@ -3,6 +3,7 @@ const adminController = require('../../controllers/admin/adminController');
 const authAdminController = require('../../controllers/admin/authAdminController');
 const shippingConfigController = require('../../controllers/admin/shippingConfigController');
 const sellerController = require('../../controllers/admin/sellerController');
+const payoutVerificationController = require('../../controllers/admin/payoutVerificationController');
 const statsController = require('../../controllers/admin/statsController');
 const taxController = require('../../controllers/admin/taxController');
 const platformSettingsController = require('../../controllers/admin/platformSettingsController');
@@ -13,11 +14,22 @@ const historyController = require('../../controllers/admin/historyController');
 const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
 
+const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+
 const router = express.Router();
 
 router.post('/signup', authAdminController.signupAdmin);
 router.post('/login', authAdminController.adminLogin);
-router.post('/forgotPassword', authAdminController.forgetPassword);
+
+// ==================================================
+// UNIFIED EMAIL-ONLY PASSWORD RESET FLOW
+// ==================================================
+// New unified endpoints (email-only, token-based)
+router.post('/forgot-password', resetLimiter, authAdminController.requestPasswordReset);
+router.post('/reset-password', resetLimiter, authAdminController.resetPasswordWithToken);
+
+// Legacy endpoints (kept for backward compatibility)
+router.post('/forgotPassword', resetLimiter, authAdminController.forgetPassword);
 router.patch('/resetPassword/:token', authAdminController.resetPassword);
 
 router.use(authController.protect, authController.restrictTo('admin'));
@@ -270,6 +282,31 @@ router
     authController.protect,
     authController.restrictTo('admin'),
     sellerController.unlockSellerFunds
+  );
+
+// Payout Verification Routes (SEPARATED from Document Verification)
+router
+  .route('/sellers/:id/payout')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    payoutVerificationController.getPayoutVerificationDetails
+  );
+
+router
+  .route('/sellers/:id/payout/approve')
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    payoutVerificationController.approvePayoutVerification
+  );
+
+router
+  .route('/sellers/:id/payout/reject')
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    payoutVerificationController.rejectPayoutVerification
   );
 
 // Analytics Routes

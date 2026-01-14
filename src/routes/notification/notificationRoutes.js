@@ -62,5 +62,33 @@ router.post(
  */
 router.delete('/:id', notificationController.deleteNotification);
 
+/**
+ * @route   DELETE /api/v1/notifications/bulk
+ * @desc    Delete multiple notifications by IDs
+ * @access  Private (Buyer/Seller/Admin)
+ */
+router.delete('/bulk', notificationController.deleteMultipleNotifications);
+
+/**
+ * @route   DELETE /api/v1/notifications/all
+ * @desc    Delete all notifications for authenticated user
+ * @access  Private (Buyer/Seller/Admin)
+ */
+router.delete('/all', notificationController.deleteAllNotifications);
+
+/**
+ * @route   POST /api/v1/notifications/register-device
+ * @desc    Register device token for push notifications
+ * @access  Private (Buyer/Seller/Admin)
+ */
+router.post('/register-device', notificationController.registerDevice);
+
+/**
+ * @route   DELETE /api/v1/notifications/register-device
+ * @desc    Unregister device token (on logout)
+ * @access  Private (Buyer/Seller/Admin)
+ */
+router.delete('/register-device', notificationController.unregisterDevice);
+
 module.exports = router;
 

@@ -6,6 +6,7 @@ const Admin = require('../../models/user/adminModel');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const { parseUserAgent } = require('../../utils/helpers/deviceUtils');
+const { safeFs, safePath } = require('../../utils/safePath');
 
 /**
  * Get all sessions with filters (Admin only)
@@ -304,12 +305,20 @@ exports.getSuspiciousLogins = catchAsync(async (req, res, next) => {
  * Get cron cleanup logs (Admin only)
  */
 exports.getCleanupLogs = catchAsync(async (req, res, next) => {
-  const fs = require('fs');
-  const path = require('path');
+  // USE SAFE VERSIONS - never crashes
+  const logFile = safePath.joinSafe(__dirname, '../../../logs/cron.log');
 
-  const logFile = path.join(__dirname, '../../../logs/cron.log');
+  if (!logFile) {
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        logs: [],
+        message: 'Failed to resolve log file path',
+      },
+    });
+  }
 
-  if (!fs.existsSync(logFile)) {
+  if (!safeFs.existsSyncSafe(logFile, { label: 'cron log file' })) {
     return res.status(200).json({
       status: 'success',
       data: {
@@ -319,7 +328,18 @@ exports.getCleanupLogs = catchAsync(async (req, res, next) => {
     });
   }
 
-  const logs = fs.readFileSync(logFile, 'utf8').split('\n').filter((line) => line.trim());
+  const logContent = safeFs.readFileSyncSafe(logFile, 'utf8', { label: 'cron log file' });
+  if (!logContent) {
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        logs: [],
+        message: 'Failed to read log file',
+      },
+    });
+  }
+
+  const logs = logContent.split('\n').filter((line) => line.trim());
 
   // Get last 100 lines
   const recentLogs = logs.slice(-100).reverse();

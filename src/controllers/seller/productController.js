@@ -7,8 +7,12 @@ const Review = require('../../models/product/reviewModel');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
 const Seller = require('../../models/user/sellerModel');
+const Order = require('../../models/order/orderModel');
+const OrderItems = require('../../models/order/OrderItemModel');
+const BrowserHistory = require('../../models/user/browserHistoryModel');
 const handleFactory = require('../shared/handleFactory');
 const APIFeature = require('../../utils/helpers/apiFeatures');
+const { buildBuyerSafeQuery } = require('../../utils/helpers/productVisibility');
 
 //product middleWare
 exports.setProductIds = (req, res, next) => {
@@ -52,30 +56,40 @@ exports.conditionalUpload = (req, res, next) => {
   // console.log(req.headers['content-type']);
   // Check if files are present in the request
   if (req.headers['content-type']?.startsWith('multipart/form-data')) {
-    return upload.fields([
-      { name: 'imageCover', maxCount: 1 },
-      { name: 'newImages', maxCount: 10 },
-    ])(req, res, next);
+    // Use upload.any() to accept all files, then we'll process them in resizeProductImages
+    return upload.any()(req, res, next);
   }
   next();
 };
 
-exports.uploadProductImage = upload.fields([
-  { name: 'imageCover', maxCount: 1 },
-  { name: 'newImages', maxCount: 10 },
-]);
+exports.uploadProductImage = upload.any();
 
 exports.resizeProductImages = catchAsync(async (req, res, next) => {
   // console.log(req);
   req.body = { ...req.body };
-  req.files = { ...req.files };
+  
+  // Convert req.files array to object format for easier access
+  // When using upload.any(), files are in array format with fieldname property
+  let filesObj = {};
+  if (Array.isArray(req.files)) {
+    req.files.forEach(file => {
+      if (!filesObj[file.fieldname]) {
+        filesObj[file.fieldname] = [];
+      }
+      filesObj[file.fieldname].push(file);
+    });
+  } else if (req.files) {
+    filesObj = req.files;
+  }
+  
+  req.files = filesObj;
   console.log('req.files', req.files);
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
     // console.log('cloudinary', cloudinary);
-    if (req.files) {
+    if (req.files && Object.keys(req.files).length > 0) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
       const uploadFromBuffer = (buffer, options) => {
@@ -93,9 +107,10 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
           bufferStream.pipe(writeStream);
         });
       };
-      if (req.files.imageCover) {
+      
+      // Process cover image
+      if (req.files.imageCover && req.files.imageCover[0]) {
         const coverFile = req.files.imageCover[0];
-        // Process cover image
         const coverResult = await uploadFromBuffer(coverFile.buffer, {
           folder: 'products',
           public_id: `${uniqueSuffix}-cover`,
@@ -109,7 +124,8 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         console.log('Cover image URL:', req.body.imageCover);
       }
 
-      if (req.files.newImages) {
+      // Process product additional images
+      if (req.files.newImages && req.files.newImages.length > 0) {
         const newImages = req.files.newImages;
 
         const imagesPromises = newImages.map(async (file, i) => {
@@ -125,6 +141,74 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         });
 
         imagesUrls = await Promise.all(imagesPromises);
+      }
+
+      // Handle variant images
+      // Variant images are uploaded with field names like: variantImages[0], variantImages[1], etc.
+      if (req.body.variants && Array.isArray(req.body.variants)) {
+        // Parse variants if it's a string
+        if (typeof req.body.variants === 'string') {
+          try {
+            req.body.variants = JSON.parse(req.body.variants);
+          } catch (err) {
+            console.error('Error parsing variants:', err);
+          }
+        }
+
+        // Process variant images
+        for (let i = 0; i < req.body.variants.length; i++) {
+          const variantKey = `variantImages[${i}]`;
+          const variantKeyAlt = `variants[${i}][images]`; // Alternative format
+          
+          // Check both possible field name formats
+          let variantImageFiles = null;
+          if (req.files[variantKey] && req.files[variantKey].length > 0) {
+            variantImageFiles = req.files[variantKey];
+          } else if (req.files[variantKeyAlt] && req.files[variantKeyAlt].length > 0) {
+            variantImageFiles = req.files[variantKeyAlt];
+          }
+
+          if (variantImageFiles) {
+            const variantImagesPromises = variantImageFiles.map(async (file, imgIndex) => {
+              const result = await uploadFromBuffer(file.buffer, {
+                folder: 'products/variants',
+                public_id: `${uniqueSuffix}-variant-${i}-image-${imgIndex}`,
+                transformation: [
+                  { width: 1000, height: 1000, crop: 'fill' },
+                  { quality: 'auto', fetch_format: 'auto' },
+                ],
+              });
+              return result.secure_url;
+            });
+
+            const variantImageUrls = await Promise.all(variantImagesPromises);
+            
+            // Merge with existing variant images if any
+            const existingVariantImages = req.body.variants[i].images || [];
+            if (typeof existingVariantImages === 'string') {
+              try {
+                const parsed = JSON.parse(existingVariantImages);
+                req.body.variants[i].images = [...(Array.isArray(parsed) ? parsed : []), ...variantImageUrls];
+              } catch {
+                req.body.variants[i].images = [...(Array.isArray(existingVariantImages) ? existingVariantImages : []), ...variantImageUrls];
+              }
+            } else {
+              req.body.variants[i].images = [...(Array.isArray(existingVariantImages) ? existingVariantImages : []), ...variantImageUrls];
+            }
+          } else if (req.body.variants[i].images) {
+            // If variant has images but no new files, ensure images is an array
+            if (typeof req.body.variants[i].images === 'string') {
+              try {
+                req.body.variants[i].images = JSON.parse(req.body.variants[i].images);
+              } catch {
+                req.body.variants[i].images = [];
+              }
+            }
+          } else {
+            // Initialize empty images array if not present
+            req.body.variants[i].images = [];
+          }
+        }
       }
 
       if (req.body.existingImages) {
@@ -151,6 +235,11 @@ exports.bestProductPrice = async () => {
 };
 //get product count by category
 exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
+  console.time('category-counts');
+  console.log('[CATEGORY-COUNTS] Request received');
+  
+  // PERFORMANCE FIX: Add allowDiskUse(true) for large aggregations
+  // This allows MongoDB to use disk for temporary files when memory is insufficient
   const productCounts = await Product.aggregate([
     {
       $group: {
@@ -185,7 +274,10 @@ exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
         count: 1,
       },
     },
-  ]);
+  ]).allowDiskUse(true); // PERFORMANCE FIX: Allow disk use for large aggregations
+
+  console.timeEnd('category-counts');
+  console.log(`[CATEGORY-COUNTS] ✅ Returned ${productCounts.length} category counts`);
 
   res.status(200).json({
     status: 'success',
@@ -210,15 +302,19 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
     })));
   }
 
-  // Show approved and pending products (not rejected or inactive)
-  // This allows sellers to see their pending products on their public page
-  // Status can be: 'active', 'inactive', 'draft', 'out_of_stock'
-  // We want to show active and out_of_stock products (not inactive or draft)
-  const products = await Product.find({
-    seller: sellerId,
-    moderationStatus: { $in: ['approved', 'pending'] },
-    status: { $in: ['active', 'out_of_stock'] }
-  }).populate('parentCategory', 'name slug').populate('subCategory', 'name slug');
+  // For public seller page: Only show products that are visible to buyers
+  // This means: seller must be verified, product must be active and approved
+  // Use buyer-safe query to ensure unverified sellers' products are hidden
+  const baseFilter = { seller: sellerId };
+  const buyerSafeFilter = buildBuyerSafeQuery(baseFilter, {
+    user: req.user,
+    isAdmin: req.user?.role === 'admin',
+    isSeller: false, // Public view, not seller's own view
+  });
+  
+  const products = await Product.find(buyerSafeFilter)
+    .populate('parentCategory', 'name slug')
+    .populate('subCategory', 'name slug');
 
   console.log('🔍 [getAllPublicProductsBySeller] Found approved/pending products:', products.length);
   console.log('🔍 [getAllPublicProductsBySeller] Query filter:', {
@@ -281,16 +377,34 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
 
 //getting all products by admin
 exports.getAllProduct = catchAsync(async (req, res, next) => {
+  console.time('getAllProduct');
+  console.log('🔍 [getAllProduct] Products request hit');
+  
+  // Set default limit to 20 if not provided (performance optimization)
+  if (!req.query.limit) {
+    req.query.limit = '20';
+  }
+  // Cap limit at 100 to prevent performance issues
+  const requestedLimit = parseInt(req.query.limit) || 20;
+  if (requestedLimit > 100) {
+    req.query.limit = '100';
+  }
+  
   // Build base filter
   let filter = {};
 
-  // For non-admin users (public access), only show approved products
+  // For non-admin users (public/buyer access), use buyer-safe query
+  // This excludes products from unverified sellers
   if (!req.user || req.user.role !== 'admin') {
-    filter.moderationStatus = 'approved';
-    filter.status = { $ne: 'inactive' };
+    const isSeller = req.user?.role === 'seller';
+    filter = buildBuyerSafeQuery(filter, {
+      user: req.user,
+      isAdmin: false,
+      isSeller: isSeller,
+    });
   }
-  // Admins can see all products (including pending/rejected)
-  // Sellers can see their own products regardless of moderation status (handled via filter)
+  // Admins can see all products (including pending/rejected and unverified sellers)
+  // Sellers can see their own products regardless of verification (handled in getSellerProducts)
 
   // Build query with filter
   let query = Product.find(filter);
@@ -302,19 +416,23 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     .limitFields()
     .paginate();
 
-  // Populate related fields
+  // Populate related fields (limit to essential fields for performance)
   features.query = features.query.populate([
     { path: 'seller', select: 'name email phone shopName' },
     { path: 'parentCategory', select: 'name slug' },
     { path: 'subCategory', select: 'name slug' },
-  ]);
+  ]).lean(); // Use lean() for better performance (returns plain JS objects)
 
   const products = await features.query;
 
   // Get total count for pagination (apply same filter)
+  // Use estimatedDocumentCount for better performance if exact count not critical
   const countQuery = Product.find(filter);
   const countFeatures = new APIFeature(countQuery, req.query).filter();
   const total = await countFeatures.query.countDocuments();
+
+  console.timeEnd('getAllProduct');
+  console.log(`✅ [getAllProduct] Returned ${products.length} products in ${req.query.limit || 20} limit`);
 
   res.status(200).json({
     status: 'success',
@@ -512,6 +630,9 @@ exports.getProductById = catchAsync(async (req, res, next) => {
       });
     }
 
+    // NOTE: Products from unverified sellers can be viewed, but orders are blocked
+    // Order validation happens in createOrder controller
+    
     // If not seller's own product and cannot access (not approved and not undefined), deny access
     if (!isSellerOwnProduct && !canAccess) {
       console.log('[getProductById] ❌ Access denied:', {
@@ -594,7 +715,16 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     if (req.query.maxPrice) baseQuery.price.$lte = Number(req.query.maxPrice);
   }
 
-  const products = await Product.find(baseQuery);
+  // 5. Apply buyer-safe filter (exclude unverified seller products)
+  const isAdmin = req.user?.role === 'admin';
+  const isSeller = req.user?.role === 'seller';
+  const buyerSafeQuery = buildBuyerSafeQuery(baseQuery, {
+    user: req.user,
+    isAdmin: isAdmin,
+    isSeller: isSeller,
+  });
+
+  const products = await Product.find(buyerSafeQuery);
   // console.log(products);
   // console.log(products);
   // 5. Execute query
@@ -606,7 +736,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
 
   // const products = await features.query;
   // console.log(products);
-  const totalCount = await Product.countDocuments(baseQuery);
+  const totalCount = await Product.countDocuments(buyerSafeQuery);
   // console.log(products);
   // 6. Send response
   res.status(200).json({
@@ -718,25 +848,238 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
-  // Get old product data before update
+  // Get old product data before update and verify ownership
   const oldProduct = await Product.findById(req.params.id);
+  
+  if (!oldProduct) {
+    return next(new AppError('Product not found', 404));
+  }
 
-  const updateHandler = handleFactory.updateOne(Product);
+  // Verify seller owns this product (unless admin)
+  if (req.user.role !== 'admin' && oldProduct.seller.toString() !== req.user.id.toString()) {
+    return next(new AppError('You do not have permission to modify this product', 403));
+  }
 
-  // Store original json method
-  const originalJson = res.json.bind(res);
-  let productUpdated = null;
-
-  // Override res.json to intercept response
-  res.json = function (data) {
-    if (data?.doc) {
-      productUpdated = data.doc;
+  // Parse JSON strings for variants and specifications (same as createProduct)
+  if (req.body.variants && typeof req.body.variants === 'string') {
+    try {
+      req.body.variants = JSON.parse(req.body.variants);
+      console.log('[updateProduct] Parsed variants:', req.body.variants);
+    } catch (err) {
+      return next(new AppError('Invalid variants format', 400));
     }
-    originalJson(data);
-  };
+  }
 
-  // Call the factory handler
-  await updateHandler(req, res, next);
+  // Ensure variants is an array
+  if (req.body.variants && !Array.isArray(req.body.variants)) {
+    return next(new AppError('Variants must be an array', 400));
+  }
+
+  // Transform variants data types and ensure attributes are properly formatted
+  if (req.body.variants) {
+    req.body.variants = req.body.variants.map((variant) => {
+      // Ensure attributes is an array and properly formatted
+      let attributes = variant.attributes || [];
+      if (!Array.isArray(attributes)) {
+        attributes = [];
+      }
+      
+      // Filter out attributes with empty keys or values
+      attributes = attributes.filter(attr => attr && attr.key && attr.value);
+      
+      // If no valid attributes, create a default one to satisfy validation
+      if (attributes.length === 0) {
+        attributes = [{ key: 'Default', value: 'N/A' }];
+      }
+
+      return {
+        ...variant,
+        attributes,
+        price: parseFloat(variant.price) || 0,
+        stock: parseInt(variant.stock) || 0,
+        sku: variant.sku || '',
+        status: variant.status || 'active',
+      };
+    });
+  }
+
+  // Parse specifications if sent as JSON string
+  if (req.body.specifications && typeof req.body.specifications === 'string') {
+    try {
+      req.body.specifications = JSON.parse(req.body.specifications);
+      console.log('[updateProduct] Parsed specifications:', req.body.specifications);
+    } catch (err) {
+      return next(new AppError('Invalid specifications format', 400));
+    }
+  }
+
+  // Handle manufacturer field - convert string to object format if needed
+  if (req.body.manufacturer !== undefined) {
+    if (typeof req.body.manufacturer === 'string' && req.body.manufacturer.trim() !== '') {
+      // Convert string to object format: { name: "Levi" }
+      req.body.manufacturer = {
+        name: req.body.manufacturer.trim(),
+      };
+      console.log('[updateProduct] Converted manufacturer string to object:', req.body.manufacturer);
+    } else if (typeof req.body.manufacturer === 'object' && req.body.manufacturer !== null) {
+      // Already in object format, ensure it has the correct structure
+      if (req.body.manufacturer.name) {
+        req.body.manufacturer = {
+          name: String(req.body.manufacturer.name).trim() || '',
+          sku: req.body.manufacturer.sku ? String(req.body.manufacturer.sku).trim() : '',
+          partNumber: req.body.manufacturer.partNumber ? String(req.body.manufacturer.partNumber).trim() : '',
+        };
+      } else {
+        // Empty object or invalid structure, set to null
+        req.body.manufacturer = null;
+      }
+    } else if (req.body.manufacturer === '' || req.body.manufacturer === null) {
+      // Empty string or null, set to null
+      req.body.manufacturer = null;
+    }
+  }
+
+  // Handle warranty field - convert string to object format if needed
+  // Warranty can be: { duration: Number, type: String, details: String } or a string
+  if (req.body.warranty !== undefined) {
+    if (typeof req.body.warranty === 'string' && req.body.warranty.trim() !== '') {
+      // Try to parse warranty string (e.g., "1 year", "2 years")
+      const warrantyStr = req.body.warranty.trim().toLowerCase();
+      const durationMatch = warrantyStr.match(/(\d+)/);
+      const duration = durationMatch ? parseInt(durationMatch[1]) : null;
+      const type = warrantyStr.includes('year') ? 'year' : warrantyStr.includes('month') ? 'month' : 'standard';
+      
+      req.body.warranty = {
+        duration: duration || 1,
+        type: type,
+        details: req.body.warranty.trim(),
+      };
+      console.log('[updateProduct] Converted warranty string to object:', req.body.warranty);
+    } else if (typeof req.body.warranty === 'object' && req.body.warranty !== null) {
+      // Already in object format, ensure it has the correct structure
+      req.body.warranty = {
+        duration: req.body.warranty.duration ? Number(req.body.warranty.duration) : null,
+        type: req.body.warranty.type || 'standard',
+        details: req.body.warranty.details ? String(req.body.warranty.details).trim() : '',
+      };
+    } else if (req.body.warranty === '' || req.body.warranty === null) {
+      // Empty string or null, set to null
+      req.body.warranty = null;
+    }
+  }
+
+  // Handle images field - if sent as JSON string, parse it and set as existingImages
+  // The resizeProductImages middleware expects existingImages
+  if (req.body.images && typeof req.body.images === 'string') {
+    try {
+      const parsedImages = JSON.parse(req.body.images);
+      req.body.existingImages = parsedImages;
+      delete req.body.images; // Remove images field, middleware will use existingImages
+      console.log('[updateProduct] Parsed existing images:', parsedImages);
+    } catch (err) {
+      console.warn('[updateProduct] Failed to parse images field, treating as new images array');
+      // If parsing fails, it might be a new images array, let middleware handle it
+    }
+  }
+
+  // Validate ObjectIDs for categories
+  if (req.body.parentCategory && !mongoose.Types.ObjectId.isValid(req.body.parentCategory)) {
+    return next(new AppError('Invalid parentCategory ID format', 400));
+  }
+
+  if (req.body.subCategory && !mongoose.Types.ObjectId.isValid(req.body.subCategory)) {
+    return next(new AppError('Invalid subCategory ID format', 400));
+  }
+
+  // For products with variants, we need to handle updates manually
+  // because findByIdAndUpdate doesn't work well with nested subdocuments
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      return next(new AppError('Product not found', 404));
+    }
+
+    // Update all fields except variants (we'll handle variants separately)
+    const updateFields = { ...req.body };
+    const variantsToUpdate = updateFields.variants;
+    delete updateFields.variants; // Remove variants, handle separately
+
+    // Update non-variant fields
+    Object.keys(updateFields).forEach((key) => {
+      if (updateFields[key] !== undefined && updateFields[key] !== null) {
+        product[key] = updateFields[key];
+      }
+    });
+
+    // Handle variants update
+    if (variantsToUpdate && Array.isArray(variantsToUpdate)) {
+      // Build new variants array
+      const newVariants = variantsToUpdate.map((variant) => {
+        // If variant has _id and it exists in current product, update it
+        if (variant._id && mongoose.Types.ObjectId.isValid(variant._id)) {
+          const existingVariant = product.variants.id(variant._id);
+          if (existingVariant) {
+            // Update existing variant fields
+            Object.keys(variant).forEach((key) => {
+              if (key !== '_id' && variant[key] !== undefined) {
+                existingVariant[key] = variant[key];
+              }
+            });
+            return existingVariant;
+          }
+        }
+        // Create new variant (remove _id if it doesn't exist in product)
+        const newVariant = { ...variant };
+        if (newVariant._id) {
+          delete newVariant._id; // Remove _id for new variants
+        }
+        return newVariant;
+      });
+      
+      // Replace entire variants array
+      product.variants = newVariants;
+    }
+
+    // Save the product (this will trigger all pre-save hooks and validations)
+    const updatedProduct = await product.save();
+
+    // Log activity
+    if (req.user && req.user.role === 'seller') {
+      const changes = [];
+      if (oldProduct && updatedProduct.name !== oldProduct.name) {
+        changes.push(`name from "${oldProduct.name}" to "${updatedProduct.name}"`);
+      }
+      const changeDesc = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
+      logActivityAsync({
+        userId: req.user.id,
+        role: 'seller',
+        action: 'UPDATE_PRODUCT',
+        description: `Seller updated product: ${updatedProduct.name || 'Unknown'}${changeDesc}`,
+        req,
+        metadata: { productId: updatedProduct._id },
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      doc: updatedProduct,
+    });
+  } catch (error) {
+    console.error('[updateProduct] Error updating product:', error);
+    console.error('[updateProduct] Request body:', JSON.stringify(req.body, null, 2));
+    console.error('[updateProduct] Product ID:', req.params.id);
+    console.error('[updateProduct] Error stack:', error.stack);
+    
+    // Return more specific error messages
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message).join(', ');
+      return next(new AppError(`Validation error: ${errors}`, 400));
+    }
+    
+    return next(new AppError(`Failed to update product: ${error.message}`, 500));
+  }
 
   // Log activity after update
   if (productUpdated && req.user && req.user.role === 'seller') {
@@ -1165,4 +1508,170 @@ exports.deleteProductVariant = catchAsync(async (req, res, next) => {
     status: 'success',
     data: null,
   });
+});
+
+/**
+ * GET /api/v1/products/similar?userId={id}
+ * Get similar products based on user's recently ordered and viewed items
+ */
+exports.getSimilarProducts = catchAsync(async (req, res, next) => {
+  const userId = req.query.userId;
+  const limit = parseInt(req.query.limit) || 10;
+
+  if (!userId) {
+    return next(new AppError('User ID is required', 400));
+  }
+
+  // Validate userId is a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return next(new AppError('Invalid user ID format', 400));
+  }
+
+  try {
+    // 1. Get categories from recently ordered products
+    const recentOrders = await Order.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate({
+        path: 'orderItems',
+        populate: {
+          path: 'product',
+          select: 'parentCategory subCategory',
+        },
+      })
+      .lean();
+
+    // 2. Get categories from recently viewed products (BrowserHistory)
+    const recentViews = await BrowserHistory.find({
+      user: userId,
+      type: 'product',
+    })
+      .sort({ viewedAt: -1 })
+      .limit(20)
+      .lean();
+    
+    // Get product IDs from browser history
+    const viewedProductIds = recentViews
+      .map((view) => view.itemId)
+      .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
+    
+    // Fetch products to get their categories
+    const viewedProducts = viewedProductIds.length > 0
+      ? await Product.find({
+          _id: { $in: viewedProductIds },
+        })
+          .select('_id parentCategory subCategory')
+          .lean()
+      : [];
+
+    // 3. Collect all category IDs
+    const categoryIds = new Set();
+    const productIdsToExclude = new Set();
+
+    // From orders
+    recentOrders.forEach((order) => {
+      if (order.orderItems && Array.isArray(order.orderItems)) {
+        order.orderItems.forEach((item) => {
+          if (item.product) {
+            productIdsToExclude.add(item.product._id.toString());
+            if (item.product.parentCategory) {
+              categoryIds.add(item.product.parentCategory.toString());
+            }
+            if (item.product.subCategory) {
+              categoryIds.add(item.product.subCategory.toString());
+            }
+          }
+        });
+      }
+    });
+
+    // From browser history
+    viewedProducts.forEach((product) => {
+      if (product._id) {
+        productIdsToExclude.add(product._id.toString());
+        if (product.parentCategory) {
+          categoryIds.add(product.parentCategory.toString());
+        }
+        if (product.subCategory) {
+          categoryIds.add(product.subCategory.toString());
+        }
+      }
+    });
+
+    // If no categories found, return empty array
+    if (categoryIds.size === 0) {
+      return res.status(200).json({
+        status: 'success',
+        results: 0,
+        data: {
+          products: [],
+        },
+      });
+    }
+
+    // 4. Find similar products in those categories
+    const categoryArray = Array.from(categoryIds);
+    const excludeProductArray = Array.from(productIdsToExclude);
+
+    const similarProducts = await Product.find({
+      $or: [
+        { parentCategory: { $in: categoryArray } },
+        { subCategory: { $in: categoryArray } },
+      ],
+      _id: { $nin: excludeProductArray },
+      moderationStatus: 'approved',
+      status: { $ne: 'inactive' },
+    })
+      .select('_id name price discountPrice images imageCover rating ratingsAverage totalSold slug')
+      .populate('parentCategory', 'name slug')
+      .populate('subCategory', 'name slug')
+      .sort({ totalSold: -1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    // 5. Format response with lightweight fields
+    const formattedProducts = similarProducts.map((product) => {
+      // Calculate discount price if discount exists
+      let finalPrice = product.price || 0;
+      let discountPrice = null;
+
+      if (product.discountPrice && product.discountPrice < product.price) {
+        discountPrice = product.discountPrice;
+        finalPrice = discountPrice;
+      }
+
+      // Get rating
+      const rating = product.ratingsAverage || product.rating || 0;
+
+      // Get image
+      const imageUri =
+        product.imageCover ||
+        (product.images && product.images.length > 0 ? product.images[0] : null);
+
+      return {
+        _id: product._id,
+        name: product.name,
+        price: finalPrice,
+        discountPrice: discountPrice,
+        images: imageUri ? [imageUri] : [],
+        imageCover: imageUri,
+        rating: rating,
+        totalSold: product.totalSold || 0,
+        slug: product.slug,
+        parentCategory: product.parentCategory,
+        subCategory: product.subCategory,
+      };
+    });
+
+    res.status(200).json({
+      status: 'success',
+      results: formattedProducts.length,
+      data: {
+        products: formattedProducts,
+      },
+    });
+  } catch (error) {
+    console.error('[getSimilarProducts] Error:', error);
+    return next(new AppError('Failed to fetch similar products', 500));
+  }
 });

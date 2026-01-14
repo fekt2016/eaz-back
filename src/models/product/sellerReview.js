@@ -1,3 +1,21 @@
+/**
+ * ⚠️ DEPRECATED: SellerReview Model
+ * 
+ * CRITICAL: This model violates marketplace best practices.
+ * Sellers MUST NOT have free-text reviews from users.
+ * 
+ * Seller ratings must be SYSTEM-DERIVED ONLY from:
+ * - Product review averages (60%)
+ * - Order completion rate (20%)
+ * - Delivery performance (10%)
+ * - Dispute/return rate (10%)
+ * 
+ * This model is kept for backward compatibility but should NOT be used for new features.
+ * Use sellerRatingService.js for system-derived ratings instead.
+ * 
+ * @deprecated Use sellerRatingService.calculateSellerRating() instead
+ */
+
 const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 const Seller = require('../user/sellerModel');

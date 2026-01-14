@@ -3,6 +3,7 @@ const TokenBlacklist = require('../models/user/tokenBlackListModal');
 const DeviceSession = require('../models/user/deviceSessionModel');
 const fs = require('fs');
 const path = require('path');
+const { safeFs, safePath } = require('../utils/safePath');
 
 /**
  * 90-Day Token Cleanup Cron Job
@@ -50,14 +51,39 @@ const tokenCleanup = async () => {
 
     console.log(logMessage);
 
-    // Log to file
-    const logDir = path.join(__dirname, '../../logs');
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
-    }
+    // Log to file (with error handling) - USE SAFE VERSIONS
+    try {
+    const logDir = safePath.joinSafe(__dirname, '../../logs');
+    if (!logDir) {
+      console.warn('[TokenCleanup] ⚠️  Failed to resolve log directory path');
+      // Continue without logging to file
+    } else {
+      if (!safeFs.existsSyncSafe(logDir, { label: 'cron log directory' })) {
+        try {
+          fs.mkdirSync(logDir, { recursive: true });
+        } catch (mkdirError) {
+          console.warn('[TokenCleanup] ⚠️  Failed to create log directory:', mkdirError.message);
+          // Continue without logging to file
+        }
+      }
 
-    const logFile = path.join(logDir, 'cron.log');
-    fs.appendFileSync(logFile, logMessage, 'utf8');
+      const logFile = safePath.joinSafe(logDir, 'cron.log');
+      if (!logFile) {
+        console.warn('[TokenCleanup] ⚠️  Failed to resolve log file path');
+        // Continue without logging to file
+      } else {
+        // Use safe write (but appendFileSync doesn't have a safe version, so use regular with try/catch)
+        try {
+          fs.appendFileSync(logFile, logMessage, 'utf8');
+        } catch (writeError) {
+          console.warn('[TokenCleanup] ⚠️  Failed to write to log file:', writeError.message);
+        }
+      }
+    }
+    } catch (fileError) {
+      // Don't fail the cleanup if file logging fails
+      console.warn('[TokenCleanup] ⚠️ Failed to write to log file:', fileError.message);
+    }
 
     return {
       tokensRemoved: result.deletedCount,
@@ -70,14 +96,34 @@ const tokenCleanup = async () => {
     console.error(errorMessage);
     console.error(error);
 
-    // Log error to file
-    const logDir = path.join(__dirname, '../../logs');
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
+    // Log error to file (with error handling) - USE SAFE VERSIONS
+    try {
+    const logDir = safePath.joinSafe(__dirname, '../../logs');
+    if (!logDir) {
+      console.warn('[TokenCleanup] ⚠️  Failed to resolve log directory path for error logging');
+      return; // Can't log error to file
+    }
+    
+    if (!safeFs.existsSyncSafe(logDir, { label: 'cron log directory' })) {
+      try {
+        fs.mkdirSync(logDir, { recursive: true });
+      } catch (mkdirError) {
+        console.warn('[TokenCleanup] ⚠️  Failed to create log directory for error logging:', mkdirError.message);
+        return; // Can't log error to file
+      }
     }
 
-    const logFile = path.join(logDir, 'cron.log');
+    const logFile = safePath.joinSafe(logDir, 'cron.log');
+    if (!logFile) {
+      console.warn('[TokenCleanup] ⚠️  Failed to resolve log file path for error logging');
+        // Continue without logging to file
+      } else {
     fs.appendFileSync(logFile, errorMessage, 'utf8');
+      }
+    } catch (fileError) {
+      // Don't fail the cleanup if file logging fails
+      console.warn('[TokenCleanup] ⚠️ Failed to write error to log file:', fileError.message);
+    }
 
     throw error;
   }

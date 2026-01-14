@@ -9,7 +9,6 @@ const tokenBlacklistSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Token is required'],
       unique: true,
-      index: true,
     },
     user: {
       type: mongoose.Schema.ObjectId,
@@ -43,8 +42,7 @@ const tokenBlacklistSchema = new mongoose.Schema(
   },
 );
 
-// Add compound index for faster queries
-tokenBlacklistSchema.index({ token: 1, user: 1 });
+
 
 // Virtual property to check if token is expired
 tokenBlacklistSchema.virtual('isExpired').get(function () {

@@ -14,13 +14,18 @@ exports.resetLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// SECURITY FIX #4: OTP rate limiter - ALWAYS ENABLED
+// SECURITY FIX #4 & #6: OTP rate limiter - ALWAYS ENABLED
+// Requirements: 5 requests per hour for OTP endpoints
 exports.otpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 3 : 10, // 3 in production, 10 in development
+  windowMs: 60 * 60 * 1000, // 1 hour (as per security requirements)
+  max: isProduction ? 5 : 10, // 5 in production (as per requirements), 10 in development
   message: {
-    error: 'Too many OTP requests, please try again later.',
+    error: 'Too many OTP requests. Please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Use IP address for rate limiting
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress;
+  },
 });

@@ -36,6 +36,8 @@ const adminSchema = new mongoose.Schema(
     updatedAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now() },
     passwordChangedAt: Date,
+    passwordResetToken: String,
+    passwordResetExpires: Date,
     active: { type: Boolean, default: true, select: false },
     status: {
       type: String,
@@ -43,6 +45,12 @@ const adminSchema = new mongoose.Schema(
       default: 'active',
     },
     lastLogin: { type: Date, default: Date.now },
+    // SECURITY FIX #9: Session activity tracking for timeout
+    lastActivity: { 
+      type: Date, 
+      default: Date.now,
+      select: false, // Don't return in queries by default
+    },
   },
   {
     toJSON: { virtuals: true },
@@ -75,6 +83,17 @@ adminSchema.methods.correctPassword = async function (
   userPassword,
 ) {
   return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+adminSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  // Fix: 10 minutes = 10 * 60 * 1000 milliseconds (not 6000)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  return resetToken;
 };
 
 adminSchema.methods.createNewUser = async function (data) {

@@ -7,11 +7,11 @@
 
 // Brand Configuration (configurable via environment variables)
 const BRAND_CONFIG = {
-  name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
+  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saysay',
   tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
   url: process.env.FRONTEND_URL || 'https://eazworld.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@eazworld.com',
-  fromName: process.env.EMAIL_FROM_NAME || 'EazShop',
+  fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
 };
 
 let sendGridService = null;
@@ -99,6 +99,13 @@ const sendLoginOtpEmail = async (toEmail, otp, name) => {
   return sendGridService.sendLoginOtpEmail(toEmail, otp, name);
 };
 
+const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
+  if (!sendGridService) {
+    throw new Error('SendGrid service is not available. Please check your configuration.');
+  }
+  return sendGridService.sendPasswordResetEmail(toEmail, resetToken, name);
+};
+
 /**
  * Send SMS message (stub implementation)
  * 
@@ -149,6 +156,7 @@ module.exports = {
   sendDataReadyEmail,
   sendLoginEmail,
   sendLoginOtpEmail,
+  sendPasswordResetEmail,
   sendSMS,
   // Export SendGrid service directly
   get sendGridService() {

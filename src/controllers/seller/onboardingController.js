@@ -3,6 +3,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Product = require('../../models/product/productModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel');
+const mongoose = require('mongoose');
 
 /**
  * Get seller onboarding status
@@ -13,7 +14,7 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
   // Fetch fresh seller data to ensure we get the latest status
   // Include verificationDocuments to check document verification status
   const seller = await Seller.findById(req.user.id).select(
-    'onboardingStage verification verificationStatus verificationDocuments requiredSetup shopName shopLocation shopAddress email verifiedBy verifiedAt'
+    'onboardingStage verification verificationStatus verificationDocuments requiredSetup shopName shopLocation shopAddress email verifiedBy verifiedAt paymentMethods phone'
   );
 
   if (!seller) {
@@ -31,6 +32,10 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
 
   // Check if email is verified
   const isEmailVerified = seller.verification?.emailVerified === true;
+  
+  // Check if phone is verified (if phone exists and is not empty, consider it verified for now)
+  // TODO: Add phone verification system if needed
+  const isPhoneVerified = seller.phone && seller.phone.trim() !== '';
 
   // Check if all three documents exist and are verified
   const businessCertStatus = getDocumentStatus(seller.verificationDocuments?.businessCert);
@@ -38,7 +43,7 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
   const addresProofStatus = getDocumentStatus(seller.verificationDocuments?.addresProof);
 
   // Check if all documents are verified
-  const allDocumentsVerified = 
+  const allDocumentsVerified =  
     businessCertStatus === 'verified' &&
     idProofStatus === 'verified' &&
     addresProofStatus === 'verified';
@@ -54,6 +59,17 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
     (seller.verificationDocuments?.addresProof && 
      (typeof seller.verificationDocuments.addresProof === 'string' || 
       seller.verificationDocuments.addresProof.url));
+
+  // Check payment method verification status
+  const bankAccountPayoutStatus = seller.paymentMethods?.bankAccount?.payoutStatus;
+  const mobileMoneyPayoutStatus = seller.paymentMethods?.mobileMoney?.payoutStatus;
+  const hasPaymentMethod = !!(seller.paymentMethods?.bankAccount || seller.paymentMethods?.mobileMoney);
+  const hasPaymentMethodVerified = 
+    bankAccountPayoutStatus === 'verified' || 
+    mobileMoneyPayoutStatus === 'verified';
+
+  // ✅ BACKEND-DRIVEN: Compute isSetupComplete using model method
+  const isSetupComplete = seller.computeIsSetupComplete();
 
   // If email is verified AND all documents are verified and uploaded, ensure onboardingStage is 'verified'
   // This ensures consistency even if middleware didn't run
@@ -71,8 +87,32 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
     data: {
       onboardingStage: seller.onboardingStage,
       verificationStatus: seller.verificationStatus,
-      verification: seller.verification,
-      requiredSetup: seller.requiredSetup,
+      // ✅ BACKEND-DRIVEN: Return isSetupComplete from backend
+      isSetupComplete, // Single source of truth
+      verification: {
+        ...seller.verification,
+        emailVerified: isEmailVerified,
+        phoneVerified: isPhoneVerified,
+        contactVerified: isEmailVerified || isPhoneVerified, // Either email or phone verified
+      },
+      requiredSetup: {
+        ...seller.requiredSetup,
+        hasPaymentMethodVerified: hasPaymentMethodVerified,
+        hasBusinessDocumentsVerified: allDocumentsVerified && allDocumentsUploaded,
+      },
+      paymentMethodStatus: {
+        hasAdded: hasPaymentMethod,
+        isVerified: hasPaymentMethodVerified,
+        bankAccountStatus: bankAccountPayoutStatus,
+        mobileMoneyStatus: mobileMoneyPayoutStatus,
+      },
+      businessDocumentsStatus: {
+        hasUploaded: allDocumentsUploaded,
+        isVerified: allDocumentsVerified,
+        businessCertStatus,
+        idProofStatus,
+        addresProofStatus,
+      },
       verifiedBy: seller.verifiedBy,
       verifiedAt: seller.verifiedAt,
     },
@@ -120,10 +160,59 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
     hasAddedFirstProduct: hasFirstProduct,
   };
 
+  // FIXED: Check verification status, not just if things are added
+  // Get document verification status
+  const getDocumentStatus = (document) => {
+    if (!document) return null;
+    if (typeof document === 'string') return null;
+    return document.status || null;
+  };
+
+  const businessCertStatus = getDocumentStatus(seller.verificationDocuments?.businessCert);
+  const idProofStatus = getDocumentStatus(seller.verificationDocuments?.idProof);
+  const addresProofStatus = getDocumentStatus(seller.verificationDocuments?.addresProof);
+
+  const allDocumentsVerified =  
+    businessCertStatus === 'verified' &&
+    idProofStatus === 'verified' &&
+    addresProofStatus === 'verified';
+
+  const allDocumentsUploaded = 
+    (seller.verificationDocuments?.businessCert && 
+     (typeof seller.verificationDocuments.businessCert === 'string' || 
+      seller.verificationDocuments.businessCert.url)) &&
+    (seller.verificationDocuments?.idProof && 
+     (typeof seller.verificationDocuments.idProof === 'string' || 
+      seller.verificationDocuments.idProof.url)) &&
+    (seller.verificationDocuments?.addresProof && 
+     (typeof seller.verificationDocuments.addresProof === 'string' || 
+      seller.verificationDocuments.addresProof.url));
+
+  // Check payment method verification status
+  const bankAccountPayoutStatus = seller.paymentMethods?.bankAccount?.payoutStatus;
+  const mobileMoneyPayoutStatus = seller.paymentMethods?.mobileMoney?.payoutStatus;
+  const hasPaymentMethodVerified = 
+    bankAccountPayoutStatus === 'verified' || 
+    mobileMoneyPayoutStatus === 'verified';
+
+  // Check contact verification
+  const isEmailVerified = seller.verification?.emailVerified === true;
+  const isPhoneVerified = seller.phone && seller.phone.trim() !== '';
+  const isContactVerified = isEmailVerified || isPhoneVerified;
+
+  // Update requiredSetup with actual verification status
+  seller.requiredSetup.hasBusinessDocumentsVerified = allDocumentsVerified && allDocumentsUploaded;
+  seller.requiredSetup.hasPaymentMethodVerified = hasPaymentMethodVerified;
+
   // Check if all required setup is complete (product not required for verification)
+  // FIXED: Now checks actual verification status, not just if things are added
   const allSetupComplete =
     seller.requiredSetup.hasAddedBusinessInfo &&
-    seller.requiredSetup.hasAddedBankDetails;
+    seller.requiredSetup.hasAddedBankDetails &&
+    allDocumentsVerified &&
+    allDocumentsUploaded &&
+    hasPaymentMethodVerified &&
+    isContactVerified;
 
   // Auto-update onboardingStage
   const wasPendingVerification = seller.onboardingStage === 'pending_verification';
@@ -178,16 +267,35 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   }
 
   // Check if all documents are uploaded
-  const hasAllDocuments = 
-    seller.verificationDocuments?.businessCert && 
-    (typeof seller.verificationDocuments.businessCert === 'string' || seller.verificationDocuments.businessCert.url) &&
-    seller.verificationDocuments?.idProof && 
-    (typeof seller.verificationDocuments.idProof === 'string' || seller.verificationDocuments.idProof.url) &&
-    seller.verificationDocuments?.addresProof && 
-    (typeof seller.verificationDocuments.addresProof === 'string' || seller.verificationDocuments.addresProof.url);
+  const docs = seller.verificationDocuments || {};
+  const missingDocs = [];
+  
+  // Check business certificate
+  const hasBusinessCert = docs.businessCert && 
+    (typeof docs.businessCert === 'string' || (docs.businessCert && docs.businessCert.url));
+  if (!hasBusinessCert) {
+    missingDocs.push('Business Certificate');
+  }
+  
+  // Check ID proof
+  const hasIdProof = docs.idProof && 
+    (typeof docs.idProof === 'string' || (docs.idProof && docs.idProof.url));
+  if (!hasIdProof) {
+    missingDocs.push('ID Proof');
+  }
+  
+  // Check address proof
+  const hasAddressProof = docs.addresProof && 
+    (typeof docs.addresProof === 'string' || (docs.addresProof && docs.addresProof.url));
+  if (!hasAddressProof) {
+    missingDocs.push('Address Proof');
+  }
 
-  if (!hasAllDocuments) {
-    return next(new AppError('Cannot approve seller verification. All required documents must be uploaded first.', 400));
+  if (missingDocs.length > 0) {
+    return next(new AppError(
+      `Cannot approve seller verification. Missing required documents: ${missingDocs.join(', ')}. All documents (Business Certificate, ID Proof, Address Proof) must be uploaded before approval.`,
+      400
+    ));
   }
 
   // Update seller - middleware will automatically set to verified if all conditions are met
@@ -208,6 +316,16 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
 
   if (!updatedSeller) {
     return next(new AppError('Seller not found', 404));
+  }
+
+  // Make all seller's products visible to buyers
+  try {
+    const { updateSellerProductsVisibility } = require('../../utils/helpers/productVisibility');
+    const visibilityResult = await updateSellerProductsVisibility(updatedSeller._id, 'verified');
+    console.log(`[Approve Seller Verification] Product visibility updated:`, visibilityResult);
+  } catch (visibilityError) {
+    console.error('[Approve Seller Verification] Error updating product visibility:', visibilityError);
+    // Don't fail verification approval if visibility update fails
   }
 
   // Notify seller about verification approval
@@ -371,3 +489,17 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * NOTE: Payout verification functions have been moved to:
+ * backend/src/controllers/admin/payoutVerificationController.js
+ * 
+ * This separation ensures payout verification is completely independent
+ * from document verification (onboarding).
+ * 
+ * New routes:
+ * - GET /api/v1/admin/sellers/:id/payout
+ * - PATCH /api/v1/admin/sellers/:id/payout/approve
+ * - PATCH /api/v1/admin/sellers/:id/payout/reject
+ * 
+ * This controller now handles ONLY document verification (onboarding).
+ */

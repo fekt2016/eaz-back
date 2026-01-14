@@ -3,10 +3,7 @@ const AppError = require('../../utils/errors/appError');
 const AdminActionLog = require('../../models/admin/adminActionLogModel');
 const Admin = require('../../models/user/adminModel');
 
-/**
- * Get all admin action logs with pagination and filtering
- * GET /api/v1/admin/audit-logs
- */
+
 exports.getAdminAuditLogs = catchAsync(async (req, res, next) => {
   const {
     page = 1,

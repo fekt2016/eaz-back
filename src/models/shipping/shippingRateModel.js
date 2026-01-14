@@ -119,13 +119,6 @@ shippingRateSchema.pre('save', function(next) {
   next();
 });
 
-/**
- * Static method to find rate for given parameters
- * @param {Number} weight - Weight in kg
- * @param {String} shippingType - 'standard', 'same_day', or 'express'
- * @param {String} zone - 'A', 'B', 'C', or 'D'
- * @returns {Promise<Object>} ShippingRate document
- */
 shippingRateSchema.statics.findRate = async function(weight, shippingType, zone) {
   return await this.findOne({
     shippingType,
@@ -136,13 +129,7 @@ shippingRateSchema.statics.findRate = async function(weight, shippingType, zone)
   }).sort({ weightMin: 1 });
 };
 
-/**
- * Static method to calculate shipping fee
- * @param {Number} weight - Weight in kg
- * @param {String} shippingType - 'standard', 'same_day', or 'express'
- * @param {String} zone - 'A', 'B', 'C', or 'D'
- * @returns {Promise<Object>} { fee, estimatedDays, baseFee, perKgFee, weightAddOn, multiplier }
- */
+
 shippingRateSchema.statics.calculateFee = async function(weight, shippingType, zone) {
   // Find rate - use 'standard' as base type since multipliers are applied per shippingType
   const rate = await this.findRate(weight, 'standard', zone);

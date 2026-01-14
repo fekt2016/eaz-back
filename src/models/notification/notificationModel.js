@@ -6,7 +6,6 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'userModel',
       required: [true, 'User is required'],
-      index: true,
     },
     userModel: {
       type: String,
@@ -51,7 +50,6 @@ const notificationSchema = new mongoose.Schema(
       type: String,
       enum: ['buyer', 'seller', 'admin'],
       required: [true, 'Role is required'],
-      index: true,
     },
     metadata: {
       orderId: {
@@ -103,11 +101,7 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for performance
-notificationSchema.index({ user: 1, read: 1, createdAt: -1 });
-notificationSchema.index({ role: 1, read: 1, createdAt: -1 });
-notificationSchema.index({ type: 1, createdAt: -1 });
-notificationSchema.index({ createdAt: -1 });
+
 
 // Virtual for checking if notification is expired
 notificationSchema.virtual('isExpired').get(function () {
@@ -115,6 +109,11 @@ notificationSchema.virtual('isExpired').get(function () {
     return new Date() > this.expiresAt;
   }
   return false;
+});
+
+// Virtual for isRead (alias for read field for frontend compatibility)
+notificationSchema.virtual('isRead').get(function () {
+  return this.read;
 });
 
 // Pre-save middleware to set userModel based on role

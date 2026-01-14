@@ -9,13 +9,11 @@ const refundRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
     required: true,
-    index: true,
   },
   buyer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true,
   },
   // Item-level refund items (new structure)
   items: [{
@@ -119,7 +117,6 @@ const refundRequestSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'seller_review', 'admin_review', 'approved', 'rejected', 'processing', 'completed'],
     default: 'pending',
-    index: true,
   },
   // Seller review
   sellerReviewed: {
@@ -184,11 +181,6 @@ const refundRequestSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Indexes
-refundRequestSchema.index({ order: 1, status: 1 });
-refundRequestSchema.index({ buyer: 1, status: 1 });
-refundRequestSchema.index({ 'items.sellerId': 1, status: 1 });
-refundRequestSchema.index({ createdAt: -1 });
 
 // Virtual for backward compatibility - total refund amount
 refundRequestSchema.virtual('refundAmount').get(function() {

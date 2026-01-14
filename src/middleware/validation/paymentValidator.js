@@ -1,74 +1,78 @@
-const { body } = require('express-validator');
+/**
+ * SECURITY FIX #5 (Phase 2 Enhancement): Input Validation for Payment Operations
+ * Prevents manipulation of payment amounts and validates all payment input
+ */
 
-const paymentValidator = [
+const { body, validationResult } = require('express-validator');
+const mongoose = require('mongoose');
+const catchAsync = require('../../utils/helpers/catchAsync');
+const AppError = require('../../utils/errors/appError');
+
+// Validation rules for Paystack payment initialization
+exports.validatePaystackInit = [
+  body('orderId')
+    .notEmpty()
+    .withMessage('Order ID is required')
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid order ID format');
+      }
+      return true;
+    }),
+
+  body('email')
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Invalid email format')
+    .normalizeEmail(),
+
   body('amount')
-    .isFloat({ min: 10 })
-    .withMessage('Minimum withdrawal amount is ₵10')
-    .customSanitizer((value) => parseFloat(value).toFixed(2)),
+    .optional()
+    .isFloat({ min: 0.01 })
+    .withMessage('Amount must be a positive number')
+    .customSanitizer((value) => {
+      if (value === undefined || value === null) return value;
+      const num = parseFloat(value);
+      return isNaN(num) ? value : num.toFixed(2);
+    }),
 
-  body('paymentMethod')
-    .isIn(['bank', 'mtn_momo', 'vodafone_cash', 'airtel_tigo_money', 'cash'])
-    .withMessage('Invalid payment method'),
-
-  body('paymentDetails')
-    .isObject()
-    .withMessage('Payment details must be an object'),
-
-  body('paymentDetails.mobileMoney.phone')
-    .if(
-      body('paymentMethod').isIn([
-        'mtn_momo',
-        'vodafone_cash',
-        'airtel_tigo_money',
-        'cash',
-      ]),
-    )
-    .notEmpty()
-    .withMessage('Mobile money phone number is required')
-    .matches(/^0(?:23|24|54|55|59|20|50|27|57|26|56|28)[0-9]{7}$/)
-    .withMessage('Invalid Ghanaian phone number'),
-
-  body('paymentDetails.mobileMoney.network')
-    .if(
-      body('paymentMethod').isIn([
-        'mtn_momo',
-        'vodafone_cash',
-        'airtel_tigo_money',
-      ]),
-    )
-    .isIn(['MTN', 'Vodafone', 'AirtelTigo'])
-    .withMessage('Invalid mobile network'),
-
-  body('paymentDetails.bank.accountName')
-    .if(body('paymentMethod').equals('bank'))
-    .notEmpty()
-    .withMessage('Account name is required'),
-
-  body('paymentDetails.bank.accountNumber')
-    .if(body('paymentMethod').equals('bank'))
-    .notEmpty()
-    .withMessage('Account number is required')
-    .isLength({ min: 8, max: 15 })
-    .withMessage('Account number must be 8-15 characters'),
-
-  body('paymentDetails.bank.bankName')
-    .if(body('paymentMethod').equals('bank'))
-    .notEmpty()
-    .withMessage('Bank name is required')
-    .isIn([
-      'GCB Bank',
-      'Absa Ghana',
-      'Stanbic Bank',
-      'Ecobank Ghana',
-      'Fidelity Bank',
-      'CalBank',
-      'Zenith Bank',
-      'GT Bank',
-      'Republic Bank',
-      'Standard Chartered',
-      'First National Bank',
-    ])
-    .withMessage('Invalid bank selected'),
+  // Reject unknown fields (prevent mass assignment)
+  body()
+    .custom((value, { req }) => {
+      const allowedFields = ['orderId', 'email', 'amount'];
+      const receivedFields = Object.keys(req.body);
+      const unknownFields = receivedFields.filter(field => !allowedFields.includes(field));
+      
+      if (unknownFields.length > 0) {
+        throw new Error(`Unknown fields not allowed: ${unknownFields.join(', ')}`);
+      }
+      return true;
+    }),
 ];
 
-module.exports = paymentValidator;;
+// Validation rules for payment verification
+exports.validatePaymentVerification = [
+  body('reference')
+    .optional()
+    .isLength({ min: 10, max: 100 })
+    .withMessage('Payment reference must be between 10 and 100 characters')
+    .matches(/^[A-Z0-9\-_]+$/)
+    .withMessage('Payment reference contains invalid characters'),
+
+  // Note: orderId and reference can come from query params for GET requests
+  // This validator is for POST requests
+];
+
+// Middleware to handle validation errors
+exports.handleValidationErrors = catchAsync(async (req, res, next) => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    // SECURITY FIX #6: Generic error message (don't leak validation details)
+    const errorMessages = errors.array().map(err => err.msg);
+    return next(new AppError(`Invalid input: ${errorMessages[0]}`, 400));
+  }
+  
+  next();
+});

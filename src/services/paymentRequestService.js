@@ -25,10 +25,22 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     throw new AppError('Amount must be greater than 0', 400);
   }
 
-  // Get current seller balance from seller model (including taxCategory)
+  // Get current seller balance from seller model (including taxCategory and paymentMethods)
   const currentSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance taxCategory paymentMethods email name shopName requiredSetup onboardingStage');
   if (!currentSeller) {
     throw new AppError('Seller not found', 404);
+  }
+
+  // SECURITY: Require payout verification before allowing withdrawal
+  const { hasVerifiedPayoutMethod } = require('../utils/helpers/paymentMethodHelpers');
+  const payoutCheck = hasVerifiedPayoutMethod(currentSeller);
+  
+  if (!payoutCheck.hasVerified) {
+    const reason = payoutCheck.allRejected
+      ? payoutCheck.rejectionReasons.join('; ') || 'Payout details were rejected. Please update your payment details and resubmit for verification.'
+      : 'Your payout details (bank account or mobile money) must be verified by an admin before you can withdraw funds.';
+    
+    throw new AppError(reason, 403);
   }
 
   // Use balance directly from seller model
@@ -71,11 +83,31 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     if (paymentMethod === 'bank') {
       // Try to get from PaymentMethod model first
       if (userAccount) {
-        const paymentMethodDoc = await PaymentMethod.findOne({
+        // CRITICAL: Prefer verified default method, then any verified method, then default, then any
+        let paymentMethodDoc = await PaymentMethod.findOne({
           user: userAccount._id,
           type: 'bank_transfer',
           isDefault: true,
+          verificationStatus: 'verified', // Prefer verified default
         });
+        
+        // If no verified default, get any verified method
+        if (!paymentMethodDoc) {
+          paymentMethodDoc = await PaymentMethod.findOne({
+            user: userAccount._id,
+            type: 'bank_transfer',
+            verificationStatus: 'verified',
+          });
+        }
+        
+        // If no verified method, fallback to default (even if not verified)
+        if (!paymentMethodDoc) {
+          paymentMethodDoc = await PaymentMethod.findOne({
+            user: userAccount._id,
+            type: 'bank_transfer',
+            isDefault: true,
+          });
+        }
         
         // If no default, get any bank transfer method
         if (!paymentMethodDoc) {
@@ -122,13 +154,34 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       
       // Try to get from PaymentMethod model first
       if (userAccount && provider) {
-        // Try default first
+        // CRITICAL: Prefer verified default method, then any verified method, then default, then any
         let paymentMethodDoc = await PaymentMethod.findOne({
           user: userAccount._id,
           type: 'mobile_money',
           provider: provider,
           isDefault: true,
+          verificationStatus: 'verified', // Prefer verified default
         });
+        
+        // If no verified default, get any verified method with matching provider
+        if (!paymentMethodDoc) {
+          paymentMethodDoc = await PaymentMethod.findOne({
+            user: userAccount._id,
+            type: 'mobile_money',
+            provider: provider,
+            verificationStatus: 'verified',
+          });
+        }
+        
+        // If no verified method, fallback to default (even if not verified)
+        if (!paymentMethodDoc) {
+          paymentMethodDoc = await PaymentMethod.findOne({
+            user: userAccount._id,
+            type: 'mobile_money',
+            provider: provider,
+            isDefault: true,
+          });
+        }
         
         // If no default, get any matching provider
         if (!paymentMethodDoc) {

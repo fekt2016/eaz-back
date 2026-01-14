@@ -958,8 +958,8 @@ exports.getSellerPerformanceScore = catchAsync(async (req, res, next) => {
   const onTimeDelivered = totalDelivered; // Simplified
   const onTimeDeliveryRate = totalDelivered > 0 ? (onTimeDelivered / totalDelivered) * 100 : 100;
 
-  // Response rate (from chat/support - simplified)
-  const responseRate = 90; // Placeholder - would need actual chat data
+  // Response rate (from support tickets - simplified)
+  const responseRate = 90; // Placeholder - would need actual support ticket data
 
   // Product quality score (from reviews)
   const sellerReviews = await Product.aggregate([

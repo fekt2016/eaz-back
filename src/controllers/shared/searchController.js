@@ -448,6 +448,16 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     baseQuery.onSale = true;
   }
 
+  // Apply buyer-safe filter (exclude unverified seller products)
+  const { buildBuyerSafeQuery } = require('../../utils/helpers/productVisibility');
+  const isAdmin = req.user?.role === 'admin';
+  const isSeller = req.user?.role === 'seller';
+  const buyerSafeQuery = buildBuyerSafeQuery(baseQuery, {
+    user: req.user,
+    isAdmin: isAdmin,
+    isSeller: isSeller,
+  });
+
   let products = [];
   let totalProducts = 0;
 
@@ -456,7 +466,8 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     // Product name search with text index
     const textQuery = buildTextSearchQuery(normalized);
     if (textQuery) {
-      const query = { ...baseQuery, ...textQuery };
+      // Merge text query with buyer-safe query
+      const query = { ...buyerSafeQuery, ...textQuery };
       const countQuery = Product.countDocuments(query);
       const findQuery = Product.find(query)
         .select('-__v')
@@ -499,7 +510,9 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
         });
 
         if (fallbackQuery) {
-          const fallbackFindQuery = Product.find(fallbackQuery)
+          // Merge fallback query with buyer-safe query
+          const safeFallbackQuery = { ...buyerSafeQuery, ...fallbackQuery };
+          const fallbackFindQuery = Product.find(safeFallbackQuery)
             .select('-__v')
             .populate('parentCategory', 'name slug')
             .populate('subCategory', 'name slug');
@@ -527,7 +540,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
           fallbackFindQuery.skip(skip).limit(parseInt(limit));
 
           [totalProducts, products] = await Promise.all([
-            Product.countDocuments(fallbackQuery),
+            Product.countDocuments(safeFallbackQuery),
             fallbackFindQuery,
           ]);
         }
@@ -541,7 +554,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
 
     if (categoryDoc) {
       const query = {
-        ...baseQuery,
+        ...buyerSafeQuery,
         $or: [
           { parentCategory: categoryDoc._id },
           { subCategory: categoryDoc._id },
@@ -580,7 +593,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
   } else if (type === 'brand' && brand) {
     // Brand search
     const query = {
-      ...baseQuery,
+      ...buyerSafeQuery,
       brand: buildSearchRegex(brand, false),
     };
 
@@ -615,7 +628,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     // Tag search
     const tokens = tokenizeQuery(normalized);
     const query = {
-      ...baseQuery,
+      ...buyerSafeQuery,
       tags: { $in: tokens },
     };
 
@@ -649,20 +662,21 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
   } else if (normalized) {
     // General free-text search
     const textQuery = buildTextSearchQuery(normalized);
-    let query = { ...baseQuery };
+    let query = { ...buyerSafeQuery };
 
     if (textQuery) {
       query = { ...query, ...textQuery };
     } else {
       // Fallback to regex if text search not available
-      query = buildFallbackQuery(normalized, {
+      const fallbackQueryResult = buildFallbackQuery(normalized, {
         categoryId: categoryId || (category ? (await Category.findOne({ name: { $regex: `^${category.trim()}$`, $options: 'i' } }))?._id : null),
         brand,
         minPrice,
         maxPrice,
         inStock: inStock === 'true' || inStock === true,
         onSale: onSale === 'true' || onSale === true,
-      }) || query;
+      });
+      query = fallbackQueryResult ? { ...buyerSafeQuery, ...fallbackQueryResult } : buyerSafeQuery;
     }
 
     const countQuery = Product.countDocuments(query);
@@ -711,7 +725,9 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
       });
 
       if (fallbackQuery) {
-        const fallbackFindQuery = Product.find(fallbackQuery)
+        // Merge fallback query with buyer-safe query
+        const safeFallbackQuery = { ...buyerSafeQuery, ...fallbackQuery };
+        const fallbackFindQuery = Product.find(safeFallbackQuery)
           .select('-__v')
           .populate('parentCategory', 'name slug')
           .populate('subCategory', 'name slug');
@@ -737,14 +753,14 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
         fallbackFindQuery.skip(skip).limit(parseInt(limit));
 
         [totalProducts, products] = await Promise.all([
-          Product.countDocuments(fallbackQuery),
+          Product.countDocuments(safeFallbackQuery),
           fallbackFindQuery,
         ]);
       }
     }
   } else {
     // No search query, return empty or all products with filters
-    const query = baseQuery;
+    const query = buyerSafeQuery;
     const countQuery = Product.countDocuments(query);
     const findQuery = Product.find(query)
       .select('-__v')
@@ -786,16 +802,20 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Calculate pagination
-  const totalPages = Math.ceil(totalProducts / parseInt(limit));
-  const currentPage = parseInt(page);
+  // Calculate pagination with backend logic
+  const { buildPaginationResponse } = require('../../utils/helpers/paginationUtils');
+  const pagination = buildPaginationResponse(page, limit, totalProducts, {
+    delta: 2,
+    maxVisible: 5,
+  });
 
   res.status(200).json({
     success: true,
     results: products.length,
     totalProducts,
-    currentPage,
-    totalPages,
+    currentPage: pagination.page,
+    totalPages: pagination.totalPages,
+    pagination, // Include full pagination metadata
     data: products,
     aiEnabled: aiSearchService.isAIEnabled(),
     aiUsed: queryIntent !== null,

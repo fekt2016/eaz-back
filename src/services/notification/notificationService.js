@@ -1,8 +1,12 @@
 const Notification = require('../../models/notification/notificationModel');
+const pushNotificationService = require('../pushNotificationService');
 
 /**
  * Notification Service
  * Helper functions for creating notifications throughout the application
+ * 
+ * NOTE: This service automatically sends push notifications when creating database notifications
+ * (if the user has registered device tokens)
  */
 
 /**
@@ -71,6 +75,42 @@ exports.createNotification = async ({
       role: notification.role,
       type: notification.type,
       title: notification.title
+    });
+
+    // Automatically send push notification (non-blocking)
+    // This ensures users get real-time alerts when notifications are created
+    setImmediate(async () => {
+      try {
+        const pushResult = await pushNotificationService.sendPushToUser(userId.toString(), {
+          title: title,
+          body: message,
+          data: {
+            type: type,
+            referenceId: metadata?.orderId || metadata?.withdrawalId || metadata?.productId || metadata?.ticketId || metadata?.refundId || notification._id.toString(),
+            notificationId: notification._id.toString(),
+            actionUrl: actionUrl,
+            ...metadata,
+          },
+          priority: priority === 'urgent' || priority === 'high' ? 'high' : 'default',
+          badge: 1,
+        });
+
+        if (pushResult.success) {
+          console.log(`[NotificationService] 📱 Push notification sent:`, {
+            notificationId: notification._id,
+            sent: pushResult.sent,
+            total: pushResult.total,
+          });
+        } else {
+          // Not an error - user may not have registered device token
+          if (__DEV__) {
+            console.debug(`[NotificationService] ℹ️ Push notification not sent:`, pushResult.message);
+          }
+        }
+      } catch (pushError) {
+        // Don't fail notification creation if push fails
+        console.error('[NotificationService] ⚠️ Error sending push notification (non-critical):', pushError.message);
+      }
     });
 
     return notification;

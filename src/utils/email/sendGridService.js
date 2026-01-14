@@ -1,13 +1,13 @@
 const { getSendGrid } = require('./sendGridClient');
 
 // Brand Configuration (same as emailService.js to avoid circular dependency)
-// Priority: APP_NAME > BRAND_NAME > default 'EazShop'
+// Priority: APP_NAME > BRAND_NAME > default 'Saysay'
 const getBrandConfig = () => ({
-  name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
+  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saysay',
   tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
   url: process.env.FRONTEND_URL || 'https://eazworld.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@eazworld.com',
-  fromName: process.env.EMAIL_FROM_NAME || 'EazShop',
+  fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
 });
 
 /**
@@ -297,7 +297,9 @@ const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt, name = 'User'
  */
 const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
   const brandConfig = getBrandConfig();
-  const resetUrl = `${brandConfig.url}/reset-password?token=${resetToken}`;
+  // Use mobile-aware URL generator (supports universal links)
+  const { generatePasswordResetUrl } = require('../mobileDeepLink');
+  const resetUrl = generatePasswordResetUrl(resetToken, brandConfig.url);
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -325,7 +327,7 @@ const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
             <a href="${resetUrl}" class="button">Reset Password</a>
           </p>
           <div class="warning">
-            <p><strong>Security Notice:</strong> This link will expire in 1 hour. If you didn't request this, please ignore this email or contact support.</p>
+            <p><strong>Security Notice:</strong> This link will expire in 10 minutes. If you didn't request this, please ignore this email or contact support.</p>
           </div>
         </div>
         <div class="footer">
@@ -340,7 +342,7 @@ const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
   return sendEmail({
     to: toEmail,
     subject: `Password Reset Request - ${brandConfig.name}`,
-    text: `You requested a password reset. Click this link to reset your password: ${resetUrl}\nThis link expires in 1 hour.`,
+    text: `You requested a password reset. Click this link to reset your password: ${resetUrl}\nThis link expires in 10 minutes.`,
     html: htmlContent,
   });
 };

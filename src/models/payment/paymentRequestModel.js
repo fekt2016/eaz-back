@@ -141,7 +141,6 @@ const paymentRequestSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
-    index: true,
   },
   deactivatedAt: {
     type: Date,

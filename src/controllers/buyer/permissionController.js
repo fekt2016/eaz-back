@@ -2,10 +2,11 @@ const Permission = require('../../models/user/permissionModel');
 const User = require('../../models/user/userModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
-const dataExportQueue = require('../../jobs/queues/dataExportQueue');
 const mongoose = require('mongoose');
 const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
+const { isMobileApp } = require('../../middleware/mobileAppGuard');
+const { checkFeature, FEATURES } = require('../../utils/featureFlags');
 // Get permissions - creates default permissions if not found
 exports.getPermissions = catchAsync(async (req, res, next) => {
   try {
@@ -166,6 +167,23 @@ exports.updateAccountVisibility = catchAsync(async (req, res, next) => {
 
 // Request data download
 exports.requestDataDownload = catchAsync(async (req, res, next) => {
+  // 🛡️ MOBILE GUARD: Suspend for mobile app during debugging
+  if (isMobileApp(req)) {
+    console.warn('⚠️  [requestDataDownload] Blocked for mobile app (Saysay) - temporarily disabled for debugging');
+    return res.status(200).json({
+      status: 'disabled',
+      message: 'Data export temporarily disabled for mobile app during debugging',
+    });
+  }
+
+  // FEATURE FLAG: Check if data export is enabled
+  if (!checkFeature(FEATURES.DATA_EXPORT, 'PermissionController')) {
+    return res.status(503).json({
+      status: 'disabled',
+      message: 'Data export feature is temporarily unavailable. Please try again later.',
+    });
+  }
+
   try {
     const userId = req.user.id;
     const exportId = new mongoose.Types.ObjectId();
@@ -189,12 +207,14 @@ exports.requestDataDownload = catchAsync(async (req, res, next) => {
       return next(new AppError('User not found', 404));
     }
 
-    // Add job to queue
-    await dataExportQueue.add({
-      userId: user._id,
-      exportId: exportId,
-      email: user.email,
-    });
+    // TODO: Background jobs are disabled (Bull/Redis removed)
+    // Data export functionality is temporarily unavailable
+    // Mark export as failed since background processing is not available
+    await User.updateOne(
+      { _id: userId, 'dataExports.exportId': exportId },
+      { $set: { 'dataExports.$.status': 'failed' } },
+    );
+    console.warn('[PermissionController] Data export requested but background jobs are disabled (Bull/Redis removed)');
 
     res.status(200).json({
       message: 'Data export started. You will receive an email when ready.',
@@ -220,7 +240,8 @@ exports.requestAccountDeletion = catchAsync(async (req, res, next) => {
   // 2. Verify password - using updated method signature
   if (!(await user.correctPassword(req.body.password, user.password))) {
     console.log('Incorrect password');
-    return next(new AppError('Incorrect password', 401));
+    // SECURITY: Generic error message to prevent information leakage
+    return next(new AppError('Invalid credentials', 401));
   }
 
   // Schedule deletion

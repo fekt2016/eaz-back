@@ -62,22 +62,35 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
 
   res.cookie(cookieName, token, cookieOptions);
 
+  // Generate CSRF token on successful authentication
+  const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
+  generateCSRFToken(res);
+
+  // SECURITY FIX #9: Initialize session activity tracking
+  if (user && typeof user.lastActivity !== 'undefined') {
+    user.lastActivity = Date.now();
+  }
+
   user.password = undefined;
 
+  // SECURITY: Token is ONLY in HTTP-only cookie, NOT in JSON response
+  // This prevents XSS attacks from stealing tokens
   const response = {
     status: 'success',
-    token,
+    message: 'Authentication successful',
     data: {
       user,
     },
   };
 
-  // Add deviceId and refreshToken if device session was created
+  // Add deviceId and refreshToken if device session was created (non-sensitive metadata)
   if (deviceId) {
     response.deviceId = deviceId;
   }
   if (refreshToken) {
-    response.refreshToken = refreshToken;
+    // Note: refreshToken is also stored in device session, not exposed to client
+    // Only include if needed for client-side session management (consider removing)
+    // response.refreshToken = refreshToken;
   }
 
   // Add redirectTo if provided

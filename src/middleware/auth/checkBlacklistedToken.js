@@ -8,8 +8,15 @@ const catchAsync = require('../../utils/helpers/catchAsync');
  * Should run before token verification
  */
 exports.checkBlacklistedToken = catchAsync(async (req, res, next) => {
-  // Extract token from request
-  const token = extractToken(req);
+  // SECURITY: Cookie-only authentication - extract token ONLY from cookies
+  // Determine cookie name based on route
+  const fullPath = req.originalUrl.split('?')[0];
+  const isAdminRoute = fullPath.startsWith('/api/v1/admin');
+  const isSellerRoute = fullPath.startsWith('/api/v1/seller');
+  const cookieName = isAdminRoute ? 'admin_jwt' :
+                    isSellerRoute ? 'seller_jwt' :
+                    'main_jwt';
+  const token = req.cookies?.[cookieName];
 
   if (!token) {
     return next(); // Let other middleware handle missing token

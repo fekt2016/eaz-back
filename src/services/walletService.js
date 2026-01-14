@@ -6,6 +6,7 @@ const { logBuyerWallet } = require('./historyLogger');
 
 /**
  * Get or create wallet for user
+ * Ensures availableBalance is always correctly calculated
  */
 async function getOrCreateWallet(userId) {
   let wallet = await Creditbalance.findOne({ user: userId });
@@ -18,6 +19,23 @@ async function getOrCreateWallet(userId) {
       holdAmount: 0,
       currency: 'GHS',
     });
+  } else {
+    // CRITICAL: Recalculate availableBalance to ensure it's always correct
+    // This handles cases where the database might have stale availableBalance
+    const calculatedAvailableBalance = Math.max(0, (wallet.balance || 0) - (wallet.holdAmount || 0));
+    
+    // Only update if there's a discrepancy (more than 0.01 to avoid floating point issues)
+    if (Math.abs((wallet.availableBalance || 0) - calculatedAvailableBalance) > 0.01) {
+      console.log(`[getOrCreateWallet] Recalculating availableBalance for user ${userId}:`, {
+        oldAvailableBalance: wallet.availableBalance,
+        newAvailableBalance: calculatedAvailableBalance,
+        balance: wallet.balance,
+        holdAmount: wallet.holdAmount,
+      });
+      wallet.availableBalance = calculatedAvailableBalance;
+      // Save without validation to prevent triggering pre-save hook unnecessarily
+      await wallet.save({ validateBeforeSave: false });
+    }
   }
   
   return wallet;
@@ -59,7 +77,7 @@ async function creditWallet(userId, amount, type, description, reference = null,
 
     // Update wallet balance
     wallet.balance = balanceAfter;
-    wallet.availableBalance = balanceAfter; // Assuming no holds for now
+    wallet.availableBalance = Math.max(0, balanceAfter - (wallet.holdAmount || 0)); // Calculate availableBalance (balance - holdAmount)
     wallet.lastUpdated = new Date();
 
     // Add to embedded transactions (for backward compatibility)
@@ -127,6 +145,24 @@ async function creditWallet(userId, amount, type, description, reference = null,
       } catch (emailError) {
         console.error('[WalletService] Error sending wallet credit email:', emailError.message);
         // Don't fail wallet operation if email fails
+      }
+    }
+
+    // Send push notification for wallet top-up
+    if (type === 'CREDIT_TOPUP') {
+      try {
+        const pushNotificationService = require('../services/pushNotificationService');
+        await pushNotificationService.sendWalletNotification(
+          userId,
+          reference || transaction[0]?._id?.toString(),
+          'Wallet Top-up Successful',
+          `GH₵${amount.toFixed(2)} has been added to your wallet.`,
+          'topup'
+        );
+        console.log(`[WalletService] ✅ Push notification sent for wallet top-up: GH₵${amount}`);
+      } catch (pushError) {
+        console.error('[WalletService] Error sending push notification:', pushError.message);
+        // Don't fail wallet operation if push notification fails
       }
     }
 
@@ -227,6 +263,22 @@ async function debitWallet(userId, amount, type, description, reference = null, 
     );
 
     await session.commitTransaction();
+
+    // Send push notification for wallet debit
+    try {
+      const pushNotificationService = require('../services/pushNotificationService');
+      await pushNotificationService.sendWalletNotification(
+        userId,
+        reference || transaction[0]?._id?.toString(),
+        'Wallet Debit',
+        `GH₵${amount.toFixed(2)} has been deducted from your wallet.`,
+        'debit'
+      );
+      console.log(`[WalletService] ✅ Push notification sent for wallet debit: GH₵${amount}`);
+    } catch (pushError) {
+      console.error('[WalletService] Error sending push notification:', pushError.message);
+      // Don't fail wallet operation if push notification fails
+    }
 
     // Log to history (non-blocking - don't fail if logging fails)
     const historyType = type === 'DEBIT_ORDER' ? 'ORDER_DEBIT' : 'ADMIN_ADJUST';

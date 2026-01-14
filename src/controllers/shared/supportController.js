@@ -9,11 +9,20 @@ const fs = require('fs');
 const SellerOrder = require('../../models/order/sellerOrderModel');
 
 // Configure multer for file uploads
+const { safeFs } = require('../../utils/safePath');
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = 'uploads/support';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    // USE SAFE VERSION - never crashes
+    if (!safeFs.existsSyncSafe(uploadPath, { label: 'support uploads directory' })) {
+      // Directory doesn't exist, create it
+      try {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      } catch (mkdirError) {
+        console.error('[supportController] Error creating upload directory:', mkdirError.message);
+        return cb(mkdirError);
+      }
     }
     cb(null, uploadPath);
   },
@@ -53,6 +62,19 @@ exports.createTicket = catchAsync(async (req, res, next) => {
   // Validate required fields
   if (!department || !title || !message) {
     return next(new AppError('Department, title, and message are required', 400));
+  }
+
+  // SECURITY FIX #10: Sanitize user-generated content to prevent XSS
+  const { sanitizeText, sanitizeTitle } = require('../../utils/helpers/sanitizeUserContent');
+  const sanitizedMessage = sanitizeText(message);
+  const sanitizedTitle = sanitizeTitle(title);
+  
+  // Validate sanitized content is not empty
+  if (!sanitizedMessage || sanitizedMessage.trim().length === 0) {
+    return next(new AppError('Message cannot be empty', 400));
+  }
+  if (!sanitizedTitle || sanitizedTitle.trim().length === 0) {
+    return next(new AppError('Title cannot be empty', 400));
   }
 
   // If product is related, get the seller from the product
@@ -114,8 +136,8 @@ exports.createTicket = catchAsync(async (req, res, next) => {
     department,
     priority: priority || 'medium',
     issueType,
-    title,
-    message,
+    title: sanitizedTitle, // SECURITY FIX #10: Use sanitized title
+    message: sanitizedMessage, // SECURITY FIX #10: Use sanitized message
     relatedOrderId: relatedOrderId || undefined,
     relatedPayoutId: relatedPayoutId || undefined,
     relatedProductId: relatedProductId || undefined,
@@ -131,7 +153,7 @@ exports.createTicket = catchAsync(async (req, res, next) => {
     senderModel: userModel,
     senderRole: role,
     senderName: userName,
-    message,
+    message: sanitizedMessage, // SECURITY FIX #10: Use sanitized message
     attachments,
   });
 
@@ -388,6 +410,15 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
     return next(new AppError('Message is required', 400));
   }
 
+  // SECURITY FIX #10: Sanitize user-generated content to prevent XSS
+  const { sanitizeText } = require('../../utils/helpers/sanitizeUserContent');
+  const sanitizedMessage = sanitizeText(message);
+  
+  // Validate sanitized content is not empty
+  if (!sanitizedMessage || sanitizedMessage.trim().length === 0) {
+    return next(new AppError('Message cannot be empty', 400));
+  }
+
   // Determine user model and role
   let userModel = 'User';
   let role = 'buyer';
@@ -465,7 +496,7 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
     senderModel: userModel,
     senderRole: role,
     senderName: userName,
-    message,
+    message: sanitizedMessage, // SECURITY FIX #10: Use sanitized message
     attachments,
     isInternal: isInternal === true && req.user.role === 'admin',
   });
@@ -508,6 +539,21 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         `${replierName} replied to your support ticket: "${ticket.title}"`
       );
       console.log(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
+
+      // Send push notification
+      try {
+        const pushNotificationService = require('../../services/pushNotificationService');
+        await pushNotificationService.sendSupportNotification(
+          ticket.userId,
+          ticket._id,
+          'New Reply to Your Support Ticket',
+          `${replierName} replied to your support ticket: "${ticket.title}"`
+        );
+        console.log(`[Support Reply] ✅ Push notification sent for ticket ${ticket._id}`);
+      } catch (pushError) {
+        console.error('[Support Reply] Error sending push notification:', pushError.message);
+        // Don't fail ticket reply if push notification fails
+      }
     }
     
     // If ticket is related to seller's order/product, notify the seller

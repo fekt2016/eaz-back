@@ -80,7 +80,7 @@ exports.getSellerWithdrawalRequests = catchAsync(async (req, res, next) => {
 exports.getSellerBalance = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
 
-  const seller = await Seller.findById(sellerId).select('balance lockedBalance pendingBalance lockedReason lockedBy lockedAt paystackRecipientCode withdrawableBalance');
+  const seller = await Seller.findById(sellerId).select('balance lockedBalance pendingBalance lockedReason lockedBy lockedAt paystackRecipientCode withdrawableBalance paymentMethods');
   if (!seller) {
     return next(new AppError('Seller not found', 404));
   }
@@ -168,6 +168,12 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
       lockedBy: seller.lockedBy, // Admin who locked the funds
       lockedAt: seller.lockedAt, // When funds were locked
       paystackRecipientCode: seller.paystackRecipientCode,
+      payoutStatus: (() => {
+        const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
+        const payoutCheck = hasVerifiedPayoutMethod(seller);
+        return payoutCheck.hasVerified ? 'verified' : (payoutCheck.allRejected ? 'rejected' : 'pending');
+      })(), // Payout verification status (computed from individual payment methods)
+      payoutRejectionReason: seller.payoutRejectionReason || null, // Reason if payout was rejected
       // Verification: totalRevenue = balance + totalWithdrawn
       // Verification: balance = withdrawableBalance + lockedBalance + pendingBalance
     },

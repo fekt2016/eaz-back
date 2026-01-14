@@ -10,6 +10,17 @@ const reviewSchema = new mongoose.Schema(
     },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' }, // Link to order for verification
+    orderItem: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'OrderItems',
+      comment: 'Link to specific order item - enables one review per order item',
+    },
+    variantSKU: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      comment: 'SKU of the variant/product at time of order - enables variant-specific reviews',
+    },
     rating: { 
       type: Number, 
       min: 0.5, 
@@ -100,8 +111,10 @@ reviewSchema.post(/^findOneAnd/, async function () {
     await this.reviewDoc.constructor.calcAverageRatings(this.reviewDoc.product);
   }
 });
-// Add index to prevent duplicate reviews (with order for multiple reviews per product)
-reviewSchema.index({ product: 1, user: 1, order: 1 }, { unique: true });
+// Add index to prevent duplicate reviews - one review per order item
+// If orderItem is provided, use it; otherwise fall back to product+user+order
+reviewSchema.index({ orderItem: 1, user: 1 }, { unique: true, sparse: true });
+reviewSchema.index({ product: 1, user: 1, order: 1 }, { unique: true, partialFilterExpression: { orderItem: { $exists: false } } });
 // Index for status filtering
 reviewSchema.index({ status: 1 });
 // Index for product reviews query

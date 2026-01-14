@@ -51,7 +51,9 @@ const creditbalanceSchema = new mongoose.Schema({
 });
 
 creditbalanceSchema.pre('save', function (next) {
-  this.availableBalance = this.balance;
+  // Calculate available balance: balance - holdAmount
+  // This ensures availableBalance reflects the actual spendable amount
+  this.availableBalance = Math.max(0, (this.balance || 0) - (this.holdAmount || 0));
   next();
 });
 

@@ -3,6 +3,9 @@ const walletController = require('../../controllers/buyer/walletController');
 const walletWebhookController = require('../../controllers/buyer/walletWebhookController');
 const creditbalanceController = require('../../controllers/buyer/creditbalanceController');
 const authController = require('../../controllers/buyer/authController');
+// SECURITY FIX #4 (Phase 2 Enhancement): Rate limiting for wallet operations
+const { walletTopupLimiter } = require('../../middleware/rateLimiting/walletLimiter');
+const { paymentVerificationLimiter } = require('../../middleware/rateLimiting/paymentLimiter');
 
 const router = express.Router();
 
@@ -16,8 +19,10 @@ router.use(authController.protect);
 router.get('/balance', walletController.getWalletBalance);
 router.get('/transactions', walletController.getWalletTransactions);
 router.get('/history', walletController.getWalletHistory); // Balance history endpoint
-router.post('/topup', walletController.initiateTopup);
-router.post('/verify', walletController.verifyTopup);
+// SECURITY FIX #4 & #5: Rate limiting + input validation for wallet operations
+const { validateTopup, validateTopupVerification, handleValidationErrors } = require('../../middleware/validation/walletValidator');
+router.post('/topup', walletTopupLimiter, validateTopup, handleValidationErrors, walletController.initiateTopup);
+router.post('/verify', paymentVerificationLimiter, validateTopupVerification, handleValidationErrors, walletController.verifyTopup);
 
 // Admin adjustment route
 router.post(

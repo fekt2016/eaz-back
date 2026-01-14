@@ -10,7 +10,6 @@ const supportMessageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SupportTicket',
       required: true,
-      index: true,
     },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -57,9 +56,8 @@ const supportMessageSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-supportMessageSchema.index({ ticketId: 1, createdAt: 1 });
-supportMessageSchema.index({ senderId: 1, createdAt: -1 });
+
+
 
 const SupportMessage = mongoose.model('SupportMessage', supportMessageSchema);
 

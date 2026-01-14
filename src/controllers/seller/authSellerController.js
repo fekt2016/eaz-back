@@ -2,9 +2,8 @@ const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const { createSendToken } = require('../../utils/helpers/createSendToken');
 const AppError = require('../../utils/errors/appError');
-const sendEmail = require('../../utils/email/emailService');
+const { sendEmail, sendPasswordResetEmail } = require('../../utils/email/emailService');
 const crypto = require('crypto');
-const sellerCustomerModel = require('../../models/notification/chat/sellerCustomerModel');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const SecurityLog = require('../../models/user/securityModal');
 const jwt = require('jsonwebtoken');
@@ -13,17 +12,95 @@ const { sendLoginOtpEmail } = require('../../utils/email/emailService');
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+const speakeasy = require('speakeasy');
+const NodeCache = require('node-cache');
+// Shared helpers for standardized auth
+const { normalizeEmail, normalizePhone, handleSuccessfulLogin, clearAuthCookie } = require('../../utils/helpers/authHelpers');
+const { OTP_TYPES, generateOtp, verifyOtp, clearOtp } = require('../../utils/helpers/otpHelpers');
 
+// Initialize login session cache (5 minutes TTL) for 2FA login flow
+const loginSessionCache = new NodeCache({ stdTTL: 300 });
+
+/**
+ * POST /seller/signup
+ * Register a new seller account
+ * Requires OTP verification before login
+ */
 exports.signupSeller = catchAsync(async (req, res, next) => {
-  // ✅ FIX: Remove auto-verification - require OTP verification
-  // Set verification status to false (requires OTP verification)
+  // SECURITY: Normalize email to lowercase
+  if (req.body.email) {
+    const normalizedEmail = normalizeEmail(req.body.email);
+    if (!normalizedEmail) {
+      return next(new AppError('Please provide a valid email address', 400));
+    }
+    req.body.email = normalizedEmail;
+  }
+
+  // SECURITY: Normalize phone number (digits only)
+  if (req.body.phone) {
+    req.body.phone = normalizePhone(req.body.phone);
+  }
+
+  // SECURITY: Set verification status to false (requires OTP verification)
   req.body.verification = {
-    emailVerified: false, // ✅ Changed from true to false
+    emailVerified: false, // Always false on signup - requires OTP verification
     businessVerified: false,
   };
 
-  // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
+  // SECURITY: Enforce role server-side (seller only)
   req.body.role = 'seller';
+
+  // ✅ FIX: Remove paymentMethods completely if not provided
+  // Payment methods should be added later in settings, not during registration
+  // This prevents validation errors from empty enum fields
+  if (req.body.paymentMethods) {
+    const { bankAccount, mobileMoney } = req.body.paymentMethods;
+    
+    // Check if paymentMethods has any meaningful data
+    const hasBankData = bankAccount && (bankAccount.bankName || bankAccount.accountNumber || bankAccount.accountName);
+    const hasMobileData = mobileMoney && (mobileMoney.phone || mobileMoney.network || mobileMoney.accountName);
+    
+    // Remove paymentMethods if all fields are empty/undefined
+    if (!hasBankData && !hasMobileData) {
+      delete req.body.paymentMethods;
+    } else {
+      // Clean up empty enum fields that would fail validation
+      if (bankAccount) {
+        if (!bankAccount.bankName || bankAccount.bankName === '') {
+          delete bankAccount.bankName;
+        }
+        if (!bankAccount.accountNumber) {
+          delete bankAccount.accountNumber;
+        }
+        if (!bankAccount.accountName) {
+          delete bankAccount.accountName;
+        }
+        // If bankAccount is now empty, remove it
+        if (Object.keys(bankAccount).length === 0) {
+          delete req.body.paymentMethods.bankAccount;
+        }
+      }
+      if (mobileMoney) {
+        if (!mobileMoney.phone || mobileMoney.phone === '') {
+          delete mobileMoney.phone;
+        }
+        if (!mobileMoney.network || mobileMoney.network === '') {
+          delete mobileMoney.network;
+        }
+        if (!mobileMoney.accountName) {
+          delete mobileMoney.accountName;
+        }
+        // If mobileMoney is now empty, remove it
+        if (Object.keys(mobileMoney).length === 0) {
+          delete req.body.paymentMethods.mobileMoney;
+        }
+      }
+      // If paymentMethods is now empty, remove it completely
+      if (Object.keys(req.body.paymentMethods).length === 0) {
+        delete req.body.paymentMethods;
+      }
+    }
+  }
 
   const newSeller = await Seller.create(req.body);
   if (!newSeller) {
@@ -37,22 +114,33 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
     await newSeller.save({ validateBeforeSave: false });
   }
 
-  // ✅ Generate OTP for email verification
-  const otp = newSeller.createOtp();
+  // SECURITY: Generate OTP for signup verification using shared helper
+  const otp = generateOtp(newSeller, OTP_TYPES.SIGNUP);
   await newSeller.save({ validateBeforeSave: false });
+
+  // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(newSeller._id, newSeller.email, 'signup');
+  secureLog.debug('Seller signup OTP generated', {
+    userId: newSeller._id,
+    email: newSeller.email,
+    // OTP value is NEVER logged, even in development
+  });
 
   // Send OTP via email
   try {
     await sendLoginOtpEmail(newSeller.email, otp, newSeller.name || newSeller.shopName);
-    console.log(`[Seller Signup] OTP sent to ${newSeller.email}`);
+    secureLog.debug('Seller signup OTP email sent', {
+      userId: newSeller._id,
+      email: newSeller.email,
+    });
   } catch (emailError) {
-    console.error('[Seller Signup] Failed to send OTP email:', emailError.message);
+    secureLog.error('Failed to send seller signup OTP email', {
+      userId: newSeller._id,
+      error: emailError.message,
+    });
     // Don't fail signup if email fails - OTP is still generated
   }
-
-  await sellerCustomerModel.create({
-    myId: newSeller.id,
-  });
 
   // Log activity
   logActivityAsync({
@@ -71,7 +159,9 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
       newSeller.shopName || newSeller.name,
       newSeller.email
     );
-    console.log(`[Seller Signup] Admin notification created for new seller ${newSeller._id}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Seller Signup] Admin notification created for new seller ${newSeller._id}`);
+    }
   } catch (notificationError) {
     console.error('[Seller Signup] Error creating admin notification:', notificationError);
     // Don't fail signup if notification fails
@@ -94,138 +184,287 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * POST /seller/login
+ * Login with email + password only (no OTP)
+ * If 2FA is enabled, returns 2fa_required response
+ * If 2FA is disabled, issues token immediately
+ * MATCHES BUYER LOGIN FLOW EXACTLY
+ */
 exports.loginSeller = catchAsync(async (req, res, next) => {
-  const { email, password } = req.body;
-  //1) check if email and password exist
-  if (!email || !password) {
-    return next(new AppError('Please provide email and password', 400));
-  }
-  const seller = await Seller.findOne({ email }).select('+password');
-
-  //2) check if seller exist and password is correct
-  if (!seller || !(await seller.correctPassword(password, seller.password))) {
-    return next(new AppError('Incorrect email or password', 401));
+  // Debug logging to help diagnose request body issues
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Seller Login] Request received');
+    console.log('[Seller Login] Content-Type:', req.headers['content-type']);
+    console.log('[Seller Login] Request body keys:', Object.keys(req.body || {}));
+    console.log('[Seller Login] Request body:', JSON.stringify(req.body));
+    console.log('[Seller Login] Request method:', req.method);
+    console.log('[Seller Login] Request URL:', req.originalUrl);
   }
 
-  // ✅ CRITICAL: Check if email is verified before allowing login
-  if (!seller.verification?.emailVerified) {
+  // Check if body parsing worked
+  if (!req.body || typeof req.body !== 'object') {
     return next(
       new AppError(
-        'Email not verified. Please verify your email address to access your seller account.',
-        401
+        'Invalid request format. Please ensure Content-Type is application/json and the request body is valid JSON.',
+        400
       )
     );
   }
 
-  // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
-  // This is critical for proper authorization
-  if (!seller.role || seller.role !== 'seller') {
-    console.log(`[Seller Auth] Correcting role from "${seller.role}" to "seller" for: ${seller.email}`);
-    seller.role = 'seller';
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    // Provide more helpful error message
+    const missingFields = [];
+    if (!email) missingFields.push('email');
+    if (!password) missingFields.push('password');
+    
+    const receivedKeys = Object.keys(req.body || {}).length > 0 
+      ? Object.keys(req.body).join(', ') 
+      : 'none';
+    
+    return next(
+      new AppError(
+        `Please provide ${missingFields.join(' and ')}. Received fields: ${receivedKeys}`,
+        400
+      )
+    );
   }
 
-  // Capture IP and device
-  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
-  const userAgent = req.headers['user-agent'] || 'unknown';
+  if (!validator.isEmail(email)) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
 
-  // Security monitoring
-  const ipChange = await securityMonitor.detectIPChange(seller, ipAddress, 'seller');
-  const deviceChange = await securityMonitor.detectDeviceChange(seller, userAgent, 'seller');
-  const multipleIps = await securityMonitor.detectMultipleIps(seller, 'seller');
-  const geoMismatch = await securityMonitor.detectGeoMismatch(seller, ipAddress, 'seller');
-  const location = await securityMonitor.getIpLocation(ipAddress);
+  // SECURITY: Normalize email to prevent case-sensitivity issues
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
 
-  // Compute risk level
-  const riskLevel = securityMonitor.computeRiskLevel({
-    ipChanged: ipChange.changed,
-    deviceChanged: deviceChange.changed,
-    multipleIps: multipleIps.multipleIps,
-    geoMismatch: geoMismatch.mismatch,
-  });
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Seller Login] Normalized email:', normalizedEmail);
+  }
 
-  // Log IP change if detected
-  if (ipChange.changed) {
-    await ActivityLog.create({
-      userId: seller._id,
-      userModel: 'Seller',
-      role: 'seller',
-      action: 'IP_CHANGE',
-      description: `IP address changed from ${ipChange.previousIp} to ${ipChange.currentIp}`,
-      activityType: 'IP_CHANGE',
-      ipAddress: ipChange.currentIp,
-      previousIp: ipChange.previousIp,
-      userAgent,
-      location,
-      riskLevel: 'medium',
-      platform: 'eazseller',
-      metadata: {
-        previousIp: ipChange.previousIp,
-        currentIp: ipChange.currentIp,
+  // Find seller with password and 2FA status
+  const seller = await Seller.findOne({ email: normalizedEmail }).select('+password +twoFactorEnabled');
+
+  if (!seller) {
+    // Debug logging (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Seller Login] ❌ Seller not found for email:', normalizedEmail);
+      // Check if seller exists with different email casing
+      const anySeller = await Seller.findOne({ email: new RegExp(`^${email}$`, 'i') });
+      if (anySeller) {
+        console.log('[Seller Login] ⚠️ Seller exists but email normalization mismatch. Original:', email, 'Found:', anySeller.email);
+      }
+    }
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Seller Login] ✅ Seller found:', {
+      id: seller._id,
+      email: seller.email,
+      emailVerified: seller.verification?.emailVerified,
+      status: seller.status,
+      active: seller.active,
+      hasPassword: !!seller.password,
+    });
+  }
+
+  // SECURITY: Check if account is suspended
+  if (seller.status === 'suspended' || seller.active === false) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Seller Login] ❌ Account suspended:', { status: seller.status, active: seller.active });
+    }
+    return next(new AppError('Your account has been suspended. Please contact support.', 401));
+  }
+
+  // SECURITY: Check if account is verified (REQUIRED before login)
+  if (!seller.verification?.emailVerified) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Seller Login] ❌ Account not verified:', { emailVerified: seller.verification?.emailVerified });
+    }
+    return next(
+      new AppError(
+        'Account not verified. Please verify your email address first.',
+        403
+      )
+    );
+  }
+
+  // SECURITY: Verify password
+  if (!seller.password) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Seller Login] ❌ No password set for seller');
+    }
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  const passwordValid = await seller.correctPassword(password, seller.password);
+  if (!passwordValid) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Seller Login] ❌ Password mismatch for seller:', seller.email);
+    }
+    // SECURITY: Increment failed login attempts (if field exists)
+    if (seller.failedLoginAttempts !== undefined) {
+      seller.failedLoginAttempts = (seller.failedLoginAttempts || 0) + 1;
+      // Lock account after 5 failed attempts (15 minutes)
+      if (seller.failedLoginAttempts >= 5) {
+        seller.accountLockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await seller.save({ validateBeforeSave: false });
+        return next(new AppError('Too many failed login attempts. Account locked for 15 minutes.', 429));
+      }
+      await seller.save({ validateBeforeSave: false });
+    }
+    // SECURITY: Generic error message to prevent user enumeration
+    return next(new AppError('Invalid email or password', 401));
+  }
+
+  // SECURITY: Check if account is locked
+  if (seller.accountLockedUntil && new Date(seller.accountLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil(
+      (new Date(seller.accountLockedUntil).getTime() - Date.now()) / (1000 * 60)
+    );
+    return next(
+      new AppError(
+        `Account is temporarily locked. Please try again in ${minutesRemaining} minute(s).`,
+        429
+      )
+    );
+  }
+
+  // Reset failed login attempts on successful password verification
+  if (seller.failedLoginAttempts !== undefined && seller.failedLoginAttempts > 0) {
+    seller.failedLoginAttempts = 0;
+    seller.accountLockedUntil = null;
+    await seller.save({ validateBeforeSave: false });
+  }
+
+  // Check 2FA status
+  if (seller.twoFactorEnabled) {
+    // 2FA is enabled - require Google Authenticator code
+    // Generate temporary session ID for 2FA verification
+    const loginSessionId = crypto.randomBytes(32).toString('hex');
+    
+    // Store session in shared cache (5 minutes TTL)
+    loginSessionCache.set(loginSessionId, {
+      userId: seller._id.toString(),
+      email: seller.email,
+      timestamp: Date.now(),
+    });
+
+    return res.status(200).json({
+      status: '2fa_required',
+      message: 'Two-factor authentication is enabled. Please provide your 2FA code.',
+      requires2FA: true,
+      loginSessionId: loginSessionId,
+      data: {
+        userId: seller._id,
+        email: seller.email,
       },
     });
   }
 
-  // Log device change if detected
-  if (deviceChange.changed) {
-    await ActivityLog.create({
-      userId: seller._id,
-      userModel: 'Seller',
-      role: 'seller',
-      action: 'DEVICE_CHANGE',
-      description: `Device changed from ${deviceChange.previousDevice?.substring(0, 50)} to ${deviceChange.currentDevice?.substring(0, 50)}`,
-      activityType: 'DEVICE_CHANGE',
-      ipAddress,
-      userAgent: deviceChange.currentDevice,
-      location,
-      riskLevel: 'medium',
-      platform: 'eazseller',
-      metadata: {
-        previousDevice: deviceChange.previousDevice,
-        currentDevice: deviceChange.currentDevice,
-      },
-    });
+  // 2FA is disabled - issue token immediately
+  // Use standardized login helper
+  try {
+    const response = await handleSuccessfulLogin(req, res, seller, 'seller');
+    res.status(200).json(response);
+  } catch (deviceError) {
+    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+      return next(new AppError(deviceError.message, 403));
+    }
+    // In dev, continue without device session
+    const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
+    res.status(200).json(response);
   }
-
-  seller.lastLogin = Date.now();
-
-  // Save seller to persist lastLogin and role
-  await seller.save({ validateBeforeSave: false });
-
-  // Log login activity with security info
-  const loginLog = await ActivityLog.create({
-    userId: seller._id,
-    userModel: 'Seller',
-    role: 'seller',
-    action: 'LOGIN',
-    description: `Seller logged in via email/password`,
-    activityType: 'LOGIN',
-    ipAddress,
-    previousIp: ipChange.previousIp || null,
-    userAgent,
-    location,
-    riskLevel,
-    platform: 'eazseller',
-    metadata: {
-      ipChanged: ipChange.changed,
-      deviceChanged: deviceChange.changed,
-      multipleIps: multipleIps.multipleIps,
-      ipCount: multipleIps.ipCount,
-    },
-  });
-
-  // Trigger security alert if risk is high or critical
-  if (riskLevel === 'high' || riskLevel === 'critical') {
-    await securityMonitor.triggerSecurityAlert(seller, loginLog, 'seller');
-  }
-
-  // Check if critical risk requires force logout
-  if (riskLevel === 'critical') {
-    console.warn(`[Seller Login] CRITICAL RISK detected for seller ${seller.email}. Login allowed but logged.`);
-  }
-
-  createSendToken(seller, 200, res, null, 'seller_jwt');
 });
 
+/**
+ * POST /seller/verify-2fa-login
+ * Verify 2FA code and issue JWT token
+ * Requires loginSessionId from /seller/login response
+ * MATCHES BUYER VERIFY-2FA-LOGIN EXACTLY
+ */
+exports.verify2FALogin = catchAsync(async (req, res, next) => {
+  const { loginSessionId, twoFactorCode } = req.body;
+
+  if (!loginSessionId || !twoFactorCode) {
+    return next(new AppError('Please provide loginSessionId and 2FA code', 400));
+  }
+
+  // Retrieve session from shared cache
+  const session = loginSessionCache.get(loginSessionId);
+
+  if (!session) {
+    return next(new AppError('Login session expired. Please login again.', 401));
+  }
+
+  // Find seller with 2FA secret
+  const seller = await Seller.findById(session.userId).select('+twoFactorSecret +twoFactorBackupCodes');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (!seller.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled for this account', 400));
+  }
+
+  // Verify 2FA code
+  const verified = speakeasy.totp.verify({
+    secret: seller.twoFactorSecret,
+    encoding: 'base32',
+    token: twoFactorCode,
+    window: 2,
+  });
+
+  // Check backup codes if TOTP fails
+  let backupCodeUsed = false;
+  if (!verified && seller.twoFactorBackupCodes && seller.twoFactorBackupCodes.length > 0) {
+    const backupCodeIndex = seller.twoFactorBackupCodes.findIndex(
+      (code) => code === twoFactorCode.toUpperCase()
+    );
+    
+    if (backupCodeIndex !== -1) {
+      seller.twoFactorBackupCodes.splice(backupCodeIndex, 1);
+      await seller.save({ validateBeforeSave: false });
+      backupCodeUsed = true;
+    }
+  }
+
+  if (!verified && !backupCodeUsed) {
+    // Delete session on failed attempt
+    loginSessionCache.del(loginSessionId);
+    return next(new AppError('Invalid 2FA code. Please try again.', 401));
+  }
+
+  // 2FA verified - delete session and issue token
+  loginSessionCache.del(loginSessionId);
+
+  // Use standardized login helper
+  try {
+    const response = await handleSuccessfulLogin(req, res, seller, 'seller');
+    res.status(200).json(response);
+  } catch (deviceError) {
+    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+      return next(new AppError(deviceError.message, 403));
+    }
+    // In dev, continue without device session
+    const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
+    res.status(200).json(response);
+  }
+});
+
+/**
+ * POST /seller/send-otp
+ * Send OTP for login (legacy OTP-based login)
+ */
 exports.sendOtp = catchAsync(async (req, res, next) => {
   const { loginId } = req.body;
 
@@ -236,7 +475,11 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   let seller;
 
   if (validator.isEmail(loginId)) {
-    seller = await Seller.findOne({ email: loginId });
+    const normalizedEmail = normalizeEmail(loginId);
+    if (!normalizedEmail) {
+      return next(new AppError('Please provide a valid email address', 400));
+    }
+    seller = await Seller.findOne({ email: normalizedEmail });
   } else {
     return next(
       new AppError('Please provide a valid email address', 400),
@@ -249,21 +492,31 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     );
   }
 
-  const otp = seller.createOtp();
+  const otp = generateOtp(seller, OTP_TYPES.LOGIN);
   await seller.save({ validateBeforeSave: false });
 
-  // SECURITY FIX #5: Log OTP generation without exposing the OTP value
-  console.log('[Seller Auth] OTP generated for seller:', seller._id);
-  console.log('[Seller Auth] Email:', seller.email);
-  console.log('[Seller Auth] Expires:', new Date(seller.otpExpires).toLocaleString());
+  // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(seller._id, loginId, 'login');
+  secureLog.debug('Login OTP generated', {
+    userId: seller._id,
+    loginId,
+    // OTP value is NEVER logged, even in development
+  });
 
   // Send OTP via email using SendGrid
   if (validator.isEmail(loginId)) {
     try {
       await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-      console.log(`✅ [Seller Auth] Login OTP email sent to ${seller.email}`);
+      secureLog.debug('Login OTP email sent', {
+        userId: seller._id,
+        email: seller.email,
+      });
     } catch (error) {
-      console.error('❌ [Seller Auth] Failed to send login OTP email:', error.message);
+      secureLog.error('Failed to send login OTP email', {
+        userId: seller._id,
+        error: error.message,
+      });
       // Don't fail the request if email fails, OTP is still generated
     }
   }
@@ -271,14 +524,17 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'OTP sent to your email!',
-    // SECURITY FIX #5: Don't send OTP in response (removed security risk)
+    // SECURITY: Don't send OTP in response
   });
 });
 
+/**
+ * POST /seller/verify-otp
+ * Verify OTP for login (legacy OTP-based login)
+ */
 exports.verifyOtp = catchAsync(async (req, res, next) => {
   try {
     const { loginId, otp, password, redirectTo } = req.body;
-    console.log('[Seller Auth] Verifying OTP:', { loginId, otp: otp ? '***' : 'missing', password: password ? '***' : 'missing' });
 
     if (!loginId || !otp || !password) {
       return next(
@@ -290,14 +546,18 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     const query = Seller.findOne();
 
     if (validator.isEmail(loginId)) {
-      query.where({ email: loginId });
+      const normalizedEmail = normalizeEmail(loginId);
+      if (!normalizedEmail) {
+        return next(new AppError('Please provide a valid email address', 400));
+      }
+      query.where({ email: normalizedEmail });
     } else {
       return next(
         new AppError('Please provide a valid email address', 400),
       );
     }
 
-    query.select('+password +otp +otpExpires');
+    query.select('+password +otp +otpExpires +otpAttempts +otpLockedUntil +otpType');
     seller = await query;
 
     if (!seller) {
@@ -306,32 +566,51 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       );
     }
 
-    // SECURITY FIX #5: Log OTP verification attempt without exposing OTP values
-    console.log('[Seller Auth] OTP verification attempt for seller:', seller._id);
-    console.log('[Seller Auth] Email:', seller.email);
-    console.log('[Seller Auth] OTP Expires:', seller.otpExpires ? new Date(seller.otpExpires).toLocaleString() : 'N/A');
-    console.log('[Seller Auth] Current Time:', new Date().toLocaleString());
-    console.log('[Seller Auth] Valid:', seller.verifyOtp(otp) ? 'YES' : 'NO');
+    // Verify OTP using shared helper
+    const otpResult = verifyOtp(seller, otp, OTP_TYPES.LOGIN);
 
-    if (!seller.verifyOtp(otp)) {
-      return next(new AppError('OTP is invalid or has expired', 401));
+    // Handle account lockout
+    if (otpResult.locked) {
+      await seller.save({ validateBeforeSave: false });
+      return next(
+        new AppError(
+          `Your account is locked for ${otpResult.minutesRemaining} minute(s) due to multiple failed attempts. Please try again later.`,
+          429
+        )
+      );
+    }
+
+    // Handle failed OTP verification
+    if (!otpResult.valid) {
+      await seller.save({ validateBeforeSave: false });
+      const attemptsRemaining = 5 - (seller.otpAttempts || 0);
+      let errorMessage = 'Invalid verification code.';
+      
+      if (otpResult.reason === 'expired') {
+        errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
+      } else if (otpResult.reason === 'no_otp') {
+        errorMessage = 'No verification code found. Please request a new one.';
+      } else if (otpResult.reason === 'type_mismatch') {
+        errorMessage = 'This verification code is not valid for login.';
+      } else if (otpResult.reason === 'mismatch') {
+        errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
+      }
+      
+      return next(new AppError(errorMessage, 401));
     }
 
     // Verify password
     if (!(await seller.correctPassword(password, seller.password))) {
-      console.log('[Seller Auth] Incorrect password');
-      return next(new AppError('Incorrect password', 401));
+      // SECURITY: Generic error message to prevent information leakage
+      return next(new AppError('Invalid credentials', 401));
     }
 
     // Clear OTP and update last login
-    seller.otp = undefined;
-    seller.otpExpires = undefined;
+    clearOtp(seller);
     seller.lastLogin = Date.now();
 
-    // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
-    // This is critical for proper authorization
+    // Ensure role is ALWAYS 'seller'
     if (!seller.role || seller.role !== 'seller') {
-      console.log(`[Seller Auth] Correcting role from "${seller.role}" to "seller" for: ${seller.email}`);
       seller.role = 'seller';
     }
 
@@ -339,157 +618,215 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     if (!seller.verification?.emailVerified) {
       seller.verification = seller.verification || {};
       seller.verification.emailVerified = true;
-      console.log('[Seller Auth] Email marked as verified for:', seller.email);
     }
 
     await seller.save({ validateBeforeSave: false });
-    console.log('[Seller Auth] OTP verified successfully for:', seller.email);
-    console.log('[Seller Auth] Seller role:', seller.role);
 
-    // Create device session and generate tokens
-    const { createDeviceSession } = require('../../utils/helpers/createDeviceSession');
-    let sessionData;
+    // Use standardized login helper
     try {
-      console.log('[Seller Auth] Creating device session for seller:', seller._id);
-      sessionData = await createDeviceSession(req, seller, 'eazseller');
-      console.log('[Seller Auth] Device session created successfully:', sessionData?.deviceId);
+      const response = await handleSuccessfulLogin(req, res, seller, 'seller');
+      response.redirectTo = redirectTo || '/';
+      res.status(200).json(response);
     } catch (deviceError) {
-      // If device limit exceeded, return error
-      // If device limit exceeded, return error (only in production)
-      if (process.env.NODE_ENV === 'production' && deviceError.message && deviceError.message.includes('Too many devices')) {
+      if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
         return next(new AppError(deviceError.message, 403));
       }
-      // For other errors, log and continue without device session (fallback)
-      console.error('[Seller Auth] ❌ Error creating device session:', deviceError.message || deviceError);
-      console.error('[Seller Auth] Error stack:', deviceError.stack);
-      sessionData = null;
+      // In dev, continue without device session
+      const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
+      response.redirectTo = redirectTo || '/';
+      res.status(200).json(response);
     }
-
-    // Create token with deviceId
-    const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
-    const signToken = (id, role, deviceId) => {
-      const payload = { id, role };
-      if (deviceId) {
-        payload.deviceId = deviceId;
-      }
-      return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: expiresIn,
-      });
-    };
-
-    const token = signToken(seller._id, seller.role, sessionData?.deviceId);
-
-    // Set cookie (same as createSendToken)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
-      expires: new Date(
-        Date.now() +
-        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
-      ),
-      // Set domain for production to allow cookie sharing across subdomains
-      // Only set in production, leave undefined in development (localhost)
-      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
-    };
-
-    res.cookie('seller_jwt', token, cookieOptions);
-    console.log(`[Seller Auth] JWT cookie set (seller_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}`);
-
-    // Remove sensitive data
-    seller.password = undefined;
-    seller.otp = undefined;
-    seller.otpExpires = undefined;
-
-    // Sanitize redirect path if needed
-    const sanitizedRedirectTo = redirectTo || '/';
-
-    // Log activity
-    logActivityAsync({
-      userId: seller._id,
-      role: 'seller',
-      action: 'LOGIN',
-      description: `Seller logged in via OTP verification`,
-      req,
-    });
-
-    // Return JSON with token, deviceId, refreshToken and redirectTo
-    const response = {
-      status: 'success',
-      message: 'OTP verified',
-      token,
-      data: {
-        seller: {
-          id: seller._id,
-          name: seller.name,
-          email: seller.email,
-          shopName: seller.shopName,
-          role: seller.role,
-          status: seller.status,
-          lastLogin: seller.lastLogin,
-        },
-      },
-      redirectTo: sanitizedRedirectTo,
-    };
-
-    // Add device session info if created
-    if (sessionData) {
-      response.deviceId = sessionData.deviceId;
-      response.refreshToken = sessionData.refreshToken;
-      if (sessionData.suspicious) {
-        response.warning = 'New device detected. Please verify this is you.';
-      }
-    }
-
-    res.status(200).json(response);
   } catch (error) {
     console.error('[Seller Auth] OTP verification error:', error);
     return next(new AppError('Failed to verify OTP. Please try again.', 500));
   }
 });
-exports.forgotPassword = catchAsync(async (req, res, next) => {
-  const seller = await Seller.findOne({ email: req.body.email });
-  if (!seller) {
-    return next(new AppError('There is no seller with email address', 404));
+
+/**
+ * POST /seller/verify-account
+ * Verify email with OTP (for new signups)
+ */
+exports.verifyEmail = catchAsync(async (req, res, next) => {
+  const { otp, email } = req.body;
+
+  if (!otp) {
+    return next(new AppError('Please provide OTP', 400));
   }
-  const resetToken = seller.createPasswordResetToken();
-  await seller.save({ validateBeforeSave: false });
 
-  const resetURL = `${req.protocol}://${req.get('host')}/api/v1/sellers/resetPassword/${resetToken}`;
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
-  try {
-    await sendEmail({
-      email: seller.email,
-      subject: 'Your password reset token (valid for 10 min)',
-      message,
+  // SECURITY: Normalize email
+  const normalizedEmail = normalizeEmail(email);
+
+  let seller;
+  
+  // Support both authenticated (req.user.id) and unauthenticated (email) verification
+  if (req.user && req.user.id) {
+    // Authenticated seller verifying their own email
+    seller = await Seller.findById(req.user.id).select('+otp +otpExpires +otpAttempts +otpLockedUntil +otpType');
+  } else if (normalizedEmail) {
+    // Unauthenticated seller verifying during signup (using email)
+    seller = await Seller.findOne({ email: normalizedEmail }).select('+otp +otpExpires +otpAttempts +otpLockedUntil +otpType');
+  } else {
+    return next(new AppError('Please provide email address or be logged in', 400));
+  }
+
+  if (!seller) {
+    return next(new AppError('No seller found', 404));
+  }
+
+  // If already verified, return success
+  if (seller.verification?.emailVerified) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'Email is already verified',
+      data: {
+        seller: {
+          id: seller._id,
+          email: seller.email,
+          verification: seller.verification,
+        },
+      },
     });
-    res
-      .status(200)
-      .json({ status: 'success', message: 'Token sent to email!' });
-  } catch (err) {
-    seller.passwordResetToken = undefined;
-    seller.passwordResetExpires = undefined;
-    await seller.save({ validateBeforeSave: false });
+  }
 
+  // Verify OTP using shared helper with type checking
+  const otpResult = verifyOtp(seller, otp, OTP_TYPES.SIGNUP);
+
+  // Handle account lockout
+  if (otpResult.locked) {
+    await seller.save({ validateBeforeSave: false });
     return next(
       new AppError(
-        'There was an error sending the email. Try again later!',
-        500,
-      ),
+        `Your account is locked for ${otpResult.minutesRemaining} minute(s) due to multiple failed attempts. Please try again later.`,
+        429
+      )
     );
   }
-});
-// Send verification OTP for email (for existing sellers and resend)
-exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
-  // Seller is already authenticated via protect middleware (or email provided for resend)
-  let seller;
-  if (req.body.email) {
-    seller = await Seller.findOne({ email: req.body.email });
-  } else {
-    seller = await Seller.findById(req.user.id);
+
+  // Handle failed OTP verification
+  if (!otpResult.valid) {
+    await seller.save({ validateBeforeSave: false });
+    const attemptsRemaining = 5 - (seller.otpAttempts || 0);
+    let errorMessage = 'Invalid verification code.';
+    
+    if (otpResult.reason === 'expired') {
+      errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
+    } else if (otpResult.reason === 'no_otp') {
+      errorMessage = 'No verification code found. Please request a new one.';
+    } else if (otpResult.reason === 'type_mismatch') {
+      errorMessage = 'This verification code is not valid for account verification.';
+    } else if (otpResult.reason === 'mismatch') {
+      errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
+    }
+    
+    return next(new AppError(errorMessage, 401));
   }
+
+  // OTP is valid - mark email as verified
+  seller.verification = seller.verification || {};
+  seller.verification.emailVerified = true;
+  
+  // Clear OTP fields using shared helper
+  clearOtp(seller);
+  await seller.save({ validateBeforeSave: false });
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`✅ [Seller Verification] Email verified for: ${seller.email}`);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Email verified successfully!',
+    data: {
+      seller: {
+        id: seller._id,
+        email: seller.email,
+        verification: seller.verification,
+      },
+    },
+  });
+});
+
+/**
+ * POST /seller/resend-otp
+ * Resend OTP for email verification
+ */
+exports.resendOtp = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email || !validator.isEmail(email)) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
+
+  // SECURITY: Normalize email
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return next(new AppError('Please provide a valid email address', 400));
+  }
+
+  // SECURITY FIX #3: Prevent account enumeration - always return generic message
+  const seller = await Seller.findOne({ email: normalizedEmail });
+
+  // Always return generic success message (prevent account enumeration)
+  const genericResponse = {
+    status: 'success',
+    message: 'If an account exists, a verification code has been sent.',
+  };
+
+  if (!seller) {
+    return res.status(200).json(genericResponse); // ✅ Generic message, no enumeration
+  }
+
+  // Check if account is locked
+  if (seller.otpLockedUntil && new Date(seller.otpLockedUntil).getTime() > Date.now()) {
+    const minutesRemaining = Math.ceil(
+      (new Date(seller.otpLockedUntil).getTime() - Date.now()) / (1000 * 60)
+    );
+    return next(
+      new AppError(
+        `Account locked. Please try again in ${minutesRemaining} minute(s).`,
+        429
+      )
+    );
+  }
+
+  // Generate new OTP
+  const otp = generateOtp(seller, OTP_TYPES.SIGNUP);
+  await seller.save({ validateBeforeSave: false });
+
+  // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(seller._id, seller.email, 'resend');
+  secureLog.debug('Resend OTP generated', {
+    userId: seller._id,
+    email: seller.email,
+    // OTP value is NEVER logged, even in development
+  });
+
+  // Send OTP via email
+  try {
+    await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
+    secureLog.debug('Resend OTP email sent', {
+      userId: seller._id,
+      email: seller.email,
+    });
+  } catch (error) {
+    secureLog.error('Failed to send resend OTP email', {
+      userId: seller._id,
+      error: error.message,
+    });
+  }
+
+  // SECURITY FIX #1 & #3: NEVER include OTP in response, always return generic message
+  res.status(200).json(genericResponse);
+});
+
+/**
+ * POST /seller/send-verification-email
+ * Send verification OTP for email (for existing sellers)
+ */
+exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
+  // Seller is already authenticated via protect middleware
+  const seller = await Seller.findById(req.user.id);
 
   if (!seller) {
     return next(new AppError('No seller found', 404));
@@ -517,159 +854,213 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
   }
 
   // Generate new OTP (clears old one and resets attempts)
-  const otp = seller.createOtp();
+  const otp = generateOtp(seller, OTP_TYPES.SIGNUP);
   await seller.save({ validateBeforeSave: false });
 
-  // SECURITY FIX #5: Log OTP generation without exposing OTP value
-  console.log('[Seller Verification] OTP generated for seller:', seller._id);
-  console.log('[Seller Verification] Email:', seller.email);
-  console.log('[Seller Verification] Expires:', new Date(seller.otpExpires).toLocaleString());
+  // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
+  const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
+  logOtpGeneration(seller._id, seller.email, 'emailVerification');
+  secureLog.debug('Email verification OTP generated', {
+    userId: seller._id,
+    email: seller.email,
+    // OTP value is NEVER logged, even in development
+  });
 
   // Send OTP via email
   try {
     await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-    console.log(`✅ [Seller Verification] Email OTP sent to ${seller.email}`);
+    secureLog.debug('Email verification OTP sent', {
+      userId: seller._id,
+      email: seller.email,
+    });
   } catch (error) {
-    console.error('❌ [Seller Verification] Failed to send email OTP:', error.message);
+    secureLog.error('Failed to send email verification OTP', {
+      userId: seller._id,
+      error: error.message,
+    });
     // Don't fail the request if email fails, OTP is still generated
   }
 
+  // SECURITY FIX #1: NEVER include OTP in API response, even in development
   res.status(200).json({
     status: 'success',
     message: 'Verification code sent to your email!',
-    otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
+    // OTP is NEVER included in response (security best practice)
   });
 });
 
-// Resend OTP endpoint for sellers
-exports.resendOtp = catchAsync(async (req, res, next) => {
+/**
+ * ==================================================
+ * UNIFIED EMAIL-ONLY PASSWORD RESET FLOW (SELLER)
+ * ==================================================
+ * 
+ * STEP 1: Request Password Reset (Email Only)
+ * POST /api/v1/seller/forgot-password
+ * Body: { email: "seller@example.com" }
+ * 
+ * STEP 2: Reset Password with Token
+ * POST /api/v1/seller/reset-password
+ * Body: { token: "reset_token", newPassword: "newpass123", confirmPassword: "newpass123" }
+ */
+
+/**
+ * Request Password Reset (Email Only) - Seller
+ * - Accepts email address
+ * - Silently handles (no account enumeration)
+ * - Generates secure reset token
+ * - Sends reset link via email
+ * - Rate limited (prevents multiple requests if token still valid)
+ */
+exports.requestPasswordReset = catchAsync(async (req, res, next) => {
   const { email } = req.body;
 
-  if (!email || !validator.isEmail(email)) {
-    return next(new AppError('Please provide a valid email address', 400));
+  // Validate email
+  if (!email) {
+    return next(new AppError('Please provide an email address', 400));
   }
 
-  const seller = await Seller.findOne({ email });
-
-  if (!seller) {
-    return next(new AppError('No seller found with that email', 404));
-  }
-
-  // Check if account is locked
-  if (seller.otpLockedUntil && new Date(seller.otpLockedUntil).getTime() > Date.now()) {
-    const minutesRemaining = Math.ceil(
-      (new Date(seller.otpLockedUntil).getTime() - Date.now()) / (1000 * 60)
-    );
-    return next(
-      new AppError(
-        `Account locked. Please try again in ${minutesRemaining} minute(s).`,
-        429
-      )
-    );
-  }
-
-  // Generate new OTP
-  const otp = seller.createOtp();
-  await seller.save({ validateBeforeSave: false });
-
-  // SECURITY FIX #5: Log OTP generation without exposing OTP value
-  console.log('[Resend OTP - Seller] OTP generated for seller:', seller._id);
-  console.log('[Resend OTP - Seller] Email:', seller.email);
-  console.log('[Resend OTP - Seller] Expires in 10 minutes');
-
-  // Send OTP via email
-  try {
-    await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-    console.log(`[Resend OTP] OTP sent to ${seller.email}`);
-  } catch (error) {
-    console.error('[Resend OTP] Failed to send email:', error.message);
-  }
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Verification code sent to your email!',
-    otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
-  });
-});
-
-// Verify email with OTP (for existing sellers)
-exports.verifyEmail = catchAsync(async (req, res, next) => {
-  const { otp } = req.body;
-
-  if (!otp) {
-    return next(new AppError('Please provide OTP', 400));
-  }
-
-  const seller = await Seller.findById(req.user.id).select('+otp +otpExpires');
-
-  if (!seller) {
-    return next(new AppError('No seller found', 404));
-  }
-
-  // If already verified, return success
-  if (seller.verification?.emailVerified) {
+  // Normalize email
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    // Silently return success to prevent account enumeration
     return res.status(200).json({
       status: 'success',
-      message: 'Email is already verified',
+      message: 'If an account exists, a reset email has been sent.',
     });
   }
 
-  // Verify OTP
-  if (!seller.verifyOtp(otp)) {
-    return next(new AppError('OTP is invalid or has expired', 401));
+  // Find seller by email (silently - don't reveal if seller exists)
+  const seller = await Seller.findOne({ email: normalizedEmail }).select('+passwordResetToken +passwordResetExpires');
+
+  // SECURITY: Always return success message (prevent account enumeration)
+  // Even if seller doesn't exist, return the same message
+  if (!seller) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
   }
 
-  // Mark email as verified
-  seller.verification = seller.verification || {};
-  seller.verification.emailVerified = true;
-  seller.otp = undefined;
-  seller.otpExpires = undefined;
+  // Check rate limiting - if seller has a recent reset token that hasn't expired yet, don't send another
+  if (seller.passwordResetExpires && seller.passwordResetExpires > Date.now()) {
+    // Token still valid, don't send another email (rate limiting)
+    // Still return success to prevent information leakage
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Generate reset token using seller model method
+  const resetToken = seller.createPasswordResetToken();
   await seller.save({ validateBeforeSave: false });
 
-  console.log(`✅ [Seller Verification] Email verified for: ${seller.email}`);
+  try {
+    // Send password reset email
+    await sendPasswordResetEmail(seller.email, resetToken, seller.name || 'Seller');
+    
+    console.log(`[Seller Password Reset] Reset email sent to ${seller.email}`);
+  } catch (err) {
+    // If email fails, clear the reset token
+    seller.passwordResetToken = undefined;
+    seller.passwordResetExpires = undefined;
+    await seller.save({ validateBeforeSave: false });
 
+    // Still return success to prevent information leakage
+    console.error('[Seller Password Reset] Failed to send reset email:', err);
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists, a reset email has been sent.',
+    });
+  }
+
+  // Generic success message (no account enumeration)
   res.status(200).json({
     status: 'success',
-    message: 'Email verified successfully!',
-    data: {
-      seller: {
-        id: seller._id,
-        email: seller.email,
-        verification: seller.verification,
-      },
-    },
+    message: 'If an account exists, a reset email has been sent.',
   });
 });
 
-exports.resetPassword = catchAsync(async (req, res, next) => {
-  //1) Get seller based on token
+/**
+ * Reset Password with Token - Seller
+ * - Validates reset token
+ * - Ensures token is not expired or used
+ * - Hashes password using bcrypt (12 rounds)
+ * - Updates seller password
+ * - Clears reset token & expiry
+ * - Invalidates ALL active sessions
+ * - Sends confirmation email
+ */
+exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
+  const { token, newPassword, confirmPassword } = req.body;
+
+  // Validate input
+  if (!token) {
+    return next(new AppError('Reset token is required', 400));
+  }
+
+  if (!newPassword || !confirmPassword) {
+    return next(new AppError('Please provide both new password and confirmation', 400));
+  }
+
+  // Validate password match
+  if (newPassword !== confirmPassword) {
+    return next(new AppError('Passwords do not match', 400));
+  }
+
+  // Check password strength
+  if (newPassword.length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
+  // Hash the token to compare with stored hash
   const hashedToken = crypto
     .createHash('sha256')
-    .update(req.params.token)
+    .update(token)
     .digest('hex');
+
+  // Find seller with valid reset token
   const seller = await Seller.findOne({
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
-  });
+  }).select('+passwordResetToken +passwordResetExpires +password');
 
-  //2) If token has not expired, and there is seller, set the new password
   if (!seller) {
-    return next(new AppError('Token is invalid or has expired', 400));
+    return next(new AppError('Invalid or expired reset token', 400));
   }
-  seller.password = req.body.password;
-  seller.passwordConfirm = req.body.passwordConfirm;
+
+  // Update seller password and clear reset fields
+  seller.password = newPassword;
+  seller.passwordConfirm = confirmPassword;
   seller.passwordResetToken = undefined;
   seller.passwordResetExpires = undefined;
+  seller.passwordChangedAt = Date.now();
+
   await seller.save();
 
-  // Invalidate all sessions on password reset
+  // SECURITY: Invalidate all active sessions
   const DeviceSession = require('../../models/user/deviceSessionModel');
-  const TokenBlacklist = require('../../models/user/tokenBlackListModal');
   await DeviceSession.deactivateAll(seller._id);
   await TokenBlacklist.invalidateAllSessions(seller._id);
 
-  //3) Update changedPasswordAt property for the seller
-  //4) Log the seller in, send JWT (with new device session)
+  try {
+    // Send confirmation email
+    await sendEmail({
+      to: seller.email,
+      subject: 'Password Reset Successful',
+      html: `
+        <h2>Password Reset Successful</h2>
+        <p>Your seller account password has been successfully reset.</p>
+        <p>If you did not perform this action, please contact support immediately.</p>
+        <p><strong>Security Notice:</strong> All active sessions have been invalidated. Please log in again.</p>
+      `,
+    });
+  } catch (err) {
+    // Don't fail the request if email fails
+    console.error('[Seller Password Reset] Failed to send confirmation email:', err);
+  }
+
+  // Log seller in with new password (create new session)
   try {
     await createSendToken(seller, 200, res, null, 'seller_jwt', req, 'eazseller');
   } catch (error) {
@@ -679,109 +1070,797 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   }
 });
 
+// Legacy endpoints (kept for backward compatibility)
+/**
+ * POST /seller/forgotPassword
+ * @deprecated Use requestPasswordReset instead
+ */
+exports.forgotPassword = exports.requestPasswordReset;
+
+/**
+ * PATCH /seller/resetPassword/:token
+ * @deprecated Use resetPasswordWithToken instead
+ */
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  // Legacy endpoint - extract token from URL params
+  const token = req.params.token;
+  const { password, passwordConfirm } = req.body;
+
+  if (!token) {
+    return next(new AppError('Reset token is required', 400));
+  }
+
+  if (!password || !passwordConfirm) {
+    return next(new AppError('Please provide both password and confirmation', 400));
+  }
+
+  if (password !== passwordConfirm) {
+    return next(new AppError('Passwords do not match', 400));
+  }
+
+  if (password.length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
+  // Hash the token to compare with stored hash
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  const seller = await Seller.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  }).select('+passwordResetToken +passwordResetExpires +password');
+
+  if (!seller) {
+    return next(new AppError('Token is invalid or has expired', 400));
+  }
+
+  seller.password = password;
+  seller.passwordConfirm = passwordConfirm;
+  seller.passwordResetToken = undefined;
+  seller.passwordResetExpires = undefined;
+  seller.passwordChangedAt = Date.now();
+  await seller.save();
+
+  // Invalidate all sessions on password reset
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  await DeviceSession.deactivateAll(seller._id);
+  await TokenBlacklist.invalidateAllSessions(seller._id);
+
+  // Log seller in with new password
+  try {
+    await createSendToken(seller, 200, res, null, 'seller_jwt', req, 'eazseller');
+  } catch (error) {
+    console.error('[Seller Auth] Error creating device session on password reset:', error);
+    createSendToken(seller, 200, res, null, 'seller_jwt');
+  }
+});
+
+/**
+ * POST /seller/logout
+ * Logout seller and revoke device session
+ */
 exports.logout = catchAsync(async (req, res, next) => {
-  // Logout device session
+  // Logout device session with timeout
   const { logoutDevice } = require('../../utils/helpers/createDeviceSession');
   try {
-    await logoutDevice(req);
+    // Add timeout to prevent hanging - 3 seconds max
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Logout device timeout')), 3000);
+    });
+
+    await Promise.race([
+      logoutDevice(req),
+      timeoutPromise,
+    ]);
   } catch (error) {
-    console.error('[Seller Auth] Error logging out device session:', error);
-    // Continue with cookie clearing even if device session logout fails
+    console.error('[Seller Auth] Error logging out device session:', error.message);
+    // Continue with cookie clearing even if device session logout fails or times out
   }
 
-  // 1. Extract token from Authorization header
-  let token;
-  if (req.headers.authorization?.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+  // Log activity if seller is authenticated (non-blocking)
+  if (req.user) {
+    try {
+      logActivityAsync({
+        userId: req.user._id || req.user.id,
+        role: 'seller',
+        action: 'LOGOUT',
+        description: `Seller logged out`,
+        req,
+      });
+    } catch (error) {
+      console.error('[Seller Auth] Error logging activity:', error.message);
+      // Don't block logout if activity logging fails
+    }
   }
 
-  // 2. Always clear cookies as a security measure
-  res.cookie('seller_jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
+  // SECURITY: Clear JWT cookie using standardized helper
+  // DO NOT reference Authorization header - cookie is the source of truth
+  clearAuthCookie(res, 'seller');
+  
+  res.status(200).json({ 
+    status: 'success', 
+    message: 'Logged out successfully' 
+  });
+});
+
+// ==================== TWO-FACTOR AUTHENTICATION ====================
+
+/**
+ * Enable Two-Factor Authentication
+ * POST /api/v1/seller/enable-2fa
+ * Generates a secret and QR code for 2FA setup
+ */
+exports.enableTwoFactor = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id);
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  // Generate a secret using speakeasy (properly base32 encoded)
+  const secretData = speakeasy.generateSecret({
+    name: `EazShop Seller (${seller.email || seller.phone?.toString() || 'Seller'})`,
+    issuer: 'EazShop',
+    length: 32,
   });
 
-  // 3. Prepare response
-  const successResponse = {
+  // Get base32 secret (this is what we store and use)
+  const base32Secret = secretData.base32;
+  
+  // Store temporary secret (will be moved to twoFactorSecret after verification)
+  // IMPORTANT: Do NOT set twoFactorEnabled = true here (only after verification)
+  seller.twoFactorTempSecret = base32Secret;
+  // Ensure twoFactorEnabled remains false until verification
+  seller.twoFactorEnabled = false;
+  await seller.save({ validateBeforeSave: false });
+
+  // Generate backup codes (10 codes, 8 characters each)
+  const backupCodes = [];
+  for (let i = 0; i < 10; i++) {
+    backupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+  }
+  seller.twoFactorBackupCodes = backupCodes;
+  await seller.save({ validateBeforeSave: false });
+
+  // Get otpauth URL from speakeasy
+  const otpAuthUrl = secretData.otpauth_url;
+
+  // Mask secret for response (show only last 4 characters)
+  const base32SecretMasked = base32Secret.length > 4 
+    ? `${'*'.repeat(base32Secret.length - 4)}${base32Secret.slice(-4)}`
+    : '****';
+
+  res.status(200).json({
     status: 'success',
-    message: 'Logged out successfully',
-    action: 'clearLocalStorage',
+    message: 'Two-factor authentication setup initiated. Please scan the QR code and verify the code to complete setup.',
+    data: {
+      // Nested structure for web compatibility
+      twoFactor: {
+        otpAuthUrl,
+        base32: base32SecretMasked, // Masked secret for display (last 4 chars visible)
+      },
+      // Flat structure for backward compatibility
+      otpAuthUrl,
+      base32SecretMasked,
+      twoFactorPending: true, // Indicates 2FA is pending verification
+      is2FAEnabled: false, // Still pending verification
+      backupCodes,
+    },
+  });
+});
+
+/**
+ * Get Two-Factor Authentication Setup Data
+ * GET /api/v1/seller/2fa/setup
+ * Returns setup data if seller hasn't completed 2FA setup yet
+ */
+exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id).select('+twoFactorTempSecret +twoFactorBackupCodes');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (seller.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is already enabled', 400));
+  }
+
+  if (!seller.twoFactorTempSecret) {
+    return next(new AppError('No setup in progress. Please enable 2FA first.', 400));
+  }
+
+  // Generate otpauth URL from the stored base32 secret
+  const serviceName = 'EazShop';
+  const accountName = seller.email || seller.phone?.toString() || 'Seller';
+  const otpAuthUrl = speakeasy.otpauthURL({
+    secret: seller.twoFactorTempSecret,
+    label: accountName,
+    issuer: serviceName,
+    encoding: 'base32',
+  });
+
+  // Mask secret for response
+  const base32SecretMasked = seller.twoFactorTempSecret.length > 4 
+    ? `${'*'.repeat(seller.twoFactorTempSecret.length - 4)}${seller.twoFactorTempSecret.slice(-4)}`
+    : '****';
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication setup data retrieved.',
+    data: {
+      // Nested structure for web compatibility
+      twoFactor: {
+        otpAuthUrl,
+        base32: base32SecretMasked, // Masked secret for display
+      },
+      // Flat structure for backward compatibility
+      otpAuthUrl,
+      base32SecretMasked,
+      twoFactorPending: true, // Indicates 2FA is pending verification
+      is2FAEnabled: false, // Still pending verification
+      backupCodes: seller.twoFactorBackupCodes || [],
+    },
+  });
+});
+
+/**
+ * Verify Two-Factor Authentication Code
+ * POST /api/v1/seller/verify-2fa
+ * Verifies the code from authenticator app and completes 2FA setup
+ */
+exports.verifyTwoFactor = catchAsync(async (req, res, next) => {
+  const { code } = req.body;
+
+  if (!code || code.length !== 6) {
+    return next(new AppError('Please provide a valid 6-digit verification code', 400));
+  }
+
+  const seller = await Seller.findById(req.user.id).select('+twoFactorTempSecret');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (!seller.twoFactorTempSecret) {
+    return next(new AppError('No 2FA setup in progress. Please enable 2FA first.', 400));
+  }
+
+  // Verify TOTP using speakeasy (proper implementation)
+  const verified = speakeasy.totp.verify({
+    secret: seller.twoFactorTempSecret,
+    encoding: 'base32',
+    token: code,
+    window: 2, // Allow ±1 time step (60 seconds total window)
+  });
+
+  if (!verified) {
+    return next(new AppError('Invalid verification code. Please try again.', 401));
+  }
+
+  // Move temp secret to permanent secret and enable 2FA
+  seller.twoFactorSecret = seller.twoFactorTempSecret;
+  seller.twoFactorTempSecret = undefined;
+  seller.twoFactorEnabled = true;
+  await seller.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication has been successfully enabled!',
+    data: {
+      is2FAEnabled: true,
+      twoFactorEnabled: true,
+      twoFactorPending: false, // No longer pending
+      // Nested structure for web compatibility
+      twoFactor: {
+        enabled: true,
+      },
+    },
+  });
+});
+
+/**
+ * Disable Two-Factor Authentication
+ * POST /api/v1/seller/disable-2fa
+ * Disables 2FA for the seller
+ */
+exports.disableTwoFactor = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id);
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (!seller.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled', 400));
+  }
+
+  // Clear 2FA data
+  seller.twoFactorEnabled = false;
+  seller.twoFactorSecret = undefined;
+  seller.twoFactorTempSecret = undefined;
+  seller.twoFactorBackupCodes = [];
+  await seller.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Two-factor authentication has been disabled',
+    data: {
+      is2FAEnabled: false,
+      twoFactorEnabled: false,
+    },
+  });
+});
+
+/**
+ * Get Backup Codes
+ * GET /api/v1/seller/2fa/backup-codes
+ * Returns backup codes for 2FA (only if 2FA is enabled)
+ */
+exports.getBackupCodes = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id).select('+twoFactorBackupCodes');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (!seller.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled', 400));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      backupCodes: seller.twoFactorBackupCodes || [],
+    },
+  });
+});
+
+/**
+ * Regenerate Backup Codes
+ * POST /api/v1/seller/2fa/regenerate-backup-codes
+ * Generates new backup codes (invalidates old ones)
+ */
+exports.regenerateBackupCodes = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id).select('+twoFactorBackupCodes');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  if (!seller.twoFactorEnabled) {
+    return next(new AppError('Two-factor authentication is not enabled', 400));
+  }
+
+  // Generate new backup codes (10 codes, 8 characters each)
+  const backupCodes = [];
+  for (let i = 0; i < 10; i++) {
+    backupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+  }
+  seller.twoFactorBackupCodes = backupCodes;
+  await seller.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Backup codes regenerated successfully',
+    data: {
+      backupCodes,
+    },
+  });
+});
+
+// ==================== PASSWORD MANAGEMENT ====================
+
+/**
+ * Update Password
+ * PATCH /api/v1/seller/me/update-password
+ * Change seller password (requires current password)
+ */
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  const { currentPassword, newPassword, passwordConfirm } = req.body;
+
+  if (!currentPassword || !newPassword || !passwordConfirm) {
+    return next(new AppError('Please provide current password, new password, and password confirmation', 400));
+  }
+
+  if (newPassword !== passwordConfirm) {
+    return next(new AppError('New password and password confirmation do not match', 400));
+  }
+
+  if (newPassword.length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
+  // Get seller with password field
+  const seller = await Seller.findById(req.user.id).select('+password');
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await seller.correctPassword(currentPassword, seller.password);
+  if (!isCurrentPasswordValid) {
+    return next(new AppError('Current password is incorrect', 401));
+  }
+
+  // Update password
+  seller.password = newPassword;
+  seller.passwordChangedAt = Date.now();
+  await seller.save();
+
+  // Log activity
+  logActivityAsync({
+    userId: seller._id,
+    role: 'seller',
+    action: 'PASSWORD_CHANGED',
+    description: 'Seller changed password',
+    req,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password updated successfully',
+  });
+});
+
+// ==================== SESSION MANAGEMENT ====================
+
+/**
+ * Get Active Sessions
+ * GET /api/v1/seller/me/sessions
+ * List all active device sessions for the seller
+ */
+exports.getSessions = catchAsync(async (req, res, next) => {
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  const { parseUserAgent } = require('../../utils/helpers/deviceUtils');
+  
+  const userId = req.user._id || req.user.id;
+  const currentDeviceId = req.user.deviceId;
+
+  // Get all active sessions for this seller
+  const sessions = await DeviceSession.find({
+    userId,
+    isActive: true,
+  }).sort({ lastActivity: -1 });
+
+  const devices = sessions.map((session) => {
+    const uaInfo = parseUserAgent(session.userAgent || '');
+    return {
+      sessionId: session._id,
+      deviceId: session.deviceId,
+      deviceType: session.deviceType || 'unknown',
+      browser: uaInfo.browser || 'Unknown',
+      os: uaInfo.os || 'Unknown',
+      device: uaInfo.device || 'Unknown',
+      ipAddress: session.ipAddress || 'Unknown',
+      location: session.location || 'Unknown',
+      loginTime: session.loginTime,
+      lastActivity: session.lastActivity,
+      isActive: session.isActive,
+      isCurrentDevice: session.deviceId === currentDeviceId,
+      platform: session.platform || 'unknown',
+    };
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      sessions: devices,
+      count: devices.length,
+    },
+  });
+});
+
+/**
+ * Revoke Session
+ * DELETE /api/v1/seller/me/sessions/:sessionId
+ * Revoke a specific device session
+ */
+exports.revokeSession = catchAsync(async (req, res, next) => {
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  const { sessionId } = req.params;
+  const userId = req.user._id || req.user.id;
+
+  if (!sessionId) {
+    return next(new AppError('Session ID is required', 400));
+  }
+
+  const session = await DeviceSession.findOne({
+    _id: sessionId,
+    userId,
+  });
+
+  if (!session) {
+    return next(new AppError('Session not found', 404));
+  }
+
+  // Deactivate session
+  session.isActive = false;
+  await session.save();
+
+  // Log activity
+  logActivityAsync({
+    userId,
+    role: 'seller',
+    action: 'SESSION_REVOKED',
+    description: `Seller revoked session: ${session.deviceId}`,
+    req,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Session revoked successfully',
+  });
+});
+
+/**
+ * Revoke All Other Sessions
+ * DELETE /api/v1/seller/me/sessions
+ * Revoke all sessions except the current one
+ */
+exports.revokeAllOtherSessions = catchAsync(async (req, res, next) => {
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  const { logoutOtherDevices } = require('../../utils/helpers/createDeviceSession');
+  
+  const userId = req.user._id || req.user.id;
+  const currentDeviceId = req.user.deviceId;
+
+  if (!currentDeviceId) {
+    return next(new AppError('Current device ID not found', 400));
+  }
+
+  // Use existing helper function
+  const count = await logoutOtherDevices(req);
+
+  // Log activity
+  logActivityAsync({
+    userId,
+    role: 'seller',
+    action: 'ALL_OTHER_SESSIONS_REVOKED',
+    description: `Seller revoked ${count} other session(s)`,
+    req,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: `Revoked ${count} other session(s)`,
+    data: {
+      revokedCount: count,
+    },
+  });
+});
+
+// ==================== NOTIFICATION PREFERENCES ====================
+
+/**
+ * Get Notification Settings
+ * GET /api/v1/seller/me/notification-settings
+ * Get seller notification preferences
+ */
+exports.getNotificationSettings = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id);
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  // Return notification settings with defaults if not set
+  const settings = seller.notificationSettings || {
+    email: {
+      orderUpdates: true,
+      paymentNotifications: true,
+      productAlerts: true,
+      accountSecurity: true,
+      marketingEmails: false,
+    },
+    push: {
+      orderUpdates: true,
+      newMessages: true,
+      systemAlerts: true,
+    },
+    sms: {
+      criticalAlerts: true,
+      securityNotifications: true,
+    },
   };
 
-  // 4. Handle cases without token
+  res.status(200).json({
+    status: 'success',
+    data: {
+      settings,
+    },
+  });
+});
+
+/**
+ * Update Notification Settings
+ * PATCH /api/v1/seller/me/notification-settings
+ * Update seller notification preferences
+ */
+exports.updateNotificationSettings = catchAsync(async (req, res, next) => {
+  const seller = await Seller.findById(req.user.id);
+
+  if (!seller) {
+    return next(new AppError('Seller not found', 404));
+  }
+
+  const { settings } = req.body;
+
+  if (!settings) {
+    return next(new AppError('Notification settings are required', 400));
+  }
+
+  // Merge with existing settings (partial update)
+  if (!seller.notificationSettings) {
+    seller.notificationSettings = {
+      email: {
+        orderUpdates: true,
+        paymentNotifications: true,
+        productAlerts: true,
+        accountSecurity: true,
+        marketingEmails: false,
+      },
+      push: {
+        orderUpdates: true,
+        newMessages: true,
+        systemAlerts: true,
+      },
+      sms: {
+        criticalAlerts: true,
+        securityNotifications: true,
+      },
+    };
+  }
+
+  // Update email settings
+  if (settings.email) {
+    seller.notificationSettings.email = {
+      ...seller.notificationSettings.email,
+      ...settings.email,
+    };
+  }
+
+  // Update push settings
+  if (settings.push) {
+    seller.notificationSettings.push = {
+      ...seller.notificationSettings.push,
+      ...settings.push,
+    };
+  }
+
+  // Update SMS settings
+  if (settings.sms) {
+    seller.notificationSettings.sms = {
+      ...seller.notificationSettings.sms,
+      ...settings.sms,
+    };
+  }
+
+  await seller.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Notification settings updated successfully',
+    data: {
+      settings: seller.notificationSettings,
+    },
+  });
+});
+
+/**
+ * Seller Authentication Middleware
+ * Protects seller routes using seller_jwt cookie
+ * 
+ * This is SEPARATE from buyer/authController.protect to ensure
+ * seller routes NEVER go through buyer authentication logic.
+ * 
+ * @route   All /api/v1/seller/* routes
+ * @cookie  seller_jwt (HTTP-only cookie)
+ */
+exports.protectSeller = catchAsync(async (req, res, next) => {
+  const fullPath = req.originalUrl.split('?')[0];
+  const method = req.method.toUpperCase();
+  
+  // 🛡️ HARD SAFETY GUARD: Prevent buyer routes from using seller auth
+  if (fullPath.startsWith('/api/v1/users') || fullPath.startsWith('/api/v1/buyer') || fullPath.startsWith('/users') || fullPath.startsWith('/buyer')) {
+    console.error('═══════════════════════════════════════════════════════════');
+    console.error('[AUTH TRACE] ❌ CRITICAL ERROR: BUYER route passed to SELLER auth middleware');
+    console.error('[AUTH TRACE] Route:', method, fullPath);
+    console.error('[AUTH TRACE] This is a CONFIGURATION ERROR');
+    console.error('═══════════════════════════════════════════════════════════');
+    return next(new AppError('Configuration error: Buyer route using seller auth', 500));
+  }
+  
+  // 🔍 AUTH TRACE LOGGING
+  console.log('[AUTH TRACE]', {
+    path: fullPath,
+    method: method,
+    middleware: 'protectSeller (seller/authSellerController.js)',
+    cookies: req.cookies ? Object.keys(req.cookies) : 'none',
+    hasSellerJwt: req.cookies?.seller_jwt ? 'YES' : 'NO',
+    hasMainJwt: req.cookies?.main_jwt ? 'YES' : 'NO',
+    timestamp: new Date().toISOString(),
+  });
+  
+  // Extract token from seller_jwt cookie ONLY
+  let token = null;
+  if (req.cookies && req.cookies.seller_jwt) {
+    token = req.cookies.seller_jwt;
+    console.log(`[protectSeller] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
+  }
+  
   if (!token) {
-    await SecurityLog.create({
-      eventType: 'logout_attempt',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { reason: 'No token provided' },
-    }).catch((logError) => console.error('Security log error:', logError));
-
-    return res.status(200).json(successResponse);
-  }
-
-  let decoded;
-  try {
-    // 5. Attempt to decode token
-    decoded = jwt.decode(token);
-    // Add logging
-  } catch (decodeError) {
-    console.error('Token decode error:', decodeError); // Add logging
-
-    await SecurityLog.create({
-      eventType: 'logout_attempt',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { error: 'Invalid token format' },
-    }).catch((logError) => console.error('Security log error:', logError));
-
-    return res.status(200).json(successResponse);
-  }
-
-  try {
-    // 6. Add token to blacklist using the proper method (handles hashing)
-    console.log('[Seller Logout] Adding token to blacklist');
-    await TokenBlacklist.blacklistToken(
-      token,
-      decoded?.id || null,
-      'seller',
-      'logout',
+    console.error('═══════════════════════════════════════════════════════════');
+    console.error(`[protectSeller] ❌ CRITICAL: No seller_jwt token found for seller route`);
+    console.error(`[protectSeller] Route: ${method} ${fullPath}`);
+    console.error(`[protectSeller] Expected cookie: seller_jwt`);
+    console.error(`[protectSeller] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
+    console.error('═══════════════════════════════════════════════════════════');
+    return next(
+      new AppError('You are not logged in! Please log in to get access.', 401),
     );
-
-    // 7. Create security log
-    await SecurityLog.create({
-      user: decoded?.id || null,
-      userTypeModel: decoded?.id ? 'Seller' : null,
-      eventType: 'logout',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      shopName: seller?.shopName || 'N/A',
-      metadata: { tokenExpiration: expiresAt },
-    });
-
-    return res.status(200).json(successResponse);
-  } catch (err) {
-    console.error('Logout processing error:', err);
-
-    // Handle duplicate key error separately
-    if (err.code === 11000) {
-      return res.status(200).json(successResponse);
-    }
-
-    await SecurityLog.create({
-      user: decoded?.id || null,
-      userTypeModel: decoded?.id ? 'Seller' : null,
-      eventType: 'logout_error',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { error: err.message },
-    }).catch((logError) => console.error('Security log error:', logError));
-
-    return res.status(200).json({
-      ...successResponse,
-      message: 'Logged out with minor issues',
-    });
   }
+  
+  // Check token blacklist
+  const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
+  if (isBlacklisted) {
+    return next(
+      new AppError('Your session has expired. Please log in again.', 401),
+    );
+  }
+  
+  // Verify token
+  const { verifyToken } = require('../../utils/helpers/routeUtils');
+  const { decoded, error } = await verifyToken(token, fullPath);
+  
+  if (error || !decoded) {
+    console.error('[protectSeller] Token verification failed:', error?.message || 'Invalid token');
+    return next(new AppError('Session expired', 401));
+  }
+  
+  // Find seller user
+  const { findUserByToken } = require('../../utils/helpers/routeUtils');
+  const currentUser = await findUserByToken(decoded);
+  if (!currentUser) {
+    return next(
+      new AppError('The user belonging to this token no longer exists', 401),
+    );
+  }
+  
+  // CRITICAL: Verify user is actually a seller
+  if (currentUser.role !== 'seller') {
+    console.error(`[protectSeller] ❌ SECURITY: Non-seller user detected in seller route:`, {
+      userId: currentUser.id,
+      role: currentUser.role,
+      email: currentUser.email || currentUser.phone,
+      route: fullPath,
+    });
+    return next(
+      new AppError(`You do not have permission to perform this action. Required role: seller, Your role: ${currentUser.role}`, 403)
+    );
+  }
+  
+  // Check password change timestamp
+  if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError('User recently changed password! Please log in again', 401),
+    );
+  }
+  
+  // Attach seller to request
+  req.user = currentUser;
+  if (decoded.deviceId) {
+    req.user.deviceId = decoded.deviceId;
+  }
+  
+  console.log(`[protectSeller] ✅ Authentication successful for seller:`, {
+    userId: currentUser.id,
+    email: currentUser.email || currentUser.phone,
+    route: fullPath,
+  });
+  
+  next();
 });

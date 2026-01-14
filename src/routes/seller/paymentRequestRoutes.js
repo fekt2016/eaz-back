@@ -3,12 +3,14 @@ const router = express.Router();
 const paymentController = require('../../controllers/shared/paymentController');
 const authController = require('../../controllers/buyer/authController');
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
+const { requirePayoutVerified } = require('../../middleware/seller/requirePayoutVerified');
 
-// Seller routes (no verification required - sellers can withdraw even if not fully verified)
+// Seller routes - withdrawal requires payout verification
 router.post(
   '/',
   authController.protect,
   authController.restrictTo('seller'),
+  requirePayoutVerified, // CRITICAL: Block withdrawal if payout not verified
   paymentController.createPaymentRequest,
 );
 

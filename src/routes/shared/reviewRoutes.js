@@ -2,6 +2,7 @@ const express = require('express');
 const authController = require('../../controllers/buyer/authController');
 const reviewController = require('../../controllers/shared/reviewController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
+const { reviewSubmissionLimiter } = require('../../middleware/rateLimiting/reviewLimiter');
 
 const { getAllReview,
   getReview,
@@ -19,6 +20,7 @@ router
   .post(
     authController.protect,
     authController.restrictTo('user'),
+    reviewSubmissionLimiter, // Rate limiting: 5 reviews per hour per user
     reviewController.setProductUserIds,
     createUserReview,
   );

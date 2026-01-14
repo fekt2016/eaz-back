@@ -240,10 +240,7 @@ exports.getAddress = catchAsync(async (req, res, next) => {
   res.json({ success: true, message: 'Address found', address });
 });
 
-/**
- * Lookup digital address and return address details
- * POST /api/v1/address/lookup-digital
- */
+
 exports.lookupDigitalAddress = catchAsync(async (req, res, next) => {
   const { digitalAddress } = req.body;
 

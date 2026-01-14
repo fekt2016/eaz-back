@@ -9,21 +9,17 @@ const { extractToken, verifyToken, findUserByToken } = require('../../utils/help
  * Useful for public routes that need to know if user is authenticated (e.g., to show admin-only data)
  */
 exports.optionalAuth = catchAsync(async (req, res, next) => {
-  // Extract token from Authorization header or cookie
-  let token = extractToken(req.headers.authorization);
+  // SECURITY: Cookie-only authentication - tokens MUST be in HTTP-only cookies
+  // Extract token ONLY from cookies
+  const fullPath = req.originalUrl.split('?')[0];
+  const isAdminRoute = fullPath.startsWith('/api/v1/admin');
+  const isSellerRoute = fullPath.startsWith('/api/v1/seller');
   
-  // If no token in header, check cookies
-  if (!token) {
-    const fullPath = req.originalUrl.split('?')[0];
-    const isAdminRoute = fullPath.startsWith('/api/v1/admin');
-    const isSellerRoute = fullPath.startsWith('/api/v1/seller');
-    
-    const cookieName = isAdminRoute ? 'admin_jwt' :
-                      isSellerRoute ? 'seller_jwt' :
-                      'main_jwt';
-    
-    token = req.cookies?.[cookieName];
-  }
+  const cookieName = isAdminRoute ? 'admin_jwt' :
+                    isSellerRoute ? 'seller_jwt' :
+                    'main_jwt';
+  
+  const token = req.cookies?.[cookieName];
   
   // If no token found, continue without authentication (public access)
   if (!token) {
@@ -37,8 +33,7 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
     return next();
   }
   
-  // Verify token
-  const fullPath = req.originalUrl.split('?')[0];
+  // Verify token (fullPath already declared above)
   const { decoded, error } = await verifyToken(token, fullPath);
   
   // If token is invalid, continue without authentication (don't fail)

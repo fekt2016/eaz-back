@@ -1,6 +1,8 @@
 const Notification = require('../../models/notification/notificationModel');
+const DeviceToken = require('../../models/notification/deviceTokenModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const { isMobileApp, isFromScreen } = require('../../middleware/mobileAppGuard');
 
 /**
  * Get all notifications for the authenticated user
@@ -70,7 +72,7 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
   });
 
   // Optional query parameters
-  const { type, read, limit = 50, page = 1 } = req.query;
+  const { type, read, limit = 50, page = 1, sort = '-createdAt' } = req.query;
 
   if (type) {
     filter.type = type;
@@ -85,12 +87,20 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Parse sort parameter (e.g., '-createdAt' or 'createdAt')
+  let sortObj = { createdAt: -1 }; // Default sort
+  if (sort) {
+    const sortField = sort.startsWith('-') ? sort.substring(1) : sort;
+    const sortDirection = sort.startsWith('-') ? -1 : 1;
+    sortObj = { [sortField]: sortDirection };
+  }
+
   // Pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   // Get notifications with strict filter
   let notifications = await Notification.find(filter)
-    .sort({ createdAt: -1 })
+    .sort(sortObj)
     .skip(skip)
     .limit(parseInt(limit))
     .lean();
@@ -205,119 +215,18 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
  */
 exports.getUnreadCount = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
-  let role = req.user.role;
+  const role = req.user.role || 'user';
   
-  console.log(`[getUnreadCount] 🔍 Initial request - userId: ${userId}, role from req.user: ${role}`);
-  
-  // IMPORTANT: Check if user is actually an admin, seller, or buyer by checking the respective models
-  // Sometimes req.user.role might not be set correctly
-  if (!role || role === 'user') {
-    // First check if user is an admin
-    const Admin = require('../../models/user/adminModel');
-    const admin = await Admin.findById(userId).select('role').lean();
-    if (admin) {
-      role = 'admin';
-      console.log(`[getUnreadCount] ✅ User ${userId} is an admin, correcting role from "${req.user.role}" to "admin"`);
-    } else {
-      // Then check if user is a seller
-      const Seller = require('../../models/user/sellerModel');
-      const seller = await Seller.findById(userId).select('role').lean();
-      if (seller) {
-        role = 'seller';
-        console.log(`[getUnreadCount] ✅ User ${userId} is a seller, correcting role from "${req.user.role}" to "seller"`);
-      } else {
-        role = role || 'buyer';
-        console.log(`[getUnreadCount] ℹ️ User ${userId} is a buyer (default)`);
-      }
-    }
-  } else if (role === 'admin') {
-    // Double-check admin exists even if role is set
-    const Admin = require('../../models/user/adminModel');
-    const admin = await Admin.findById(userId).select('role').lean();
-    if (!admin) {
-      console.warn(`[getUnreadCount] ⚠️ User ${userId} has admin role but not found in Admin model, defaulting to buyer`);
-      role = 'buyer';
-    } else {
-      console.log(`[getUnreadCount] ✅ Admin ${userId} confirmed in Admin model`);
-    }
-  }
-
-  // Determine userModel based on role
-  let userModel = 'User';
-  if (role === 'seller') {
-    userModel = 'Seller';
-  } else if (role === 'admin') {
-    userModel = 'Admin';
-  }
-
-  // FIX: Use flexible filter - count all unread notifications for user
-  // Don't require exact userModel/role match to handle data inconsistencies
-  // First try strict filter, then fallback to user-only if needed
-  const strictFilter = {
+  // OPTIMIZATION: Use simple filter - just count unread notifications for user
+  // This is much faster than checking multiple models and doing multiple queries
+  // The userModel/role fields in notifications may be inconsistent, so we just count by user + read
+  const filter = {
     user: userId,
-    userModel: userModel,
-    role: role,
     read: false,
   };
 
-  console.log(`[getUnreadCount] 📋 Query filter for ${role}:`, {
-    userId: userId?.toString(),
-    userModel,
-    role,
-    originalRole: req.user.role,
-    strictFilter: JSON.stringify(strictFilter)
-  });
-
-  // Try strict filter first
-  let count = await Notification.countDocuments(strictFilter);
-
-  console.log(`[getUnreadCount] 📊 Found ${count} unread notifications with strict filter for ${role} user ${userId}`);
-  
-  // FIX: If count is 0, check with flexible filter (user + read only)
-  // This handles cases where notifications have mismatched userModel/role
-  if (count === 0) {
-    const flexibleFilter = {
-      user: userId,
-      read: false,
-    };
-    
-    const flexibleCount = await Notification.countDocuments(flexibleFilter);
-    console.log(`[getUnreadCount] 🔍 Flexible filter (user + read only) found ${flexibleCount} unread notifications`);
-    
-    if (flexibleCount > 0) {
-      // Found notifications with flexible filter - check for data inconsistencies
-      const sampleNotifications = await Notification.find(flexibleFilter).limit(3).lean();
-      console.log(`[getUnreadCount] ⚠️ Data inconsistency detected - using flexible count. Sample notifications:`, sampleNotifications.map(n => ({
-        id: n._id,
-        user: n.user?.toString(),
-        userModel: n.userModel,
-        role: n.role,
-        read: n.read,
-        type: n.type,
-        title: n.title
-      })));
-      
-      // Use flexible count if it found notifications
-      count = flexibleCount;
-    } else {
-      // No unread notifications at all
-      const totalCount = await Notification.countDocuments({ user: userId });
-      console.log(`[getUnreadCount] 🔍 Found ${totalCount} total notifications for user ${userId} (any role/model/read status)`);
-      
-      if (totalCount > 0) {
-        const sampleNotifications = await Notification.find({ user: userId }).limit(3).lean();
-        console.log(`[getUnreadCount] 🔍 Debug: Sample notifications:`, sampleNotifications.map(n => ({
-          id: n._id,
-          user: n.user?.toString(),
-          userModel: n.userModel,
-          role: n.role,
-          read: n.read,
-          type: n.type,
-          title: n.title
-        })));
-      }
-    }
-  }
+  // Single database query - much faster
+  const count = await Notification.countDocuments(filter);
 
   res.status(200).json({
     status: 'success',
@@ -542,66 +451,13 @@ exports.createNotification = catchAsync(async (req, res, next) => {
 exports.deleteNotification = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const userId = req.user.id;
-  let role = req.user.role;
   
-  // IMPORTANT: Check if user is actually an admin, seller, or buyer
-  if (!role || role === 'user') {
-    const Admin = require('../../models/user/adminModel');
-    const admin = await Admin.findById(userId).select('role').lean();
-    if (admin) {
-      role = 'admin';
-    } else {
-      const Seller = require('../../models/user/sellerModel');
-      const seller = await Seller.findById(userId).select('role').lean();
-      if (seller) {
-        role = 'seller';
-      } else {
-        role = role || 'buyer';
-      }
-    }
-  } else if (role === 'admin') {
-    const Admin = require('../../models/user/adminModel');
-    const admin = await Admin.findById(userId).select('role').lean();
-    if (!admin) {
-      role = 'buyer';
-    }
-  }
-
-  // Determine userModel based on role
-  let userModel = 'User';
-  if (role === 'seller') {
-    userModel = 'Seller';
-  } else if (role === 'admin') {
-    userModel = 'Admin';
-  }
-
-  // Try strict filter first
-  let notification = await Notification.findOne({
+  // OPTIMIZATION: Use simple filter - just check user ownership
+  // This is much faster than checking multiple models and role matching
+  const notification = await Notification.findOne({
     _id: id,
     user: userId,
-    userModel: userModel,
-    role: role,
   });
-
-  // FIX: If not found with strict filter, try fallback query by user ID only
-  // This handles data inconsistencies where notification might have different userModel/role
-  if (!notification) {
-    console.log(`[deleteNotification] ⚠️ Notification ${id} not found with strict filter, trying fallback query...`);
-    notification = await Notification.findOne({
-      _id: id,
-      user: userId,
-    });
-    
-    if (notification) {
-      console.log(`[deleteNotification] ⚠️ Found notification with fallback query. Data inconsistency detected:`, {
-        notificationId: notification._id,
-        storedUserModel: notification.userModel,
-        storedRole: notification.role,
-        expectedUserModel: userModel,
-        expectedRole: role
-      });
-    }
-  }
 
   if (!notification) {
     return next(new AppError('Notification not found', 404));
@@ -613,6 +469,56 @@ exports.deleteNotification = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'Notification deleted successfully',
+  });
+});
+
+/**
+ * Delete multiple notifications by IDs
+ * @route   DELETE /api/v1/notifications/bulk
+ * @access  Private
+ */
+exports.deleteMultipleNotifications = catchAsync(async (req, res, next) => {
+  const { ids } = req.body;
+  const userId = req.user.id;
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return next(new AppError('Notification IDs array is required', 400));
+  }
+
+  // Delete notifications that belong to the user
+  const result = await Notification.deleteMany({
+    _id: { $in: ids },
+    user: userId,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: `${result.deletedCount} notification(s) deleted successfully`,
+    data: {
+      deletedCount: result.deletedCount,
+    },
+  });
+});
+
+/**
+ * Delete all notifications for the authenticated user
+ * @route   DELETE /api/v1/notifications/all
+ * @access  Private
+ */
+exports.deleteAllNotifications = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+
+  // Delete all notifications that belong to the user
+  const result = await Notification.deleteMany({
+    user: userId,
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: `${result.deletedCount} notification(s) deleted successfully`,
+    data: {
+      deletedCount: result.deletedCount,
+    },
   });
 });
 
@@ -739,4 +645,121 @@ exports.createNotificationHelper = async ({
     return null;
   }
 };
+
+/**
+ * Register device token for push notifications
+ * POST /api/v1/notifications/register-device
+ */
+exports.registerDevice = catchAsync(async (req, res, next) => {
+  const { expoPushToken, platform, deviceInfo } = req.body;
+  const userId = req.user.id;
+
+  // 📱 CRITICAL: Log screen info for crash debugging
+  const clientScreen = req.clientScreen || req.headers['x-client-screen'] || 'Unknown';
+  const clientApp = req.clientApp || req.headers['x-client-app'] || 'Unknown';
+  
+  console.log('[registerDevice] 📱 Device registration request:', {
+    app: clientApp,
+    screen: clientScreen,
+    userId,
+    platform,
+    tokenPrefix: expoPushToken?.substring(0, 20) + '...',
+  });
+
+  if (!expoPushToken) {
+    return next(new AppError('Expo push token is required', 400));
+  }
+
+  if (!platform || !['ios', 'android'].includes(platform)) {
+    return next(new AppError('Platform must be ios or android', 400));
+  }
+
+  try {
+    console.log('[registerDevice] 📱 Registering device token:', {
+      userId,
+      platform,
+      tokenPrefix: expoPushToken.substring(0, 20) + '...',
+      deviceInfo,
+      screen: clientScreen, // Include screen in log
+    });
+
+    // Find or create device token (prevents duplicates)
+    const deviceToken = await DeviceToken.findOrCreate(
+      userId,
+      expoPushToken,
+      platform,
+      deviceInfo || {}
+    );
+
+    console.log('[registerDevice] ✅ Device token registered successfully:', {
+      deviceTokenId: deviceToken._id,
+      platform: deviceToken.platform,
+      isActive: deviceToken.isActive,
+      lastUsedAt: deviceToken.lastUsedAt,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        deviceToken: {
+          id: deviceToken._id,
+          platform: deviceToken.platform,
+          lastUsedAt: deviceToken.lastUsedAt,
+          isActive: deviceToken.isActive,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[registerDevice] ❌ Error registering device token:', {
+      error: error.message,
+      stack: error.stack,
+      userId,
+      platform,
+      tokenPrefix: expoPushToken?.substring(0, 20) + '...',
+    });
+    
+    // CRITICAL: Don't crash server if device registration fails
+    // This is a non-critical operation - app should continue working
+    // Check if error is related to file operations (ERR_INVALID_ARG_TYPE)
+    if (error.message && error.message.includes('ERR_INVALID_ARG_TYPE')) {
+      console.error('[registerDevice] 🚨 File operation error detected - this should not happen in device registration');
+      console.error('[registerDevice] 🚨 This indicates a bug - device registration should not use file operations');
+      console.error('[registerDevice] 🚨 Screen that triggered this:', clientScreen);
+      console.error('[registerDevice] 🚨 App:', clientApp);
+      console.error('[registerDevice] 🚨 Full error:', error);
+      // Return a safe error response without crashing
+      return res.status(500).json({
+        status: 'error',
+        message: 'Device registration temporarily unavailable',
+      });
+    }
+    
+    return next(new AppError('Failed to register device token', 500));
+  }
+});
+
+/**
+ * Unregister device token (on logout)
+ * DELETE /api/v1/notifications/register-device
+ */
+exports.unregisterDevice = catchAsync(async (req, res, next) => {
+  const { expoPushToken } = req.body;
+  const userId = req.user.id;
+
+  if (!expoPushToken) {
+    return next(new AppError('Expo push token is required', 400));
+  }
+
+  try {
+    await DeviceToken.deactivateToken(userId, expoPushToken);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Device token unregistered successfully',
+    });
+  } catch (error) {
+    console.error('[unregisterDevice] Error:', error);
+    return next(new AppError('Failed to unregister device token', 500));
+  }
+});
 

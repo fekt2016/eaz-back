@@ -60,13 +60,34 @@ exports.logFinanceOperation = async ({
       ...auditLog,
     };
 
-    const logDir = path.join(__dirname, '../../logs');
-    if (!fs.existsSync(logDir)) {
+    // USE SAFE VERSIONS - never crashes
+    const logDir = safePath.joinSafe(__dirname, '../../logs');
+    if (!logDir) {
+      console.warn('[FinanceAudit] ⚠️  Failed to resolve log directory path');
+      // Continue without file logging
+    } else {
+      if (!safeFs.existsSyncSafe(logDir, { label: 'finance audit log directory' })) {
+        try {
       fs.mkdirSync(logDir, { recursive: true });
+        } catch (mkdirError) {
+          console.warn('[FinanceAudit] ⚠️  Failed to create log directory:', mkdirError.message);
+          // Continue without file logging
+        }
     }
 
-    const logFile = path.join(logDir, 'finance-audit.log');
-    fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
+      const logFile = safePath.joinSafe(logDir, 'finance-audit.log');
+      if (!logFile) {
+        console.warn('[FinanceAudit] ⚠️  Failed to resolve log file path');
+        // Continue without file logging
+      } else {
+        try {
+          fs.appendFileSync(logFile, JSON.stringify(logEntry) + '\n');
+        } catch (writeError) {
+          console.warn('[FinanceAudit] ⚠️  Failed to write to log file:', writeError.message);
+          // Don't throw - logging failures shouldn't break the operation
+        }
+      }
+    }
 
     console.log(`[FinanceAudit] ✅ Logged ${type} for seller ${sellerId}:`, {
       amount,

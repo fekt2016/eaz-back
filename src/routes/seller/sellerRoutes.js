@@ -11,16 +11,26 @@ const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifi
 const authController = require('../../controllers/buyer/authController');
 const { resizeImage, uploadProfileImage } = require('../../middleware/upload/multer');
 
-const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+const { otpLimiter, resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
 const router = express.Router();
 router.post('/signup', authSellerController.signupSeller);
 router.post('/login', authSellerController.loginSeller);
 router.post('/send-otp', otpLimiter, authSellerController.sendOtp);
-router.post('/verify-otp', otpLimiter, authSellerController.verifyOtp); // ✅ Add rate limiting
+// SECURITY FIX #4: Add OTP lockout protection
+const { checkOtpLockout } = require('../../middleware/security/otpVerificationSecurity');
+router.post('/verify-otp', otpLimiter, checkOtpLockout, authSellerController.verifyOtp); // ✅ Rate limiting + lockout
 router.post('/verify-account', otpLimiter, authSellerController.verifyEmail); // ✅ New account verification endpoint
 router.post('/resend-otp', otpLimiter, authSellerController.resendOtp); // ✅ New resend OTP endpoint
-router.post('/forgotPassword', authSellerController.forgotPassword);
+// ==================================================
+// UNIFIED EMAIL-ONLY PASSWORD RESET FLOW
+// ==================================================
+// New unified endpoints (email-only, token-based)
+router.post('/forgot-password', resetLimiter, authSellerController.requestPasswordReset);
+router.post('/reset-password', resetLimiter, authSellerController.resetPasswordWithToken);
+
+// Legacy endpoints (kept for backward compatibility)
+router.post('/forgotPassword', resetLimiter, authSellerController.forgotPassword);
 router.patch('/resetPassword/:token', authSellerController.resetPassword);
 router.post('/logout', authSellerController.logout);
 
@@ -28,28 +38,27 @@ router.route('/public/featured').get(sellerControllor.getFeaturedSellers);
 router.route('/public/best-sellers').get(sellerControllor.getBestSellers);
 router.route('/public/:id').get(sellerControllor.getPublicSeller);
 router.route('/profile/:id').get(sellerControllor.getSeller);
-//protected routes
-router.use(authController.protect);
+
+// 🔒 CRITICAL: Use protectSeller for seller-specific routes
+// This ensures seller routes use seller_jwt cookie, not main_jwt
+router.use(authSellerController.protectSeller);
+router.use(authController.restrictTo('seller', 'admin')); // restrictTo is safe to use (just checks role)
+
 router
   .route('/me/products')
-  .get(authController.restrictTo('seller'), sellerControllor.getSellerProducts);
+  .get(sellerControllor.getSellerProducts);
 router
   .route('/me/products/:productId')
-  .get(
-    authController.restrictTo('seller'),
-    sellerControllor.getSellerProductById,
-  )
+  .get(sellerControllor.getSellerProductById)
   .delete(sellerControllor.SellerDeleteProduct);
 
 // Onboarding routes (protected, but don't require verification)
 router.get(
   '/status',
-  authController.restrictTo('seller'),
   onboardingController.getOnboardingStatus
 );
 router.patch(
   '/update-onboarding',
-  authController.restrictTo('seller'),
   onboardingController.updateOnboarding
 );
 
@@ -65,6 +74,88 @@ router.post(
   authController.restrictTo('seller'),
   otpLimiter,
   authSellerController.verifyEmail
+);
+
+// Two-Factor Authentication routes
+router.post(
+  '/enable-2fa',
+  authController.restrictTo('seller'),
+  authSellerController.enableTwoFactor
+);
+router.get(
+  '/2fa/setup',
+  authController.restrictTo('seller'),
+  authSellerController.getTwoFactorSetup
+);
+router.post(
+  '/verify-2fa',
+  authController.restrictTo('seller'),
+  authSellerController.verifyTwoFactor
+);
+router.post(
+  '/disable-2fa',
+  authController.restrictTo('seller'),
+  authSellerController.disableTwoFactor
+);
+router.get(
+  '/2fa/backup-codes',
+  authController.restrictTo('seller'),
+  authSellerController.getBackupCodes
+);
+router.post(
+  '/2fa/regenerate-backup-codes',
+  authController.restrictTo('seller'),
+  authSellerController.regenerateBackupCodes
+);
+
+// Password management
+router.patch(
+  '/me/update-password',
+  authController.restrictTo('seller'),
+  authSellerController.updatePassword
+);
+
+// Session management
+router.get(
+  '/me/sessions',
+  authController.restrictTo('seller'),
+  authSellerController.getSessions
+);
+router.delete(
+  '/me/sessions/:sessionId',
+  authController.restrictTo('seller'),
+  authSellerController.revokeSession
+);
+router.delete(
+  '/me/sessions',
+  authController.restrictTo('seller'),
+  authSellerController.revokeAllOtherSessions
+);
+
+// Notification preferences
+router.get(
+  '/me/notification-settings',
+  authController.restrictTo('seller'),
+  authSellerController.getNotificationSettings
+);
+router.patch(
+  '/me/notification-settings',
+  authController.restrictTo('seller'),
+  authSellerController.updateNotificationSettings
+);
+
+// Activity logs - sellers can view their own activity
+router.get(
+  '/me/activity-logs',
+  authController.restrictTo('seller'),
+  (req, res, next) => {
+    // Set userId to current seller's ID
+    req.query.userId = req.user.id;
+    req.query.role = 'seller';
+    // Import and use the activity log controller
+    const activityLogController = require('../../modules/activityLog/activityLog.controller');
+    return activityLogController.getActivityLogs(req, res, next);
+  }
 );
 
 router.get(
@@ -310,6 +401,8 @@ router.patch(
   authController.restrictTo('admin'),
   onboardingController.updateDocumentStatus
 );
+// NOTE: Payout verification routes have been moved to /api/v1/admin/sellers/:id/payout/*
+// This separation ensures payout verification is completely independent from document verification
 router
   .route('/')
   .get(authController.restrictTo('admin'), sellerControllor.getAllSeller);

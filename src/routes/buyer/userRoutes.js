@@ -17,8 +17,9 @@ const authController = require('../../controllers/buyer/authController');
 
 const router = express.Router();
 
-const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+const { otpLimiter, resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
+router.post('/login', authController.login);
 router.post('/signup', authController.signup);
 router.post('/email-verification', authController.emailVerification);
 router.get('/email-verification/:token', authController.verifyEmail);
@@ -26,14 +27,25 @@ router.post('/resend-verification', authController.emailVerification);
 router.post('/resend-otp', otpLimiter, authController.resendOtp); // ✅ New resend OTP endpoint
 router.post('/verify-account', otpLimiter, authController.verifyAccount); // ✅ New account verification endpoint
 router.post('/send-otp', otpLimiter, authController.sendOtp);
-router.post('/verify-otp', otpLimiter, authController.verifyOtp); // ✅ Add rate limiting
+// SECURITY FIX #4 (Phase 2 Enhancement): Enhanced OTP verification with lockout protection
+const { checkOtpLockout } = require('../../middleware/security/otpVerificationSecurity');
+router.post('/verify-otp', otpLimiter, checkOtpLockout, authController.verifyOtp); // ✅ Rate limited + lockout protection
 router.post('/logout', authController.logout);
 
-// router.post('/forgotPassword', authController.forgotPassword);
-// router.patch('/resetPassword/:token', authController.resetPassword);
-router.post('/forgot-password', authController.sendPasswordResetOtp);
-router.post('/verify-reset-otp', authController.verifyResetOtp);
-router.post('/reset-password', authController.resetPassword);
+// ==================================================
+// UNIFIED EMAIL-ONLY PASSWORD RESET FLOW
+// ==================================================
+// New unified endpoints (email-only, token-based)
+// SECURITY FIX #6: Use OTP rate limiter (5 requests per hour) for forgot-password
+router.post('/forgot-password', otpLimiter, authController.requestPasswordReset);
+router.post('/reset-password', resetLimiter, authController.resetPasswordWithToken);
+
+// Legacy OTP-based endpoints (deprecated - kept for backward compatibility)
+// SECURITY FIX #4 & #6: Rate limiting added to prevent brute-force attacks
+// TODO: Remove these after migration
+// router.post('/forgot-password', otpLimiter, authController.sendPasswordResetOtp); // ✅ Uses OTP rate limiter (5 per hour)
+// router.post('/verify-reset-otp', otpLimiter, authController.verifyResetOtp); // ✅ Rate limited
+// router.post('/reset-password', resetLimiter, authController.resetPassword);
 
 router.get(
   '/profile',

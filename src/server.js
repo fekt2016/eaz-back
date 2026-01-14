@@ -27,7 +27,7 @@ class Server {
     try {
       const host =
         process.env.HOST ||
-        (process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost');
+        (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '0.0.0.0');
 
       const port = parseInt(process.env.PORT || 4000, 10);
 
@@ -39,6 +39,9 @@ class Server {
       }
 
       this.server = app.listen(port, host, () => {
+        const timestamp = new Date().toISOString();
+        console.log('\n' + '='.repeat(60));
+        console.log(`🚀 Server started at ${timestamp}`);
         console.log(
           `Server running in ${process.env.NODE_ENV || 'development'} mode`,
         );
@@ -46,6 +49,8 @@ class Server {
         console.log(
           `Access locally at: http://localhost:${port} or http://127.0.0.1:${port}`,
         );
+        console.log('⚠️  Background jobs are disabled (Bull/Redis removed)');
+        console.log('='.repeat(60) + '\n');
 
         if (process.env.NODE_ENV === 'production') {
           console.log('Production server is ready');
@@ -137,6 +142,11 @@ class Server {
 
   async initialize() {
     try {
+      // Log restart timestamp for nodemon debugging (only in development)
+      if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        console.log(`\n🔄 [${new Date().toISOString()}] Initializing server...`);
+      }
+      
       await connectDatabase();
       
       // Initialize cron jobs after database connection

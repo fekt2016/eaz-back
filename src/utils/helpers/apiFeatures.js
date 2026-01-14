@@ -62,10 +62,13 @@ class APIFeature {
   }
   paginate() {
     const page = this.queryString.page * 1 || 1;
-    const limit = this.queryString.limit * 1 || 100;
-    const skip = (page - 1) * limit;
+    // Default limit reduced from 100 to 20 for better performance
+    const limit = this.queryString.limit * 1 || 20;
+    // Cap limit at 100 to prevent performance issues
+    const cappedLimit = limit > 100 ? 100 : limit;
+    const skip = (page - 1) * cappedLimit;
 
-    this.query = this.query.skip(skip).limit(limit);
+    this.query = this.query.skip(skip).limit(cappedLimit);
 
     return this;
   }

@@ -41,25 +41,27 @@ exports.resetSellerBalance = catchAsync(async (req, res, next) => {
   seller.pendingBalance = 0;
   seller.withdrawableBalance = balance; // Withdrawable balance equals balance when no locked/pending
 
-  // Save reset reason in metadata if provided
-  if (reason) {
-    if (!seller.metadata) {
-      seller.metadata = {};
-    }
-    if (!seller.metadata.balanceResets) {
-      seller.metadata.balanceResets = [];
-    }
-    seller.metadata.balanceResets.push({
-      resetBy: adminId,
-      resetAt: new Date(),
-      oldBalance,
-      oldLockedBalance,
-      oldPendingBalance,
-      oldWithdrawableBalance,
-      newBalance: balance,
-      reason,
-    });
+  // Always track the admin who reset the balance
+  seller.lastBalanceResetBy = adminId;
+  seller.lastBalanceResetAt = new Date();
+
+  // Always save reset information in metadata (even if no reason provided)
+  if (!seller.metadata) {
+    seller.metadata = {};
   }
+  if (!seller.metadata.balanceResets) {
+    seller.metadata.balanceResets = [];
+  }
+  seller.metadata.balanceResets.push({
+    resetBy: adminId,
+    resetAt: new Date(),
+    oldBalance,
+    oldLockedBalance,
+    oldPendingBalance,
+    oldWithdrawableBalance,
+    newBalance: balance,
+    reason: reason || null,
+  });
 
   await seller.save();
 
@@ -114,6 +116,8 @@ exports.resetSellerBalance = catchAsync(async (req, res, next) => {
         previousLockedBalance: oldLockedBalance,
         previousPendingBalance: oldPendingBalance,
         previousWithdrawableBalance: oldWithdrawableBalance,
+        lastBalanceResetBy: seller.lastBalanceResetBy,
+        lastBalanceResetAt: seller.lastBalanceResetAt,
       },
     },
   });
@@ -145,26 +149,30 @@ exports.resetLockedBalance = catchAsync(async (req, res, next) => {
   seller.lockedBalance = 0;
   seller.calculateWithdrawableBalance();
 
-  // Save reset reason in metadata if provided
-  if (reason) {
-    if (!seller.metadata) {
-      seller.metadata = {};
-    }
-    if (!seller.metadata.lockedBalanceResets) {
-      seller.metadata.lockedBalanceResets = [];
-    }
-    seller.metadata.lockedBalanceResets.push({
-      resetBy: adminId,
-      resetAt: new Date(),
-      oldLockedBalance,
-      oldBalance,
-      oldWithdrawableBalance,
-      newBalance: seller.balance,
-      newLockedBalance: 0,
-      newWithdrawableBalance: seller.withdrawableBalance,
-      reason,
-    });
+  // Always track the admin who reset the locked balance
+  // Note: We could add separate fields for locked balance reset, but for now we'll use the same fields
+  // since resetting locked balance is also a balance operation
+  seller.lastBalanceResetBy = adminId;
+  seller.lastBalanceResetAt = new Date();
+
+  // Always save reset information in metadata (even if no reason provided)
+  if (!seller.metadata) {
+    seller.metadata = {};
   }
+  if (!seller.metadata.lockedBalanceResets) {
+    seller.metadata.lockedBalanceResets = [];
+  }
+  seller.metadata.lockedBalanceResets.push({
+    resetBy: adminId,
+    resetAt: new Date(),
+    oldLockedBalance,
+    oldBalance,
+    oldWithdrawableBalance,
+    newBalance: seller.balance,
+    newLockedBalance: 0,
+    newWithdrawableBalance: seller.withdrawableBalance,
+    reason: reason || null,
+  });
 
   await seller.save();
 
@@ -231,8 +239,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
   const seller = await Seller.findById(id).select(
-    'name shopName email balance lockedBalance pendingBalance lockedReason lockedBy lockedAt withdrawableBalance metadata.balanceResets metadata.lockedBalanceResets metadata.fundLocks metadata.fundUnlocks'
-  );
+    'name shopName email balance lockedBalance pendingBalance lockedReason lockedBy lockedAt withdrawableBalance lastBalanceResetBy lastBalanceResetAt metadata.balanceResets metadata.lockedBalanceResets metadata.fundLocks metadata.fundUnlocks'
+  ).populate('lastBalanceResetBy', 'name email');
 
   if (!seller) {
     return next(new AppError('Seller not found', 404));
@@ -255,6 +263,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
         lockedReason: seller.lockedReason, // Reason for admin lock (dispute/issue)
         lockedBy: seller.lockedBy, // Admin who locked the funds
         lockedAt: seller.lockedAt, // When funds were locked
+        lastBalanceResetBy: seller.lastBalanceResetBy, // Admin who last reset the balance
+        lastBalanceResetAt: seller.lastBalanceResetAt, // When balance was last reset
         // Verification: lockedBalance + pendingBalance + withdrawableBalance = balance
         balanceBreakdown: {
           total: seller.balance,

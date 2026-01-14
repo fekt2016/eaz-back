@@ -1,6 +1,10 @@
 /**
  * Seller Coupon Routes
  * Routes for sellers to create and manage coupon batches
+ * 
+ * SECURITY: These routes MUST use the shared authController.protect middleware
+ * which correctly detects seller routes and uses seller_jwt cookie.
+ * The protect middleware in buyer/authController.js handles all roles correctly.
  */
 const express = require('express');
 const { getSellerCouponBatches,
@@ -11,7 +15,8 @@ const { getSellerCouponBatches,
   assignCouponToBuyer,
   getEligibleBuyers,
   sendCouponEmail, } = require('../../controllers/seller/couponController');
-const authController = require('../../controllers/buyer/authController');
+const authSellerController = require('../../controllers/seller/authSellerController');
+const authController = require('../../controllers/buyer/authController'); // For restrictTo only
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 const router = express.Router();
 
@@ -23,9 +28,10 @@ const requireVerifiedSellerIfSeller = (req, res, next) => {
   next(); // Admin can access without verification
 };
 
-// All seller coupon routes require authentication and seller/admin role
-router.use(authController.protect);
-router.use(authController.restrictTo('seller', 'admin'));
+// 🔒 CRITICAL: Use protectSeller (NOT buyer authController.protect)
+// This ensures seller routes NEVER go through buyer authentication logic
+router.use(authSellerController.protectSeller);
+router.use(authController.restrictTo('seller', 'admin')); // restrictTo is safe to use (just checks role)
 router.use(requireVerifiedSellerIfSeller);
 
 router.route('/').get(getSellerCouponBatches).post(createCouponBatch);

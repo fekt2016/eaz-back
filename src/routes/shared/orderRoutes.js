@@ -14,7 +14,8 @@ const { getAllOrder,
   updateOrderShippingAddress,
   updateOrderAddressAndRecalculate,
   payShippingDifference,
-  sendOrderDetailEmail, } = require('../../controllers/shared/orderController');
+  sendOrderDetailEmail,
+  validateCart, } = require('../../controllers/shared/orderController');
 const {
   updateOrderStatus,
   updateDriverLocation,
@@ -26,17 +27,34 @@ const { requestRefund, getRefundStatus } = require('../../controllers/buyer/refu
 
 const authController = require('../../controllers/buyer/authController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
+// SECURITY FIX #5: Input validation for orders
+const { validateOrder, handleValidationErrors } = require('../../middleware/validation/orderValidator');
 
 const router = express.Router();
 
 router
   .route('/')
   .get(authController.protect, authController.restrictTo('admin'), getAllOrder)
-  .post(authController.protect, authController.restrictTo('user'), createOrder);
+  // SECURITY FIX #5: Add input validation middleware before order creation
+  .post(
+    authController.protect,
+    authController.restrictTo('user'),
+    validateOrder,
+    handleValidationErrors,
+    createOrder
+  );
 
 router.get('/get/totalsales', authController.protect, totalSales);
 router.get('/get/count', authController.protect, getCount);
 // router.get('/get/userorders', authController.protect, getUserOrder);
+
+// Cart validation endpoint (must be before /:id route)
+router.post(
+  '/validate-cart',
+  authController.protect,
+  authController.restrictTo('user'),
+  validateCart
+);
 
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 

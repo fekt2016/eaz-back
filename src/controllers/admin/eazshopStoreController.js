@@ -21,6 +21,7 @@ exports.getPublicEazShopProducts = catchAsync(async (req, res, next) => {
       { seller: EAZSHOP_SELLER_ID },
     ],
     status: 'active', // Only active products for public display
+    moderationStatus: 'approved', // Only approved products
   })
     .populate('seller', 'shopName name')
     .populate('parentCategory', 'name slug')

@@ -126,12 +126,11 @@ exports.updateOne = (Model) =>
     });
   });
 
-exports.createOne = (Model) => async (req, res, next) => {
+exports.createOne = (Model) => catchAsync(async (req, res, next) => {
   // console.log(req.files);
   // console.log('req.body', req.body);
-  try {
-    // const { files } = req;
-    let body = req.body;
+  // const { files } = req;
+  let body = req.body;
 
     if (body.attributes && typeof body.attributes === 'string') {
       try {
@@ -186,10 +185,7 @@ exports.createOne = (Model) => async (req, res, next) => {
       status: 'success',
       doc,
     });
-  } catch (err) {
-    next(err);
-  }
-};
+});
 
 exports.getOne = (Model, popOptions) =>
   catchAsync(async (req, res, next) => {

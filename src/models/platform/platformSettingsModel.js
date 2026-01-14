@@ -63,10 +63,7 @@ const platformSettingsSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-/**
- * Get or create platform settings (singleton pattern)
- * @returns {Promise<Object>} Platform settings document
- */
+
 platformSettingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne();
   
@@ -78,11 +75,6 @@ platformSettingsSchema.statics.getSettings = async function () {
   return settings;
 };
 
-/**
- * Update settings (only updates provided fields)
- * @param {Object} updates - Fields to update
- * @returns {Promise<Object>} Updated settings document
- */
 platformSettingsSchema.statics.updateSettings = async function (updates) {
   const settings = await this.findOneAndUpdate(
     {},

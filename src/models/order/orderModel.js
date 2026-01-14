@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
-// import OrderItems from './OrderItemModel.js';
-// import SellerOrder from './sellerOrderModel.js';
 
 const orderSchema = new mongoose.Schema(
   {
+   
     orderItems: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrderItems',
         required: true,
+        comment: 'Array of OrderItem references - each item is a snapshot of product/variant at order time',
       },
     ],
 
@@ -206,7 +206,7 @@ const orderSchema = new mongoose.Schema(
     },
     deliverySpeed: {
       type: String,
-      enum: ['next_day', 'same_day'],
+      enum: ['standard', 'same_day'],
     },
     // Shipping address change tracking
     oldShippingFee: {
@@ -331,20 +331,17 @@ const orderSchema = new mongoose.Schema(
     sellerCredited: {
       type: Boolean,
       default: false,
-      index: true,
     },
     // Flag to prevent double-counting revenue
     revenueAdded: {
       type: Boolean,
       default: false,
-      index: true,
     },
     // Seller payout status (default: pending, updated to paid when order is delivered)
     sellerPayoutStatus: {
       type: String,
       enum: ['pending', 'paid'],
       default: 'pending',
-      index: true,
     },
     // Revenue amount for this order (added to admin revenue at payment time)
     revenueAmount: {
@@ -356,7 +353,6 @@ const orderSchema = new mongoose.Schema(
     refundRequested: {
       type: Boolean,
       default: false,
-      index: true,
     },
     refundRequestDate: {
       type: Date,
@@ -386,7 +382,6 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ['pending', 'approved', 'rejected', 'processing', 'completed'],
       default: 'pending',
-      index: true,
     },
     refundRejectionReason: {
       type: String,
@@ -410,11 +405,43 @@ const orderSchema = new mongoose.Schema(
   },
 );
 
+/**
+ * VIRTUAL: id field
+ * Provides 'id' as a string representation of _id for API responses
+ * (Maintains backward compatibility with frontend expectations)
+ */
 orderSchema.virtual('id').get(function () {
   return this._id.toHexString();
 });
 
 orderSchema.set('toJSON', { virtuals: true });
+
+/**
+ * PRE-SAVE HOOK: Validate order items
+ * Ensures all orderItems references are valid ObjectIds
+ */
+orderSchema.pre('save', function(next) {
+  // Validate orderItems array
+  if (this.orderItems && Array.isArray(this.orderItems)) {
+    const invalidItems = this.orderItems.filter(
+      item => !mongoose.Types.ObjectId.isValid(item)
+    );
+    if (invalidItems.length > 0) {
+      return next(new Error('All orderItems must be valid ObjectIds'));
+    }
+  }
+  
+  next();
+});
+
+/**
+ * INSTANCE METHOD: Get total quantity
+ * Sums up all quantities from order items
+ */
+orderSchema.methods.getTotalQuantity = async function() {
+  await this.populate('orderItems', 'quantity');
+  return this.orderItems.reduce((total, item) => total + (item.quantity || 0), 0);
+};
 
 orderSchema.methods.updateOrderStatus = function () {
   const sellerOrders = this.sellerOrders;

@@ -120,6 +120,36 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
 
   await order.save();
 
+  // Send push notification to buyer for important status changes
+  try {
+    const pushNotificationService = require('../../services/pushNotificationService');
+    const orderPopulated = await Order.findById(orderId).populate('user', 'id').lean();
+    
+    if (orderPopulated?.user?.id && ['out_for_delivery', 'delivered'].includes(status)) {
+      let title, body;
+      
+      if (status === 'out_for_delivery') {
+        title = 'Order Out for Delivery';
+        body = `Your order #${order.orderNumber} is out for delivery and will arrive soon!`;
+      } else if (status === 'delivered') {
+        title = 'Order Delivered';
+        body = `Your order #${order.orderNumber} has been delivered. Thank you for shopping with us!`;
+      }
+      
+      await pushNotificationService.sendOrderNotification(
+        orderPopulated.user.id,
+        orderId,
+        title,
+        body,
+        status
+      );
+      console.log(`[updateOrderStatus] ✅ Push notification sent for order ${orderId} status: ${status}`);
+    }
+  } catch (pushError) {
+    console.error('[updateOrderStatus] Error sending push notification:', pushError.message);
+    // Don't fail the order update if push notification fails
+  }
+
   // Create notifications for order status change
   try {
     const notificationService = require('../../services/notification/notificationService');

@@ -124,12 +124,43 @@ exports.createPaymentMethod = catchAsync(async (req, res, next) => {
   // Use name or mobileName or accountName for the name field
   const paymentMethodName = name || mobileName || accountName || 'Payment Method';
 
+  // SECURITY: Check for duplicate payment methods
+  if (type === 'mobile_money' && mobileNumber) {
+    const normalizedPhone = mobileNumber.replace(/\D/g, ''); // Remove non-digits
+    const existingMobileMoney = await PaymentMethod.findOne({
+      user: userId,
+      type: 'mobile_money',
+      mobileNumber: normalizedPhone,
+    });
+    
+    if (existingMobileMoney) {
+      return next(new AppError(
+        `A mobile money payment method with phone number ${mobileNumber} already exists. Please use the existing payment method or update it.`,
+        400
+      ));
+    }
+  } else if (type === 'bank_transfer' && accountNumber) {
+    const normalizedAccountNumber = accountNumber.replace(/\s+/g, ''); // Remove spaces
+    const existingBankAccount = await PaymentMethod.findOne({
+      user: userId,
+      type: 'bank_transfer',
+      accountNumber: normalizedAccountNumber,
+    });
+    
+    if (existingBankAccount) {
+      return next(new AppError(
+        `A bank account payment method with account number ${accountNumber} already exists. Please use the existing payment method or update it.`,
+        400
+      ));
+    }
+  }
+
   const paymentData =
     type === 'mobile_money'
       ? {
           type,
           name: paymentMethodName,
-          mobileNumber: mobileNumber,
+          mobileNumber: mobileNumber ? mobileNumber.replace(/\D/g, '') : mobileNumber, // Normalize phone number
           isDefault: isDefault || false,
           user: userId,
           provider: provider,
@@ -138,7 +169,7 @@ exports.createPaymentMethod = catchAsync(async (req, res, next) => {
           type,
           name: paymentMethodName,
           bankName,
-          accountNumber,
+          accountNumber: accountNumber ? accountNumber.replace(/\s+/g, '') : accountNumber, // Normalize account number
           accountName,
           branch: branch || undefined,
           isDefault: isDefault || false,
@@ -240,6 +271,71 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
     return next(new AppError('You do not have permission to modify this payment method', 403));
   }
   
+  // SECURITY: Check for duplicate payment methods (excluding current one)
+  if (req.body.mobileNumber) {
+    const normalizedPhone = req.body.mobileNumber.replace(/\D/g, '');
+    const existingMobileMoney = await PaymentMethod.findOne({
+      user: userId,
+      type: 'mobile_money',
+      mobileNumber: normalizedPhone,
+      _id: { $ne: req.params.id }, // Exclude current payment method
+    });
+    
+    if (existingMobileMoney) {
+      return next(new AppError(
+        `A mobile money payment method with phone number ${req.body.mobileNumber} already exists. Please use the existing payment method or update it.`,
+        400
+      ));
+    }
+  }
+  
+  if (req.body.accountNumber) {
+    const normalizedAccountNumber = req.body.accountNumber.replace(/\s+/g, '');
+    const existingBankAccount = await PaymentMethod.findOne({
+      user: userId,
+      type: 'bank_transfer',
+      accountNumber: normalizedAccountNumber,
+      _id: { $ne: req.params.id }, // Exclude current payment method
+    });
+    
+    if (existingBankAccount) {
+      return next(new AppError(
+        `A bank account payment method with account number ${req.body.accountNumber} already exists. Please use the existing payment method or update it.`,
+        400
+      ));
+    }
+  }
+
+  // Check if payment details are being changed (which should reset verification status)
+  const isChangingPaymentDetails = (
+    (req.body.accountNumber && req.body.accountNumber.replace(/\s+/g, '') !== (paymentMethod.accountNumber || '').replace(/\s+/g, '')) ||
+    (req.body.mobileNumber && req.body.mobileNumber.replace(/\D/g, '') !== (paymentMethod.mobileNumber || '').replace(/\D/g, '')) ||
+    (req.body.bankName && req.body.bankName !== paymentMethod.bankName) ||
+    (req.body.provider && req.body.provider !== paymentMethod.provider)
+  );
+  
+  // If payment details changed and verification was verified/rejected, reset to pending
+  if (isChangingPaymentDetails && (paymentMethod.verificationStatus === 'verified' || paymentMethod.verificationStatus === 'rejected')) {
+    req.body.verificationStatus = 'pending';
+    req.body.verifiedAt = null;
+    req.body.verifiedBy = null;
+    req.body.rejectionReason = null;
+    
+    // Add to verification history
+    if (!req.body.verificationHistory) {
+      // Get existing history or create new array
+      const existingHistory = paymentMethod.verificationHistory || [];
+      req.body.verificationHistory = [...existingHistory, {
+        status: 'pending',
+        adminId: null, // System-initiated reset
+        reason: 'Payment details changed - verification reset',
+        timestamp: new Date(),
+      }];
+    }
+    
+    console.log(`[Update PaymentMethod] Payment details changed, resetting verification status from ${paymentMethod.verificationStatus} to pending`);
+  }
+  
   // Update the payment method
   const updatedPaymentMethod = await PaymentMethod.findByIdAndUpdate(
     req.params.id,
@@ -249,6 +345,80 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
       runValidators: true,
     },
   );
+  
+  // If seller updated PaymentMethod and it matches their seller.paymentMethods, sync seller payoutStatus
+  if (currentUser.role === 'seller') {
+    try {
+      const Seller = require('../../models/user/sellerModel');
+      const seller = await Seller.findById(currentUser.id);
+      
+      const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
+      const payoutCheck = hasVerifiedPayoutMethod(seller);
+      if (seller && payoutCheck.hasVerified) {
+        // Check if updated PaymentMethod matches seller's paymentMethods
+        let shouldResetSellerPayout = false;
+        
+        if (updatedPaymentMethod.type === 'bank_transfer' && seller.paymentMethods?.bankAccount) {
+          const pmAccountNumber = (updatedPaymentMethod.accountNumber || '').replace(/\s+/g, '');
+          const sellerAccountNumber = (seller.paymentMethods.bankAccount.accountNumber || '').replace(/\s+/g, '');
+          if (pmAccountNumber === sellerAccountNumber) {
+            shouldResetSellerPayout = true;
+          }
+        } else if (updatedPaymentMethod.type === 'mobile_money' && seller.paymentMethods?.mobileMoney) {
+          const pmPhone = (updatedPaymentMethod.mobileNumber || '').replace(/\D/g, '');
+          const sellerPhone = (seller.paymentMethods.mobileMoney.phone || '').replace(/\D/g, '');
+          if (pmPhone === sellerPhone) {
+            shouldResetSellerPayout = true;
+          }
+        }
+        
+        // If PaymentMethod matches seller paymentMethods and was reset, also reset seller payment method payoutStatus
+        if (shouldResetSellerPayout && isChangingPaymentDetails) {
+          if (updatedPaymentMethod.type === 'bank_transfer' && seller.paymentMethods?.bankAccount) {
+            seller.paymentMethods.bankAccount.payoutStatus = 'pending';
+            seller.paymentMethods.bankAccount.payoutVerifiedAt = null;
+            seller.paymentMethods.bankAccount.payoutVerifiedBy = null;
+            seller.paymentMethods.bankAccount.payoutRejectionReason = null;
+          } else if (updatedPaymentMethod.type === 'mobile_money' && seller.paymentMethods?.mobileMoney) {
+            seller.paymentMethods.mobileMoney.payoutStatus = 'pending';
+            seller.paymentMethods.mobileMoney.payoutVerifiedAt = null;
+            seller.paymentMethods.mobileMoney.payoutVerifiedBy = null;
+            seller.paymentMethods.mobileMoney.payoutRejectionReason = null;
+          }
+          
+          // Add to verification history
+          if (!seller.payoutVerificationHistory) {
+            seller.payoutVerificationHistory = [];
+          }
+          seller.payoutVerificationHistory.push({
+            action: 'rejected', // Treat as rejection due to change
+            adminId: null, // System-initiated
+            reason: 'Payment details changed - verification reset',
+            timestamp: new Date(),
+            paymentMethod: updatedPaymentMethod.type === 'bank_transfer' ? 'bank' : 
+                          updatedPaymentMethod.provider === 'MTN' ? 'mtn_momo' :
+                          updatedPaymentMethod.provider === 'Vodafone' ? 'vodafone_cash' :
+                          'airtel_tigo_money',
+            paymentDetails: updatedPaymentMethod.type === 'bank_transfer' ? {
+              accountNumber: updatedPaymentMethod.accountNumber,
+              accountName: updatedPaymentMethod.accountName,
+              bankName: updatedPaymentMethod.bankName,
+            } : {
+              phone: updatedPaymentMethod.mobileNumber,
+              network: updatedPaymentMethod.provider,
+              accountName: updatedPaymentMethod.accountName,
+            },
+          });
+          
+          await seller.save({ validateBeforeSave: false });
+          console.log(`[Update PaymentMethod] Synced seller ${seller._id} payment method payoutStatus to pending due to PaymentMethod change`);
+        }
+      }
+    } catch (sellerSyncError) {
+      console.error('[Update PaymentMethod] Error syncing seller payoutStatus:', sellerSyncError);
+      // Don't fail PaymentMethod update if seller sync fails
+    }
+  }
   
   res.status(200).json({
     status: 'success',

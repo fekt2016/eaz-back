@@ -85,7 +85,7 @@ const deletedOrderSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for efficient queries
+
 
 
 const DeletedOrder = mongoose.model('DeletedOrder', deletedOrderSchema);
