@@ -59,7 +59,7 @@ const sendOrderConfirmation = async (order, user) => {
 const sendOrderShipped = async (order, user) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const trackingNumber = order.trackingNumber || 'N/A';
@@ -123,7 +123,7 @@ const sendOrderShipped = async (order, user) => {
 const sendOrderDelivered = async (order, user) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const orderUrl = `${brandConfig.url}/orders/${order._id || order.id}`;
@@ -185,7 +185,7 @@ const sendOrderDelivered = async (order, user) => {
 const sendSellerNewOrder = async (seller, order) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const sellerDashboardUrl = `${brandConfig.url}/dashboard/orders/${order._id || order.id}`;
@@ -253,7 +253,7 @@ const sendSellerNewOrder = async (seller, order) => {
 const sendWithdrawalRequest = async (seller, withdrawal) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const amount = withdrawal.amount || 0;
@@ -313,7 +313,7 @@ const sendWithdrawalRequest = async (seller, withdrawal) => {
 const sendWithdrawalApproved = async (seller, withdrawal) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const amount = withdrawal.amount || 0;
@@ -378,7 +378,7 @@ const sendWithdrawalApproved = async (seller, withdrawal) => {
 const sendWithdrawalRejected = async (seller, withdrawal, reason) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const amount = withdrawal.amount || 0;
@@ -441,7 +441,7 @@ const sendWithdrawalRejected = async (seller, withdrawal, reason) => {
 const sendRefundProcessed = async (user, refund, order) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const refundAmount = refund.finalRefundAmount || refund.totalRefundAmount || 0;
@@ -510,7 +510,7 @@ const sendRefundProcessed = async (user, refund, order) => {
 const sendCouponToBuyer = async (user, coupon, batch, seller = null, personalMessage = null) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const couponCode = coupon.code || 'N/A';
@@ -588,7 +588,7 @@ const sendCouponToBuyer = async (user, coupon, batch, seller = null, personalMes
 const sendWalletCredit = async (user, amount, description) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const walletUrl = `${brandConfig.url}/wallet`;
@@ -653,7 +653,7 @@ const sendWalletCredit = async (user, amount, description) => {
 const sendWalletDebit = async (user, amount, description) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const walletUrl = `${brandConfig.url}/wallet`;
@@ -714,7 +714,7 @@ const sendWalletDebit = async (user, amount, description) => {
 const sendPaymentSuccess = async (user, order) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',
-    url: process.env.FRONTEND_URL || 'https://eazworld.com',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
   const orderUrl = `${brandConfig.url}/orders/${order._id || order.id}`;

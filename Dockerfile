@@ -1,62 +1,62 @@
 # ============================================
 # Multi-stage Dockerfile for Node.js Backend
-# Production-ready, optimized for AWS EC2
+# Reliable production build (Docker Compose on EC2)
 # ============================================
 
-# Stage 1: Dependencies and Build
-FROM node:20-alpine AS dependencies
+# NOTE:
+# - Uses Debian slim to avoid common native-module issues (e.g., sharp on alpine/musl).
+# - Expects runtime env vars to be provided at container start (compose env_file, etc.)
 
-# Set working directory
+# Stage 1: Install production dependencies
+FROM node:20-bookworm-slim AS deps
+
 WORKDIR /app
 
-# Install security updates and required packages
-RUN apk add --no-cache \
-    dumb-init \
-    && rm -rf /var/cache/apk/*
+# Install OS packages needed for a clean runtime and signal handling
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates dumb-init \
+  && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY package*.json ./
+# Copy lockfile explicitly (required for npm ci)
+COPY package.json package-lock.json ./
 
-# Install dependencies (including dev dependencies for potential builds)
-RUN npm ci --only=production --no-audit --no-fund && \
-    npm cache clean --force
+# Install only production deps
+RUN npm ci --omit=dev --no-audit --no-fund \
+  && npm cache clean --force
 
-# Stage 2: Production Image
-FROM node:20-alpine AS production
+# Stage 2: Production runtime
+FROM node:20-bookworm-slim AS production
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Set working directory
 WORKDIR /app
 
-# Copy node_modules from dependencies stage
-COPY --from=dependencies --chown=nodejs:nodejs /app/node_modules ./node_modules
+# Minimal runtime packages
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates dumb-init \
+  && rm -rf /var/lib/apt/lists/*
 
-# Copy application code
-COPY --chown=nodejs:nodejs . .
-
-# Create logs directory with proper permissions
-RUN mkdir -p /app/logs && \
-    chown -R nodejs:nodejs /app/logs
-
-# Set environment to production
+# Set default runtime env
 ENV NODE_ENV=production
+ENV PORT=4000
 
-# Expose port (internal only - not exposed to host)
+# Copy dependencies then app source
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Create non-root user + fix permissions for logs
+RUN useradd -m -u 1001 nodejs \
+  && mkdir -p /app/logs \
+  && chown -R nodejs:nodejs /app
+
 EXPOSE 4000
 
-# Health check
+# Docker healthcheck (no curl dependency required)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT||4000) + '/health/live', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
-# Switch to non-root user
 USER nodejs
 
-# Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the application
-CMD ["node", "src/server.js"]
+# Start in production mode (no nodemon)
+CMD ["npm", "run", "start:prod"]
 

@@ -8,7 +8,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# IMPORTANT: do NOT ignore package-lock.json (required for npm ci in Docker builds)
+# package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

@@ -367,3 +367,4 @@ docker compose up -d
 - MongoDB Atlas connection from container (ensure security group allows)
 - Logs persist in `./logs` directory on host
 
+

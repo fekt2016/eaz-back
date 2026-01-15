@@ -9,8 +9,8 @@
 const BRAND_CONFIG = {
   name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saysay',
   tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
-  url: process.env.FRONTEND_URL || 'https://eazworld.com',
-  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@eazworld.com',
+  url: process.env.FRONTEND_URL || 'https://saiisai.com',
+  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
   fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
 };
 

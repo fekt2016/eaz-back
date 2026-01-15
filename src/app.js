@@ -167,9 +167,9 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const allowedOrigins = [
-  'https://eazworld.com',
-  'https://www.eazworld.com',
-  'https://api.eazworld.com',
+  'https://saiisai.com',
+  'https://www.saiisai.com',
+  'https://api.saiisai.com',
   'https://checkout.paystack.com', // Allow Paystack checkout domain
   process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -219,9 +219,15 @@ const corsOptions = {
       return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
     }
 
-    // Production: Only allow specific origins
+    // Production: Allow specific origins and *.amplifyapp.com domains
     if (allowedOrigins.includes(origin)) {
       console.log(`[CORS] Production - allowing origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    // Allow AWS Amplify domains (*.amplifyapp.com)
+    if (origin && origin.endsWith('.amplifyapp.com')) {
+      console.log(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
       return callback(null, true);
     }
 

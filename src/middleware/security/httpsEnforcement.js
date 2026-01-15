@@ -22,7 +22,7 @@ exports.enforceHttps = (req, res, next) => {
 
   if (!isHttps) {
     // Get host from request
-    const host = req.header('host') || req.hostname || 'eazworld.com';
+    const host = req.header('host') || req.hostname || 'saiisai.com';
     const url = req.originalUrl || req.url;
     
     // Log security event

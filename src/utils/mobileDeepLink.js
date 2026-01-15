@@ -14,7 +14,7 @@
  * @returns {string} Reset password URL
  */
 const generatePasswordResetUrl = (resetToken, baseUrl = null) => {
-  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://eazworld.com';
+  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://saiisai.com';
   return `${frontendUrl}/reset-password?token=${resetToken}`;
 };
 
@@ -26,7 +26,7 @@ const generatePasswordResetUrl = (resetToken, baseUrl = null) => {
  * @returns {string} OTP verification URL
  */
 const generateOtpVerificationUrl = (loginId, otp = null, baseUrl = null) => {
-  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://eazworld.com';
+  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://saiisai.com';
   const params = new URLSearchParams({ loginId });
   if (otp) {
     params.append('otp', otp);
@@ -41,7 +41,7 @@ const generateOtpVerificationUrl = (loginId, otp = null, baseUrl = null) => {
  * @returns {string} Email verification URL
  */
 const generateEmailVerificationUrl = (token, baseUrl = null) => {
-  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://eazworld.com';
+  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://saiisai.com';
   return `${frontendUrl}/verify-email?token=${token}`;
 };
 
@@ -52,7 +52,7 @@ const generateEmailVerificationUrl = (token, baseUrl = null) => {
  * @returns {string} 2FA enable URL
  */
 const generate2FAEnableUrl = (token, baseUrl = null) => {
-  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://eazworld.com';
+  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://saiisai.com';
   return `${frontendUrl}/enable-2fa?token=${token}`;
 };
 
@@ -63,7 +63,7 @@ const generate2FAEnableUrl = (token, baseUrl = null) => {
  * @returns {string} 2FA disable URL
  */
 const generate2FADisableUrl = (token, baseUrl = null) => {
-  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://eazworld.com';
+  const frontendUrl = baseUrl || process.env.FRONTEND_URL || process.env.MAIN_APP_URL || 'https://saiisai.com';
   return `${frontendUrl}/disable-2fa?token=${token}`;
 };
 
