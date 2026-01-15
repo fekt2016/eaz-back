@@ -265,9 +265,32 @@ exports.requireVerifiedEmail = catchAsync(async (req, res, next) => {
  * Login with email + password only (no OTP)
  * If 2FA is enabled, returns 2fa_required response
  * If 2FA is disabled, issues token immediately
+ * 
+ * 403 FORBIDDEN CONDITIONS:
+ * 1. Email not verified (user.emailVerified === false)
+ *    - Message: "Account not verified. Please verify your email address first..."
+ * 2. Device limit exceeded in production (too many active device sessions)
+ *    - Message: "Device limit exceeded. You have reached the maximum number of devices..."
+ * 
+ * 401 UNAUTHORIZED CONDITIONS:
+ * 1. Invalid email or password
+ * 2. Account deactivated (user.active === false)
+ * 
+ * 429 TOO MANY REQUESTS:
+ * 1. Account temporarily locked (too many failed login attempts)
  */
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
+
+  // Log login attempt for debugging (sanitized - no password)
+  if (process.env.NODE_ENV === 'production') {
+    console.log('[Login] Attempt:', {
+      email: email ? email.substring(0, 3) + '***' : 'missing',
+      ip: req.ip,
+      userAgent: req.headers['user-agent']?.substring(0, 50),
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   if (!email || !password) {
     return next(new AppError('Please provide email and password', 400));
@@ -288,6 +311,13 @@ exports.login = catchAsync(async (req, res, next) => {
 
   if (!user) {
     // SECURITY: Generic error message to prevent user enumeration
+    // Log for security monitoring
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('[Login] User not found:', {
+        email: normalizedEmail.substring(0, 3) + '***',
+        ip: req.ip,
+      });
+    }
     return next(new AppError('Invalid email or password', 401));
   }
 
@@ -299,9 +329,17 @@ exports.login = catchAsync(async (req, res, next) => {
   // SECURITY: Check if account is verified (REQUIRED before login)
   // Email verification is required (phone login removed)
   if (!user.emailVerified) {
+    // Log for debugging in production
+    console.warn('[Login] Email verification required:', {
+      userId: user._id,
+      email: user.email,
+      emailVerified: user.emailVerified,
+      ip: req.ip,
+    });
+    
     return next(
       new AppError(
-        'Account not verified. Please verify your email address first.',
+        'Account not verified. Please verify your email address first. Check your inbox for the verification email, or request a new verification code.',
         403
       )
     );
@@ -378,12 +416,54 @@ exports.login = catchAsync(async (req, res, next) => {
     const response = await handleSuccessfulLogin(req, res, user, 'buyer');
     res.status(200).json(response);
   } catch (deviceError) {
-    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
-      return next(new AppError(deviceError.message, 403));
+    // Handle device session limit errors
+    if (deviceError.message?.includes('Too many devices')) {
+      // Log for debugging
+      console.warn('[Login] Device limit exceeded:', {
+        userId: user._id,
+        email: user.email,
+        error: deviceError.message,
+        ip: req.ip,
+      });
+      
+      // In production, enforce device limit strictly
+      if (process.env.NODE_ENV === 'production') {
+        return next(
+          new AppError(
+            'Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.',
+            403
+          )
+        );
+      }
+      
+      // In development, allow bypassing device session
+      console.warn('[Login] Dev mode: Bypassing device session limit');
+      const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
+      res.status(200).json(response);
+    } else {
+      // Other errors - log and rethrow
+      console.error('[Login] Unexpected error during device session creation:', {
+        userId: user._id,
+        email: user.email,
+        error: deviceError.message,
+        stack: deviceError.stack,
+      });
+      
+      // In production, fail securely
+      if (process.env.NODE_ENV === 'production') {
+        return next(
+          new AppError(
+            'Login failed due to a system error. Please try again or contact support.',
+            500
+          )
+        );
+      }
+      
+      // In development, continue without device session for debugging
+      console.warn('[Login] Dev mode: Continuing without device session due to error');
+      const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
+      res.status(200).json(response);
     }
-    // In dev, continue without device session
-    const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
-    res.status(200).json(response);
   }
 });
 

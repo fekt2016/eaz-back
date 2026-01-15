@@ -6,3 +6,7 @@ config.env.env
 .env.local
 .env.*.local
 config.env
+
+# Documentation files (not for version control)
+*.md
+!README.md
