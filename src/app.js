@@ -187,6 +187,9 @@ const corsOptions = {
       return callback(null, true);
     }
 
+    // Normalize origin (remove trailing slash, ensure lowercase for comparison)
+    const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
+
     // SECURITY FIX #17: Development - restrict to specific localhost ports (no wildcard)
     if (process.env.NODE_ENV === 'development') {
       const devOrigins = [
@@ -198,10 +201,10 @@ const corsOptions = {
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
-      ];
+      ].map(o => o.toLowerCase());
 
-      // Check if origin is in the allowed list
-      if (devOrigins.includes(origin)) {
+      // Check if origin is in the allowed list (case-insensitive)
+      if (devOrigins.includes(normalizedOrigin)) {
         if (isDevelopment) {
           logger.info(`[CORS] Development - allowing origin: ${origin}`);
         }
@@ -229,8 +232,14 @@ const corsOptions = {
       return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
     }
 
-    // Production: Allow specific origins and *.amplifyapp.com domains
-    if (allowedOrigins.includes(origin)) {
+    // Production: Normalize allowed origins for comparison
+    const normalizedAllowedOrigins = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
+
+    // Check if origin is in allowed list (case-insensitive, trailing slash insensitive)
+    if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
+      if (isDevelopment) {
+        logger.info(`[CORS] Production - allowing origin: ${origin}`);
+      }
       return callback(null, true);
     }
 
@@ -242,7 +251,10 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Silently block in production (no logging to prevent info leakage)
+    // Log in production for debugging (without exposing sensitive info)
+    if (isProduction) {
+      logger.warn(`[CORS] Blocked origin: ${origin.substring(0, 50)}... (normalized: ${normalizedOrigin.substring(0, 50)})`);
+    }
     callback(new Error(`CORS not allowed for origin: ${origin}`), false);
   },
   credentials: true, // REQUIRED for cookies
@@ -264,6 +276,8 @@ const corsOptions = {
   ],
   exposedHeaders: ['Content-Range', 'X-Total-Count'],
   optionsSuccessStatus: 200, // Some legacy browsers (IE11) choke on 204
+  // Ensure CORS headers are always sent, even on errors
+  preflightContinue: false,
 };
 
 app.use(cors(corsOptions));

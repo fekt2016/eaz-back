@@ -2,6 +2,7 @@ const Notification = require('../../models/notification/notificationModel');
 const DeviceToken = require('../../models/notification/deviceTokenModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const { isMobileApp, isFromScreen } = require('../../middleware/mobileAppGuard');
 
 /**
