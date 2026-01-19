@@ -5,6 +5,7 @@ const shippingController = require('../../controllers/shared/shippingController'
 const authController = require('../../controllers/buyer/authController');
 const PickupCenter = require('../../models/shipping/pickupCenterModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const logger = require('../../utils/logger');
 
 const router = express.Router();
 
@@ -30,9 +31,9 @@ router.get(
 router.post(
   '/quote',
   (req, res, next) => {
-    console.log("📍 ===== SHIPPING QUOTE ROUTE HIT =====");
-    console.log("📍 POST /shipping/quote");
-    console.log("📍 Request body:", req.body);
+    logger.info("📍 ===== SHIPPING QUOTE ROUTE HIT =====");
+    logger.info("📍 POST /shipping/quote");
+    logger.info("📍 Request body:", req.body);
     next();
   },
   shippingQuoteController.calculateShippingQuote

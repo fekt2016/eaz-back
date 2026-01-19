@@ -1,3 +1,4 @@
+const logger = require('../logger');
 /**
  * Sanitize and validate redirect paths
  * Only allows internal routes to prevent open redirect vulnerabilities
@@ -21,14 +22,14 @@ const sanitizePath = (path, defaultPath = '/') => {
 
   // Prevent external redirects (security)
   if (trimmedPath.startsWith('http://') || trimmedPath.startsWith('https://')) {
-    console.warn(`[sanitizePath] Blocked external redirect: ${trimmedPath}`);
+    logger.warn(`[sanitizePath] Blocked external redirect: ${trimmedPath}`);
     return defaultPath;
   }
 
   // Prevent javascript: and data: protocols
   if (trimmedPath.toLowerCase().startsWith('javascript:') || 
       trimmedPath.toLowerCase().startsWith('data:')) {
-    console.warn(`[sanitizePath] Blocked dangerous protocol: ${trimmedPath}`);
+    logger.warn(`[sanitizePath] Blocked dangerous protocol: ${trimmedPath}`);
     return defaultPath;
   }
 
@@ -62,7 +63,7 @@ const sanitizePath = (path, defaultPath = '/') => {
   });
 
   if (!isAllowed) {
-    console.warn(`[sanitizePath] Blocked unauthorized route: ${trimmedPath}`);
+    logger.warn(`[sanitizePath] Blocked unauthorized route: ${trimmedPath}`);
     return defaultPath;
   }
 

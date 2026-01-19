@@ -290,13 +290,13 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
               'approved',
               approvedAmount
             );
-            console.log(`[Approve Refund] Seller notification created for seller ${sellerId}`);
+            logger.info(`[Approve Refund] Seller notification created for seller ${sellerId}`);
           } catch (sellerNotifError) {
-            console.error(`[Approve Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+            logger.error(`[Approve Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
           }
         }
       } catch (sellerNotificationError) {
-        console.error('[Approve Refund] Error creating seller notifications:', sellerNotificationError);
+        logger.error('[Approve Refund] Error creating seller notifications:', sellerNotificationError);
         // Don't fail refund approval if notification fails
       }
 
@@ -486,10 +486,10 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
           processedAt: new Date(),
         };
         await emailDispatcher.sendRefundProcessed(user, refundData, order);
-        console.log(`[approveRefund] ✅ Refund processed email sent to ${user.email}`);
+        logger.info(`[approveRefund] ✅ Refund processed email sent to ${user.email}`);
       }
     } catch (emailError) {
-      console.error('[approveRefund] Error sending refund processed email:', emailError.message);
+      logger.error('[approveRefund] Error sending refund processed email:', emailError.message);
       // Don't fail refund if email fails
     }
 
@@ -576,6 +576,7 @@ exports.rejectRefund = catchAsync(async (req, res, next) => {
       try {
         const notificationService = require('../../services/notification/notificationService');
         const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
         
         // Get unique seller IDs from refund items
         const sellerIds = new Set();
@@ -596,13 +597,13 @@ exports.rejectRefund = catchAsync(async (req, res, next) => {
               'rejected',
               refundRequest.totalRefundAmount
             );
-            console.log(`[Reject Refund] Seller notification created for seller ${sellerId}`);
+            logger.info(`[Reject Refund] Seller notification created for seller ${sellerId}`);
           } catch (sellerNotifError) {
-            console.error(`[Reject Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+            logger.error(`[Reject Refund] Error creating notification for seller ${sellerId}:`, sellerNotifError);
           }
         }
       } catch (sellerNotificationError) {
-        console.error('[Reject Refund] Error creating seller notifications:', sellerNotificationError);
+        logger.error('[Reject Refund] Error creating seller notifications:', sellerNotificationError);
         // Don't fail refund rejection if notification fails
       }
 

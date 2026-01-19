@@ -106,7 +106,7 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
   // Check if Paystack is configured
   const { paystackApi, PAYSTACK_SECRET_KEY } = require('../../config/paystack');
   if (!PAYSTACK_SECRET_KEY) {
-    console.error('[Wallet] PAYSTACK_SECRET_KEY is not configured');
+    logger.error('[Wallet] PAYSTACK_SECRET_KEY is not configured');
     return next(new AppError('Payment service is not configured. Please contact support.', 500));
   }
 
@@ -162,7 +162,7 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
       return next(new AppError('Minimum top-up amount is GH₵1.00', 400));
     }
 
-    console.log('[Wallet] Initializing Paystack payment:', {
+    logger.info('[Wallet] Initializing Paystack payment:', {
       email: userEmail,
       amount: amountInKobo,
       reference,
@@ -183,18 +183,18 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
 
     // Check if Paystack returned an error in the response
     if (!response.data || !response.data.status) {
-      console.error('[Wallet] Paystack returned invalid response:', response.data);
+      logger.error('[Wallet] Paystack returned invalid response:', response.data);
       return next(new AppError('Invalid response from payment service', 500));
     }
 
     if (response.data.status === false) {
       const errorMessage = response.data.message || 'Payment initialization failed';
-      console.error('[Wallet] Paystack error:', errorMessage, response.data);
+      logger.error('[Wallet] Paystack error:', errorMessage, response.data);
       return next(new AppError(errorMessage, 400));
     }
 
     if (!response.data.data || !response.data.data.authorization_url) {
-      console.error('[Wallet] Paystack response missing authorization URL:', response.data);
+      logger.error('[Wallet] Paystack response missing authorization URL:', response.data);
       return next(new AppError('Payment service did not return authorization URL', 500));
     }
 
@@ -210,7 +210,7 @@ exports.initiateTopup = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     // Enhanced error logging
-    console.error('[Wallet] Paystack initialization error:', {
+    logger.error('[Wallet] Paystack initialization error:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
@@ -251,6 +251,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
 
   // Check if transaction already processed (idempotency)
   const WalletTransaction = require('../../models/user/walletTransactionModel');
+const logger = require('../../utils/logger');
   const existingTransaction = await WalletTransaction.findOne({ reference });
 
   if (existingTransaction) {
@@ -273,7 +274,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
     // Paystack returns: { status: true, message: "...", data: { ...transaction data... } }
     if (!response.data || response.data.status === false) {
       const errorMessage = response.data?.message || 'Payment verification failed';
-      console.error('[Wallet] Paystack verification failed:', response.data);
+      logger.error('[Wallet] Paystack verification failed:', response.data);
       return next(new AppError(errorMessage, 400));
     }
 
@@ -281,14 +282,14 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
     const transaction = response.data.data;
 
     if (!transaction) {
-      console.error('[Wallet] Paystack response missing transaction data:', response.data);
+      logger.error('[Wallet] Paystack response missing transaction data:', response.data);
       return next(new AppError('Invalid response from payment service', 500));
     }
 
     // Check if transaction was successful
     if (transaction.status !== 'success') {
       const statusMessage = transaction.gateway_response || transaction.message || 'Payment not successful';
-      console.error('[Wallet] Transaction not successful:', {
+      logger.error('[Wallet] Transaction not successful:', {
         status: transaction.status,
         message: statusMessage,
         reference,
@@ -303,16 +304,16 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
     const userId = transaction.metadata?.userId || req.user?.id;
 
     if (!userId) {
-      console.error('[Wallet] User ID not found in transaction metadata:', transaction.metadata);
+      logger.error('[Wallet] User ID not found in transaction metadata:', transaction.metadata);
       return next(new AppError('User ID not found in transaction metadata', 400));
     }
 
     if (amount <= 0) {
-      console.error('[Wallet] Invalid amount in transaction:', amount);
+      logger.error('[Wallet] Invalid amount in transaction:', amount);
       return next(new AppError('Invalid transaction amount', 400));
     }
 
-    console.log('[Wallet] Verifying transaction:', {
+    logger.info('[Wallet] Verifying transaction:', {
       reference,
       amount,
       userId,
@@ -346,7 +347,7 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     // Enhanced error logging
-    console.error('[Wallet] Paystack verification error:', {
+    logger.error('[Wallet] Paystack verification error:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,

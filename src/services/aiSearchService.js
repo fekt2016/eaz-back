@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 /**
  * AI-Powered Search Service
@@ -15,16 +16,16 @@ const AI_ENABLED = process.env.AI_SEARCH_ENABLED === 'true' && !!OPENAI_API_KEY;
 
 // Log AI status on module load
 if (AI_ENABLED) {
-  console.log('✅ [AI Search] AI-Powered Search is ENABLED');
-  console.log(`   OpenAI API Key: ${OPENAI_API_KEY ? OPENAI_API_KEY.substring(0, 7) + '...' : 'NOT SET'}`);
+  logger.info('✅ [AI Search] AI-Powered Search is ENABLED');
+  logger.info(`   OpenAI API Key: ${OPENAI_API_KEY ? OPENAI_API_KEY.substring(0, 7) + '...' : 'NOT SET'}`);
 } else {
-  console.log('⚠️  [AI Search] AI-Powered Search is DISABLED');
+  logger.info('⚠️  [AI Search] AI-Powered Search is DISABLED');
   if (!process.env.OPENAI_API_KEY) {
-    console.log('   Reason: OPENAI_API_KEY not set');
+    logger.info('   Reason: OPENAI_API_KEY not set');
   } else if (process.env.AI_SEARCH_ENABLED !== 'true') {
-    console.log('   Reason: AI_SEARCH_ENABLED is not "true"');
+    logger.info('   Reason: AI_SEARCH_ENABLED is not "true"');
   }
-  console.log('   System will use rule-based search fallback');
+  logger.info('   System will use rule-based search fallback');
 }
 
 /**
@@ -38,7 +39,7 @@ async function expandKeywordsWithAI(query) {
     return [query]; // Return original if AI disabled or invalid query
   }
 
-  console.log(`[AI Search] 🤖 Expanding keywords for: "${query}"`);
+  logger.info(`[AI Search] 🤖 Expanding keywords for: "${query}"`);
   try {
     const prompt = `You are a search assistant for an e-commerce platform. Given a search query, generate 5-8 related search terms, synonyms, and variations that users might use to find similar products. Focus on product-related terms.
 
@@ -98,15 +99,15 @@ Search terms:`;
       
       // Limit to 8 terms max
       const result = expandedTerms.slice(0, 8);
-      console.log(`[AI Search] ✅ Expanded "${query}" to:`, result);
+      logger.info(`[AI Search] ✅ Expanded "${query}" to:`, result);
       return result;
     } catch (parseError) {
-      console.error('[AI Search] Failed to parse AI response:', parseError.message);
+      logger.error('[AI Search] Failed to parse AI response:', parseError.message);
       return [query];
     }
   } catch (error) {
     // Graceful fallback - return original query
-    console.error('[AI Search] Error expanding keywords:', error.message);
+    logger.error('[AI Search] Error expanding keywords:', error.message);
     return [query];
   }
 }
@@ -127,7 +128,7 @@ async function classifyQueryIntent(query) {
     };
   }
 
-  console.log(`[AI Search] 🎯 Classifying intent for: "${query}"`);
+  logger.info(`[AI Search] 🎯 Classifying intent for: "${query}"`);
   try {
     const prompt = `Analyze this e-commerce search query and classify the user's intent. Return a JSON object with:
 - "intent": one of ["product", "category", "brand", "question", "comparison"]
@@ -189,10 +190,10 @@ Return ONLY valid JSON (no markdown, no explanations). Example: {"intent": "prod
         };
       }
       
-      console.log(`[AI Search] ✅ Intent classified:`, intent);
+      logger.info(`[AI Search] ✅ Intent classified:`, intent);
       return intent;
     } catch (parseError) {
-      console.error('[AI Search] ❌ Failed to parse intent:', parseError.message);
+      logger.error('[AI Search] ❌ Failed to parse intent:', parseError.message);
       return {
         intent: 'product',
         confidence: 0.5,
@@ -201,7 +202,7 @@ Return ONLY valid JSON (no markdown, no explanations). Example: {"intent": "prod
       };
     }
   } catch (error) {
-    console.error('[AI Search] ❌ Error classifying intent:', error.message);
+    logger.error('[AI Search] ❌ Error classifying intent:', error.message);
     return {
       intent: 'product',
       confidence: 0.5,
@@ -223,7 +224,7 @@ async function generateSearchSuggestions(query, limit = 5) {
     return [];
   }
 
-  console.log(`[AI Search] 💡 Generating suggestions for: "${query}"`);
+  logger.info(`[AI Search] 💡 Generating suggestions for: "${query}"`);
   try {
     const prompt = `Generate ${limit} intelligent search suggestions for an e-commerce platform based on this query. Include:
 1. The exact query (if relevant)
@@ -275,14 +276,14 @@ Return ONLY a JSON array of ${limit} search suggestions (no explanations, no mar
       }
       
       const result = suggestions.slice(0, limit);
-      console.log(`[AI Search] ✅ Generated ${result.length} suggestions:`, result);
+      logger.info(`[AI Search] ✅ Generated ${result.length} suggestions:`, result);
       return result;
     } catch (parseError) {
-      console.error('[AI Search] ❌ Failed to parse suggestions:', parseError.message);
+      logger.error('[AI Search] ❌ Failed to parse suggestions:', parseError.message);
       return [];
     }
   } catch (error) {
-    console.error('[AI Search] ❌ Error generating suggestions:', error.message);
+    logger.error('[AI Search] ❌ Error generating suggestions:', error.message);
     return [];
   }
 }
@@ -298,7 +299,7 @@ async function enhanceQuery(query) {
     return query;
   }
 
-  console.log(`[AI Search] ✨ Enhancing query: "${query}"`);
+  logger.info(`[AI Search] ✨ Enhancing query: "${query}"`);
   try {
     const prompt = `Optimize this e-commerce search query for better product discovery. Remove unnecessary words, fix common typos, and focus on product-related keywords. Return ONLY the optimized query (no explanations, no JSON, just the query text).
 
@@ -335,13 +336,13 @@ Optimized query:`;
     const enhanced = response.data.choices[0]?.message?.content?.trim();
     const result = enhanced || query;
     if (result !== query) {
-      console.log(`[AI Search] ✅ Enhanced "${query}" → "${result}"`);
+      logger.info(`[AI Search] ✅ Enhanced "${query}" → "${result}"`);
     } else {
-      console.log(`[AI Search] ⚠️ Query unchanged: "${query}"`);
+      logger.info(`[AI Search] ⚠️ Query unchanged: "${query}"`);
     }
     return result;
   } catch (error) {
-    console.error('[AI Search] ❌ Error enhancing query:', error.message);
+    logger.error('[AI Search] ❌ Error enhancing query:', error.message);
     return query; // Fallback to original
   }
 }

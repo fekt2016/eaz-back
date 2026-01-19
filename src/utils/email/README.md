@@ -2,21 +2,21 @@
 
 ## Overview
 
-The email service uses **SendGrid exclusively** for all email operations. SendGrid provides reliable, scalable email delivery with professional templates and analytics.
+The email service uses **Resend exclusively** for all email operations. Resend provides reliable, scalable email delivery with simple APIs and supports using your own verified domain.
 
-## SendGrid Setup
+## Resend Setup
 
-### 1. Install SendGrid Package
+### 1. Install Resend Package
 
 ```bash
-npm install @sendgrid/mail
+npm install resend
 ```
 
-### 2. Get SendGrid API Key
+### 2. Get Resend API Key
 
-1. Sign up at [SendGrid](https://sendgrid.com/)
-2. Go to Settings > API Keys
-3. Create a new API Key with "Full Access" or "Mail Send" permissions
+1. Sign up at [Resend](https://resend.com/)
+2. Go to API Keys
+3. Create a new API Key
 4. Copy the API key
 
 ### 3. Configure Environment Variables
@@ -24,20 +24,28 @@ npm install @sendgrid/mail
 Add to your `.env` file:
 
 ```env
+<<<<<<< HEAD
 # SendGrid Configuration (REQUIRED)
 SENDGRID_API_KEY=your_sendgrid_api_key_here
 SENDGRID_FROM_EMAIL=noreply@yourdomain.com  # Optional: Override default sender
 EMAIL_FROM_NAME=Saysay  # Optional: Sender name
 EMAIL_FROM=noreply@yourdomain.com  # Default sender email
 FRONTEND_URL=https://eazworld.com  # For email links
+=======
+# Resend Configuration (REQUIRED)
+RESEND_API_KEY=your_resend_api_key_here
+EMAIL_FROM=noreply@yourdomain.com        # Default sender email (must be verified in Resend)
+EMAIL_FROM_NAME=EazShop                  # Optional: Sender name
+FRONTEND_URL=https://eazworld.com        # For email links
+>>>>>>> 6d2bc77 (first ci/cd push)
 ```
 
-### 4. Verify Domain in SendGrid (Production)
+### 4. Verify Domain in Resend (Production)
 
-For production, verify your sending domain in SendGrid:
-1. Go to Settings > Sender Authentication
-2. Authenticate your domain
-3. Add SPF and DKIM records to your DNS
+For production, verify your sending domain in Resend:
+1. Go to Domains in the Resend dashboard
+2. Add and verify your domain
+3. Add SPF, DKIM, and DMARC records to your DNS
 
 ## Usage
 
@@ -70,74 +78,57 @@ await sendWelcomeEmail('user@example.com', 'John Doe');
 - `sendLoginEmail(email, name, loginInfo)` - Login notification email
 - `sendLoginOtpEmail(email, otp, name)` - Login OTP email
 
-### Access SendGrid Service Directly
-
-```javascript
-const { sendGridService } = require('./utils/email/emailService');
-
-// Use SendGrid-specific functions
-await sendGridService.sendPasswordResetEmail(email, token);
-```
-
 ## Architecture
 
 ### Lazy Loading Pattern
 
-The SendGrid client uses lazy loading to:
-- Prevent WebAssembly memory allocation at startup
-- Only load SendGrid when first needed
-- Reuse the same client instance across all operations
+The Resend client is created once and reused:
+- Prevents unnecessary module loading at startup
+- Uses a single Resend client instance across all operations
 
 ### File Structure
 
 ```
 src/utils/email/
-├── sendGridClient.js      # Lazy-loaded SendGrid singleton
-├── sendGridService.js     # SendGrid email service functions
-├── emailService.js        # Main email service (SendGrid only)
+├── resendClient.js       # Lazy-loaded Resend client
+├── resendService.js      # Resend email service functions (templates + helpers)
+├── emailService.js       # Main email service (Resend only)
 └── README.md             # This file
 ```
 
 ## Error Handling
 
 The service includes proper error handling:
-- Validates SendGrid configuration on startup
-- Throws clear error messages if SendGrid is not configured
-- Logs detailed error information including response body
-- All email functions throw errors if SendGrid is unavailable
+- Validates environment configuration on startup (via `config/env.js`)
+- Throws clear error messages if Resend is not configured
+- Logs detailed error information
+- All email functions throw errors if the email provider is unavailable
 
 ## Requirements
 
-- **SENDGRID_API_KEY** environment variable is **REQUIRED**
-- **@sendgrid/mail** package must be installed
-- SendGrid account with verified sender (for production)
+- **RESEND_API_KEY** environment variable is **REQUIRED**
+- **EMAIL_FROM** must be set and correspond to a verified sender/domain in Resend
+- Resend account with verified domain (for production)
 
 ## Production Checklist
 
-- [ ] Install `@sendgrid/mail` package
-- [ ] Set `SENDGRID_API_KEY` in environment variables
-- [ ] Verify sending domain in SendGrid dashboard
-- [ ] Add SPF and DKIM records to DNS
+- [ ] Install `resend` package
+- [ ] Set `RESEND_API_KEY` and `EMAIL_FROM` in environment variables
+- [ ] Verify sending domain in Resend dashboard
+- [ ] Add SPF, DKIM, and DMARC records to DNS
 - [ ] Test email delivery in production environment
-- [ ] Monitor SendGrid dashboard for delivery rates
+- [ ] Monitor Resend dashboard for delivery rates
 
 ## Troubleshooting
 
-### Error: "SENDGRID_API_KEY is required"
+### Error: "RESEND_API_KEY is required" or Resend client not configured
 
-**Solution:** Add `SENDGRID_API_KEY` to your `.env` file and restart the application.
-
-### Error: "SendGrid service is not available"
-
-**Solution:** 
-1. Ensure `@sendgrid/mail` is installed: `npm install @sendgrid/mail`
-2. Check that `sendGridService.js` exists and is valid
-3. Restart the application
+**Solution:** Add `RESEND_API_KEY` (and `EMAIL_FROM`) to your `.env` file and restart the application.
 
 ### Emails not being delivered
 
 **Solution:**
-1. Check SendGrid dashboard for bounce/spam reports
+1. Check Resend dashboard for bounce/spam reports
 2. Verify your sender domain is authenticated
-3. Check SendGrid API key permissions
-4. Review SendGrid activity logs
+3. Check Resend API key permissions
+4. Review Resend activity logs

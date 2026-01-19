@@ -15,6 +15,7 @@ const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const Product = require('../../models/product/productModel');
+const logger = require('../../utils/logger');
 
 /**
  * Helper function to calculate totalStock for products
@@ -48,7 +49,7 @@ const calculateTotalStock = (products) => {
       }
     } catch (error) {
       // Log error but don't break the entire request
-      console.error('[Wishlist] Error calculating totalStock for product:', error);
+      logger.error('[Wishlist] Error calculating totalStock for product:', error);
       // Set default value to prevent undefined errors
       if (item.product) {
         item.product.totalStock = 0;
@@ -166,7 +167,7 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
       try {
         return item.product && item.product._id && item.product._id.toString() === productId;
       } catch (error) {
-        console.error('[Wishlist] Error checking product existence:', error);
+        logger.error('[Wishlist] Error checking product existence:', error);
         return false;
       }
     }

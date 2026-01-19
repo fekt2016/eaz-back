@@ -37,9 +37,9 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
       'approved',
       product.name
     );
-    console.log(`[Approve Product] Notification created for seller ${product.seller}`);
+    logger.info(`[Approve Product] Notification created for seller ${product.seller}`);
   } catch (notificationError) {
-    console.error('[Approve Product] Error creating notification:', notificationError);
+    logger.error('[Approve Product] Error creating notification:', notificationError);
     // Don't fail approval if notification fails
   }
 
@@ -100,15 +100,16 @@ exports.rejectProduct = catchAsync(async (req, res, next) => {
   // Notify seller about product rejection
   try {
     const notificationService = require('../../services/notification/notificationService');
+const logger = require('../../utils/logger');
     await notificationService.createProductNotification(
       product.seller,
       product._id,
       'rejected',
       product.name
     );
-    console.log(`[Reject Product] Notification created for seller ${product.seller}`);
+    logger.info(`[Reject Product] Notification created for seller ${product.seller}`);
   } catch (notificationError) {
-    console.error('[Reject Product] Error creating notification:', notificationError);
+    logger.error('[Reject Product] Error creating notification:', notificationError);
     // Don't fail rejection if notification fails
   }
 

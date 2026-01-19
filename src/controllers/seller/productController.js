@@ -3,6 +3,7 @@ const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const stream = require('stream');
+const logger = require('../../utils/logger');
 const Review = require('../../models/product/reviewModel');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
@@ -53,7 +54,7 @@ const upload = multer({
   },
 });
 exports.conditionalUpload = (req, res, next) => {
-  // console.log(req.headers['content-type']);
+  // logger.info(req.headers['content-type']);
   // Check if files are present in the request
   if (req.headers['content-type']?.startsWith('multipart/form-data')) {
     // Use upload.any() to accept all files, then we'll process them in resizeProductImages
@@ -65,8 +66,9 @@ exports.conditionalUpload = (req, res, next) => {
 exports.uploadProductImage = upload.any();
 
 exports.resizeProductImages = catchAsync(async (req, res, next) => {
-  // console.log(req);
+  // logger.info(req);
   req.body = { ...req.body };
+<<<<<<< HEAD
   
   // Convert req.files array to object format for easier access
   // When using upload.any(), files are in array format with fieldname property
@@ -84,12 +86,21 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   
   req.files = filesObj;
   console.log('req.files', req.files);
+=======
+  req.files = { ...req.files };
+  logger.info('req.files', req.files);
+>>>>>>> 6d2bc77 (first ci/cd push)
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
+<<<<<<< HEAD
     // console.log('cloudinary', cloudinary);
     if (req.files && Object.keys(req.files).length > 0) {
+=======
+    // logger.info('cloudinary', cloudinary);
+    if (req.files) {
+>>>>>>> 6d2bc77 (first ci/cd push)
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
       const uploadFromBuffer = (buffer, options) => {
@@ -121,7 +132,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         });
 
         req.body.imageCover = coverResult.secure_url;
-        console.log('Cover image URL:', req.body.imageCover);
+        logger.info('Cover image URL:', req.body.imageCover);
       }
 
       // Process product additional images
@@ -217,10 +228,10 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       }
 
       req.body.images = [...parseExistingImages, ...imagesUrls];
-      console.log('All images:', req.body);
+      logger.info('All images:', req.body);
     }
   } catch (err) {
-    console.log(err.message);
+    logger.info(err.message);
   }
 
   next();
@@ -288,13 +299,13 @@ exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
 });
 exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
   const sellerId = req.params.sellerId;
-  console.log('🔍 [getAllPublicProductsBySeller] Seller ID:', sellerId);
+  logger.info('🔍 [getAllPublicProductsBySeller] Seller ID:', sellerId);
 
   // First, check if seller has any products at all (regardless of status)
   const allProducts = await Product.find({ seller: sellerId });
-  console.log('🔍 [getAllPublicProductsBySeller] Total products for seller (all statuses):', allProducts.length);
+  logger.info('🔍 [getAllPublicProductsBySeller] Total products for seller (all statuses);:', allProducts.length);
   if (allProducts.length > 0) {
-    console.log('🔍 [getAllPublicProductsBySeller] All product statuses:', allProducts.map(p => ({
+    logger.info('🔍 [getAllPublicProductsBySeller] All product statuses:', allProducts.map(p => ({
       id: p._id,
       name: p.name,
       moderationStatus: p.moderationStatus,
@@ -316,21 +327,21 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
     .populate('parentCategory', 'name slug')
     .populate('subCategory', 'name slug');
 
-  console.log('🔍 [getAllPublicProductsBySeller] Found approved/pending products:', products.length);
-  console.log('🔍 [getAllPublicProductsBySeller] Query filter:', {
+  logger.info('🔍 [getAllPublicProductsBySeller] Found approved/pending products:', products.length);
+  logger.info('🔍 [getAllPublicProductsBySeller] Query filter:', {
     seller: sellerId,
     moderationStatus: { $in: ['approved', 'pending'] },
     status: { $in: ['active', 'out_of_stock'] }
   });
   if (products.length > 0) {
-    console.log('🔍 [getAllPublicProductsBySeller] Products:', products.map(p => ({
+    logger.info('🔍 [getAllPublicProductsBySeller] Products:', products.map(p => ({
       id: p._id,
       name: p.name,
       moderationStatus: p.moderationStatus,
       status: p.status
     })));
   } else if (allProducts.length > 0) {
-    console.log('⚠️ [getAllPublicProductsBySeller] Seller has products but none are approved/pending. Showing all active products instead.');
+    logger.info('⚠️ [getAllPublicProductsBySeller] Seller has products but none are approved/pending. Showing all active products instead.');
     // If seller has products but none are approved/pending, show all active products
     // This includes rejected products so seller can see them on their page
     const activeProducts = await Product.find({
@@ -338,9 +349,9 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
       status: { $in: ['active', 'out_of_stock'] }
     }).populate('parentCategory', 'name slug').populate('subCategory', 'name slug');
 
-    console.log('🔍 [getAllPublicProductsBySeller] Active products (including rejected):', activeProducts.length);
+    logger.info('🔍 [getAllPublicProductsBySeller] Active products (including rejected);:', activeProducts.length);
     if (activeProducts.length > 0) {
-      console.log('🔍 [getAllPublicProductsBySeller] Active product statuses:', activeProducts.map(p => ({
+      logger.info('🔍 [getAllPublicProductsBySeller] Active product statuses:', activeProducts.map(p => ({
         id: p._id,
         name: p.name,
         moderationStatus: p.moderationStatus,
@@ -348,7 +359,7 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
       })));
     }
     const fallbackResponse = { status: 'success', data: { products: activeProducts } };
-    console.log("🔍 [getAllPublicProductsBySeller] Fallback response structure:", {
+    logger.info("🔍 [getAllPublicProductsBySeller] Fallback response structure:", {
       status: fallbackResponse.status,
       hasData: !!fallbackResponse.data,
       hasProducts: !!fallbackResponse.data.products,
@@ -358,13 +369,13 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
     res.status(200).json(fallbackResponse);
     return;
   }
-  console.log("🔍 [getAllPublicProductsBySeller] Final products to return:", products.length);
-  console.log("🔍 [getAllPublicProductsBySeller] Products array type:", Array.isArray(products));
-  console.log("🔍 [getAllPublicProductsBySeller] First product sample:", products[0] ? { id: products[0]._id, name: products[0].name } : 'none');
+  logger.info("🔍 [getAllPublicProductsBySeller] Final products to return:", products.length);
+  logger.info("🔍 [getAllPublicProductsBySeller] Products array type:", Array.isArray(products));
+  logger.info("🔍 [getAllPublicProductsBySeller] First product sample:", products[0] ? { id: products[0]._id, name: products[0].name } : 'none');
 
   // Don't return error if no products - just return empty array
   const response = { status: 'success', data: { products } };
-  console.log("🔍 [getAllPublicProductsBySeller] Response structure:", {
+  logger.info("🔍 [getAllPublicProductsBySeller] Response structure:", {
     status: response.status,
     hasData: !!response.data,
     hasProducts: !!response.data.products,
@@ -504,10 +515,10 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
       .lean();
 
     // Debug logging
-    console.log(`[getProductReviews] Product ID: ${productId}`);
-    console.log(`[getProductReviews] User: ${req.user?.id || 'anonymous'}, Role: ${req.user?.role || 'none'}`);
-    console.log(`[getProductReviews] Status filter:`, statusFilter);
-    console.log(`[getProductReviews] Found ${reviews.length} reviews`);
+    logger.info(`[getProductReviews] Product ID: ${productId}`);
+    logger.info(`[getProductReviews] User: ${req.user?.id || 'anonymous'}, Role: ${req.user?.role || 'none'}`);
+    logger.info(`[getProductReviews] Status filter:`, statusFilter);
+    logger.info(`[getProductReviews] Found ${reviews.length} reviews`);
 
     res.status(200).json({
       success: true,
@@ -518,7 +529,7 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching product reviews:', error);
+    logger.error('Error fetching product reviews:', error);
     res.status(500).json({ error: 'Server error while retrieving reviews' });
   }
 });
@@ -531,10 +542,20 @@ exports.getProduct = handleFactory.getOne(Product, [
 ]);
 
 exports.getProductById = catchAsync(async (req, res, next) => {
-  const productId = new mongoose.Types.ObjectId(req.params.id);
+  const { id } = req.params;
 
+  // Validate product ID
+  if (!id || id === 'undefined' || id === 'null') {
+    return next(new AppError('Product ID is required', 400));
+  }
 
-  console.log('productId', productId);
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new AppError(`Invalid product ID format: ${id}`, 400));
+  }
+
+  const productId = new mongoose.Types.ObjectId(id);
+  logger.info('productId', productId);
 
   // Fetch product with seller populated, but also get raw seller ID
   const product = await Product.findById(productId)
@@ -549,7 +570,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     .lean(); // Use lean() to get plain object for easier ID access
 
   if (!product) {
-    console.log('[getProductById] Product not found in database:', productId);
+    logger.info('[getProductById] Product not found in database:', productId);
     return next(new AppError('Product not found', 404));
   }
 
@@ -567,7 +588,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     }
   }
 
-  console.log('[getProductById] Product found:', {
+  logger.info('[getProductById] Product found:', {
     productId: product._id,
     moderationStatus: product.moderationStatus,
     sellerId: productSellerId,
@@ -615,7 +636,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
       // Seller owns product if IDs match (role check is secondary)
       isSellerOwnProduct = isOwner;
 
-      console.log('[getProductById] Seller ownership check:', {
+      logger.info('[getProductById] Seller ownership check:', {
         productSellerId: productSellerId,
         userIdStr: userIdStr,
         userRole: req.user.role,
@@ -635,7 +656,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     
     // If not seller's own product and cannot access (not approved and not undefined), deny access
     if (!isSellerOwnProduct && !canAccess) {
-      console.log('[getProductById] ❌ Access denied:', {
+      logger.info('[getProductById] ❌ Access denied:', {
         productId: productId,
         productModerationStatus: moderationStatus,
         originalModerationStatus: product.moderationStatus,
@@ -650,9 +671,9 @@ exports.getProductById = catchAsync(async (req, res, next) => {
       return next(new AppError('Product not found or not available', 404));
     }
 
-    console.log('[getProductById] ✅ Access granted');
+    logger.info('[getProductById] ✅ Access granted');
   } else {
-    console.log('[getProductById] ✅ Admin access - granted');
+    logger.info('[getProductById] ✅ Admin access - granted');
   }
 
   // Fetch product again as mongoose document for proper response (with all populated fields)
@@ -715,6 +736,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     if (req.query.maxPrice) baseQuery.price.$lte = Number(req.query.maxPrice);
   }
 
+<<<<<<< HEAD
   // 5. Apply buyer-safe filter (exclude unverified seller products)
   const isAdmin = req.user?.role === 'admin';
   const isSeller = req.user?.role === 'seller';
@@ -727,6 +749,11 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   const products = await Product.find(buyerSafeQuery);
   // console.log(products);
   // console.log(products);
+=======
+  const products = await Product.find(baseQuery);
+  // logger.info(products);
+  // logger.info(products);
+>>>>>>> 6d2bc77 (first ci/cd push)
   // 5. Execute query
   // const features = new APIFeatures(Product.find(baseQuery), req.query)
   //   .filter()
@@ -735,9 +762,15 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   //   .paginate();
 
   // const products = await features.query;
+<<<<<<< HEAD
   // console.log(products);
   const totalCount = await Product.countDocuments(buyerSafeQuery);
   // console.log(products);
+=======
+  // logger.info(products);
+  const totalCount = await Product.countDocuments(baseQuery);
+  // logger.info(products);
+>>>>>>> 6d2bc77 (first ci/cd push)
   // 6. Send response
   res.status(200).json({
     status: 'success',
@@ -807,9 +840,9 @@ exports.createProduct = catchAsync(async (req, res, next) => {
               req.user.id,
               seller?.shopName || seller?.name || 'Seller'
             );
-            console.log(`[Product Creation] Admin notification created for product ${createdProduct._id}`);
+            logger.info(`[Product Creation] Admin notification created for product ${createdProduct._id}`);
           } catch (notificationError) {
-            console.error('[Product Creation] Error creating admin notification:', notificationError);
+            logger.error('[Product Creation] Error creating admin notification:', notificationError);
             // Don't fail product creation if notification fails
           }
         }
@@ -834,12 +867,12 @@ exports.createProduct = catchAsync(async (req, res, next) => {
             }
 
             await seller.save({ validateBeforeSave: false });
-            console.log('[Product] Seller onboarding updated after product creation');
+            logger.info('[Product] Seller onboarding updated after product creation');
           }
         }
       } catch (onboardingError) {
         // Don't fail product creation if onboarding update fails
-        console.error('[Product] Error updating onboarding:', onboardingError);
+        logger.error('[Product] Error updating onboarding:', onboardingError);
       }
     });
   }

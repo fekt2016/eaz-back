@@ -4,6 +4,7 @@ const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
 const Product = require('../../models/product/productModel');
+const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 // Set user ID from authenticated user
@@ -141,7 +142,7 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
 // Delete cart item (user operation)
 // controllers/cartController.js
 exports.deleteCartItem = catchAsync(async (req, res, next) => {
-  console.log('deleteCartItem params:', req.params, 'user:', req.user.id);
+  logger.info('deleteCartItem params:', req.params, 'user:', req.user.id);
 
   const { itemId } = req.params;
 
@@ -160,7 +161,7 @@ exports.deleteCartItem = catchAsync(async (req, res, next) => {
     .populate('products.product')
     .lean();
 
-  console.log('after pull:', populatedCart.products);
+  logger.info('after pull:', populatedCart.products);
 
   // Filter out null products
   if (populatedCart && populatedCart.products) {
@@ -239,7 +240,7 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   if (existingItemIndex !== -1) {
     // Item exists, update quantity
     cart.products[existingItemIndex].quantity += quantity;
-    console.log(`[addToCart] Updated existing item quantity: ${cart.products[existingItemIndex].quantity}`);
+    logger.info(`[addToCart] Updated existing item quantity: ${cart.products[existingItemIndex].quantity}`);
   } else {
     // Item doesn't exist, add new item
     const newItem = {
@@ -252,12 +253,12 @@ exports.addToCart = catchAsync(async (req, res, next) => {
     }
     
     cart.products.push(newItem);
-    console.log(`[addToCart] Added new item to cart: product=${productId}, variant=${normalizedVariantId || 'none'}, quantity=${quantity}`);
+    logger.info(`[addToCart] Added new item to cart: product=${productId}, variant=${normalizedVariantId || 'none'}, quantity=${quantity}`);
   }
 
   // Save the cart
   await cart.save();
-  console.log(`[addToCart] Cart saved with ${cart.products.length} items`);
+  logger.info(`[addToCart] Cart saved with ${cart.products.length} items`);
   const populatedCart = await populateCart(Cart.findById(cart._id));
 
   if (!populatedCart) {

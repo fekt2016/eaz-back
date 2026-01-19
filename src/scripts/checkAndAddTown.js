@@ -10,6 +10,7 @@ const { getDistanceKm } = require('../services/distanceService');
 const { classifyZone } = require('../services/zoneClassificationService');
 const { WAREHOUSE_LOCATION } = require('../config/warehouseConfig');
 const TownZoneAssignment = require('../models/shipping/townZoneAssignmentModel');
+const logger = require('../utils/logger');
 
 // Connect to database
 async function connectDatabase() {
@@ -32,10 +33,10 @@ async function connectDatabase() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB');
+    logger.info('✅ Connected to MongoDB');
     return true;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    logger.error('❌ Error connecting to MongoDB:', error.message);
     throw error;
   }
 }
@@ -47,36 +48,36 @@ async function checkAndAddTown(townName) {
     // Check if town exists
     const existing = await TownZoneAssignment.findOne({ town: townName.trim() });
     if (existing) {
-      console.log('\n📋 Town Found in Database:');
-      console.log('='.repeat(60));
-      console.log(`Town: ${existing.town}`);
-      console.log(`Zone: ${existing.zone}`);
-      console.log(`Distance: ${existing.km} km`);
-      console.log(`Coordinates: ${existing.lat}, ${existing.lng}`);
-      console.log(`Google Name: ${existing.googleName || existing.geocodedAddress || 'N/A'}`);
-      console.log(`Manual Override: ${existing.manualOverride ? 'Yes' : 'No'}`);
-      console.log(`Updated: ${existing.updatedAt || existing.createdAt}`);
-      console.log('='.repeat(60));
+      logger.info('\n📋 Town Found in Database:');
+      logger.info('='.repeat(60));
+      logger.info(`Town: ${existing.town}`);
+      logger.info(`Zone: ${existing.zone}`);
+      logger.info(`Distance: ${existing.km} km`);
+      logger.info(`Coordinates: ${existing.lat}, ${existing.lng}`);
+      logger.info(`Google Name: ${existing.googleName || existing.geocodedAddress || 'N/A'}`);
+      logger.info(`Manual Override: ${existing.manualOverride ? 'Yes' : 'No'}`);
+      logger.info(`Updated: ${existing.updatedAt || existing.createdAt}`);
+      logger.info('='.repeat(60));
       return { exists: true, data: existing };
     }
 
     // Town doesn't exist, add it
-    console.log(`\n📍 Town not found. Adding "${townName}"...\n`);
+    logger.info(`\n📍 Town not found. Adding "${townName}"...\n`);
 
     // Step 1: Geocode
-    console.log('📍 Geocoding...');
+    logger.info('📍 Geocoding...');
     const geocodeResult = await geocodeAddress(townName.trim());
     
     if (!geocodeResult || !geocodeResult.lat || !geocodeResult.lng) {
-      console.error('❌ Failed to geocode town');
+      logger.error('❌ Failed to geocode town');
       return { exists: false, added: false, reason: 'geocode_failed' };
     }
 
-    console.log(`✅ Geocoded: ${geocodeResult.formattedAddress}`);
-    console.log(`   Coordinates: ${geocodeResult.lat}, ${geocodeResult.lng}`);
+    logger.info(`✅ Geocoded: ${geocodeResult.formattedAddress}`);
+    logger.info(`   Coordinates: ${geocodeResult.lat}, ${geocodeResult.lng}`);
 
     // Step 2: Calculate distance
-    console.log('\n📏 Calculating distance from warehouse...');
+    logger.info('\n📏 Calculating distance from warehouse...');
     const warehouseLat = WAREHOUSE_LOCATION.lat;
     const warehouseLng = WAREHOUSE_LOCATION.lng;
     const distanceResult = await getDistanceKm(
@@ -86,11 +87,11 @@ async function checkAndAddTown(townName) {
       geocodeResult.lng
     );
     const distanceKm = Math.round(distanceResult.distanceKm * 100) / 100;
-    console.log(`✅ Distance: ${distanceKm} km`);
+    logger.info(`✅ Distance: ${distanceKm} km`);
 
     // Step 3: Classify zone
     const calculatedZone = classifyZone(distanceKm);
-    console.log(`✅ Assigned Zone: ${calculatedZone}`);
+    logger.info(`✅ Assigned Zone: ${calculatedZone}`);
 
     // Step 4: Create assignment
     const newAssignment = new TownZoneAssignment({
@@ -107,22 +108,22 @@ async function checkAndAddTown(townName) {
 
     await newAssignment.save();
 
-    console.log('\n✅ Town Added Successfully:');
-    console.log('='.repeat(60));
-    console.log(`Town: ${newAssignment.town}`);
-    console.log(`Zone: ${newAssignment.zone}`);
-    console.log(`Distance: ${newAssignment.km} km`);
-    console.log(`Coordinates: ${newAssignment.lat}, ${newAssignment.lng}`);
-    console.log(`Google Name: ${newAssignment.googleName}`);
-    console.log('='.repeat(60));
+    logger.info('\n✅ Town Added Successfully:');
+    logger.info('='.repeat(60));
+    logger.info(`Town: ${newAssignment.town}`);
+    logger.info(`Zone: ${newAssignment.zone}`);
+    logger.info(`Distance: ${newAssignment.km} km`);
+    logger.info(`Coordinates: ${newAssignment.lat}, ${newAssignment.lng}`);
+    logger.info(`Google Name: ${newAssignment.googleName}`);
+    logger.info('='.repeat(60));
 
     return { exists: false, added: true, data: newAssignment };
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    logger.error('❌ Error:', error.message);
     return { exists: false, added: false, error: error.message };
   } finally {
     await mongoose.disconnect();
-    console.log('\n🔌 Disconnected from MongoDB');
+    logger.info('\n🔌 Disconnected from MongoDB');
   }
 }
 

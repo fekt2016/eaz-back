@@ -1,6 +1,7 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Neighborhood = require('../../models/shipping/neighborhoodModel');
+const logger = require('../../utils/logger');
 const { geocodeAddress } = require('../../services/googleMapsService');
 const { getDistanceKm } = require('../../services/distanceService');
 const { classifyZone } = require('../../services/zoneClassificationService');
@@ -46,7 +47,7 @@ exports.createNeighborhood = catchAsync(async (req, res, next) => {
         placeId = geocodeResult.placeId;
       }
     } catch (error) {
-      console.error('Geocoding error:', error.message);
+      logger.error('Geocoding error:', error.message);
     }
   }
 
@@ -62,7 +63,7 @@ exports.createNeighborhood = catchAsync(async (req, res, next) => {
       distanceFromHQ = Math.round(distanceResult.distanceKm * 100) / 100;
       assignedZone = classifyZone(distanceFromHQ);
     } catch (error) {
-      console.error('Distance calculation error:', error.message);
+      logger.error('Distance calculation error:', error.message);
     }
   }
 
@@ -216,7 +217,7 @@ exports.updateNeighborhood = catchAsync(async (req, res, next) => {
         neighborhood.distanceFromHQ = Math.round(distanceResult.distanceKm * 100) / 100;
         neighborhood.assignedZone = classifyZone(neighborhood.distanceFromHQ);
       } catch (error) {
-        console.error('Distance calculation error:', error.message);
+        logger.error('Distance calculation error:', error.message);
       }
     }
   }

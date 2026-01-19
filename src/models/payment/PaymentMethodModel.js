@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 
 const paymentMethodSchema = new mongoose.Schema(
   {
@@ -29,14 +30,14 @@ const paymentMethodSchema = new mongoose.Schema(
       type: String,
       enum: ['MTN', 'Vodafone', 'AirtelTigo'],
       // required: function () {
-      //   console.log('this.type', this.type);
+      //   logger.info('this.type', this.type);
       //   return this.type === 'mobile_money';
       // },
     },
     mobileNumber: {
       type: String,
       // required: function () {
-      //   console.log('this.type', this.type);
+      //   logger.info('this.type', this.type);
       //   return this.type === 'mobile_money';
       // },
       trim: true,

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const User = require('../../models/user/userModel');
 const Permission = require('../../models/user/permissionModel');
+const logger = require('../logger');
 
 dotenv.config();
 
@@ -12,12 +13,12 @@ exports.migratePermissions = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('Database connected');
+    logger.info('Database connected');
 
     // Get all existing users
     const users = await User.find({ permissions: { $exists: false } });
 
-    console.log(`Migrating permissions for ${users.length} users...`);
+    logger.info(`Migrating permissions for ${users.length} users...`);
 
     for (const user of users) {
       // Create new permission settings with defaults
@@ -33,13 +34,13 @@ exports.migratePermissions = async () => {
       user.permissions = permission._id;
       await user.save();
 
-      console.log(`Migrated permissions for user: ${user.email}`);
+      logger.info(`Migrated permissions for user: ${user.email}`);
     }
 
-    console.log('Migration completed successfully!');
+    logger.info('Migration completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('Migration failed:', error);
+    logger.error('Migration failed:', error);
     process.exit(1);
   }
 };

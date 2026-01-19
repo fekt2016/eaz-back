@@ -5,8 +5,12 @@ const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
+<<<<<<< HEAD
 const { isMobileApp } = require('../../middleware/mobileAppGuard');
 const { checkFeature, FEATURES } = require('../../utils/featureFlags');
+=======
+const logger = require('../../utils/logger');
+>>>>>>> 6d2bc77 (first ci/cd push)
 // Get permissions - creates default permissions if not found
 exports.getPermissions = catchAsync(async (req, res, next) => {
   try {
@@ -42,7 +46,7 @@ exports.getPermissions = catchAsync(async (req, res, next) => {
       data: permissions,
     });
   } catch (error) {
-    console.error('[getPermissions] Error:', error);
+    logger.error('[getPermissions] Error:', error);
     return next(new AppError('Failed to fetch permissions', 500));
   }
 });
@@ -82,7 +86,7 @@ exports.updateSMSPrefs = catchAsync(async (req, res, next) => {
 
 // Update data sharing
 exports.updateDataSharing = catchAsync(async (req, res, next) => {
-  console.log(req.body);
+  logger.info(req.body);
   const data = req.body;
   try {
     const permissions = await Permission.findOneAndUpdate(
@@ -101,7 +105,7 @@ exports.updateLocationAccess = catchAsync(async (req, res, next) => {
   // Extract level from request body
   const { level } = req.body;
 
-  console.log('Received level:', level); // Should now log "full"
+  logger.info('Received level:', level); // Should now log "full"
 
   // Validate level
   const allowedLevels = ['full', 'limited', 'none'];
@@ -115,7 +119,7 @@ exports.updateLocationAccess = catchAsync(async (req, res, next) => {
       { locationAccess: level },
       { new: true, runValidators: true },
     );
-    console.log('permissions', permissions);
+    logger.info('permissions', permissions);
     res.json({ locationAccess: permissions.locationAccess });
   } catch (error) {
     res.status(400).json({ message: 'Invalid access level' });
@@ -221,7 +225,7 @@ exports.requestDataDownload = catchAsync(async (req, res, next) => {
       exportId: exportId,
     });
   } catch (error) {
-    console.error('Data export error:', error);
+    logger.error('Data export error:', error);
     next(new AppError('Could not process data export request', 500));
   }
 });
@@ -233,15 +237,20 @@ exports.requestAccountDeletion = catchAsync(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
   if (!user.password) {
-    console.error(`User ${req.user.id} has no password set`);
+    logger.error(`User ${req.user.id} has no password set`);
     return next(new AppError('Password not set for this account', 400));
   }
 
   // 2. Verify password - using updated method signature
   if (!(await user.correctPassword(req.body.password, user.password))) {
+<<<<<<< HEAD
     console.log('Incorrect password');
     // SECURITY: Generic error message to prevent information leakage
     return next(new AppError('Invalid credentials', 401));
+=======
+    logger.info('Incorrect password');
+    return next(new AppError('Incorrect password', 401));
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   // Schedule deletion
@@ -294,7 +303,7 @@ exports.processAccountDeletions = catchAsync(async () => {
       // Send confirmation email
       // sendDeletionConfirmation(user.originalEmail);
     } catch (error) {
-      console.error(`Failed to delete account ${user._id}:`, error);
+      logger.error(`Failed to delete account ${user._id}:`, error);
 
       // Update status to failed
       user.accountDeletion.status = 'failed';

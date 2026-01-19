@@ -47,7 +47,7 @@ exports.createNotification = async ({
     const mongoose = require('mongoose');
     const userId = mongoose.Types.ObjectId.isValid(user) ? new mongoose.Types.ObjectId(user) : user;
 
-    console.log(`[NotificationService] Creating notification:`, {
+    logger.info(`[NotificationService] Creating notification:`, {
       user: userId.toString(),
       userModel,
       role,
@@ -68,7 +68,7 @@ exports.createNotification = async ({
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
     });
 
-    console.log(`[NotificationService] ✅ Created notification:`, {
+    logger.info(`[NotificationService] ✅ Created notification:`, {
       id: notification._id,
       user: notification.user?.toString(),
       userModel: notification.userModel,
@@ -115,7 +115,7 @@ exports.createNotification = async ({
 
     return notification;
   } catch (error) {
-    console.error('[NotificationService] Error creating notification:', error);
+    logger.error('[NotificationService] Error creating notification:', error);
     throw error;
   }
 };
@@ -360,7 +360,7 @@ exports.createAnnouncement = async (userIds, role, title, message, actionUrl = n
       });
       notifications.push(notification);
     } catch (error) {
-      console.error(`[NotificationService] Error creating announcement for user ${userId}:`, error);
+      logger.error(`[NotificationService] Error creating announcement for user ${userId}:`, error);
     }
   }
 
@@ -386,6 +386,7 @@ exports.createNotificationForAllAdmins = async ({
 }) => {
   try {
     const Admin = require('../../models/user/adminModel');
+const logger = require('../../utils/logger');
     
     // CRITICAL FIX: 'active' field has select: false, so we need to explicitly include it with +active
     const allAdmins = await Admin.find({ 
@@ -395,17 +396,17 @@ exports.createNotificationForAllAdmins = async ({
     // Filter to only active admins (active defaults to true, but we check explicitly)
     const activeAdmins = allAdmins.filter(admin => admin.active !== false);
     
-    console.log(`[NotificationService] 🔔 Creating ${type} notification for ${activeAdmins.length} active admins (out of ${allAdmins.length} total with status 'active')`);
+    logger.info(`[NotificationService] 🔔 Creating ${type} notification for ${activeAdmins.length} active admins (out of ${allAdmins.length} total with status 'active');`);
     
     if (activeAdmins.length === 0) {
-      console.warn(`[NotificationService] ⚠️ No active admins found to send ${type} notification`);
+      logger.warn(`[NotificationService] ⚠️ No active admins found to send ${type} notification`);
       return [];
     }
     
     const notifications = [];
     for (const admin of activeAdmins) {
       try {
-        console.log(`[NotificationService] 📧 Creating ${type} notification for admin ${admin._id}`);
+        logger.info(`[NotificationService] 📧 Creating ${type} notification for admin ${admin._id}`);
         const notification = await exports.createNotification({
           user: admin._id,
           role: 'admin',
@@ -417,17 +418,17 @@ exports.createNotificationForAllAdmins = async ({
           actionUrl,
         });
         notifications.push(notification);
-        console.log(`[NotificationService] ✅ Successfully created ${type} notification for admin ${admin._id}`);
+        logger.info(`[NotificationService] ✅ Successfully created ${type} notification for admin ${admin._id}`);
       } catch (error) {
-        console.error(`[NotificationService] ❌ Error creating ${type} notification for admin ${admin._id}:`, error.message);
-        console.error(`[NotificationService] Full error:`, error);
+        logger.error(`[NotificationService] ❌ Error creating ${type} notification for admin ${admin._id}:`, error.message);
+        logger.error(`[NotificationService] Full error:`, error);
       }
     }
     
-    console.log(`[NotificationService] ✅ Created ${notifications.length} ${type} notifications for admins`);
+    logger.info(`[NotificationService] ✅ Created ${notifications.length} ${type} notifications for admins`);
     return notifications;
   } catch (error) {
-    console.error('[NotificationService] ❌ Error creating notifications for admins:', error);
+    logger.error('[NotificationService] ❌ Error creating notifications for admins:', error);
     throw error;
   }
 };

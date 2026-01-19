@@ -10,6 +10,7 @@ const PaymentRequest = require('../models/payment/paymentRequestModel');
 const WithdrawalRequest = require('../models/payout/withdrawalRequestModel');
 const Seller = require('../models/user/sellerModel');
 const financeAudit = require('../services/financeAuditService');
+const logger = require('../utils/logger');
 
 // Stuck withdrawal timeout: 24 hours
 const STUCK_WITHDRAWAL_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -19,7 +20,7 @@ const STUCK_WITHDRAWAL_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
  * Refunds withdrawals that have been stuck in processing/awaiting_otp status for more than 24 hours
  */
 async function cleanupStuckWithdrawals() {
-  console.log('[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...');
+  logger.info('[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...');
   
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -43,7 +44,7 @@ async function cleanupStuckWithdrawals() {
     
     const allStuck = [...stuckPaymentRequests, ...stuckWithdrawalRequests];
     
-    console.log(`[WithdrawalCleanupJob] Found ${allStuck.length} stuck withdrawals`);
+    logger.info(`[WithdrawalCleanupJob] Found ${allStuck.length} stuck withdrawals`);
     
     const refunded = [];
     const errors = [];
@@ -54,7 +55,7 @@ async function cleanupStuckWithdrawals() {
         const seller = await Seller.findById(sellerId).session(session);
         
         if (!seller) {
-          console.warn(`[WithdrawalCleanupJob] Seller ${sellerId} not found for withdrawal ${withdrawal._id}`);
+          logger.warn(`[WithdrawalCleanupJob] Seller ${sellerId} not found for withdrawal ${withdrawal._id}`);
           continue;
         }
         
@@ -96,12 +97,12 @@ async function cleanupStuckWithdrawals() {
             newPendingBalance: seller.pendingBalance,
           });
           
-          console.log(`[WithdrawalCleanupJob] ✅ Refunded stuck withdrawal ${withdrawal._id} for seller ${sellerId}: GH₵${amountRequested}`);
+          logger.info(`[WithdrawalCleanupJob] ✅ Refunded stuck withdrawal ${withdrawal._id} for seller ${sellerId}: GH₵${amountRequested}`);
         } else {
-          console.warn(`[WithdrawalCleanupJob] ⚠️ Cannot refund withdrawal ${withdrawal._id}: pendingBalance (${oldPendingBalance}) < amount (${amountRequested})`);
+          logger.warn(`[WithdrawalCleanupJob] ⚠️ Cannot refund withdrawal ${withdrawal._id}: pendingBalance (${oldPendingBalance}); < amount (${amountRequested})`);
         }
       } catch (error) {
-        console.error(`[WithdrawalCleanupJob] ❌ Error processing withdrawal ${withdrawal._id}:`, error);
+        logger.error(`[WithdrawalCleanupJob] ❌ Error processing withdrawal ${withdrawal._id}:`, error);
         errors.push({ withdrawalId: withdrawal._id, error: error.message });
       }
     }
@@ -109,7 +110,7 @@ async function cleanupStuckWithdrawals() {
     await session.commitTransaction();
     session.endSession();
     
-    console.log(`[WithdrawalCleanupJob] ✅ Cleanup complete: ${refunded.length} refunded, ${errors.length} errors`);
+    logger.info(`[WithdrawalCleanupJob] ✅ Cleanup complete: ${refunded.length} refunded, ${errors.length} errors`);
     
     return {
       success: true,
@@ -120,7 +121,7 @@ async function cleanupStuckWithdrawals() {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error('[WithdrawalCleanupJob] ❌ Error in cleanup:', error);
+    logger.error('[WithdrawalCleanupJob] ❌ Error in cleanup:', error);
     throw error;
   }
 }
@@ -132,15 +133,15 @@ async function cleanupStuckWithdrawals() {
 function startCleanupJob() {
   // Run every hour at minute 0
   cron.schedule('0 * * * *', async () => {
-    console.log('[WithdrawalCleanupJob] 🕐 Running scheduled cleanup...');
+    logger.info('[WithdrawalCleanupJob] 🕐 Running scheduled cleanup...');
     try {
       await cleanupStuckWithdrawals();
     } catch (error) {
-      console.error('[WithdrawalCleanupJob] ❌ Scheduled cleanup failed:', error);
+      logger.error('[WithdrawalCleanupJob] ❌ Scheduled cleanup failed:', error);
     }
   });
   
-  console.log('[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour)');
+  logger.info('[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);');
 }
 
 /**

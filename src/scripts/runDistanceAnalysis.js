@@ -5,6 +5,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 const { analyzeAllZonesDistance } = require('../services/distanceAnalyzerService');
 const { WAREHOUSE_LOCATION } = require('../config/warehouseConfig');
 
@@ -13,27 +14,27 @@ const connectDB = async () => {
   try {
     const DB = process.env.MONGO_URL.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
     await mongoose.connect(DB);
-    console.log('✅ MongoDB connected successfully');
+    logger.info('✅ MongoDB connected successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
+    logger.error('❌ MongoDB connection error:', error.message);
     process.exit(1);
   }
 };
 
 // Main function
 async function main() {
-  console.log('🚀 Starting Distance Analysis...\n');
-  console.log(`📍 Warehouse Location: ${WAREHOUSE_LOCATION.address}`);
-  console.log(`   Coordinates: ${WAREHOUSE_LOCATION.lat}, ${WAREHOUSE_LOCATION.lng}\n`);
+  logger.info('🚀 Starting Distance Analysis...\n');
+  logger.info(`📍 Warehouse Location: ${WAREHOUSE_LOCATION.address}`);
+  logger.info(`   Coordinates: ${WAREHOUSE_LOCATION.lat}, ${WAREHOUSE_LOCATION.lng}\n`);
 
   await connectDB();
 
   try {
     const results = await analyzeAllZonesDistance();
 
-    console.log('\n' + '='.repeat(80));
-    console.log('📊 DISTANCE ANALYSIS RESULTS');
-    console.log('='.repeat(80) + '\n');
+    logger.info('\n' + '='.repeat(80));
+    logger.info('📊 DISTANCE ANALYSIS RESULTS');
+    logger.info('='.repeat(80) + '\n');
 
     // Display results for each zone
     const zones = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -41,61 +42,61 @@ async function main() {
     zones.forEach((zone) => {
       const zoneData = results[zone];
       if (!zoneData) {
-        console.log(`\n⚠️  Zone ${zone}: No data available\n`);
+        logger.info(`\n⚠️  Zone ${zone}: No data available\n`);
         return;
       }
 
-      console.log(`\n${'─'.repeat(80)}`);
-      console.log(`📍 ZONE ${zone}`);
-      console.log(`${'─'.repeat(80)}`);
-      console.log(`Total Towns: ${zoneData.totalTowns}`);
-      console.log(`Successful: ${zoneData.successfulTowns}`);
+      logger.info(`\n${'─'.repeat(80)}`);
+      logger.info(`📍 ZONE ${zone}`);
+      logger.info(`${'─'.repeat(80)}`);
+      logger.info(`Total Towns: ${zoneData.totalTowns}`);
+      logger.info(`Successful: ${zoneData.successfulTowns}`);
       if (zoneData.failedTowns > 0) {
-        console.log(`Failed: ${zoneData.failedTowns}`);
+        logger.info(`Failed: ${zoneData.failedTowns}`);
       }
       
       if (zoneData.closest) {
-        console.log(`\n✅ Closest Town: ${zoneData.closest.town}`);
-        console.log(`   Distance: ${zoneData.closest.distanceKm} km`);
+        logger.info(`\n✅ Closest Town: ${zoneData.closest.town}`);
+        logger.info(`   Distance: ${zoneData.closest.distanceKm} km`);
       }
       
       if (zoneData.farthest) {
-        console.log(`\n❌ Farthest Town: ${zoneData.farthest.town}`);
-        console.log(`   Distance: ${zoneData.farthest.distanceKm} km`);
+        logger.info(`\n❌ Farthest Town: ${zoneData.farthest.town}`);
+        logger.info(`   Distance: ${zoneData.farthest.distanceKm} km`);
       }
       
       if (zoneData.average !== null) {
-        console.log(`\n📊 Average Distance: ${zoneData.average} km`);
+        logger.info(`\n📊 Average Distance: ${zoneData.average} km`);
       }
 
-      console.log(`\n📋 All Towns (sorted by distance):`);
-      console.log(`${'─'.repeat(80)}`);
-      console.log(`${'Town'.padEnd(50)} | Distance (km)`);
-      console.log(`${'─'.repeat(80)}`);
+      logger.info(`\n📋 All Towns (sorted by distance);:`);
+      logger.info(`${'─'.repeat(80)}`);
+      logger.info(`${'Town'.padEnd(50)} | Distance (km)`);
+      logger.info(`${'─'.repeat(80)}`);
       
       zoneData.all.forEach((townData, index) => {
         if (townData.distanceKm !== null) {
-          console.log(
+          logger.info(
             `${(index + 1).toString().padStart(3)}. ${townData.town.padEnd(47)} | ${townData.distanceKm.toFixed(2).padStart(10)} km`
           );
         } else {
-          console.log(
+          logger.info(
             `${(index + 1).toString().padStart(3)}. ${townData.town.padEnd(47)} | ${'ERROR'.padStart(10)} ${townData.error || ''}`
           );
         }
       });
     });
 
-    console.log('\n' + '='.repeat(80));
-    console.log('✅ Analysis Complete!');
-    console.log('='.repeat(80) + '\n');
+    logger.info('\n' + '='.repeat(80));
+    logger.info('✅ Analysis Complete!');
+    logger.info('='.repeat(80) + '\n');
 
     // Close database connection
     await mongoose.connection.close();
-    console.log('✅ Database connection closed');
+    logger.info('✅ Database connection closed');
     process.exit(0);
   } catch (error) {
-    console.error('\n❌ Error during analysis:', error);
+    logger.error('\n❌ Error during analysis:', error);
     await mongoose.connection.close();
     process.exit(1);
   }

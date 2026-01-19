@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const validator = require('validator');
 const crypto = require('crypto');
 const _ = require('lodash');
+const logger = require('../../utils/logger');
 const trim = _.trim;
 const max = _.max;
 
@@ -740,7 +741,7 @@ sellerSchema.methods.createOtp = function () {
   this.otpAttempts = 0; // Reset attempts on new OTP
   this.otpLockedUntil = null; // Clear lockout
   
-  console.log('[Seller createOtp] Generated OTP (hashed)');
+  logger.info('[Seller createOtp] Generated OTP (hashed);');
   
   // Return plain OTP for sending (not hashed)
   return otp;
@@ -750,7 +751,7 @@ sellerSchema.methods.verifyOtp = function (candidateOtp) {
   // Check if account is locked
   if (this.otpLockedUntil && new Date(this.otpLockedUntil).getTime() > Date.now()) {
     const minutesRemaining = Math.ceil((new Date(this.otpLockedUntil).getTime() - Date.now()) / (1000 * 60));
-    console.log('[Seller verifyOtp] Account locked:', { minutesRemaining });
+    logger.info('[Seller verifyOtp] Account locked:', { minutesRemaining });
     return { valid: false, locked: true, minutesRemaining };
   }
   
@@ -814,7 +815,7 @@ sellerSchema.methods.calculateWithdrawableBalance = function () {
   // PROTECTION: Ensure pendingBalance is never negative
   const safePendingBalance = Math.max(0, this.pendingBalance || 0);
   if (this.pendingBalance < 0) {
-    console.warn(`[Seller Model] ⚠️ Negative pendingBalance detected for seller ${this._id}: ${this.pendingBalance}. Resetting to 0.`);
+    logger.warn(`[Seller Model] ⚠️ Negative pendingBalance detected for seller ${this._id}: ${this.pendingBalance}. Resetting to 0.`);
     this.pendingBalance = 0;
   }
   

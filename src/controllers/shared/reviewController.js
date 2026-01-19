@@ -382,6 +382,7 @@ exports.flagReview = catchAsync(async (req, res, next) => {
   try {
     const notificationService = require('../../services/notification/notificationService');
     const Product = require('../../models/product/productModel');
+const logger = require('../../utils/logger');
     const product = await Product.findById(review.product).select('name');
     await notificationService.createReviewFlagNotification(
       review._id,
@@ -389,9 +390,9 @@ exports.flagReview = catchAsync(async (req, res, next) => {
       product?.name || 'Product',
       flaggedReason || 'Inappropriate content'
     );
-    console.log(`[Review Flag] Admin notification created for review ${review._id}`);
+    logger.info(`[Review Flag] Admin notification created for review ${review._id}`);
   } catch (notificationError) {
-    console.error('[Review Flag] Error creating admin notification:', notificationError);
+    logger.error('[Review Flag] Error creating admin notification:', notificationError);
     // Don't fail review flagging if notification fails
   }
 

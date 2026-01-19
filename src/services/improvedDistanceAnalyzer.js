@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { DELIVERY_ZONES } = require('../config/zonesWithTowns');
 const { getDistanceKm } = require('./distanceService');
 const { geocodeAddress } = require('./googleMapsService');
@@ -48,7 +49,7 @@ async function processBatch(items, processor, concurrency = 3) {
   }
 
   if (errors.length > 0) {
-    console.warn(`Distance Analyzer: ${errors.length} errors occurred:`, errors.slice(0, 5));
+    logger.warn(`Distance Analyzer: ${errors.length} errors occurred:`, errors.slice(0, 5));
   }
 
   return { results, errors };
@@ -62,14 +63,14 @@ async function analyzeAllZonesDistanceImproved() {
   const warehouseLat = WAREHOUSE_LOCATION.lat;
   const warehouseLng = WAREHOUSE_LOCATION.lng;
 
-  console.log(`Starting improved distance analysis from warehouse (${warehouseLat}, ${warehouseLng})`);
-  console.log(`Warehouse Address: ${WAREHOUSE_LOCATION.address}\n`);
+  logger.info(`Starting improved distance analysis from warehouse (${warehouseLat}, ${warehouseLng});`);
+  logger.info(`Warehouse Address: ${WAREHOUSE_LOCATION.address}\n`);
 
   const analysisResults = {};
 
   // Process each zone
   for (const [zone, towns] of Object.entries(DELIVERY_ZONES)) {
-    console.log(`\n📍 Analyzing Zone ${zone}: ${towns.length} towns`);
+    logger.info(`\n📍 Analyzing Zone ${zone}: ${towns.length} towns`);
 
     const zoneResults = [];
 
@@ -78,16 +79,16 @@ async function analyzeAllZonesDistanceImproved() {
       towns,
       async (town) => {
         // Step 1: Geocode the town to get coordinates
-        console.log(`  🔍 Geocoding: ${town}`);
+        logger.info(`  🔍 Geocoding: ${town}`);
         let geocodeResult;
         let geocodedAddress = town;
         
         try {
           geocodeResult = await geocodeAddress(town);
           geocodedAddress = geocodeResult.formattedAddress;
-          console.log(`  ✅ Geocoded to: ${geocodedAddress}`);
+          logger.info(`  ✅ Geocoded to: ${geocodedAddress}`);
         } catch (geocodeError) {
-          console.warn(`  ⚠️  Geocoding failed for ${town}: ${geocodeError.message}`);
+          logger.warn(`  ⚠️  Geocoding failed for ${town}: ${geocodeError.message}`);
           // Try alternative formats
           const alternatives = [
             town.replace(', Ghana', ''),
@@ -100,7 +101,7 @@ async function analyzeAllZonesDistanceImproved() {
             try {
               geocodeResult = await geocodeAddress(alt);
               geocodedAddress = geocodeResult.formattedAddress;
-              console.log(`  ✅ Geocoded (alternative) to: ${geocodedAddress}`);
+              logger.info(`  ✅ Geocoded (alternative); to: ${geocodedAddress}`);
               found = true;
               break;
             } catch (e) {
@@ -117,12 +118,12 @@ async function analyzeAllZonesDistanceImproved() {
         const destLat = geocodeResult.lat;
         const destLng = geocodeResult.lng;
         
-        console.log(`  📏 Calculating distance from warehouse to (${destLat}, ${destLng})`);
+        logger.info(`  📏 Calculating distance from warehouse to (${destLat}, ${destLng});`);
         const distanceResult = await getDistanceKm(warehouseLat, warehouseLng, destLat, destLng);
         const distanceKm = Math.round(distanceResult.distanceKm * 100) / 100;
         const distanceMeters = Math.round(distanceResult.distanceKm * 1000);
         
-        console.log(`  ✅ Distance: ${distanceKm} km\n`);
+        logger.info(`  ✅ Distance: ${distanceKm} km\n`);
 
         return {
           town,
@@ -142,7 +143,7 @@ async function analyzeAllZonesDistanceImproved() {
 
     // Add errors as failed entries
     errors.forEach((error) => {
-      console.error(`  ❌ Failed: ${error.town} - ${error.error}`);
+      logger.error(`  ❌ Failed: ${error.town} - ${error.error}`);
       zoneResults.push({
         town: error.town,
         zone,
@@ -195,13 +196,13 @@ async function analyzeAllZonesDistanceImproved() {
       all: zoneResults,
     };
 
-    console.log(
+    logger.info(
       `\n✅ Zone ${zone} complete:`
     );
-    console.log(`   Closest: ${closest?.town || 'N/A'} (${closest?.distanceKm || 'N/A'} km)`);
-    console.log(`   Farthest: ${farthest?.town || 'N/A'} (${farthest?.distanceKm || 'N/A'} km)`);
-    console.log(`   Average: ${average || 'N/A'} km`);
-    console.log(`   Success: ${validDistances.length}/${zoneResults.length}`);
+    logger.info(`   Closest: ${closest?.town || 'N/A'} (${closest?.distanceKm || 'N/A'} km);`);
+    logger.info(`   Farthest: ${farthest?.town || 'N/A'} (${farthest?.distanceKm || 'N/A'} km);`);
+    logger.info(`   Average: ${average || 'N/A'} km`);
+    logger.info(`   Success: ${validDistances.length}/${zoneResults.length}`);
   }
 
   return analysisResults;

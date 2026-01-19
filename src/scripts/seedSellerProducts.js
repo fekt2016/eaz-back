@@ -14,6 +14,7 @@ const mongoose = require('mongoose');
 const Product = require('../models/product/productModel');
 const Seller = require('../models/user/sellerModel');
 const Category = require('../models/category/categoryModel');
+const logger = require('../utils/logger');
 
 // Product data templates by category
 const PRODUCT_TEMPLATES = {
@@ -486,14 +487,14 @@ async function seedSellerProducts() {
       useUnifiedTopology: true,
     });
     
-    console.log('✅ Connected to MongoDB');
+    logger.info('✅ Connected to MongoDB');
     
     // Step 1: Fetch all sellers
     const sellers = await Seller.find({});
-    console.log(`\n📦 Found ${sellers.length} sellers`);
+    logger.info(`\n📦 Found ${sellers.length} sellers`);
     
     if (sellers.length === 0) {
-      console.log('⚠️  No sellers found in database. Please create sellers first.');
+      logger.info('⚠️  No sellers found in database. Please create sellers first.');
       await mongoose.connection.close();
       process.exit(0);
     }
@@ -504,10 +505,10 @@ async function seedSellerProducts() {
       status: 'active' 
     });
     
-    console.log(`📂 Found ${parentCategories.length} parent categories`);
+    logger.info(`📂 Found ${parentCategories.length} parent categories`);
     
     if (parentCategories.length === 0) {
-      console.log('⚠️  No categories found. Please create categories first.');
+      logger.info('⚠️  No categories found. Please create categories first.');
       await mongoose.connection.close();
       process.exit(0);
     }
@@ -518,10 +519,10 @@ async function seedSellerProducts() {
       status: 'active',
     }).populate('parentCategory');
     
-    console.log(`📂 Found ${subCategories.length} subcategories`);
+    logger.info(`📂 Found ${subCategories.length} subcategories`);
     
     if (subCategories.length === 0) {
-      console.log('⚠️  No subcategories found. Please create subcategories first.');
+      logger.info('⚠️  No subcategories found. Please create subcategories first.');
       await mongoose.connection.close();
       process.exit(0);
     }
@@ -535,12 +536,12 @@ async function seedSellerProducts() {
       }));
     
     if (allSubCategories.length === 0) {
-      console.log('⚠️  No valid category pairs found. Please create subcategories with valid parents.');
+      logger.info('⚠️  No valid category pairs found. Please create subcategories with valid parents.');
       await mongoose.connection.close();
       process.exit(0);
     }
     
-    console.log(`📂 Using ${allSubCategories.length} category pairs\n`);
+    logger.info(`📂 Using ${allSubCategories.length} category pairs\n`);
     
     // Step 3: Map category names to templates
     const categoryTemplateMap = {
@@ -559,7 +560,7 @@ async function seedSellerProducts() {
     const productsPerSeller = 10;
     
     for (const seller of sellers) {
-      console.log(`\n🛍️  Processing seller: ${seller.shopName || seller.name} (${seller.email})`);
+      logger.info(`\n🛍️  Processing seller: ${seller.shopName || seller.name} (${seller.email});`);
       
       const sellerProducts = [];
       
@@ -613,34 +614,34 @@ async function seedSellerProducts() {
         const newCount = createdProducts.filter(p => p.condition === 'new').length;
         const usedCount = createdProducts.filter(p => p.condition === 'used').length;
         
-        console.log(`   ✅ Added ${createdProducts.length} products (${newCount} new, ${usedCount} used)`);
+        logger.info(`   ✅ Added ${createdProducts.length} products (${newCount} new, ${usedCount} used);`);
       } catch (error) {
-        console.error(`   ❌ Error inserting products for ${seller.shopName}:`, error.message);
+        logger.error(`   ❌ Error inserting products for ${seller.shopName}:`, error.message);
         // Continue with next seller
       }
     }
     
     // Step 5: Update seller product counts
-    console.log('\n📊 Updating seller product counts...');
+    logger.info('\n📊 Updating seller product counts...');
     for (const seller of sellers) {
       await Seller.updateProductCount(seller._id);
     }
     
     // Final summary
-    console.log('\n' + '='.repeat(60));
-    console.log('✅ SEEDING COMPLETE');
-    console.log('='.repeat(60));
-    console.log(`Total sellers processed: ${sellers.length}`);
-    console.log(`Total products generated: ${totalProductsGenerated}`);
-    console.log(`Average products per seller: ${(totalProductsGenerated / sellers.length).toFixed(1)}`);
-    console.log('='.repeat(60) + '\n');
+    logger.info('\n' + '='.repeat(60));
+    logger.info('✅ SEEDING COMPLETE');
+    logger.info('='.repeat(60));
+    logger.info(`Total sellers processed: ${sellers.length}`);
+    logger.info(`Total products generated: ${totalProductsGenerated}`);
+    logger.info(`Average products per seller: ${(totalProductsGenerated / sellers.length).toFixed(1)}`);
+    logger.info('='.repeat(60) + '\n');
     
     // Close connection
     await mongoose.connection.close();
-    console.log('✅ Database connection closed');
+    logger.info('✅ Database connection closed');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding products:', error);
+    logger.error('❌ Error seeding products:', error);
     await mongoose.connection.close();
     process.exit(1);
   }

@@ -22,7 +22,7 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
     limit = 50,
   } = req.query;
 
-  console.log('[getAllSessions] Query params:', { userId, status, deviceType, suspicious, platform, page, limit });
+  logger.info('[getAllSessions] Query params:', { userId, status, deviceType, suspicious, platform, page, limit });
 
   // Build query
   const query = {};
@@ -45,14 +45,14 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
     query.platform = platform;
   }
 
-  console.log('[getAllSessions] MongoDB query:', JSON.stringify(query));
+  logger.info('[getAllSessions] MongoDB query:', JSON.stringify(query));
 
   // Calculate pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   // Get total count first
   const total = await DeviceSession.countDocuments(query);
-  console.log('[getAllSessions] Total sessions found:', total);
+  logger.info('[getAllSessions] Total sessions found:', total);
 
   // Get sessions
   let sessions = await DeviceSession.find(query)
@@ -60,7 +60,7 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
     .skip(skip)
     .limit(parseInt(limit));
 
-  console.log('[getAllSessions] Sessions retrieved:', sessions.length);
+  logger.info('[getAllSessions] Sessions retrieved:', sessions.length);
 
   // Filter suspicious sessions if requested
   if (suspicious === 'true') {
@@ -106,7 +106,7 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
     }),
   );
 
-  console.log('[getAllSessions] Returning sessions:', {
+  logger.info('[getAllSessions] Returning sessions:', {
     count: sessionsWithUsers.length,
     total,
     page: parseInt(page),
@@ -149,7 +149,7 @@ exports.forceLogoutDevice = catchAsync(async (req, res, next) => {
   await session.save();
 
   // Log admin action
-  console.log(`[Admin] Force logged out device: ${deviceId} for user: ${session.userId}`);
+  logger.info(`[Admin] Force logged out device: ${deviceId} for user: ${session.userId}`);
 
   res.status(200).json({
     status: 'success',
@@ -177,7 +177,7 @@ exports.forceLogoutUser = catchAsync(async (req, res, next) => {
   // Invalidate all tokens for this user
   await TokenBlacklist.invalidateAllSessions(userId);
 
-  console.log(`[Admin] Force logged out all devices for user: ${userId}`);
+  logger.info(`[Admin] Force logged out all devices for user: ${userId}`);
 
   res.status(200).json({
     status: 'success',
@@ -305,8 +305,14 @@ exports.getSuspiciousLogins = catchAsync(async (req, res, next) => {
  * Get cron cleanup logs (Admin only)
  */
 exports.getCleanupLogs = catchAsync(async (req, res, next) => {
+<<<<<<< HEAD
   // USE SAFE VERSIONS - never crashes
   const logFile = safePath.joinSafe(__dirname, '../../../logs/cron.log');
+=======
+  const fs = require('fs');
+  const path = require('path');
+const logger = require('../../utils/logger');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
   if (!logFile) {
     return res.status(200).json({

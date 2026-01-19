@@ -190,7 +190,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     }
   } catch (notificationError) {
     // Don't fail the order update if notification creation fails
-    console.error('[updateOrderStatus] Error creating notifications:', notificationError);
+    logger.error('[updateOrderStatus] Error creating notifications:', notificationError);
   }
 
   // Send email notifications for order status changes
@@ -205,26 +205,26 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
       // Send order shipped email
       if (status === 'out_for_delivery') {
         await emailDispatcher.sendOrderShipped(order, user);
-        console.log(`[updateOrderStatus] ✅ Order shipped email sent to ${user.email}`);
+        logger.info(`[updateOrderStatus] ✅ Order shipped email sent to ${user.email}`);
       }
       
       // Send order delivered email
       if (status === 'delivered') {
         await emailDispatcher.sendOrderDelivered(order, user);
-        console.log(`[updateOrderStatus] ✅ Order delivered email sent to ${user.email}`);
+        logger.info(`[updateOrderStatus] ✅ Order delivered email sent to ${user.email}`);
       }
     }
   } catch (emailError) {
-    console.error('[updateOrderStatus] Error sending order status emails:', emailError.message);
+    logger.error('[updateOrderStatus] Error sending order status emails:', emailError.message);
     // Don't fail the order update if email fails
   }
 
   // Sync SellerOrder status with Order status
   try {
     const syncResult = await syncSellerOrderStatus(orderId, status);
-    console.log('[updateOrderStatus] SellerOrder sync result:', syncResult);
+    logger.info('[updateOrderStatus] SellerOrder sync result:', syncResult);
   } catch (error) {
-    console.error('[updateOrderStatus] Error syncing SellerOrder status:', error);
+    logger.error('[updateOrderStatus] Error syncing SellerOrder status:', error);
     // Don't fail the order update if SellerOrder sync fails
   }
 
@@ -236,13 +236,13 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
         orderId,
         user.id
       );
-      console.log('[updateOrderStatus] Seller balance credit result:', balanceUpdateResult);
+      logger.info('[updateOrderStatus] Seller balance credit result:', balanceUpdateResult);
       if (!balanceUpdateResult.success) {
-        console.warn('[updateOrderStatus] Seller credit failed:', balanceUpdateResult.message);
+        logger.warn('[updateOrderStatus] Seller credit failed:', balanceUpdateResult.message);
       }
     } catch (error) {
       // Log error but don't fail the status update
-      console.error('[updateOrderStatus] Error crediting seller balances:', error);
+      logger.error('[updateOrderStatus] Error crediting seller balances:', error);
     }
   }
 
@@ -254,7 +254,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
         orderId,
         'Order Refunded'
       );
-      console.log('[updateOrderStatus] Seller balance reversal result:', reversalResult);
+      logger.info('[updateOrderStatus] Seller balance reversal result:', reversalResult);
 
       // Refund buyer wallet if order was paid with wallet
       if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
@@ -279,16 +279,16 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
               order._id
             );
 
-            console.log(`[updateOrderStatus] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+            logger.info(`[updateOrderStatus] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
           }
         } catch (walletError) {
-          console.error('[updateOrderStatus] Error refunding wallet:', walletError);
+          logger.error('[updateOrderStatus] Error refunding wallet:', walletError);
           // Don't fail the order update if wallet refund fails
         }
       }
     } catch (error) {
       // Log error but don't fail the status update
-      console.error('[updateOrderStatus] Error reverting seller balances:', error);
+      logger.error('[updateOrderStatus] Error reverting seller balances:', error);
     }
   }
 
@@ -459,7 +459,7 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         shippingAddress = address;
       }
     } catch (error) {
-      console.error('[getOrderByTrackingNumber] Error populating address:', error);
+      logger.error('[getOrderByTrackingNumber] Error populating address:', error);
       // Keep the ID if population fails
     }
   }
@@ -669,9 +669,9 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
   // Sync SellerOrder status with Order status
   try {
     const syncResult = await syncSellerOrderStatus(id, status);
-    console.log('[addTrackingUpdate] SellerOrder sync result:', syncResult);
+    logger.info('[addTrackingUpdate] SellerOrder sync result:', syncResult);
   } catch (error) {
-    console.error('[addTrackingUpdate] Error syncing SellerOrder status:', error);
+    logger.error('[addTrackingUpdate] Error syncing SellerOrder status:', error);
     // Don't fail the order update if SellerOrder sync fails
   }
 
@@ -683,13 +683,13 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
         id,
         user.id
       );
-      console.log('[addTrackingUpdate] Seller balance credit result:', balanceUpdateResult);
+      logger.info('[addTrackingUpdate] Seller balance credit result:', balanceUpdateResult);
       if (!balanceUpdateResult.success) {
-        console.warn('[addTrackingUpdate] Seller credit failed:', balanceUpdateResult.message);
+        logger.warn('[addTrackingUpdate] Seller credit failed:', balanceUpdateResult.message);
       }
     } catch (error) {
       // Log error but don't fail the status update
-      console.error('[addTrackingUpdate] Error crediting seller balances:', error);
+      logger.error('[addTrackingUpdate] Error crediting seller balances:', error);
     }
   }
 
@@ -701,12 +701,13 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
         id,
         'Order Refunded'
       );
-      console.log('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
+      logger.info('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
 
       // Refund buyer wallet if order was paid with wallet
       if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
         try {
           const walletService = require('../../services/walletService');
+const logger = require('../../utils/logger');
           const refundAmount = order.totalPrice || 0;
           const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
 
@@ -726,16 +727,16 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
               order._id
             );
 
-            console.log(`[addTrackingUpdate] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+            logger.info(`[addTrackingUpdate] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
           }
         } catch (walletError) {
-          console.error('[addTrackingUpdate] Error refunding wallet:', walletError);
+          logger.error('[addTrackingUpdate] Error refunding wallet:', walletError);
           // Don't fail the order update if wallet refund fails
         }
       }
     } catch (error) {
       // Log error but don't fail the status update
-      console.error('[addTrackingUpdate] Error reverting seller balances:', error);
+      logger.error('[addTrackingUpdate] Error reverting seller balances:', error);
     }
   }
 

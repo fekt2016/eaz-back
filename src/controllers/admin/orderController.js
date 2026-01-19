@@ -130,7 +130,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
         platformStats.lastUpdated = new Date();
         await platformStats.save({ session });
         
-        console.log(`[confirmPayment] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId}`);
+        logger.info(`[confirmPayment] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId}`);
       }
       
       // Credit seller pending balances (order not delivered yet)
@@ -152,7 +152,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
           const seller = await Seller.findById(sellerId).session(session);
 
           if (!seller) {
-            console.warn(`[confirmPayment] Seller ${sellerId} not found for sellerOrder ${sellerOrderId}`);
+            logger.warn(`[confirmPayment] Seller ${sellerId} not found for sellerOrder ${sellerOrderId}`);
             continue;
           }
 
@@ -184,7 +184,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
             creditedTo: 'pendingBalance',
           });
 
-          console.log(`[confirmPayment] Credited seller ${sellerId} pendingBalance:`, {
+          logger.info(`[confirmPayment] Credited seller ${sellerId} pendingBalance:`, {
             earnings: sellerEarnings,
             oldPendingBalance,
             newPendingBalance: seller.pendingBalance,
@@ -204,7 +204,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
         platformStats.lastUpdated = new Date();
         await platformStats.save({ session });
         
-        console.log(`[confirmPayment] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId}`);
+        logger.info(`[confirmPayment] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId}`);
       }
       
       // For payment_on_delivery, order is delivered, so credit seller actual balance
@@ -214,6 +214,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
       
       try {
         const orderService = require('../../services/order/orderService');
+const logger = require('../../utils/logger');
         const balanceUpdateResult = await orderService.creditSellerForOrder(orderId, adminId);
         
         if (balanceUpdateResult.success) {
@@ -223,12 +224,12 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
             earnings: update.amount,
             creditedTo: 'balance',
           })));
-          console.log(`[confirmPayment] ✅ Credited sellers via creditSellerForOrder for delivered order ${orderId}`);
+          logger.info(`[confirmPayment] ✅ Credited sellers via creditSellerForOrder for delivered order ${orderId}`);
         } else {
-          console.warn(`[confirmPayment] ⚠️ Seller credit failed: ${balanceUpdateResult.message}`);
+          logger.warn(`[confirmPayment] ⚠️ Seller credit failed: ${balanceUpdateResult.message}`);
         }
       } catch (creditError) {
-        console.error(`[confirmPayment] ❌ Error crediting sellers:`, creditError);
+        logger.error(`[confirmPayment] ❌ Error crediting sellers:`, creditError);
         // Don't fail the transaction, but log the error
       }
     }
@@ -261,9 +262,9 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
             priority: 'high',
             actionUrl: `/dashboard/orders/${order._id}`,
           });
-          console.log(`[confirmPayment] ✅ Notification sent to seller ${sellerId}`);
+          logger.info(`[confirmPayment] ✅ Notification sent to seller ${sellerId}`);
         } catch (notifError) {
-          console.error(`[confirmPayment] ❌ Error sending notification to seller ${sellerId}:`, notifError);
+          logger.error(`[confirmPayment] ❌ Error sending notification to seller ${sellerId}:`, notifError);
         }
       }
     }
@@ -292,7 +293,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
     // Commit transaction
     await session.commitTransaction();
 
-    console.log(`[confirmPayment] ✅ Payment confirmed successfully for order ${orderId}`);
+    logger.info(`[confirmPayment] ✅ Payment confirmed successfully for order ${orderId}`);
 
     res.status(200).json({
       status: 'success',
@@ -312,7 +313,7 @@ exports.confirmPayment = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[confirmPayment] Error:', error);
+    logger.error('[confirmPayment] Error:', error);
     throw error;
   } finally {
     session.endSession();

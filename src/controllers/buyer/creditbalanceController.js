@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 // Get user's credit balance
 exports.getCreditBalance = catchAsync(async (req, res, next) => {
-  // console.log('user', req.user.id);
+  // logger.info('user', req.user.id);
   const userId = new mongoose.Types.ObjectId(req.user.id);
   const creditbalance = await Creditbalance.findOne({
     user: userId,
@@ -15,9 +15,9 @@ exports.getCreditBalance = catchAsync(async (req, res, next) => {
     // Initialize if doesn't exist
     try {
       const newCredit = await Creditbalance.create({ user: userId });
-      console.log('newCredit', newCredit);
+      logger.info('newCredit', newCredit);
     } catch (error) {
-      console.log('error', error);
+      logger.info('error', error);
     }
     return res.json({
       status: 'success',
@@ -41,6 +41,7 @@ exports.addCredit = catchAsync(async (req, res, next) => {
 
   const userId = new mongoose.Types.ObjectId(user);
   const walletService = require('../../services/walletService');
+const logger = require('../../utils/logger');
   
   const finalReference = reference || `ADMIN-ADJUST-${userId}-${Date.now()}`;
   const finalDescription = description || `Admin credit adjustment`;

@@ -1,6 +1,7 @@
 const archiver = require('archiver');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../logger');
 const { format } = require('date-fns');
 const { checkFeature, FEATURES } = require('../featureFlags');
 const { safeFs, safePath } = require('../safePath');
@@ -45,6 +46,7 @@ exports.generateUserDataArchive = async (userData) => {
       const archive = archiver('zip', { zlib: { level: 9 } });
 
       output.on('close', () => {
+<<<<<<< HEAD
         console.log(`Archive created: ${archive.pointer()} bytes`);
         
         // VALIDATION: Ensure filePath and fileName are strings
@@ -58,12 +60,15 @@ exports.generateUserDataArchive = async (userData) => {
         
         console.log(`[generateUserDataArchive] ✅ Returning filePath: ${filePath} (type: ${typeof filePath})`);
         console.log(`[generateUserDataArchive] ✅ Returning fileName: ${fileName} (type: ${typeof fileName})`);
+=======
+        logger.info(`Archive created: ${archive.pointer()} bytes`);
+>>>>>>> 6d2bc77 (first ci/cd push)
         resolve({ filePath, fileName });
       });
 
       archive.on('warning', (err) => {
         if (err.code === 'ENOENT') {
-          console.warn('Archive warning:', err);
+          logger.warn('Archive warning:', err);
         } else {
           reject(err);
         }

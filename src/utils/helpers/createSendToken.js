@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const logger = require('../logger');
 const { generateDeviceId } = require('./deviceUtils');
 
 const signToken = (id, role, deviceId = null) => {
@@ -31,14 +32,14 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
   if (req) {
     try {
       const { createDeviceSession } = require('./createDeviceSession');
-      console.log('[createSendToken] Creating device session for user:', user._id, 'platform:', platform);
+      logger.info('[createSendToken] Creating device session for user:', user._id, 'platform:', platform);
       const sessionData = await createDeviceSession(req, user, platform);
       deviceId = sessionData.deviceId;
       refreshToken = sessionData.refreshToken;
-      console.log('[createSendToken] Device session created:', deviceId);
+      logger.info('[createSendToken] Device session created:', deviceId);
     } catch (error) {
-      console.error('[createSendToken] ❌ Error creating device session:', error.message);
-      console.error('[createSendToken] Error stack:', error.stack);
+      logger.error('[createSendToken] ❌ Error creating device session:', error.message);
+      logger.error('[createSendToken] Error stack:', error.stack);
       // Continue without device session if error occurs
     }
   }

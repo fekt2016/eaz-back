@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { generateGhanaPostAddress } = require('../utils/gpsToGhanaPost');
 const { reverseGeocode } = require('./googleMapsService');
 
@@ -71,12 +72,12 @@ async function resolveFullLocation(lat, lng) {
     // Step 1: Generate GhanaPostGPS digital address from coordinates
     const digitalAddress = generateGhanaPostAddress(lat, lng);
     
-    console.log(`[Hybrid Resolver] Generated Digital Address: ${digitalAddress} from coordinates: ${lat}, ${lng}`);
+    logger.info(`[Hybrid Resolver] Generated Digital Address: ${digitalAddress} from coordinates: ${lat}, ${lng}`);
 
     // Step 2: Reverse geocode coordinates using Google Maps
     const googleData = await reverseGeocode(lat, lng);
     
-    console.log(`[Hybrid Resolver] Google Maps Response:`, {
+    logger.info(`[Hybrid Resolver] Google Maps Response:`, {
       street: googleData?.street,
       town: googleData?.town,
       city: googleData?.city,
@@ -108,11 +109,11 @@ async function resolveFullLocation(lat, lng) {
       placeId: googleData.placeId || null,
     };
     
-    console.log(`[Hybrid Resolver] Final Result:`, result);
+    logger.info(`[Hybrid Resolver] Final Result:`, result);
     
     return result;
   } catch (error) {
-    console.error(`[Hybrid Resolver] Error resolving location:`, error);
+    logger.error(`[Hybrid Resolver] Error resolving location:`, error);
     throw new Error(`Failed to resolve full location: ${error.message}`);
   }
 }

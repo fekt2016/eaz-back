@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 const Neighborhood = require('../models/shipping/neighborhoodModel');
+const logger = require('../utils/logger');
 const { getDistanceKm } = require('../services/distanceService');
 const { classifyZone } = require('../services/zoneClassificationService');
 const { WAREHOUSE_LOCATION } = require('../config/warehouseConfig');
@@ -35,10 +36,10 @@ async function connectDatabase() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB\n');
+    logger.info('✅ Connected to MongoDB\n');
     return true;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    logger.error('❌ Error connecting to MongoDB:', error.message);
     throw error;
   }
 }
@@ -67,7 +68,7 @@ async function calculateDistanceAndZone(neighborhood) {
     
     return { distanceKm, zone };
   } catch (error) {
-    console.error(`Error calculating distance for ${neighborhood.name}:`, error.message);
+    logger.error(`Error calculating distance for ${neighborhood.name}:`, error.message);
     return { distanceKm: null, zone: null };
   }
 }
@@ -85,7 +86,7 @@ async function seedNeighborhoods() {
     }
 
     const neighborhoods = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    console.log(`📋 Found ${neighborhoods.length} neighborhoods to process\n`);
+    logger.info(`📋 Found ${neighborhoods.length} neighborhoods to process\n`);
 
     const results = {
       created: 0,
@@ -129,13 +130,13 @@ async function seedNeighborhoods() {
           Object.assign(existing, updateData);
           await existing.save();
           results.updated++;
-          console.log(`✅ Updated: ${neighborhoodData.name}, ${neighborhoodData.city} (Zone ${distanceAndZone.zone || 'N/A'}, ${distanceAndZone.distanceKm || 'N/A'} km)`);
+          logger.info(`✅ Updated: ${neighborhoodData.name}, ${neighborhoodData.city} (Zone ${distanceAndZone.zone || 'N/A'}, ${distanceAndZone.distanceKm || 'N/A'} km);`);
         } else {
           // Create new neighborhood
           const newNeighborhood = new Neighborhood(updateData);
           await newNeighborhood.save();
           results.created++;
-          console.log(`✅ Created: ${neighborhoodData.name}, ${neighborhoodData.city} (Zone ${distanceAndZone.zone || 'N/A'}, ${distanceAndZone.distanceKm || 'N/A'} km)`);
+          logger.info(`✅ Created: ${neighborhoodData.name}, ${neighborhoodData.city} (Zone ${distanceAndZone.zone || 'N/A'}, ${distanceAndZone.distanceKm || 'N/A'} km);`);
         }
 
         // Small delay to avoid overwhelming the database
@@ -144,18 +145,18 @@ async function seedNeighborhoods() {
         }
       } catch (error) {
         results.failed++;
-        console.error(`❌ Error processing ${neighborhoodData.name}:`, error.message);
+        logger.error(`❌ Error processing ${neighborhoodData.name}:`, error.message);
       }
     }
 
     // Summary
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 SEEDING SUMMARY');
-    console.log('='.repeat(60));
-    console.log(`✅ Created: ${results.created} neighborhoods`);
-    console.log(`🔄 Updated: ${results.updated} neighborhoods`);
-    console.log(`⏭️  Skipped: ${results.skipped} neighborhoods`);
-    console.log(`❌ Failed: ${results.failed} neighborhoods`);
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📊 SEEDING SUMMARY');
+    logger.info('='.repeat(60));
+    logger.info(`✅ Created: ${results.created} neighborhoods`);
+    logger.info(`🔄 Updated: ${results.updated} neighborhoods`);
+    logger.info(`⏭️  Skipped: ${results.skipped} neighborhoods`);
+    logger.info(`❌ Failed: ${results.failed} neighborhoods`);
 
     // Zone distribution
     const zoneStats = await Neighborhood.aggregate([
@@ -168,18 +169,18 @@ async function seedNeighborhoods() {
       { $sort: { _id: 1 } },
     ]);
 
-    console.log('\n📍 Zone Distribution:');
+    logger.info('\n📍 Zone Distribution:');
     zoneStats.forEach((stat) => {
-      console.log(`   Zone ${stat._id || 'N/A'}: ${stat.count} neighborhoods`);
+      logger.info(`   Zone ${stat._id || 'N/A'}: ${stat.count} neighborhoods`);
     });
 
-    console.log('\n✅ Seeding completed!');
+    logger.info('\n✅ Seeding completed!');
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    logger.error('❌ Fatal error:', error);
     throw error;
   } finally {
     await mongoose.disconnect();
-    console.log('\n🔌 Disconnected from MongoDB');
+    logger.info('\n🔌 Disconnected from MongoDB');
   }
 }
 
@@ -190,7 +191,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Script failed:', error);
+      logger.error('❌ Script failed:', error);
       process.exit(1);
     });
 }

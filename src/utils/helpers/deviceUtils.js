@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const UAParser = require('ua-parser-js');
+const logger = require('../logger');
 
 /**
  * Generate a unique device ID
@@ -131,7 +132,7 @@ exports.isSuspiciousDevice = async (userId, ipAddress, userAgent, deviceId, Devi
     return !hasKnownIp && !hasKnownUserAgent && !hasKnownDevice;
   } catch (error) {
     // If collection doesn't exist or query fails, assume not suspicious
-    console.error('[isSuspiciousDevice] Error checking suspicious device:', error.message);
+    logger.error('[isSuspiciousDevice] Error checking suspicious device:', error.message);
     return false;
   }
 };

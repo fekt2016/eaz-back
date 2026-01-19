@@ -5,6 +5,7 @@ const handleFactory = require('../shared/handleFactory');
 const multer = require('multer');
 const sharp = require('sharp');
 const stream = require('stream');
+const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 const multerStorage = multer.memoryStorage();
@@ -28,7 +29,7 @@ const filterObj = (obj, ...allowedFields) => {
 };
 exports.uploadUserPhoto = upload.single('photo');
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
-  console.log('file', req.file);
+  logger.info('file', req.file);
   if (!req.file) return next();
 
   // Get Cloudinary instance from app

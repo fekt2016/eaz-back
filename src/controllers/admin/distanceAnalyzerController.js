@@ -3,6 +3,7 @@ const AppError = require('../../utils/errors/appError');
 const { analyzeAllZonesDistance } = require('../../services/distanceAnalyzerService');
 const { analyzeAllZonesDistanceImproved } = require('../../services/improvedDistanceAnalyzer');
 const DistanceRecord = require('../../models/shipping/distanceRecordModel');
+const logger = require('../../utils/logger');
 
 /**
  * Analyze distances for all zones
@@ -26,7 +27,7 @@ exports.analyzeAllZones = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('Distance analysis error:', error);
+    logger.error('Distance analysis error:', error);
     return next(new AppError(`Distance analysis failed: ${error.message}`, 500));
   }
 });
@@ -93,7 +94,7 @@ exports.analyzeAndSave = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('Distance analysis and save error:', error);
+    logger.error('Distance analysis and save error:', error);
     return next(new AppError(`Distance analysis and save failed: ${error.message}`, 500));
   }
 });

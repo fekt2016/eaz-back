@@ -1,0 +1,82 @@
+/**
+ * =========================================================
+ * MINIMAL EXPRESS SERVER - DEBUGGING MODE
+ * =========================================================
+ * 
+ * This is a stripped-down version with NO security layers
+ * for step-by-step debugging of Chrome API blocking issues.
+ * 
+ * GOAL: Confirm basic connectivity works before adding security back.
+ * 
+ * TO RESTORE: Copy from app.js.backup or rebuild from scratch
+ */
+
+const express = require('express');
+const cors = require('cors');
+
+const app = express();
+
+/**
+ * =========================================================
+ * BASIC MIDDLEWARE (MINIMAL)
+ * =========================================================
+ */
+
+// Body parser (for JSON requests)
+app.use(express.json());
+
+// CORS - Allow all origins in development (for debugging)
+app.use(cors({
+  origin: true,           // Allow all origins
+  credentials: true,      // Allow cookies
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+}));
+
+/**
+ * =========================================================
+ * TEST ROUTES
+ * =========================================================
+ */
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'Minimal server running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Test product endpoint - returns static data
+app.get('/api/v1/product', (req, res) => {
+  res.json({
+    status: 'success',
+    results: 1,
+    total: 1,
+    data: {
+      data: [
+        {
+          _id: 'test-product-1',
+          name: 'Test Product',
+          price: 100,
+          status: 'active',
+          message: 'This is a test response from minimal server',
+        },
+      ],
+    },
+  });
+});
+
+/**
+ * =========================================================
+ * 404 HANDLER
+ * =========================================================
+ */
+app.all('*', (req, res) => {
+  res.status(404).json({
+    status: 'error',
+    message: `Route ${req.originalUrl} not found`,
+  });
+});
+
+module.exports = app;

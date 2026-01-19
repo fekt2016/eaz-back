@@ -4,6 +4,7 @@ const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
 const SearchAnalytics = require('../../models/analytics/searchAnalyticsModel');
 const aiSearchService = require('../../services/aiSearchService');
+const logger = require('../../utils/logger');
 const {
   normalizeQuery,
   tokenizeQuery,
@@ -39,7 +40,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
     try {
       enhancedQuery = await aiSearchService.enhanceQuery(searchTerm);
     } catch (error) {
-      console.warn('[Search] AI query enhancement failed, using original:', error.message);
+      logger.warn('[Search] AI query enhancement failed, using original:', error.message);
     }
   }
   
@@ -70,7 +71,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
           });
         });
       } catch (error) {
-        console.warn('[Search] AI suggestions failed:', error.message);
+        logger.warn('[Search] AI suggestions failed:', error.message);
       }
     }
 
@@ -188,7 +189,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Search suggestion error:', error);
+    logger.error('Search suggestion error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch suggestions',
@@ -216,7 +217,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
       try {
         searchTerm = await aiSearchService.enhanceQuery(searchTerm);
       } catch (error) {
-        console.warn('[Search] AI query enhancement failed, using original:', error.message);
+        logger.warn('[Search] AI query enhancement failed, using original:', error.message);
       }
     }
     
@@ -318,7 +319,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
       query: normalized,
     });
   } catch (error) {
-    console.error('Search products error:', error);
+    logger.error('Search products error:', error);
     res.status(500).json({ error: 'Failed to fetch search results' });
   }
 });
@@ -357,7 +358,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     try {
       searchQuery = await aiSearchService.enhanceQuery(searchQuery);
     } catch (error) {
-      console.warn('[Search] AI query enhancement failed, using original:', error.message);
+      logger.warn('[Search] AI query enhancement failed, using original:', error.message);
     }
   }
   
@@ -387,7 +388,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
         }
       }
     } catch (error) {
-      console.warn('[Search] AI intent classification failed:', error.message);
+      logger.warn('[Search] AI intent classification failed:', error.message);
     }
   }
 
@@ -798,7 +799,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
       userModel,
       totalProducts,
     ).catch((err) => {
-      console.error('Failed to record search analytics:', err);
+      logger.error('Failed to record search analytics:', err);
     });
   }
 

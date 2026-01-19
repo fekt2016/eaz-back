@@ -2,6 +2,7 @@ const WalletHistory = require('../models/history/walletHistoryModel');
 const SellerRevenueHistory = require('../models/history/sellerRevenueHistoryModel');
 const Creditbalance = require('../models/user/creditbalanceModel');
 const Seller = require('../models/user/sellerModel');
+const logger = require('../utils/logger');
 
 /**
  * Universal History Logger Service
@@ -38,7 +39,7 @@ async function logBuyerWallet({
     // Get current wallet balance
     const wallet = await Creditbalance.findOne({ user: userId }).lean();
     if (!wallet) {
-      console.warn(`[HistoryLogger] Wallet not found for user ${userId}, skipping history log`);
+      logger.warn(`[HistoryLogger] Wallet not found for user ${userId}, skipping history log`);
       return null;
     }
 
@@ -51,7 +52,7 @@ async function logBuyerWallet({
     if (reference) {
       const existing = await WalletHistory.findOne({ reference }).lean();
       if (existing) {
-        console.log(`[HistoryLogger] Duplicate wallet history entry found for reference ${reference}, skipping`);
+        logger.info(`[HistoryLogger] Duplicate wallet history entry found for reference ${reference}, skipping`);
         return existing;
       }
     }
@@ -71,11 +72,11 @@ async function logBuyerWallet({
       metadata,
     });
 
-    console.log(`[HistoryLogger] Wallet history logged: ${type} for user ${userId}, amount: ${amount}, balance: ${balanceBefore} → ${balanceAfter}`);
+    logger.info(`[HistoryLogger] Wallet history logged: ${type} for user ${userId}, amount: ${amount}, balance: ${balanceBefore} → ${balanceAfter}`);
     return historyEntry;
   } catch (error) {
     // Log error but don't throw - don't break main action
-    console.error(`[HistoryLogger] Failed to log buyer wallet history:`, {
+    logger.error(`[HistoryLogger] Failed to log buyer wallet history:`, {
       userId,
       type,
       amount,
@@ -128,7 +129,7 @@ async function logSellerRevenue({
       // Otherwise, read from database (for backward compatibility)
       const seller = await Seller.findById(sellerId).select('balance').lean();
       if (!seller) {
-        console.warn(`[HistoryLogger] Seller not found for seller ${sellerId}, skipping history log`);
+        logger.warn(`[HistoryLogger] Seller not found for seller ${sellerId}, skipping history log`);
         return null;
       }
 
@@ -142,7 +143,7 @@ async function logSellerRevenue({
     if (reference) {
       const existing = await SellerRevenueHistory.findOne({ reference }).lean();
       if (existing) {
-        console.log(`[HistoryLogger] Duplicate seller revenue history entry found for reference ${reference}, skipping`);
+        logger.info(`[HistoryLogger] Duplicate seller revenue history entry found for reference ${reference}, skipping`);
         return existing;
       }
     }
@@ -163,11 +164,11 @@ async function logSellerRevenue({
       metadata,
     });
 
-    console.log(`[HistoryLogger] Seller revenue history logged: ${type} for seller ${sellerId}, amount: ${amount}, balance: ${finalBalanceBefore} → ${finalBalanceAfter}`);
+    logger.info(`[HistoryLogger] Seller revenue history logged: ${type} for seller ${sellerId}, amount: ${amount}, balance: ${finalBalanceBefore} → ${finalBalanceAfter}`);
     return historyEntry;
   } catch (error) {
     // Log error but don't throw - don't break main action
-    console.error(`[HistoryLogger] Failed to log seller revenue history:`, {
+    logger.error(`[HistoryLogger] Failed to log seller revenue history:`, {
       sellerId,
       type,
       amount,

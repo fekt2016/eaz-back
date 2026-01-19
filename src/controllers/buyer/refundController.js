@@ -284,9 +284,9 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
         totalRefundAmount,
         user?.name || user?.email || 'Customer'
       );
-      console.log(`[Refund Request] Admin notification created for refund ${refundRequest._id}`);
+      logger.info(`[Refund Request] Admin notification created for refund ${refundRequest._id}`);
     } catch (notificationError) {
-      console.error('[Refund Request] Error creating admin notification:', notificationError);
+      logger.error('[Refund Request] Error creating admin notification:', notificationError);
       // Don't fail refund request if notification fails
     }
 
@@ -294,6 +294,7 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
     try {
       const notificationService = require('../../services/notification/notificationService');
       const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
       const user = await User.findById(userId).select('name email');
       
       // Get unique seller IDs from refund items
@@ -334,13 +335,13 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
             totalRefundAmount,
             user?.name || user?.email || 'Customer'
           );
-          console.log(`[Refund Request] Seller notification created for seller ${sellerId}`);
+          logger.info(`[Refund Request] Seller notification created for seller ${sellerId}`);
         } catch (sellerNotifError) {
-          console.error(`[Refund Request] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+          logger.error(`[Refund Request] Error creating notification for seller ${sellerId}:`, sellerNotifError);
         }
       }
     } catch (sellerNotificationError) {
-      console.error('[Refund Request] Error creating seller notifications:', sellerNotificationError);
+      logger.error('[Refund Request] Error creating seller notifications:', sellerNotificationError);
       // Don't fail refund request if seller notification fails
     }
 

@@ -226,8 +226,13 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
+<<<<<<< HEAD
   console.log("body",req.body);
   let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks, paymentMethods } = req.body;
+=======
+  logger.info("body",req.body);
+  let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks } = req.body;
+>>>>>>> 6d2bc77 (first ci/cd push)
 
   // Parse JSON strings if they exist (from FormData)
   // Support shopAddress, location (legacy), and shopLocation (new) for backward compatibility
@@ -575,7 +580,7 @@ exports.sellerStatus = catchAsync(async (req, res, next) => {
   );
 
   if (!seller) return next(new AppError('No seller found with that ID', 404));
-  console.log('Updated seller:', seller);
+  logger.info('Updated seller:', seller);
   res.status(200).json({ status: 'success', data: { seller } });
 });
 exports.getPublicSeller = catchAsync(async (req, res, next) => {
@@ -689,7 +694,7 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
       category: product.parentCategory,
     })),
   }));
-  console.log('transformedSellers', transformedSellers);
+  logger.info('transformedSellers', transformedSellers);
   res.status(200).json({
     status: 'success',
     results: transformedSellers.length,
@@ -701,6 +706,7 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
 
 exports.getBestSellers = catchAsync(async (req, res, next) => {
   const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
   
   // Get query parameters with defaults
   const page = parseInt(req.query.page) || 1;
@@ -777,7 +783,7 @@ exports.getBestSellers = catchAsync(async (req, res, next) => {
     const sellers = sellersWithOrders[0]?.sellers || [];
     total = sellersWithOrders[0]?.total[0]?.count || 0;
 
-    console.log('[getBestSellers] Sellers with orders:', sellers.length, 'Total:', total);
+    logger.info('[getBestSellers] Sellers with orders:', sellers.length, 'Total:', total);
 
     // If we have sellers with orders, use them
     if (sellers.length > 0) {
@@ -811,11 +817,11 @@ exports.getBestSellers = catchAsync(async (req, res, next) => {
       });
     }
   } catch (aggError) {
-    console.error('[getBestSellers] Aggregation error:', aggError);
+    logger.error('[getBestSellers] Aggregation error:', aggError);
   }
 
   // Fallback: Get all active sellers if no orders found
-  console.log('[getBestSellers] No sellers with orders found, falling back to all active sellers');
+  logger.info('[getBestSellers] No sellers with orders found, falling back to all active sellers');
   try {
     const allSellers = await Seller.find({
       $or: [
@@ -836,7 +842,7 @@ exports.getBestSellers = catchAsync(async (req, res, next) => {
       ],
     });
 
-    console.log('[getBestSellers] Found active sellers:', allSellers.length, 'Total:', totalSellers);
+    logger.info('[getBestSellers] Found active sellers:', allSellers.length, 'Total:', totalSellers);
 
     const transformedSellers = allSellers.map((seller) => ({
       _id: seller._id,
@@ -867,7 +873,7 @@ exports.getBestSellers = catchAsync(async (req, res, next) => {
       },
     });
   } catch (fallbackError) {
-    console.error('[getBestSellers] Fallback error:', fallbackError);
+    logger.error('[getBestSellers] Fallback error:', fallbackError);
     return next(new AppError('Failed to fetch sellers', 500));
   }
 });
@@ -924,7 +930,7 @@ exports.getBestSellers = catchAsync(async (req, res, next) => {
 //       },
 //     },
 //   ]);
-//   console.log(sellers);
+//   logger.info(sellers);
 
 //   // Transform to final response format
 //   const transformedSellers = sellers.map((seller) => ({

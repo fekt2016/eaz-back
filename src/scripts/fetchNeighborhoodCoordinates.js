@@ -7,6 +7,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const logger = require('../utils/logger');
 const { geocodeAddress } = require('../services/googleMapsService');
 
 const DATA_FILE = path.join(__dirname, '../../data/neighborhoods.accra.tema.json');
@@ -20,7 +21,7 @@ async function fetchCoordinates(neighborhood, retries = 3) {
   
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      console.log(`📍 Geocoding: ${address} (attempt ${attempt}/${retries})`);
+      logger.info(`📍 Geocoding: ${address} (attempt ${attempt}/${retries});`);
       const result = await geocodeAddress(address);
       
       if (result && result.lat && result.lng) {
@@ -35,7 +36,7 @@ async function fetchCoordinates(neighborhood, retries = 3) {
       // If no result, try with municipality
       if (neighborhood.municipality) {
         const addressWithMunicipality = `${neighborhood.name}, ${neighborhood.municipality}, ${neighborhood.city}, Ghana`;
-        console.log(`📍 Retrying with municipality: ${addressWithMunicipality}`);
+        logger.info(`📍 Retrying with municipality: ${addressWithMunicipality}`);
         const result2 = await geocodeAddress(addressWithMunicipality);
         
         if (result2 && result2.lat && result2.lng) {
@@ -48,14 +49,14 @@ async function fetchCoordinates(neighborhood, retries = 3) {
         }
       }
       
-      console.warn(`⚠️  No coordinates found for: ${address}`);
+      logger.warn(`⚠️  No coordinates found for: ${address}`);
       return null;
     } catch (error) {
-      console.error(`❌ Error geocoding ${address}:`, error.message);
+      logger.error(`❌ Error geocoding ${address}:`, error.message);
       
       if (attempt < retries) {
         const delay = attempt * 1000; // Exponential backoff
-        console.log(`⏳ Retrying in ${delay}ms...`);
+        logger.info(`⏳ Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
         return null;
@@ -77,7 +78,7 @@ async function fetchAllCoordinates() {
     }
 
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    console.log(`📋 Found ${data.length} neighborhoods to process\n`);
+    logger.info(`📋 Found ${data.length} neighborhoods to process\n`);
 
     const results = {
       success: 0,
@@ -92,7 +93,7 @@ async function fetchAllCoordinates() {
       
       // Skip if coordinates already exist
       if (neighborhood.lat && neighborhood.lng) {
-        console.log(`⏭️  Skipping ${neighborhood.name} - coordinates already exist`);
+        logger.info(`⏭️  Skipping ${neighborhood.name} - coordinates already exist`);
         results.skipped++;
         continue;
       }
@@ -114,15 +115,15 @@ async function fetchAllCoordinates() {
           lng: coords.lng,
         });
         
-        console.log(`✅ ${neighborhood.name}: ${coords.lat}, ${coords.lng}`);
+        logger.info(`✅ ${neighborhood.name}: ${coords.lat}, ${coords.lng}`);
       } else {
         results.failed++;
-        console.log(`❌ Failed to get coordinates for: ${neighborhood.name}`);
+        logger.info(`❌ Failed to get coordinates for: ${neighborhood.name}`);
       }
 
       // Save progress after each update
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-      console.log(`💾 Progress saved (${i + 1}/${data.length})\n`);
+      logger.info(`💾 Progress saved (${i + 1}/${data.length});\n`);
 
       // Delay between requests to avoid rate limiting
       if (i < data.length - 1) {
@@ -131,24 +132,24 @@ async function fetchAllCoordinates() {
     }
 
     // Final summary
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 FETCHING SUMMARY');
-    console.log('='.repeat(60));
-    console.log(`✅ Successfully fetched: ${results.success} neighborhoods`);
-    console.log(`⏭️  Skipped (already have coordinates): ${results.skipped} neighborhoods`);
-    console.log(`❌ Failed: ${results.failed} neighborhoods`);
-    console.log(`\n💾 Updated file: ${DATA_FILE}`);
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📊 FETCHING SUMMARY');
+    logger.info('='.repeat(60));
+    logger.info(`✅ Successfully fetched: ${results.success} neighborhoods`);
+    logger.info(`⏭️  Skipped (already have coordinates);: ${results.skipped} neighborhoods`);
+    logger.info(`❌ Failed: ${results.failed} neighborhoods`);
+    logger.info(`\n💾 Updated file: ${DATA_FILE}`);
 
     if (results.updated.length > 0) {
-      console.log('\n✅ Successfully updated neighborhoods:');
+      logger.info('\n✅ Successfully updated neighborhoods:');
       results.updated.forEach((item) => {
-        console.log(`   - ${item.name}, ${item.city}: ${item.lat}, ${item.lng}`);
+        logger.info(`   - ${item.name}, ${item.city}: ${item.lat}, ${item.lng}`);
       });
     }
 
     return results;
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    logger.error('❌ Fatal error:', error);
     throw error;
   }
 }
@@ -157,11 +158,11 @@ async function fetchAllCoordinates() {
 if (require.main === module) {
   fetchAllCoordinates()
     .then(() => {
-      console.log('\n✅ Script completed successfully!');
+      logger.info('\n✅ Script completed successfully!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Script failed:', error);
+      logger.error('❌ Script failed:', error);
       process.exit(1);
     });
 }

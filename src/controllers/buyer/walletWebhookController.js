@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const walletService = require('../../services/walletService');
+const logger = require('../../utils/logger');
 
 /**
  * POST /api/v1/wallet/webhook
@@ -12,7 +13,7 @@ exports.paystackWalletWebhook = catchAsync(async (req, res, next) => {
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
   if (!PAYSTACK_SECRET_KEY) {
-    console.error('[Wallet Webhook] Paystack secret key not configured');
+    logger.error('[Wallet Webhook] Paystack secret key not configured');
     return res.status(500).json({ received: false, error: 'Paystack not configured' });
   }
 
@@ -23,7 +24,7 @@ exports.paystackWalletWebhook = catchAsync(async (req, res, next) => {
     .digest('hex');
 
   if (hash !== hashCheck) {
-    console.error('[Wallet Webhook] Invalid signature');
+    logger.error('[Wallet Webhook] Invalid signature');
     return res.status(401).json({ received: false, error: 'Invalid signature' });
   }
 
@@ -36,14 +37,14 @@ exports.paystackWalletWebhook = catchAsync(async (req, res, next) => {
     
     if (transaction && transaction.metadata?.type === 'wallet_topup' && transaction.status === 'success') {
       const reference = transaction.reference;
-      console.log(`[Wallet Webhook] Processing wallet top-up: ${reference}`);
+      logger.info(`[Wallet Webhook] Processing wallet top-up: ${reference}`);
       
       try {
         const userId = transaction.metadata?.userId;
         const amount = transaction.amount / 100; // Convert from smallest currency unit
 
         if (!userId) {
-          console.error('[Wallet Webhook] User ID not found in wallet top-up metadata');
+          logger.error('[Wallet Webhook] User ID not found in wallet top-up metadata');
           return res.status(200).json({ received: true });
         }
 
@@ -63,14 +64,14 @@ exports.paystackWalletWebhook = catchAsync(async (req, res, next) => {
         );
 
         if (result.isDuplicate) {
-          console.log(`[Wallet Webhook] Wallet top-up ${reference} already processed (idempotency check)`);
+          logger.info(`[Wallet Webhook] Wallet top-up ${reference} already processed (idempotency check);`);
         } else {
-          console.log(`[Wallet Webhook] Wallet top-up successful: GH₵${amount} credited to user ${userId}`);
+          logger.info(`[Wallet Webhook] Wallet top-up successful: GH₵${amount} credited to user ${userId}`);
         }
 
         return res.status(200).json({ received: true });
       } catch (error) {
-        console.error('[Wallet Webhook] Error processing wallet top-up:', error);
+        logger.error('[Wallet Webhook] Error processing wallet top-up:', error);
         // Don't fail webhook, but log error
         return res.status(200).json({ received: true });
       }

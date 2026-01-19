@@ -3,22 +3,39 @@ const validator = require('validator');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const Permission = require('./permissionModel');
+const logger = require('../../utils/logger');
 
 const userSchema = new mongoose.Schema(
   {
     name: { type: String },
     email: {
       type: String,
-      required: [true, 'Please provide your email'],
+      // Required validation handled in pre-save hook (at least one of email or phone must be provided)
       unique: true,
+      sparse: true, // Allow multiple documents with null/undefined email
       lowercase: true,
-      validate: [validator.isEmail],
+      validate: {
+        validator: function(value) {
+          // If email is provided, it must be valid
+          if (value) {
+            return validator.isEmail(value);
+          }
+          // If email is not provided, phone must be provided (handled by pre-save hook)
+          return true;
+        },
+        message: 'Please provide a valid email address',
+      },
     },
     phone: {
       type: Number,
+      // Required validation handled in pre-save hook (at least one of email or phone must be provided)
       unique: true,
+<<<<<<< HEAD
       sparse: true, // Allow multiple null values (unique only for non-null values)
       required: false, // Phone is optional - email-only login is supported
+=======
+      sparse: true, // Allow multiple documents with null/undefined phone
+>>>>>>> 6d2bc77 (first ci/cd push)
     },
     photo: { type: String, default: 'default.jpg' },
     gender: {
@@ -199,6 +216,17 @@ const userSchema = new mongoose.Schema(
   },
 );
 
+// Validate that at least one of email or phone is provided
+userSchema.pre('save', function (next) {
+  // Only validate for new documents or when email/phone are being modified
+  if (this.isNew || this.isModified('email') || this.isModified('phone')) {
+    if (!this.email && !this.phone) {
+      return next(new Error('Please provide either email or phone number'));
+    }
+  }
+  next();
+});
+
 userSchema.pre('save', function (next) {
   // Initialize accountDeletion for new users
   if (this.isNew && !this.accountDeletion) {
@@ -304,15 +332,15 @@ userSchema.pre(/^find/, function (next) {
 //   userPassword,
 //   candidatePassword,
 // ) {
-//   console.log('candidatePassword', candidatePassword);
-//   console.log('userPassword', userPassword);
+//   logger.info('candidatePassword', candidatePassword);
+//   logger.info('userPassword', userPassword);
 //   const user = await bcrypt.compare(userPassword, candidatePassword);
-//   console.log('user', user);
+//   logger.info('user', user);
 //   return user;
 // };
 userSchema.methods.correctPassword = async function (candidatePassword) {
-  console.log('candidatePassword', candidatePassword);
-  console.log('userPassword', this.password);
+  logger.info('candidatePassword', candidatePassword);
+  logger.info('userPassword', this.password);
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -348,7 +376,6 @@ userSchema.methods.createPasswordResetToken = function () {
   return resetToken;
 };
 userSchema.methods.createOtp = function () {
-  const crypto = require('crypto');
   // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   
@@ -361,7 +388,7 @@ userSchema.methods.createOtp = function () {
   this.otpAttempts = 0; // Reset attempts on new OTP
   this.otpLockedUntil = null; // Clear lockout
   
-  console.log('[createOtp] Generated OTP (hashed):', { 
+  logger.info('[createOtp] Generated OTP (hashed);:', { 
     expires: new Date(this.otpExpires).toISOString(),
     expiresIn: process.env.OTP_EXPIRES_IN || 10 
   });
@@ -372,24 +399,22 @@ userSchema.methods.createOtp = function () {
 
 // Add OTP verification method with hashing
 userSchema.methods.verifyOtp = function (candidateOtp) {
-  const crypto = require('crypto');
-  
   // Check if account is locked
   if (this.otpLockedUntil && new Date(this.otpLockedUntil).getTime() > Date.now()) {
     const minutesRemaining = Math.ceil((new Date(this.otpLockedUntil).getTime() - Date.now()) / (1000 * 60));
-    console.log('[verifyOtp] Account locked:', { minutesRemaining });
+    logger.info('[verifyOtp] Account locked:', { minutesRemaining });
     return { valid: false, locked: true, minutesRemaining };
   }
   
   // Check if OTP exists
   if (!this.otp) {
-    console.log('[verifyOtp] No OTP stored for user');
+    logger.info('[verifyOtp] No OTP stored for user');
     return { valid: false, reason: 'no_otp' };
   }
   
   // Check if OTP has expired
   if (!this.otpExpires) {
-    console.log('[verifyOtp] No expiration time set for OTP');
+    logger.info('[verifyOtp] No expiration time set for OTP');
     return { valid: false, reason: 'no_expiry' };
   }
   
@@ -398,7 +423,7 @@ userSchema.methods.verifyOtp = function (candidateOtp) {
   
   if (expiresAt <= now) {
     const minutesExpired = Math.floor((now - expiresAt) / (1000 * 60));
-    console.log('[verifyOtp] OTP expired:', { minutesExpired });
+    logger.info('[verifyOtp] OTP expired:', { minutesExpired });
     return { valid: false, reason: 'expired', minutesExpired };
   }
   
@@ -406,7 +431,7 @@ userSchema.methods.verifyOtp = function (candidateOtp) {
   const providedOtp = String(candidateOtp || '').trim().replace(/\D/g, '');
   
   if (providedOtp.length === 0 || providedOtp.length !== 6) {
-    console.log('[verifyOtp] Invalid OTP format:', { length: providedOtp.length });
+    logger.info('[verifyOtp] Invalid OTP format:', { length: providedOtp.length });
     return { valid: false, reason: 'invalid_format' };
   }
   
@@ -415,7 +440,7 @@ userSchema.methods.verifyOtp = function (candidateOtp) {
   const otpMatch = this.otp === hashedCandidate;
   
   if (!otpMatch) {
-    console.log('[verifyOtp] OTP mismatch');
+    logger.info('[verifyOtp] OTP mismatch');
     return { valid: false, reason: 'mismatch' };
   }
   
@@ -423,7 +448,7 @@ userSchema.methods.verifyOtp = function (candidateOtp) {
   this.otpAttempts = 0;
   this.otpLockedUntil = null;
   
-  console.log('[verifyOtp] OTP verified successfully');
+  logger.info('[verifyOtp] OTP verified successfully');
   return { valid: true };
 };
 
@@ -474,6 +499,9 @@ userSchema.methods.scheduleAccountDeletion = function (reason = '') {
   return this.save();
 };
 userSchema.post('save', async function (doc, next) {
+  // CRITICAL FIX: Make permission creation non-blocking
+  // If permission creation fails, log it but don't fail the user creation
+  // This prevents 500 errors when permission creation has issues
   try {
     // Only create permission if it doesn't exist
     if (!doc.permissions) {
@@ -483,28 +511,42 @@ userSchema.post('save', async function (doc, next) {
       if (existingPermission) {
         // Link existing permission
         doc.permissions = existingPermission._id;
-        await doc.save();
+        await doc.save({ validateBeforeSave: false });
       } else {
         // Create new permission
         const permission = new Permission({ user: doc._id });
         await permission.save();
         doc.permissions = permission._id;
-        await doc.save();
+        await doc.save({ validateBeforeSave: false });
       }
     }
     next();
   } catch (error) {
     // Handle duplicate key error specifically
     if (error.code === 11000) {
-      console.warn(`Duplicate permission prevented for user ${doc._id}`);
-      const existing = await Permission.findOne({ user: doc._id });
-      if (existing) {
-        doc.permissions = existing._id;
-        await doc.save();
+      logger.warn(`[User Model] Duplicate permission prevented for user ${doc._id}`);
+      try {
+        const existing = await Permission.findOne({ user: doc._id });
+        if (existing) {
+          doc.permissions = existing._id;
+          await doc.save({ validateBeforeSave: false });
+        }
+      } catch (linkError) {
+        logger.error(`[User Model] Failed to link existing permission for user ${doc._id}:`, linkError.message);
       }
-      return next();
+      return next(); // Don't fail user creation
     }
-    next(error);
+    
+    // For other errors, log but don't fail user creation
+    // Permission creation is not critical - user can still function without it
+    logger.error(`[User Model] Permission creation failed for user ${doc._id}:`, {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+    });
+    
+    // Continue without failing - user creation should succeed even if permission creation fails
+    next();
   }
 });
 userSchema.methods.createEmailVerificationToken = function () {

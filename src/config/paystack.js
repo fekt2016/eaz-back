@@ -4,12 +4,13 @@
  */
 
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 // Get Paystack secret key from environment
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_SECRET;
 
 if (!PAYSTACK_SECRET_KEY) {
-  console.warn('[Paystack Config] PAYSTACK_SECRET_KEY not found in environment variables');
+  logger.warn('[Paystack Config] PAYSTACK_SECRET_KEY not found in environment variables');
 }
 
 // Paystack API base URL

@@ -191,7 +191,7 @@ exports.getAllShippingRates = catchAsync(async (req, res) => {
     weightMin: 1,
   });
 
-  console.log("shippingRates", shippingRates);
+  logger.info("shippingRates", shippingRates);
   
   res.status(200).json({
     status: 'success',
@@ -251,6 +251,7 @@ exports.calculateFee = catchAsync(async (req, res, next) => {
     // IMPORTANT: Origin is always the fixed warehouse location
     // Only destination (customer address) is geocoded if needed
     const shippingCalculator = require('../../services/shippingCalculator');
+const logger = require('../../utils/logger');
     
     try {
       const result = await shippingCalculator.calculateShipping({

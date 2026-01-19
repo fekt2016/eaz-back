@@ -1,4 +1,5 @@
 const Neighborhood = require('../models/shipping/neighborhoodModel');
+const logger = require('../utils/logger');
 const { reverseGeocode } = require('./googleMapsService');
 const { getDistanceKm } = require('./distanceService');
 const { classifyZone } = require('./zoneClassificationService');
@@ -91,7 +92,7 @@ async function detectNeighborhoodFromCoordinates(lat, lng) {
       region: reverseGeocodeResult.region || 'Greater Accra',
     };
   } catch (error) {
-    console.error('Error detecting neighborhood:', error);
+    logger.error('Error detecting neighborhood:', error);
     return null;
   }
 }
@@ -129,7 +130,7 @@ async function calculateZoneFromCoordinates(lat, lng) {
     
     return { distanceKm, zone };
   } catch (error) {
-    console.error('Error calculating zone:', error);
+    logger.error('Error calculating zone:', error);
     return { distanceKm: null, zone: null };
   }
 }

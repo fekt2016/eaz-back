@@ -28,10 +28,10 @@ async function connectDatabase() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB\n');
+    logger.info('✅ Connected to MongoDB\n');
     return true;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    logger.error('❌ Error connecting to MongoDB:', error.message);
     throw error;
   }
 }
@@ -46,14 +46,14 @@ async function getAllTowns() {
       .lean();
 
     if (towns.length === 0) {
-      console.log('📭 No towns found in the database.');
+      logger.info('📭 No towns found in the database.');
       return;
     }
 
-    console.log('='.repeat(100));
-    console.log(`📊 TOTAL TOWNS IN DATABASE: ${towns.length}`);
-    console.log('='.repeat(100));
-    console.log('');
+    logger.info('='.repeat(100));
+    logger.info(`📊 TOTAL TOWNS IN DATABASE: ${towns.length}`);
+    logger.info('='.repeat(100));
+    logger.info('');
 
     // Group by zone
     const townsByZone = {
@@ -75,26 +75,26 @@ async function getAllTowns() {
     ['A', 'B', 'C', 'D', 'E', 'F'].forEach((zone) => {
       const zoneTowns = townsByZone[zone];
       if (zoneTowns.length > 0) {
-        console.log('─'.repeat(100));
-        console.log(`📍 ZONE ${zone} (${zoneTowns.length} towns)`);
-        console.log('─'.repeat(100));
+        logger.info('─'.repeat(100));
+        logger.info(`📍 ZONE ${zone} (${zoneTowns.length} towns);`);
+        logger.info('─'.repeat(100));
         
         zoneTowns.forEach((town, index) => {
           const override = town.manualOverride ? ' [MANUAL OVERRIDE]' : '';
-          console.log(
+          logger.info(
             `${(index + 1).toString().padStart(3)}. ${town.town.padEnd(40)} | ` +
             `Distance: ${town.km?.toFixed(2).padStart(6)} km | ` +
             `Coords: ${town.lat?.toFixed(4)}, ${town.lng?.toFixed(4)}${override}`
           );
         });
-        console.log('');
+        logger.info('');
       }
     });
 
     // Summary statistics
-    console.log('='.repeat(100));
-    console.log('📈 SUMMARY STATISTICS');
-    console.log('='.repeat(100));
+    logger.info('='.repeat(100));
+    logger.info('📈 SUMMARY STATISTICS');
+    logger.info('='.repeat(100));
     
     ['A', 'B', 'C', 'D', 'E', 'F'].forEach((zone) => {
       const zoneTowns = townsByZone[zone];
@@ -106,7 +106,7 @@ async function getAllTowns() {
         const minDistance = distances.length > 0 ? Math.min(...distances).toFixed(2) : 'N/A';
         const maxDistance = distances.length > 0 ? Math.max(...distances).toFixed(2) : 'N/A';
         
-        console.log(
+        logger.info(
           `Zone ${zone}: ${zoneTowns.length} towns | ` +
           `Avg: ${avgDistance} km | ` +
           `Range: ${minDistance} - ${maxDistance} km`
@@ -115,11 +115,12 @@ async function getAllTowns() {
     });
 
     const manualOverrides = towns.filter((t) => t.manualOverride).length;
-    console.log(`\nManual Overrides: ${manualOverrides}`);
+    logger.info(`\nManual Overrides: ${manualOverrides}`);
 
     // Export to JSON file option
     const fs = require('fs');
     const path = require('path');
+const logger = require('../utils/logger');
     const outputPath = path.join(__dirname, '../../ALL_TOWNS_EXPORT.json');
     
     fs.writeFileSync(
@@ -143,14 +144,14 @@ async function getAllTowns() {
       )
     );
     
-    console.log(`\n💾 Exported to: ${outputPath}`);
+    logger.info(`\n💾 Exported to: ${outputPath}`);
 
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    logger.error('❌ Error:', error.message);
     throw error;
   } finally {
     await mongoose.disconnect();
-    console.log('\n🔌 Disconnected from MongoDB');
+    logger.info('\n🔌 Disconnected from MongoDB');
   }
 }
 
@@ -158,7 +159,7 @@ if (require.main === module) {
   getAllTowns().then(() => {
     process.exit(0);
   }).catch((error) => {
-    console.error('Fatal error:', error);
+    logger.error('Fatal error:', error);
     process.exit(1);
   });
 }

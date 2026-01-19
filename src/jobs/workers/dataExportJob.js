@@ -6,6 +6,7 @@ const { sendDataReadyEmail } = require('../../utils/email/emailService');
 const { checkFeature, FEATURES } = require('../../utils/featureFlags');
 const { toPathString } = require('../../utils/safePath');
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 
 // Modified to accept cloudinary as a parameter
 exports.processDataExportJob = async (job, cloudinary) => {
@@ -111,6 +112,7 @@ exports.processDataExportJob = async (job, cloudinary) => {
 
     return { success: true };
   } catch (error) {
+<<<<<<< HEAD
     // Enhanced error logging for ERR_INVALID_ARG_TYPE
     if (error.message && error.message.includes('ERR_INVALID_ARG_TYPE')) {
       console.error('\n🚨 ERR_INVALID_ARG_TYPE DETECTED IN DATA EXPORT JOB - FULL STACK TRACE:');
@@ -128,6 +130,9 @@ exports.processDataExportJob = async (job, cloudinary) => {
         console.error('Stack trace:', error.stack);
       }
     }
+=======
+    logger.error('Export job failed:', error);
+>>>>>>> 6d2bc77 (first ci/cd push)
 
     // Update status to failed
     if (userId) {

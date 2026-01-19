@@ -10,6 +10,7 @@ const {
   isSuspiciousDevice,
 } = require('./deviceUtils');
 const sendEmail = require('../email/emailService');
+const logger = require('../logger');
 
 /**
  * Create device session and generate tokens with deviceId
@@ -29,9 +30,9 @@ exports.createDeviceSession = async (req, user, platform = null) => {
   try {
     const { getIpLocation } = require('../../services/securityMonitor');
     location = await getIpLocation(ipAddress);
-    console.log('[createDeviceSession] Location detected:', location);
+    logger.info('[createDeviceSession] Location detected:', location);
   } catch (locationError) {
-    console.error('[createDeviceSession] Error detecting location:', locationError.message);
+    logger.error('[createDeviceSession] Error detecting location:', locationError.message);
     location = 'Location Unavailable';
   }
 
@@ -53,9 +54,9 @@ exports.createDeviceSession = async (req, user, platform = null) => {
         user.role || 'buyer',
         detectedPlatform,
       );
-      console.log('[createDeviceSession] Device limit check:', deviceLimit);
+      logger.info('[createDeviceSession] Device limit check:', deviceLimit);
     } catch (limitError) {
-      console.error('[createDeviceSession] Error checking device limit:', limitError.message);
+      logger.error('[createDeviceSession] Error checking device limit:', limitError.message);
       // If collection doesn't exist, assume within limit
       deviceLimit = { withinLimit: true, currentCount: 0, limit: 5 };
     }
@@ -67,7 +68,7 @@ exports.createDeviceSession = async (req, user, platform = null) => {
     }
   } else {
     // In development, skip device limit check
-    console.log('[createDeviceSession] Development mode - skipping device limit check');
+    logger.info('[createDeviceSession] Development mode - skipping device limit check');
     deviceLimit = { withinLimit: true, currentCount: 0, limit: 999 };
   }
 
@@ -81,9 +82,9 @@ exports.createDeviceSession = async (req, user, platform = null) => {
       deviceId,
       DeviceSession,
     );
-    console.log('[createDeviceSession] Suspicious device check:', suspicious);
+    logger.info('[createDeviceSession] Suspicious device check:', suspicious);
   } catch (suspiciousError) {
-    console.error('[createDeviceSession] Error checking suspicious device:', suspiciousError.message);
+    logger.error('[createDeviceSession] Error checking suspicious device:', suspiciousError.message);
     // If error, assume not suspicious
     suspicious = false;
   }
@@ -110,7 +111,7 @@ exports.createDeviceSession = async (req, user, platform = null) => {
   );
 
   // Create device session
-  console.log('[createDeviceSession] Creating device session with data:', {
+  logger.info('[createDeviceSession] Creating device session with data:', {
     userId: user._id,
     userModel,
     deviceId,
@@ -136,10 +137,10 @@ exports.createDeviceSession = async (req, user, platform = null) => {
       expiresAt,
       platform: detectedPlatform,
     });
-    console.log('[createDeviceSession] ✅ Device session created successfully:', deviceSession._id);
+    logger.info('[createDeviceSession] ✅ Device session created successfully:', deviceSession._id);
   } catch (createError) {
-    console.error('[createDeviceSession] ❌ Error creating DeviceSession document:', createError.message);
-    console.error('[createDeviceSession] Error details:', {
+    logger.error('[createDeviceSession] ❌ Error creating DeviceSession document:', createError.message);
+    logger.error('[createDeviceSession] Error details:', {
       name: createError.name,
       code: createError.code,
       errors: createError.errors,
@@ -157,7 +158,7 @@ exports.createDeviceSession = async (req, user, platform = null) => {
         message: `A new device has logged into your EazShop account.\n\nDevice: ${deviceType}\nIP Address: ${ipAddress}\nTime: ${new Date().toLocaleString()}\n\nIf this wasn't you, please change your password immediately.`,
       });
     } catch (emailError) {
-      console.error('Failed to send suspicious device email:', emailError);
+      logger.error('Failed to send suspicious device email:', emailError);
     }
   }
 
@@ -188,7 +189,7 @@ exports.logoutDevice = async (req, deviceId = null) => {
       const decoded = jwt.decode(token);
       targetDeviceId = decoded?.deviceId;
     } catch (error) {
-      console.error('Error decoding token:', error);
+      logger.error('Error decoding token:', error);
     }
   }
 
@@ -210,18 +211,18 @@ exports.logoutDevice = async (req, deviceId = null) => {
     try {
       const decoded = jwt.decode(token);
       if (decoded) {
-        console.log('[logoutDevice] Blacklisting token for user:', userId);
+        logger.info('[logoutDevice] Blacklisting token for user:', userId);
         await TokenBlacklist.blacklistToken(
           token,
           userId,
           decoded.role || 'customer',
           'logout',
         );
-        console.log('[logoutDevice] ✅ Token blacklisted successfully');
+        logger.info('[logoutDevice] ✅ Token blacklisted successfully');
       }
     } catch (error) {
-      console.error('[logoutDevice] ❌ Error blacklisting token:', error.message);
-      console.error('[logoutDevice] Error stack:', error.stack);
+      logger.error('[logoutDevice] ❌ Error blacklisting token:', error.message);
+      logger.error('[logoutDevice] Error stack:', error.stack);
     }
   }
 };
@@ -281,7 +282,7 @@ exports.logoutAllDevices = async (req) => {
         );
       }
     } catch (error) {
-      console.error('Error blacklisting token:', error);
+      logger.error('Error blacklisting token:', error);
     }
   }
 

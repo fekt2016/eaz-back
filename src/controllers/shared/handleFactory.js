@@ -2,12 +2,13 @@ const APIFeature = require('../../utils/helpers/apiFeatures');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 // import cloudinary from '../../utils/storage/cloudinary.js';
 // import { uploadToCloudinary } from '../../utils/storage/cloudinary.js';
 
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    console.log('req.params', req.params.id);
+    logger.info('req.params', req.params.id);
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return next(new AppError('Invalid product ID format', 400));
     }
@@ -24,7 +25,7 @@ exports.deleteOne = (Model) =>
 
 exports.updateOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    console.log('body', req.body);
+    logger.info('body', req.body);
     // Order model specific validation
     if (req.body.orderStatus && Object.keys(req.body).length > 1) {
       return next(
@@ -52,7 +53,7 @@ exports.updateOne = (Model) =>
             return next(new AppError('Invalid attributes format', 400));
           }
         }
-        console.log('attributes', req.body.attributes);
+        logger.info('attributes', req.body.attributes);
         // Parse attributes if sent as string
         if (typeof req.body.attributes === 'string') {
           req.body.attributes = JSON.parse(req.body.attributes);
@@ -126,11 +127,20 @@ exports.updateOne = (Model) =>
     });
   });
 
+<<<<<<< HEAD
 exports.createOne = (Model) => catchAsync(async (req, res, next) => {
   // console.log(req.files);
   // console.log('req.body', req.body);
   // const { files } = req;
   let body = req.body;
+=======
+exports.createOne = (Model) => async (req, res, next) => {
+  // logger.info(req.files);
+  // logger.info('req.body', req.body);
+  try {
+    // const { files } = req;
+    let body = req.body;
+>>>>>>> 6d2bc77 (first ci/cd push)
 
     if (body.attributes && typeof body.attributes === 'string') {
       try {
@@ -143,7 +153,7 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
     if (body.variants && typeof body.variants === 'string') {
       try {
         body.variants = JSON.parse(body.variants);
-        console.log('varaints', body.variants);
+        logger.info('varaints', body.variants);
       } catch (err) {
         return next(new AppError('Invalid variants format', 400));
       }
@@ -176,7 +186,7 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
     if (body.subCategory && !mongoose.isValidObjectId(body.subCategory)) {
       return next(new AppError('Invalid subCategory ID format', 400));
     }
-    console.log();
+    logger.info();
     // 3. Create document
     const doc = await Model.create(body);
 
@@ -200,12 +210,12 @@ exports.getOne = (Model, popOptions) =>
       query = query.populate(popOptions);
 
     const doc = await query;
-    console.log('doc', doc);
+    logger.info('doc', doc);
 
     if (!doc) {
       return next(new AppError('doc with this ID is not found', 404));
     }
-    console.log('doc', doc);
+    logger.info('doc', doc);
     res.status(200).json({ status: 'success', data: { data: doc } });
   });
 

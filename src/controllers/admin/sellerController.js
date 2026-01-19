@@ -6,6 +6,7 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Seller = require('../../models/user/sellerModel');
+const logger = require('../../utils/logger');
 const { logSellerRevenue } = require('../../services/historyLogger');
 
 /**
@@ -90,9 +91,9 @@ exports.resetSellerBalance = catchAsync(async (req, res, next) => {
           newWithdrawableBalance: balance,
         },
       });
-      console.log(`[Admin Seller] ✅ Revenue history logged for balance reset - seller ${seller._id}`);
+      logger.info(`[Admin Seller] ✅ Revenue history logged for balance reset - seller ${seller._id}`);
     } catch (err) {
-      console.error(`[Admin Seller] Failed to log revenue history (non-critical) for seller ${seller._id}:`, {
+      logger.error(`[Admin Seller] Failed to log revenue history (non-critical); for seller ${seller._id}:`, {
         error: err.message,
         stack: err.stack,
       });
@@ -200,9 +201,9 @@ exports.resetLockedBalance = catchAsync(async (req, res, next) => {
           fundsReturned: oldLockedBalance,
         },
       });
-      console.log(`[Admin Seller] ✅ Revenue history logged for unlock funds - seller ${seller._id}`);
+      logger.info(`[Admin Seller] ✅ Revenue history logged for unlock funds - seller ${seller._id}`);
     } catch (err) {
-      console.error(`[Admin Seller] Failed to log revenue history (non-critical) for seller ${seller._id}:`, {
+      logger.error(`[Admin Seller] Failed to log revenue history (non-critical); for seller ${seller._id}:`, {
         error: err.message,
         stack: err.stack,
       });

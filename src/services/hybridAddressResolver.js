@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { digitalAddressToCoordinates } = require('./digitalAddressService');
 const { reverseGeocode } = require('./googleMapsService');
 
@@ -63,12 +64,12 @@ async function resolveFullAddress(digitalAddress) {
     // Step 1: Convert digital address to coordinates
     const coordinates = await digitalAddressToCoordinates(digitalAddress);
     
-    console.log(`[Hybrid Resolver] Digital Address: ${digitalAddress} -> Coordinates: ${coordinates.lat}, ${coordinates.lng}`);
+    logger.info(`[Hybrid Resolver] Digital Address: ${digitalAddress} -> Coordinates: ${coordinates.lat}, ${coordinates.lng}`);
 
     // Step 2: Reverse geocode coordinates using Google Maps
     const googleData = await reverseGeocode(coordinates.lat, coordinates.lng);
     
-    console.log(`[Hybrid Resolver] Google Maps Response:`, {
+    logger.info(`[Hybrid Resolver] Google Maps Response:`, {
       street: googleData?.street,
       town: googleData?.town,
       city: googleData?.city,
@@ -100,11 +101,11 @@ async function resolveFullAddress(digitalAddress) {
       placeId: googleData.placeId || null,
     };
     
-    console.log(`[Hybrid Resolver] Final Result:`, result);
+    logger.info(`[Hybrid Resolver] Final Result:`, result);
     
     return result;
   } catch (error) {
-    console.error(`[Hybrid Resolver] Error resolving address:`, error);
+    logger.error(`[Hybrid Resolver] Error resolving address:`, error);
     throw new Error(`Failed to resolve full address: ${error.message}`);
   }
 }
@@ -134,7 +135,7 @@ async function resolveAddressFromCoordinates(lat, lng) {
       digitalAddress = coordinatesToDigitalAddress(lat, lng);
     } catch (error) {
       // If conversion fails, continue without digital address
-      console.warn('Could not generate digital address from coordinates:', error.message);
+      logger.warn('Could not generate digital address from coordinates:', error.message);
     }
 
     return {

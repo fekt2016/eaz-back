@@ -39,6 +39,11 @@ const productRelationsSchema = new mongoose.Schema(
 );
 
 
+<<<<<<< HEAD
+=======
+// Index for efficient queries
+
+>>>>>>> 6d2bc77 (first ci/cd push)
 
 const ProductRelations = mongoose.model('ProductRelations', productRelationsSchema);
 

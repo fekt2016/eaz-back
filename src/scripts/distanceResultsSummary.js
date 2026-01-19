@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 /**
  * Distance Results Summary
  * Clean summary of successful distance calculations
@@ -77,26 +78,26 @@ const results = {
   ],
 };
 
-console.log("=".repeat(80));
-console.log("DISTANCE ANALYSIS SUMMARY - Towns with Valid Distances");
-console.log("Warehouse Location: HRH2+R22, Al-Waleed bin Talal Highway, Accra");
-console.log("Coordinates: 5.582930, -0.171870");
-console.log("=".repeat(80));
+logger.info("=".repeat(80));
+logger.info("DISTANCE ANALYSIS SUMMARY - Towns with Valid Distances");
+logger.info("Warehouse Location: HRH2+R22, Al-Waleed bin Talal Highway, Accra");
+logger.info("Coordinates: 5.582930, -0.171870");
+logger.info("=".repeat(80));
 
 Object.keys(results).forEach((zone) => {
-  console.log(`\n📍 ZONE ${zone}`);
-  console.log("-".repeat(80));
+  logger.info(`\n📍 ZONE ${zone}`);
+  logger.info("-".repeat(80));
   results[zone].forEach((item, index) => {
-    console.log(`${(index + 1).toString().padStart(3)}. ${item.town.padEnd(50)} ${item.distance.toFixed(2).padStart(8)} km`);
+    logger.info(`${(index + 1).toString().padStart(3)}. ${item.town.padEnd(50)} ${item.distance.toFixed(2).padStart(8)} km`);
   });
   const avg = results[zone].reduce((sum, item) => sum + item.distance, 0) / results[zone].length;
-  console.log(`\n   Closest: ${results[zone][0].town} (${results[zone][0].distance.toFixed(2)} km)`);
-  console.log(`   Farthest: ${results[zone][results[zone].length - 1].town} (${results[zone][results[zone].length - 1].distance.toFixed(2)} km)`);
-  console.log(`   Average: ${avg.toFixed(2)} km`);
+  logger.info(`\n   Closest: ${results[zone][0].town} (${results[zone][0].distance.toFixed(2)} km)`);
+  logger.info(`   Farthest: ${results[zone][results[zone].length - 1].town} (${results[zone][results[zone].length - 1].distance.toFixed(2)} km)`);
+  logger.info(`   Average: ${avg.toFixed(2)} km`);
 });
 
-console.log("\n" + "=".repeat(80));
-console.log("Note: Some towns returned errors (NOT_FOUND) from Google Maps API.");
-console.log("These may need more specific address formats or verification.");
-console.log("=".repeat(80));
+logger.info("\n" + "=".repeat(80));
+logger.info("Note: Some towns returned errors (NOT_FOUND); from Google Maps API.");
+logger.info("These may need more specific address formats or verification.");
+logger.info("=".repeat(80));
 

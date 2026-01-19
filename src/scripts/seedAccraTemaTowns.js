@@ -12,6 +12,7 @@ const { getDistanceKm } = require('../services/distanceService');
 const { classifyZone } = require('../services/zoneClassificationService');
 const { WAREHOUSE_LOCATION } = require('../config/warehouseConfig');
 const TownZoneAssignment = require('../models/shipping/townZoneAssignmentModel');
+const logger = require('../utils/logger');
 
 // Connect to database using the same method as database.js
 async function connectDatabase() {
@@ -34,10 +35,10 @@ async function connectDatabase() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Connected to MongoDB');
+    logger.info('✅ Connected to MongoDB');
     return true;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    logger.error('❌ Error connecting to MongoDB:', error.message);
     throw error;
   }
 }
@@ -65,16 +66,16 @@ async function addTownToDatabase(town) {
     // Check if town already exists
     const existing = await TownZoneAssignment.findOne({ town: town.trim() });
     if (existing) {
-      console.log(`⏭️  Skipping "${town}" - already exists`);
+      logger.info(`⏭️  Skipping "${town}" - already exists`);
       return { success: false, reason: 'exists', town };
     }
 
     // Step 1: Geocode the town
-    console.log(`📍 Geocoding "${town}"...`);
+    logger.info(`📍 Geocoding "${town}"...`);
     const geocodeResult = await geocodeAddress(town.trim());
     
     if (!geocodeResult || !geocodeResult.lat || !geocodeResult.lng) {
-      console.error(`❌ Failed to geocode "${town}"`);
+      logger.error(`❌ Failed to geocode "${town}"`);
       return { success: false, reason: 'geocode_failed', town };
     }
 
@@ -106,10 +107,10 @@ async function addTownToDatabase(town) {
     });
 
     await newAssignment.save();
-    console.log(`✅ Added "${town}" → Zone ${calculatedZone} (${distanceKm} km)`);
+    logger.info(`✅ Added "${town}" → Zone ${calculatedZone} (${distanceKm} km);`);
     return { success: true, town, zone: calculatedZone, distanceKm };
   } catch (error) {
-    console.error(`❌ Error adding "${town}":`, error.message);
+    logger.error(`❌ Error adding "${town}":`, error.message);
     return { success: false, reason: 'error', town, error: error.message };
   }
 }
@@ -118,12 +119,12 @@ async function addTownToDatabase(town) {
 async function seedAccraTemaTowns() {
   try {
     // Connect to MongoDB
-    console.log('🔌 Connecting to MongoDB...');
+    logger.info('🔌 Connecting to MongoDB...');
     await connectDatabase();
 
     // Get all Accra and Tema towns
     const towns = getAllAccraTemaTowns();
-    console.log(`\n📋 Found ${towns.length} unique Accra/Tema towns to process\n`);
+    logger.info(`\n📋 Found ${towns.length} unique Accra/Tema towns to process\n`);
 
     // Process towns in batches to avoid rate limiting
     const batchSize = 5;
@@ -135,7 +136,7 @@ async function seedAccraTemaTowns() {
 
     for (let i = 0; i < towns.length; i += batchSize) {
       const batch = towns.slice(i, i + batchSize);
-      console.log(`\n📦 Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} towns)...\n`);
+      logger.info(`\n📦 Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} towns)...\n`);
 
       // Process batch sequentially to avoid overwhelming the API
       for (const town of batch) {
@@ -155,40 +156,40 @@ async function seedAccraTemaTowns() {
 
       // Longer delay between batches
       if (i + batchSize < towns.length) {
-        console.log('\n⏳ Waiting 2 seconds before next batch...\n');
+        logger.info('\n⏳ Waiting 2 seconds before next batch...\n');
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
 
     // Print summary
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 SEEDING SUMMARY');
-    console.log('='.repeat(60));
-    console.log(`✅ Successfully added: ${results.success.length} towns`);
-    console.log(`⏭️  Skipped (already exist): ${results.skipped.length} towns`);
-    console.log(`❌ Failed: ${results.failed.length} towns`);
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📊 SEEDING SUMMARY');
+    logger.info('='.repeat(60));
+    logger.info(`✅ Successfully added: ${results.success.length} towns`);
+    logger.info(`⏭️  Skipped (already exist);: ${results.skipped.length} towns`);
+    logger.info(`❌ Failed: ${results.failed.length} towns`);
     
     if (results.success.length > 0) {
-      console.log('\n✅ Successfully added towns:');
+      logger.info('\n✅ Successfully added towns:');
       results.success.forEach((r) => {
-        console.log(`   - ${r.town} → Zone ${r.zone} (${r.distanceKm} km)`);
+        logger.info(`   - ${r.town} → Zone ${r.zone} (${r.distanceKm} km);`);
       });
     }
 
     if (results.failed.length > 0) {
-      console.log('\n❌ Failed towns:');
+      logger.info('\n❌ Failed towns:');
       results.failed.forEach((r) => {
-        console.log(`   - ${r.town}: ${r.reason}${r.error ? ` - ${r.error}` : ''}`);
+        logger.info(`   - ${r.town}: ${r.reason}${r.error ? ` - ${r.error}` : ''}`);
       });
     }
 
-    console.log('\n✅ Seeding completed!');
+    logger.info('\n✅ Seeding completed!');
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    logger.error('❌ Fatal error:', error);
     process.exit(1);
   } finally {
     await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
+    logger.info('🔌 Disconnected from MongoDB');
     process.exit(0);
   }
 }

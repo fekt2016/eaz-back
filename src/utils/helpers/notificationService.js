@@ -1,3 +1,4 @@
+const logger = require('../logger');
 const { sendCustomEmail } = require('../email/emailService');
 
 exports.sendPaymentNotification = async (user, action, paymentRequest) => {
@@ -34,7 +35,7 @@ exports.sendPaymentNotification = async (user, action, paymentRequest) => {
 
   // Send via SMS if phone exists (pseudo-code)
   if (user.phone) {
-    console.log(`Sending SMS to ${user.phone}: ${message}`);
+    logger.info(`Sending SMS to ${user.phone}: ${message}`);
     // Actual SMS integration would go here
   }
 };

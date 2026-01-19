@@ -11,6 +11,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 const mongoose = require('mongoose');
 const Neighborhood = require('../models/shipping/neighborhoodModel');
+const logger = require('../utils/logger');
 const { geocodeAddress } = require('../services/googleMapsService');
 const { haversineDistance } = require('../utils/haversine');
 const { classifyZone } = require('../services/zoneClassificationService');
@@ -45,10 +46,10 @@ async function connectDatabase() {
     }
 
     await mongoose.connect(mongodb);
-    console.log('✅ Connected to MongoDB\n');
+    logger.info('✅ Connected to MongoDB\n');
     return true;
   } catch (error) {
-    console.error('❌ Error connecting to MongoDB:', error.message);
+    logger.error('❌ Error connecting to MongoDB:', error.message);
     throw error;
   }
 }
@@ -65,7 +66,7 @@ async function geocodeNeighborhood(neighborhood, retries = MAX_RETRIES) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       if (attempt > 1) {
-        console.log(`   ⏳ Retry attempt ${attempt}/${retries}...`);
+        logger.info(`   ⏳ Retry attempt ${attempt}/${retries}...`);
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY * attempt));
       }
 
@@ -84,7 +85,7 @@ async function geocodeNeighborhood(neighborhood, retries = MAX_RETRIES) {
       // Try with municipality if first attempt failed
       if (attempt === 1 && neighborhood.municipality) {
         const addressWithMunicipality = `${neighborhood.name}, ${neighborhood.municipality}, ${neighborhood.city}, Ghana`;
-        console.log(`   🔄 Trying with municipality: ${addressWithMunicipality}`);
+        logger.info(`   🔄 Trying with municipality: ${addressWithMunicipality}`);
         const result2 = await geocodeAddress(addressWithMunicipality);
         
         // geocodeAddress returns { lat, lng } not { latitude, longitude }
@@ -98,7 +99,7 @@ async function geocodeNeighborhood(neighborhood, retries = MAX_RETRIES) {
         }
       }
     } catch (error) {
-      console.error(`   ❌ Error geocoding (attempt ${attempt}/${retries}):`, error.message);
+      logger.error(`   ❌ Error geocoding (attempt ${attempt}/${retries});:`, error.message);
       
       if (attempt === retries) {
         return null;
@@ -121,7 +122,7 @@ function calculateDistanceAndZone(lat, lng) {
     const zone = classifyZone(distanceKm);
     return { distanceKm, zone };
   } catch (error) {
-    console.error('   ❌ Error calculating distance:', error.message);
+    logger.error('   ❌ Error calculating distance:', error.message);
     return { distanceKm: null, zone: null };
   }
 }
@@ -143,11 +144,11 @@ async function fetchCoordinatesForAllNeighborhoods() {
       ],
     });
 
-    console.log(`📋 Found ${neighborhoods.length} neighborhoods without coordinates\n`);
+    logger.info(`📋 Found ${neighborhoods.length} neighborhoods without coordinates\n`);
 
     if (neighborhoods.length === 0) {
-      console.log('✅ All neighborhoods already have coordinates!');
-      console.log('   To recalculate all neighborhoods, update the query in the script.');
+      logger.info('✅ All neighborhoods already have coordinates!');
+      logger.info('   To recalculate all neighborhoods, update the query in the script.');
       await mongoose.disconnect();
       return;
     }
@@ -163,7 +164,7 @@ async function fetchCoordinatesForAllNeighborhoods() {
     // Process each neighborhood
     for (let i = 0; i < neighborhoods.length; i++) {
       const neighborhood = neighborhoods[i];
-      console.log(`\n[${i + 1}/${neighborhoods.length}] Processing: ${neighborhood.name}, ${neighborhood.city}`);
+      logger.info(`\n[${i + 1}/${neighborhoods.length}] Processing: ${neighborhood.name}, ${neighborhood.city}`);
 
       // Geocode the neighborhood
       const geocodeResult = await geocodeNeighborhood(neighborhood);
@@ -175,7 +176,7 @@ async function fetchCoordinatesForAllNeighborhoods() {
           city: neighborhood.city,
           error: 'Failed to geocode after retries',
         });
-        console.log(`   ❌ Failed to geocode: ${neighborhood.name}`);
+        logger.info(`   ❌ Failed to geocode: ${neighborhood.name}`);
         continue;
       }
 
@@ -202,8 +203,8 @@ async function fetchCoordinatesForAllNeighborhoods() {
         zone,
       });
 
-      console.log(`   ✅ Success: ${geocodeResult.lat}, ${geocodeResult.lng}`);
-      console.log(`   📍 Distance: ${distanceKm} km, Zone: ${zone}`);
+      logger.info(`   ✅ Success: ${geocodeResult.lat}, ${geocodeResult.lng}`);
+      logger.info(`   📍 Distance: ${distanceKm} km, Zone: ${zone}`);
 
       // Delay between requests to avoid rate limits
       if (i < neighborhoods.length - 1) {
@@ -212,17 +213,17 @@ async function fetchCoordinatesForAllNeighborhoods() {
     }
 
     // Summary
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 FETCHING SUMMARY');
-    console.log('='.repeat(60));
-    console.log(`✅ Successfully processed: ${results.success} neighborhoods`);
-    console.log(`❌ Failed: ${results.failed} neighborhoods`);
-    console.log(`⏭️  Skipped: ${results.skipped} neighborhoods`);
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📊 FETCHING SUMMARY');
+    logger.info('='.repeat(60));
+    logger.info(`✅ Successfully processed: ${results.success} neighborhoods`);
+    logger.info(`❌ Failed: ${results.failed} neighborhoods`);
+    logger.info(`⏭️  Skipped: ${results.skipped} neighborhoods`);
 
     if (results.errors.length > 0) {
-      console.log('\n❌ Failed neighborhoods:');
+      logger.info('\n❌ Failed neighborhoods:');
       results.errors.forEach((err) => {
-        console.log(`   - ${err.name}, ${err.city}: ${err.error}`);
+        logger.info(`   - ${err.name}, ${err.city}: ${err.error}`);
       });
     }
 
@@ -243,18 +244,18 @@ async function fetchCoordinatesForAllNeighborhoods() {
       { $sort: { _id: 1 } },
     ]);
 
-    console.log('\n📍 Zone Distribution:');
+    logger.info('\n📍 Zone Distribution:');
     zoneStats.forEach((stat) => {
-      console.log(`   Zone ${stat._id}: ${stat.count} neighborhoods (avg distance: ${stat.avgDistance?.toFixed(2) || 'N/A'} km)`);
+      logger.info(`   Zone ${stat._id}: ${stat.count} neighborhoods (avg distance: ${stat.avgDistance?.toFixed(2) || 'N/A'} km)`);
     });
 
-    console.log('\n✅ Script completed successfully!');
+    logger.info('\n✅ Script completed successfully!');
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    logger.error('❌ Fatal error:', error);
     throw error;
   } finally {
     await mongoose.disconnect();
-    console.log('\n🔌 Disconnected from MongoDB');
+    logger.info('\n🔌 Disconnected from MongoDB');
   }
 }
 
@@ -265,7 +266,7 @@ if (require.main === module) {
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Script failed:', error);
+      logger.error('❌ Script failed:', error);
       process.exit(1);
     });
 }

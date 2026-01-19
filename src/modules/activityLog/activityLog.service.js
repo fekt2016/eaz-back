@@ -1,5 +1,6 @@
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const logger = require('../../utils/logger');
 
 /**
  * Extract IP address from request
@@ -88,19 +89,19 @@ const logActivity = async ({ userId, role, action, description, req = null, meta
   try {
     // Validate required fields
     if (!userId) {
-      console.error('[ActivityLog] Missing required field: userId');
+      logger.error('[ActivityLog] Missing required field: userId');
       return null;
     }
     if (!role) {
-      console.error('[ActivityLog] Missing required field: role');
+      logger.error('[ActivityLog] Missing required field: role');
       return null;
     }
     if (!action) {
-      console.error('[ActivityLog] Missing required field: action');
+      logger.error('[ActivityLog] Missing required field: action');
       return null;
     }
     if (!description) {
-      console.error('[ActivityLog] Missing required field: description');
+      logger.error('[ActivityLog] Missing required field: description');
       return null;
     }
 
@@ -135,12 +136,12 @@ const logActivity = async ({ userId, role, action, description, req = null, meta
       timestamp: new Date(),
     });
 
-    console.log(`[ActivityLog] Logged: ${action} (${activityType}) by ${role} (${userId}) - Risk: ${riskLevel} - Platform: ${platform}`);
+    logger.info(`[ActivityLog] Logged: ${action} (${activityType}); by ${role} (${userId}) - Risk: ${riskLevel} - Platform: ${platform}`);
     
     return activityLog;
   } catch (error) {
     // Don't throw error - logging should never break the main flow
-    console.error('[ActivityLog] Error logging activity:', error);
+    logger.error('[ActivityLog] Error logging activity:', error);
     return null;
   }
 };
@@ -152,7 +153,7 @@ const logActivity = async ({ userId, role, action, description, req = null, meta
 const logActivityAsync = (params) => {
   // Fire and forget - don't wait for completion
   logActivity(params).catch((error) => {
-    console.error('[ActivityLog] Async logging error:', error);
+    logger.error('[ActivityLog] Async logging error:', error);
   });
 };
 

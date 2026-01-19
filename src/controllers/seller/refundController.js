@@ -262,9 +262,9 @@ exports.approveReturn = catchAsync(async (req, res, next) => {
         sellerItems.length,
         notes || ''
       );
-      console.log(`[Seller Return Approval] Admin notification created for refund ${refundRequest._id}`);
+      logger.info(`[Seller Return Approval] Admin notification created for refund ${refundRequest._id}`);
     } catch (notificationError) {
-      console.error('[Seller Return Approval] Error creating admin notification:', notificationError);
+      logger.error('[Seller Return Approval] Error creating admin notification:', notificationError);
       // Don't fail the operation if notification fails
     }
 
@@ -391,6 +391,7 @@ exports.rejectReturn = catchAsync(async (req, res, next) => {
     // Notify all admins about seller's return rejection decision
     try {
       const notificationService = require('../../services/notification/notificationService');
+const logger = require('../../utils/logger');
       const seller = await Seller.findById(sellerId).select('shopName name');
       await notificationService.createSellerReturnDecisionNotification(
         refundRequest._id,
@@ -401,9 +402,9 @@ exports.rejectReturn = catchAsync(async (req, res, next) => {
         sellerItems.length,
         reason || notes || ''
       );
-      console.log(`[Seller Return Rejection] Admin notification created for refund ${refundRequest._id}`);
+      logger.info(`[Seller Return Rejection] Admin notification created for refund ${refundRequest._id}`);
     } catch (notificationError) {
-      console.error('[Seller Return Rejection] Error creating admin notification:', notificationError);
+      logger.error('[Seller Return Rejection] Error creating admin notification:', notificationError);
       // Don't fail the operation if notification fails
     }
 

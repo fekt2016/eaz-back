@@ -5,6 +5,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const stream = require('stream');
 const cloudinary = require('cloudinary');
+const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 const multerStorage = multer.memoryStorage();
@@ -70,7 +71,7 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
       req.body.image = coverResult.secure_url;
     }
   } catch (err) {
-    console.log(err.message);
+    logger.info(err.message);
   }
 
   next();
@@ -91,7 +92,7 @@ exports.getParentCategories = catchAsync(async (req, res, next) => {
       data: { categories },
     });
   } catch (error) {
-    console.error('Error fetching parent categories:', error);
+    logger.error('Error fetching parent categories:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch categories',

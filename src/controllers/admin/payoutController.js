@@ -130,7 +130,7 @@ exports.getWithdrawalRequest = catchAsync(async (req, res, next) => {
   }
 
   // Debug: Log paymentDetails to verify they're included
-  console.log('[getWithdrawalRequest] Payment details:', {
+  logger.info('[getWithdrawalRequest] Payment details:', {
     id: withdrawalRequest._id,
     hasPaymentDetails: !!withdrawalRequest.paymentDetails,
     paymentDetails: withdrawalRequest.paymentDetails,
@@ -196,7 +196,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     const requestObj = withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest;
     
     // Debug: Log the withdrawal request to see what fields are present
-    console.log('[approveWithdrawalRequest] Withdrawal request fields:', {
+    logger.info('[approveWithdrawalRequest] Withdrawal request fields:', {
       id: requestObj._id,
       isPaymentRequest,
       payoutMethod: requestObj.payoutMethod,
@@ -256,7 +256,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       : (withdrawalRequest.payoutMethod || withdrawalRequest.paymentMethod);
     const paymentDetails = withdrawalRequest.paymentDetails || {};
     
-    console.log('[approveWithdrawalRequest] Using payment details from request:', {
+    logger.info('[approveWithdrawalRequest] Using payment details from request:', {
       isPaymentRequest,
       payoutMethod: withdrawalRequest.payoutMethod,
       paymentMethod: withdrawalRequest.paymentMethod,
@@ -270,7 +270,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     // Validate payment method exists
     if (!paymentMethod) {
       await session.abortTransaction();
-      console.error('[approveWithdrawalRequest] Payment method missing. Request data:', {
+      logger.error('[approveWithdrawalRequest] Payment method missing. Request data:', {
         id: withdrawalRequest._id,
         isPaymentRequest,
         payoutMethod: withdrawalRequest.payoutMethod,
@@ -336,7 +336,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         currency: 'GHS',
       };
       
-      console.log('[approveWithdrawalRequest] Mobile money recipient data from request:', {
+      logger.info('[approveWithdrawalRequest] Mobile money recipient data from request:', {
         phone: paymentDetails.phone,
         network: network,
         bank_code: mobileBankCode,
@@ -354,7 +354,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       let bankCode = paymentDetails.bankCode;
       if (!bankCode && paymentDetails.bankName) {
         bankCode = payoutService.getBankCodeFromName(paymentDetails.bankName);
-        console.log(`[approveWithdrawalRequest] Mapped bank name "${paymentDetails.bankName}" to code: ${bankCode}`);
+        logger.info(`[approveWithdrawalRequest] Mapped bank name "${paymentDetails.bankName}" to code: ${bankCode}`);
       }
       
       if (!bankCode) {
@@ -367,7 +367,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       
       // Validate bank code format (should be 3 digits for Ghana banks)
       if (!/^\d{3}$/.test(bankCode)) {
-        console.warn(`[approveWithdrawalRequest] Bank code format may be invalid: ${bankCode}`);
+        logger.warn(`[approveWithdrawalRequest] Bank code format may be invalid: ${bankCode}`);
       }
       
       // Format account number - remove any spaces or dashes
@@ -382,7 +382,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         currency: 'GHS',
       };
       
-      console.log('[approveWithdrawalRequest] Bank recipient data from request:', {
+      logger.info('[approveWithdrawalRequest] Bank recipient data from request:', {
         accountNumber: paymentDetails.accountNumber,
         accountName: paymentDetails.accountName,
         bankName: paymentDetails.bankName,
@@ -400,7 +400,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
       if (response.data.status && response.data.data) {
         recipientCode = response.data.data.recipient_code;
-        console.log('[approveWithdrawalRequest] Created recipient from payment details:', {
+        logger.info('[approveWithdrawalRequest] Created recipient from payment details:', {
           recipientCode,
           paymentMethod,
         });
@@ -409,7 +409,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       }
     } catch (recipientError) {
       // Don't abort here - let outer catch handle it to avoid double abort
-      console.error('[approveWithdrawalRequest] Error creating recipient:', recipientError);
+      logger.error('[approveWithdrawalRequest] Error creating recipient:', recipientError);
       throw recipientError; // Re-throw to be caught by outer catch
     }
 
@@ -420,7 +420,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       `Payout for ${seller.shopName || seller.name} - Request #${withdrawalRequest._id}`
     );
 
-    console.log('💳 [approveWithdrawalRequest] Paystack transfer initiated:', {
+    logger.info('💳 [approveWithdrawalRequest] Paystack transfer initiated:', {
       transferCode: transferResult.transfer_code,
       status: transferResult.status,
       transferData: transferResult.transfer_data
@@ -438,7 +438,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
                         transferData.requires_approval === true ||
                         (isMobileMoney && (paystackStatus === 'pending' || paystackStatus === 'otp'));
 
-    console.log('💳 [approveWithdrawalRequest] Paystack transfer status analysis:', {
+    logger.info('💳 [approveWithdrawalRequest] Paystack transfer status analysis:', {
       paystackStatus: paystackStatus,
       isMobileMoney: isMobileMoney,
       requiresPin: requiresPin,
@@ -456,7 +456,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     const finalStatus = shouldAwaitOtp ? 'awaiting_paystack_otp' : 
                        (isMobileMoney ? 'processing' : (requiresPin ? 'processing' : 'paid'));
     
-    console.log('💳 [approveWithdrawalRequest] Setting withdrawal status:', {
+    logger.info('💳 [approveWithdrawalRequest] Setting withdrawal status:', {
       finalStatus: finalStatus,
       shouldAwaitOtp: shouldAwaitOtp,
       paystackStatus: paystackStatus,
@@ -513,7 +513,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         },
       }], { session });
       
-      console.log(`[approveWithdrawalRequest] Created TaxCollection record: ${taxCollection[0]._id}, Amount: ${withholdingTax}, Rate: ${withholdingTaxRate}`);
+      logger.info(`[approveWithdrawalRequest] Created TaxCollection record: ${taxCollection[0]._id}, Amount: ${withholdingTax}, Rate: ${withholdingTaxRate}`);
     }
 
     // Prepare admin tracking data
@@ -631,11 +631,11 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     
     await seller.save({ session });
     
-    console.log(`[approveWithdrawalRequest] Balance after admin approval for seller ${seller._id}:`);
-    console.log(`  Total Revenue (Balance): ${oldBalance} (unchanged - will deduct when OTP verified)`);
-    console.log(`  Pending Balance: ${oldPendingBalance} (unchanged - awaiting OTP verification)`);
-    console.log(`  Locked Balance: ${oldLockedBalance} (unchanged)`);
-    console.log(`  Available Balance: ${oldWithdrawableBalance} → ${newWithdrawableBalance} (recalculated)`);
+    logger.info(`[approveWithdrawalRequest] Balance after admin approval for seller ${seller._id}:`);
+    logger.info(`  Total Revenue (Balance);: ${oldBalance} (unchanged - will deduct when OTP verified)`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} (unchanged - awaiting OTP verification);`);
+    logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
+    logger.info(`  Available Balance: ${oldWithdrawableBalance} → ${newWithdrawableBalance} (recalculated);`);
 
     // Create transaction record
     const transaction = await Transaction.create(
@@ -675,7 +675,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
           await updateWithdrawalStatusFromPaystack(withdrawalRequest._id, transferStatus, finalRequiresPin);
         })
         .catch((error) => {
-          console.error('[approveWithdrawalRequest] Error verifying transfer:', error);
+          logger.error('[approveWithdrawalRequest] Error verifying transfer:', error);
           // Will be verified later via polling or webhook
         });
     } else if (!isPaymentRequest && (finalRequiresPin || isMobileMoney)) {
@@ -698,7 +698,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
           }
         })
         .catch((error) => {
-          console.error('[approveWithdrawalRequest] Error verifying transfer:', error);
+          logger.error('[approveWithdrawalRequest] Error verifying transfer:', error);
         });
     }
 
@@ -717,9 +717,9 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     try {
       const emailDispatcher = require('../../emails/emailDispatcher');
       await emailDispatcher.sendWithdrawalRequest(seller, withdrawalRequest);
-      console.log(`[approveWithdrawalRequest] ✅ Withdrawal request email sent to seller ${seller.email}`);
+      logger.info(`[approveWithdrawalRequest] ✅ Withdrawal request email sent to seller ${seller.email}`);
     } catch (emailError) {
-      console.error('[approveWithdrawalRequest] Error sending withdrawal request email:', emailError.message);
+      logger.error('[approveWithdrawalRequest] Error sending withdrawal request email:', emailError.message);
       // Don't fail withdrawal if email fails
     }
     
@@ -751,11 +751,11 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       // Ignore abort errors (transaction might already be aborted or committed)
       // This can happen if an error occurred after abortTransaction was already called
       if (abortError.message && !abortError.message.includes('Cannot call abortTransaction twice')) {
-        console.warn('[approveWithdrawalRequest] Transaction abort error:', abortError.message);
+        logger.warn('[approveWithdrawalRequest] Transaction abort error:', abortError.message);
       }
     }
     
-    console.error('[approveWithdrawalRequest] Error:', {
+    logger.error('[approveWithdrawalRequest] Error:', {
       message: error.message,
       stack: error.stack,
       response: error.response?.data,
@@ -845,7 +845,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     
     // Validate pendingBalance has the amount
     if (amountRequested > oldPendingBalance) {
-      console.warn(`[rejectWithdrawalRequest] Pending balance (${oldPendingBalance}) is less than requested amount (${amountRequested}). Proceeding with refund anyway.`);
+      logger.warn(`[rejectWithdrawalRequest] Pending balance (${oldPendingBalance}); is less than requested amount (${amountRequested}). Proceeding with refund anyway.`);
     }
     
     // Refund from pendingBalance (the amount was moved to pendingBalance when request was created)
@@ -857,10 +857,10 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
     
-    console.log(`[rejectWithdrawalRequest] Pending balance refund for seller ${seller._id}:`);
-    console.log(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
-    console.log(`  Total Balance: ${oldBalance} (unchanged)`);
-    console.log(`  Available Balance: ${seller.withdrawableBalance}`);
+    logger.info(`[rejectWithdrawalRequest] Pending balance refund for seller ${seller._id}:`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
+    logger.info(`  Total Balance: ${oldBalance} (unchanged);`);
+    logger.info(`  Available Balance: ${seller.withdrawableBalance}`);
     
     // Log finance audit
     try {
@@ -874,7 +874,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
         `Rejected by admin: ${reason || 'No reason provided'}`
       );
     } catch (auditError) {
-      console.error('[rejectWithdrawalRequest] Failed to log finance audit (non-critical):', auditError);
+      logger.error('[rejectWithdrawalRequest] Failed to log finance audit (non-critical);:', auditError);
     }
     
     // Log seller revenue history for rejected withdrawal refund
@@ -900,9 +900,9 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
           refundType: 'pendingBalance_refund', // Indicates this is a pendingBalance refund
         },
       });
-      console.log(`[rejectWithdrawalRequest] ✅ Seller revenue history logged for rejected withdrawal refund - seller ${seller._id}`);
+      logger.info(`[rejectWithdrawalRequest] ✅ Seller revenue history logged for rejected withdrawal refund - seller ${seller._id}`);
     } catch (historyError) {
-      console.error(`[rejectWithdrawalRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+      logger.error(`[rejectWithdrawalRequest] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -997,14 +997,15 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     try {
       const emailDispatcher = require('../../emails/emailDispatcher');
       const Seller = require('../../models/user/sellerModel');
+const logger = require('../../utils/logger');
       const seller = await Seller.findById(withdrawalRequest.seller).select('name email shopName').lean();
       
       if (seller && seller.email) {
         await emailDispatcher.sendWithdrawalRejected(seller, withdrawalRequest, reason || 'Rejected by admin');
-        console.log(`[rejectWithdrawalRequest] ✅ Withdrawal rejected email sent to seller ${seller.email}`);
+        logger.info(`[rejectWithdrawalRequest] ✅ Withdrawal rejected email sent to seller ${seller.email}`);
       }
     } catch (emailError) {
-      console.error('[rejectWithdrawalRequest] Error sending withdrawal rejected email:', emailError.message);
+      logger.error('[rejectWithdrawalRequest] Error sending withdrawal rejected email:', emailError.message);
       // Don't fail rejection if email fails
     }
 
@@ -1017,7 +1018,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[rejectWithdrawalRequest] Error:', error);
+    logger.error('[rejectWithdrawalRequest] Error:', error);
     return next(new AppError('Failed to reject withdrawal request', 500));
   } finally {
     session.endSession();
@@ -1127,7 +1128,7 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
       if (oldPendingBalance >= amountRequested) {
         seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
       } else {
-        console.warn(`[reverseWithdrawal] Pending balance (${oldPendingBalance}) is less than requested amount (${amountRequested})`);
+        logger.warn(`[reverseWithdrawal] Pending balance (${oldPendingBalance}); is less than requested amount (${amountRequested})`);
         seller.pendingBalance = 0;
       }
     }
@@ -1136,7 +1137,7 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
     
-    console.log(`[reverseWithdrawal] Refund for seller ${seller._id}:`, {
+    logger.info(`[reverseWithdrawal] Refund for seller ${seller._id}:`, {
       wasPaid,
       amountRequested,
       oldBalance,
@@ -1212,9 +1213,9 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
           reverseReason: reason,
         },
       });
-      console.log(`[reverseWithdrawal] ✅ Seller revenue history logged for withdrawal reversal - seller ${withdrawalRequest.seller}`);
+      logger.info(`[reverseWithdrawal] ✅ Seller revenue history logged for withdrawal reversal - seller ${withdrawalRequest.seller}`);
     } catch (historyError) {
-      console.error(`[reverseWithdrawal] Failed to log seller revenue history (non-critical):`, {
+      logger.error(`[reverseWithdrawal] Failed to log seller revenue history (non-critical);:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -1250,7 +1251,7 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[reverseWithdrawal] Error:', error);
+    logger.error('[reverseWithdrawal] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -1374,9 +1375,9 @@ async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferS
             reason: 'Transfer failed on Paystack',
           },
         });
-        console.log(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for failed transfer refund - seller ${seller._id}`);
+        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for failed transfer refund - seller ${seller._id}`);
       } catch (historyError) {
-        console.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
           error: historyError.message,
           stack: historyError.stack,
         });
@@ -1414,9 +1415,9 @@ async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferS
             reason: 'Transfer reversed on Paystack',
           },
         });
-        console.log(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for reversed transfer refund - seller ${seller._id}`);
+        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for reversed transfer refund - seller ${seller._id}`);
       } catch (historyError) {
-        console.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
           error: historyError.message,
           stack: historyError.stack,
         });
@@ -1447,7 +1448,7 @@ async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferS
     await session.commitTransaction();
   } catch (error) {
     await session.abortTransaction();
-    console.error('[updateWithdrawalStatusFromPaystack] Error:', error);
+    logger.error('[updateWithdrawalStatusFromPaystack] Error:', error);
     throw error;
   } finally {
     session.endSession();

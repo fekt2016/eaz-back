@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
  */
 
 const AuditLog = require('../models/audit/auditLogModel');
+const logger = require('../utils/logger');
 
 /**
  * Create an audit log entry
@@ -40,7 +41,7 @@ exports.logAudit = async ({
         });
     } catch (error) {
         // Don't fail the operation if audit logging fails
-        console.error('[AuditLog] Failed to create audit log:', error);
+        logger.error('[AuditLog] Failed to create audit log:', error);
     }
 };
 

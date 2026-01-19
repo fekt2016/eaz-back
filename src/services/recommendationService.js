@@ -5,6 +5,7 @@ const TrendingProducts = require('../models/analytics/trendingProductsModel');
 const Order = require('../models/order/orderModel');
 const OrderItems = require('../models/order/OrderItemModel');
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_EMBEDDING_URL = 'https://api.openai.com/v1/embeddings';
@@ -56,7 +57,7 @@ async function generateProductEmbedding(product) {
 
     return response.data.data[0].embedding;
   } catch (error) {
-    console.error('[Recommendation] Error generating embedding:', error.message);
+    logger.error('[Recommendation] Error generating embedding:', error.message);
     return null;
   }
 }
@@ -145,7 +146,7 @@ async function getRelatedProducts(productId, limit = 10) {
       .slice(0, limit)
       .map(({ _similarityScore, ...product }) => product);
   } catch (error) {
-    console.error('[Recommendation] Error getting related products:', error);
+    logger.error('[Recommendation] Error getting related products:', error);
     return [];
   }
 }
@@ -223,7 +224,7 @@ async function getAlsoBoughtProducts(productId, limit = 10) {
 
     return alsoBought.length > 0 ? alsoBought : await getRelatedProducts(productId, limit);
   } catch (error) {
-    console.error('[Recommendation] Error getting also bought products:', error);
+    logger.error('[Recommendation] Error getting also bought products:', error);
     return await getRelatedProducts(productId, limit);
   }
 }
@@ -377,7 +378,7 @@ async function getPersonalizedRecommendations(userId, limit = 10) {
       .slice(0, limit)
       .map(({ _score, ...product }) => product);
   } catch (error) {
-    console.error('[Recommendation] Error getting personalized recommendations:', error);
+    logger.error('[Recommendation] Error getting personalized recommendations:', error);
     return await getTrendingProducts(limit);
   }
 }
@@ -405,7 +406,7 @@ async function getRecentlyViewed(userId, limit = 10) {
       .map(activity => activity.productId)
       .filter(product => product && product.status === 'active');
   } catch (error) {
-    console.error('[Recommendation] Error getting recently viewed:', error);
+    logger.error('[Recommendation] Error getting recently viewed:', error);
     return [];
   }
 }
@@ -436,7 +437,7 @@ async function getTrendingProducts(limit = 10) {
       .map(t => t.productId)
       .filter(product => product && product.status === 'active');
   } catch (error) {
-    console.error('[Recommendation] Error getting trending products:', error);
+    logger.error('[Recommendation] Error getting trending products:', error);
     return [];
   }
 }
@@ -579,7 +580,7 @@ async function computeTrendingProducts(limit = 10) {
 
     return topTrending;
   } catch (error) {
-    console.error('[Recommendation] Error computing trending products:', error);
+    logger.error('[Recommendation] Error computing trending products:', error);
     return [];
   }
 }
@@ -643,7 +644,7 @@ async function getAISimilarProducts(productId, limit = 10) {
       .slice(0, limit)
       .map(({ embedding, _similarity, ...product }) => product);
   } catch (error) {
-    console.error('[Recommendation] Error getting AI similar products:', error);
+    logger.error('[Recommendation] Error getting AI similar products:', error);
     return await getRelatedProducts(productId, limit);
   }
 }
@@ -663,7 +664,7 @@ async function trackUserActivity(userId, productId, action, metadata = {}) {
       userAgent: metadata.userAgent,
     });
   } catch (error) {
-    console.error('[Recommendation] Error tracking user activity:', error);
+    logger.error('[Recommendation] Error tracking user activity:', error);
   }
 }
 

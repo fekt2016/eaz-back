@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const AppError = require('../utils/errors/appError');
+const logger = require('../utils/logger');
 
 /**
  * SECURITY FIX #6: Object ID Validation Middleware
@@ -27,7 +28,7 @@ exports.validateObjectId = (paramName = 'id') => {
         }
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            console.error(`[Security] Invalid ObjectID format for ${paramName}: ${id}`);
+            logger.error(`[Security] Invalid ObjectID format for ${paramName}: ${id}`);
             return next(new AppError(`Invalid ${paramName} format`, 400));
         }
 
@@ -53,7 +54,7 @@ exports.validateMultipleObjectIds = (paramNames = []) => {
             }
 
             if (!mongoose.Types.ObjectId.isValid(id)) {
-                console.error(`[Security] Invalid ObjectID format for ${paramName}: ${id}`);
+                logger.error(`[Security] Invalid ObjectID format for ${paramName}: ${id}`);
                 return next(new AppError(`Invalid ${paramName} format`, 400));
             }
         }
@@ -77,7 +78,7 @@ exports.validateBodyObjectId = (fieldName, required = true) => {
         }
 
         if (id && !mongoose.Types.ObjectId.isValid(id)) {
-            console.error(`[Security] Invalid ObjectID format for ${fieldName}: ${id}`);
+            logger.error(`[Security] Invalid ObjectID format for ${fieldName}: ${id}`);
             return next(new AppError(`Invalid ${fieldName} format`, 400));
         }
 
@@ -100,7 +101,7 @@ exports.validateQueryObjectId = (queryName, required = false) => {
         }
 
         if (id && !mongoose.Types.ObjectId.isValid(id)) {
-            console.error(`[Security] Invalid ObjectID format for ${queryName}: ${id}`);
+            logger.error(`[Security] Invalid ObjectID format for ${queryName}: ${id}`);
             return next(new AppError(`Invalid ${queryName} format`, 400));
         }
 

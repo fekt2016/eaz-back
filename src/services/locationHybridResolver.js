@@ -1,5 +1,6 @@
 const axios = require('axios');
 const locationService = require('./locationService');
+const logger = require('../utils/logger');
 
 /**
  * Hybrid Location Resolver
@@ -14,7 +15,7 @@ async function reverseGeocodeWithGoogleMaps(latitude, longitude) {
   const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!googleMapsApiKey) {
-    console.warn('Google Maps API key not found, using mock reverse geocoding');
+    logger.warn('Google Maps API key not found, using mock reverse geocoding');
     return mockGoogleMapsReverseGeocode(latitude, longitude);
   }
 
@@ -31,12 +32,12 @@ async function reverseGeocodeWithGoogleMaps(latitude, longitude) {
     if (response.data.status === 'OK' && response.data.results.length > 0) {
       return parseGoogleMapsResponse(response.data.results[0]);
     } else {
-      console.warn('Google Maps API returned no results, using mock data');
+      logger.warn('Google Maps API returned no results, using mock data');
       return mockGoogleMapsReverseGeocode(latitude, longitude);
     }
   } catch (error) {
-    console.error('Google Maps API error:', error.message);
-    console.warn('Falling back to mock reverse geocoding');
+    logger.error('Google Maps API error:', error.message);
+    logger.warn('Falling back to mock reverse geocoding');
     return mockGoogleMapsReverseGeocode(latitude, longitude);
   }
 }
@@ -292,10 +293,10 @@ async function hybridLocationLookup(latitude, longitude) {
       const digitalAddressData = await locationService.lookupDigitalAddressFull(digitalAddress);
       districtFromDigitalAddress = digitalAddressData.district || '';
     } catch (error) {
-      console.warn('Could not get district from digital address:', error.message);
+      logger.warn('Could not get district from digital address:', error.message);
     }
   } catch (error) {
-    console.warn('Digital address conversion failed:', error.message);
+    logger.warn('Digital address conversion failed:', error.message);
   }
 
   // Step 3: Reverse geocode with Google Maps

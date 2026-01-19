@@ -1,32 +1,20 @@
-/**
- * Email Dispatcher Service
- * 
- * Centralized email sending service for all application events.
- * Uses SendGrid email service for all email operations.
- * 
- * This service provides high-level methods for sending emails
- * based on business events (order created, withdrawal approved, etc.)
- */
+const {
+  sendEmail,
+  sendCustomEmail,
+  sendPasswordResetEmail,
+  sendOrderConfirmationEmail,
+  sendLoginEmail,
+  sendLoginOtpEmail,
+} = require('../utils/email/emailService');
 
-const { sendGridService } = require('../utils/email/emailService');
-const { sendEmail, sendCustomEmail } = require('../utils/email/emailService');
 
-/**
- * Send signup verification email
- * @param {Object} user - User object with email and name
- * @param {string} otp - OTP code for verification
- */
 const sendSignupEmail = async (user, otp) => {
-  return await sendGridService.sendLoginOtpEmail(user.email, otp, user.name || 'User');
+  return await sendLoginOtpEmail(user.email, otp, user.name || 'User');
 };
 
-/**
- * Send login device alert email
- * @param {Object} user - User object with email and name
- * @param {Object} loginInfo - Login information (IP, device, location)
- */
+
 const sendLoginDeviceAlert = async (user, loginInfo) => {
-  return await sendGridService.sendLoginEmail(user.email, user.name || 'User', loginInfo);
+  return await sendLoginEmail(user.email, user.name || 'User', loginInfo);
 };
 
 /**
@@ -35,27 +23,18 @@ const sendLoginDeviceAlert = async (user, loginInfo) => {
  * @param {string} resetToken - Password reset token
  */
 const sendPasswordReset = async (user, resetToken) => {
-  return await sendGridService.sendPasswordResetEmail(user.email, resetToken, user.name || 'User');
+  return await sendPasswordResetEmail(user.email, resetToken, user.name || 'User');
 };
 
-/**
- * Send order confirmation email to buyer
- * @param {Object} order - Order object with full details
- * @param {Object} user - User object with email and name
- */
+
 const sendOrderConfirmation = async (order, user) => {
-  return await sendGridService.sendOrderConfirmationEmail(
+  return await sendOrderConfirmationEmail(
     user.email,
     order,
     user.name || 'Customer'
   );
 };
 
-/**
- * Send order shipped email to buyer
- * @param {Object} order - Order object with tracking info
- * @param {Object} user - User object with email and name
- */
 const sendOrderShipped = async (order, user) => {
   const brandConfig = {
     name: process.env.APP_NAME || process.env.BRAND_NAME || 'EazShop',

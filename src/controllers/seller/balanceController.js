@@ -31,7 +31,7 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     // Only save if there's a significant discrepancy (more than 1 cent)
     seller.withdrawableBalance = calculatedWithdrawable;
     await seller.save(); // Save if there's a discrepancy
-    console.log(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
+    logger.info(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
   }
 
   // Calculate total withdrawals (sum of all paid/approved withdrawal requests)
@@ -191,6 +191,7 @@ exports.getSellerEarningsByOrder = catchAsync(async (req, res, next) => {
   // Get transaction for this order and seller
   // Find by sellerOrder which links to the order
   const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
   const sellerOrder = await SellerOrder.findOne({ 
     order: orderId, 
     seller: sellerId 

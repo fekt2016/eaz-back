@@ -19,6 +19,7 @@
 const mongoose = require('mongoose');
 const { ObjectId } = mongoose.Types;
 const Seller = require('../user/sellerModel');
+const logger = require('../../utils/logger');
 const sellerReviewSchema = new mongoose.Schema(
   {
     seller: { type: ObjectId, ref: 'Seller', required: true },
@@ -74,7 +75,7 @@ sellerReviewSchema.statics.calcAverageRatings = async function (sellerId) {
 
     await Seller.findByIdAndUpdate(sellerId, updateData);
   } catch (err) {
-    console.error(`Error updating ratings for seller ${sellerId}:`, err);
+    logger.error(`Error updating ratings for seller ${sellerId}:`, err);
     // Consider adding error monitoring (Sentry, etc.)
   }
 };

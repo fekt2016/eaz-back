@@ -1,5 +1,6 @@
 const { logActivityAsync } = require('./activityLog.service');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const logger = require('../../utils/logger');
 
 /**
  * Activity logging middleware
@@ -34,7 +35,7 @@ const activityLogger = (action, descriptionCallback = null) => {
       // Validate required fields before logging
       const userId = req.user._id || req.user.id;
       if (!userId) {
-        console.error('[ActivityLogger] Missing userId');
+        logger.error('[ActivityLogger] Missing userId');
         return;
       }
 
@@ -50,7 +51,7 @@ const activityLogger = (action, descriptionCallback = null) => {
 
       // Ensure role is valid
       if (!['buyer', 'seller', 'admin'].includes(role)) {
-        console.error('[ActivityLogger] Invalid role:', req.user.role);
+        logger.error('[ActivityLogger] Invalid role:', req.user.role);
         role = 'buyer'; // Default fallback
       }
 
@@ -63,7 +64,7 @@ const activityLogger = (action, descriptionCallback = null) => {
             description = callbackDescription;
           }
         } catch (error) {
-          console.error('[ActivityLogger] Error in description callback:', error);
+          logger.error('[ActivityLogger] Error in description callback:', error);
           // Keep default description
         }
       }
@@ -75,7 +76,7 @@ const activityLogger = (action, descriptionCallback = null) => {
 
       // Ensure action is provided
       if (!action || typeof action !== 'string' || !action.trim()) {
-        console.error('[ActivityLogger] Missing or invalid action');
+        logger.error('[ActivityLogger] Missing or invalid action');
         return;
       }
 

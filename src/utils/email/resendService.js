@@ -1,5 +1,7 @@
-const { getSendGrid } = require('./sendGridClient');
+const logger = require('../logger');
+const { getResend } = require('./resendClient');
 
+<<<<<<< HEAD:src/utils/email/sendGridService.js
 // Brand Configuration (same as emailService.js to avoid circular dependency)
 // Priority: APP_NAME > BRAND_NAME > default 'Saysay'
 const getBrandConfig = () => ({
@@ -8,104 +10,105 @@ const getBrandConfig = () => ({
   url: process.env.FRONTEND_URL || 'https://saiisai.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
   fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
+=======
+// Brand Configuration (same behavior as previous implementation)
+const getBrandConfig = () => ({
+  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+  tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
+  url: process.env.FRONTEND_URL || 'https://eazworld.com',
+  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
+  fromName: process.env.EMAIL_FROM_NAME || 'Saiisai',
+>>>>>>> 6d2bc77 (first ci/cd push):src/utils/email/resendService.js
 });
 
 /**
- * SendGrid Email Service
- * 
- * Uses the lazy-loaded SendGrid client singleton for optimal memory management.
- * All email functions use configurable brand information from emailService.
+ * Core Email Service - Resend
+ *
+ * This service uses Resend for all email operations.
  */
 
-/**
- * Core email sending function using SendGrid
- * @param {Object} data - Email data
- * @param {string} data.to - Recipient email address
- * @param {string} data.subject - Email subject
- * @param {string} data.text - Plain text content
- * @param {string} [data.html] - HTML content (optional)
- * @param {string} [data.from] - Sender email (defaults to EMAIL_FROM env var)
- * @param {Array} [data.cc] - CC recipients (optional)
- * @param {Array} [data.bcc] - BCC recipients (optional)
- * @returns {Promise<Object>} SendGrid response
- */
 const sendEmail = async (data) => {
-  const sgMail = getSendGrid();
+  const resend = getResend();
 
-  if (!sgMail) {
-    throw new Error('SendGrid is not configured. Please set SENDGRID_API_KEY in environment variables.');
+  if (!resend) {
+    throw new Error('Resend is not configured. Please set RESEND_API_KEY in environment variables.');
   }
 
-  // Priority: data.from > SENDGRID_FROM_EMAIL > EMAIL_FROM
-  const fromEmail = data.from || process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_FROM;
-  
+  const fromEmail = data.from || process.env.EMAIL_FROM;
+
   if (!fromEmail) {
-    throw new Error('Sender email not configured. Set EMAIL_FROM or SENDGRID_FROM_EMAIL in environment variables.');
+    throw new Error('Sender email not configured. Set EMAIL_FROM in environment variables.');
   }
 
   const brandConfig = getBrandConfig();
-  const msg = {
-    to: data.to || data.email,
-    from: {
-      email: fromEmail,
-      name: data.fromName || brandConfig.fromName,
-    },
-    subject: data.subject,
-    text: data.text || data.message,
-    html: data.html,
-  };
 
-  // Add CC if provided
-  if (data.cc && Array.isArray(data.cc) && data.cc.length > 0) {
-    msg.cc = data.cc;
+  const fromName = data.fromName || brandConfig.fromName;
+  const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+
+  const to = data.to || data.email;
+
+  if (!to) {
+    throw new Error('Recipient email is required (to/email field).');
   }
 
-  // Add BCC if provided
-  if (data.bcc && Array.isArray(data.bcc) && data.bcc.length > 0) {
-    msg.bcc = data.bcc;
+  const emailPayload = {
+    // Use a friendly Reply-To for user responses
+    reply_to: getBrandConfig().supportEmail,
+    from,
+    to,
+    subject: data.subject || '',
+    html: data.html,
+    text: data.text || data.message || '',
+  };
+
+  if (data.cc) {
+    emailPayload.cc = data.cc;
+  }
+
+  if (data.bcc) {
+    emailPayload.bcc = data.bcc;
   }
 
   try {
-    const response = await sgMail.send(msg);
-    console.log(`[SendGrid] ✅ Email sent successfully to ${msg.to} from ${fromEmail}`);
-    return response;
-  } catch (error) {
-    console.error(`[SendGrid] ❌ Error sending email from ${fromEmail}:`, error.message);
-    
-    if (error.response && error.response.body) {
-      const errorBody = error.response.body;
-      console.error('[SendGrid] Error details:', JSON.stringify(errorBody, null, 2));
-      
-      // Check for sender identity verification error
-      if (errorBody.errors && Array.isArray(errorBody.errors)) {
-        const senderError = errorBody.errors.find(
-          (err) => err.field === 'from' && err.message.includes('verified Sender Identity')
-        );
-        
-        if (senderError) {
-          console.error('\n🔴 SENDER IDENTITY NOT VERIFIED');
-          console.error(`   From address: ${fromEmail}`);
-          console.error('\n📋 To fix this:');
-          console.error('   1. Go to SendGrid Dashboard: https://app.sendgrid.com/');
-          console.error('   2. Navigate to: Settings > Sender Authentication');
-          console.error('   3. Verify your sender email or domain');
-          console.error('   4. For single sender: Use "Single Sender Verification"');
-          console.error('   5. For domain: Use "Domain Authentication" (recommended for production)');
-          console.error(`\n   Current from address: ${fromEmail}`);
-          console.error('   This email must be verified in SendGrid before sending.\n');
-        }
-      }
+    logger.info('[Resend] 📤 Attempting to send email', {
+      to,
+      from: fromEmail,
+      subject: emailPayload.subject,
+    });
+
+    const { data: response, error } = await resend.emails.send(emailPayload);
+
+    if (error) {
+      logger.error('[Resend] ❌ Error sending email', {
+        from: fromEmail,
+        to,
+        message: error.message,
+        name: error.name,
+      });
+      throw error;
     }
-    
+
+    logger.info('[Resend] ✅ Email sent successfully', {
+      to,
+      from: fromEmail,
+      id: response?.id,
+    });
+
+    return { data: response || {}, error: null };
+  } catch (error) {
+    const errorMessage = error.message || error.toString();
+    logger.error('[Resend] ❌ Error sending email:', errorMessage);
+    logger.error('[Resend] Error details', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 5).join('\n'),
+    });
     throw error;
   }
 };
 
 /**
  * Send welcome email to new user
- * @param {string} email - Recipient email
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendWelcomeEmail = async (email, name = 'User') => {
   const brandConfig = getBrandConfig();
@@ -155,8 +158,6 @@ const sendWelcomeEmail = async (email, name = 'User') => {
 
 /**
  * Send custom email
- * @param {Object} data - Email data
- * @returns {Promise<Object>} SendGrid response
  */
 const sendCustomEmail = async (data) => {
   return sendEmail({
@@ -173,9 +174,6 @@ const sendCustomEmail = async (data) => {
 
 /**
  * Send account deletion confirmation email
- * @param {string} toEmail - Recipient email
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendAccountDeletionConfirmation = async (toEmail, name = 'User') => {
   const brandConfig = getBrandConfig();
@@ -224,11 +222,6 @@ const sendAccountDeletionConfirmation = async (toEmail, name = 'User') => {
 
 /**
  * Send data export ready email
- * @param {string} toEmail - Recipient email
- * @param {string} downloadUrl - Download link for the data export
- * @param {Date|string} expiresAt - Expiration date/time for the download link
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt, name = 'User') => {
   const brandConfig = getBrandConfig();
@@ -290,10 +283,6 @@ const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt, name = 'User'
 
 /**
  * Send password reset email
- * @param {string} toEmail - Recipient email
- * @param {string} resetToken - Password reset token
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
   const brandConfig = getBrandConfig();
@@ -349,10 +338,6 @@ const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
 
 /**
  * Send login notification email
- * @param {string} toEmail - Recipient email
- * @param {string} [name] - Recipient name (optional)
- * @param {Object} [loginInfo] - Login information (IP, device, location, etc.)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendLoginEmail = async (toEmail, name = 'User', loginInfo = {}) => {
   const brandConfig = getBrandConfig();
@@ -420,10 +405,6 @@ const sendLoginEmail = async (toEmail, name = 'User', loginInfo = {}) => {
 
 /**
  * Send login OTP email
- * @param {string} toEmail - Recipient email
- * @param {string} otp - OTP code
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendLoginOtpEmail = async (toEmail, otp, name = 'User') => {
   const brandConfig = getBrandConfig();
@@ -479,10 +460,6 @@ const sendLoginOtpEmail = async (toEmail, otp, name = 'User') => {
 
 /**
  * Send order confirmation email
- * @param {string} toEmail - Recipient email
- * @param {Object} order - Order object
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer') => {
   const brandConfig = getBrandConfig();
@@ -539,23 +516,19 @@ const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer') => 
 
 /**
  * Send detailed order information email
- * @param {string} toEmail - Recipient email
- * @param {Object} order - Order object with full details
- * @param {string} [name] - Recipient name (optional)
- * @returns {Promise<Object>} SendGrid response
  */
 const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
   const brandConfig = getBrandConfig();
   const orderUrl = `${brandConfig.url}/orders/${order._id || order.id}`;
-  
-  // Format order items
   const orderItems = order.orderItems || [];
-  const itemsHtml = orderItems.map(item => {
-    const product = item.product || {};
-    const quantity = item.quantity || 1;
-    const price = product.price || 0;
-    const total = price * quantity;
-    return `
+
+  const itemsHtml = orderItems
+    .map((item) => {
+      const product = item.product || {};
+      const quantity = item.quantity || 1;
+      const price = product.price || 0;
+      const total = price * quantity;
+      return `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eaeaea;">${product.name || 'N/A'}</td>
         <td style="padding: 10px; border-bottom: 1px solid #eaeaea; text-align: center;">${quantity}</td>
@@ -563,18 +536,16 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
         <td style="padding: 10px; border-bottom: 1px solid #eaeaea; text-align: right;">GH₵${total.toFixed(2)}</td>
       </tr>
     `;
-  }).join('');
+    })
+    .join('');
 
-  // Calculate totals
   const subtotal = order.subtotal || order.totalPrice || 0;
   const shippingFee = order.shippingFee || order.shippingCost || 0;
   const tax = order.tax || 0;
-  // Tax removed - no longer included in total calculation
-  const total = order.totalPrice || order.total || (subtotal + shippingFee);
+  const total = order.totalPrice || order.total || subtotal + shippingFee;
 
-  // Format shipping address
   const shippingAddress = order.shippingAddress || {};
-  const addressHtml = shippingAddress.streetAddress 
+  const addressHtml = shippingAddress.streetAddress
     ? `
       <p><strong>Street:</strong> ${shippingAddress.streetAddress}</p>
       ${shippingAddress.town ? `<p><strong>Town:</strong> ${shippingAddress.town}</p>` : ''}
@@ -585,7 +556,6 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
     `
     : '<p>No shipping address provided</p>';
 
-  // Format payment method
   const paymentMethodMap = {
     mobile_money: 'Mobile Money',
     credit_card: 'Credit Card',
@@ -594,7 +564,6 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
   };
   const paymentMethod = paymentMethodMap[order.paymentMethod] || order.paymentMethod || 'N/A';
 
-  // Format order status
   const statusMap = {
     pending: 'Pending',
     paid: 'Paid',
@@ -603,7 +572,8 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
     delivered: 'Delivered',
     cancelled: 'Cancelled',
   };
-  const orderStatus = statusMap[order.status] || statusMap[order.orderStatus] || order.status || 'Pending';
+  const orderStatus =
+    statusMap[order.status] || statusMap[order.orderStatus] || order.status || 'Pending';
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -637,7 +607,6 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
         <div class="content">
           <p>Hello ${name},</p>
           <p>Here are the details of your order:</p>
-          
           <div class="section">
             <div class="section-title">Order Information</div>
             <div class="order-info">
@@ -647,7 +616,13 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
               </div>
               <div class="info-row">
                 <span class="info-label">Order Date:</span>
-                <span class="info-value">${new Date(order.createdAt || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span class="info-value">${new Date(
+                  order.createdAt || Date.now(),
+                ).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Order Status:</span>
@@ -657,15 +632,20 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
                 <span class="info-label">Payment Method:</span>
                 <span class="info-value">${paymentMethod}</span>
               </div>
-              ${order.paymentStatus ? `
+              ${
+                order.paymentStatus
+                  ? `
               <div class="info-row">
                 <span class="info-label">Payment Status:</span>
-                <span class="info-value">${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'}</span>
+                <span class="info-value">${
+                  order.paymentStatus === 'completed' ? 'Paid' : 'Pending'
+                }</span>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
             </div>
           </div>
-
           <div class="section">
             <div class="section-title">Order Items</div>
             <table>
@@ -682,7 +662,6 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
               </tbody>
             </table>
           </div>
-
           <div class="section">
             <div class="section-title">Order Summary</div>
             <div class="order-info">
@@ -690,32 +669,38 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
                 <span class="info-label">Subtotal:</span>
                 <span class="info-value">GH₵${subtotal.toFixed(2)}</span>
               </div>
-              ${shippingFee > 0 ? `
+              ${
+                shippingFee > 0
+                  ? `
               <div class="info-row">
                 <span class="info-label">Shipping Fee:</span>
                 <span class="info-value">GH₵${shippingFee.toFixed(2)}</span>
               </div>
-              ` : ''}
-              ${tax > 0 ? `
+              `
+                  : ''
+              }
+              ${
+                tax > 0
+                  ? `
               <div class="info-row">
                 <span class="info-label">Tax:</span>
                 <span class="info-value">GH₵${tax.toFixed(2)}</span>
               </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <div class="info-row total-row">
                 <span class="info-label">Total:</span>
                 <span class="info-value">GH₵${total.toFixed(2)}</span>
               </div>
             </div>
           </div>
-
           <div class="section">
             <div class="section-title">Shipping Address</div>
             <div class="order-info">
               ${addressHtml}
             </div>
           </div>
-
           <p style="text-align: center;">
             <a href="${orderUrl}" class="button">View Order Online</a>
           </p>
@@ -741,15 +726,23 @@ Order Information:
 - Order Date: ${new Date(order.createdAt || Date.now()).toLocaleDateString()}
 - Order Status: ${orderStatus}
 - Payment Method: ${paymentMethod}
-${order.paymentStatus ? `- Payment Status: ${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'}` : ''}
+${
+  order.paymentStatus
+    ? `- Payment Status: ${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'}`
+    : ''
+}
 
 Order Items:
-${orderItems.map(item => {
-  const product = item.product || {};
-  const quantity = item.quantity || 1;
-  const price = product.price || 0;
-  return `- ${product.name || 'N/A'} x${quantity} @ GH₵${price.toFixed(2)} = GH₵${(price * quantity).toFixed(2)}`;
-}).join('\n')}
+${orderItems
+  .map((item) => {
+    const product = item.product || {};
+    const quantity = item.quantity || 1;
+    const price = product.price || 0;
+    return `- ${product.name || 'N/A'} x${quantity} @ GH₵${price.toFixed(2)} = GH₵${(
+      price * quantity
+    ).toFixed(2)}`;
+  })
+  .join('\n')}
 
 Order Summary:
 - Subtotal: GH₵${subtotal.toFixed(2)}
@@ -790,4 +783,5 @@ module.exports = {
   sendOrderDetailEmail,
   sendLoginEmail,
   sendLoginOtpEmail,
+  getBrandConfig,
 };

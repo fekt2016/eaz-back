@@ -1,5 +1,6 @@
 const Seller = require('../../models/user/sellerModel');
 const Product = require('../../models/product/productModel');
+const logger = require('../logger');
 
 exports.productCount = async function initProductCounts() {
   const sellers = await Seller.find();
@@ -10,6 +11,6 @@ exports.productCount = async function initProductCounts() {
     await seller.save();
   }
 
-  console.log('Product counts initialized');
+  logger.info('Product counts initialized');
 };
 initProductCounts();

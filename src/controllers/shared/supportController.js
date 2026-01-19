@@ -172,9 +172,9 @@ exports.createTicket = catchAsync(async (req, res, next) => {
         userName,
         role
       );
-      console.log(`[Support Ticket] Admin notification created for ticket ${ticket._id}`);
+      logger.info(`[Support Ticket] Admin notification created for ticket ${ticket._id}`);
     } catch (notificationError) {
-      console.error('[Support Ticket] Error creating admin notification:', notificationError);
+      logger.error('[Support Ticket] Error creating admin notification:', notificationError);
       // Don't fail ticket creation if notification fails
     }
   }
@@ -538,6 +538,7 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         ticket.role,
         `${replierName} replied to your support ticket: "${ticket.title}"`
       );
+<<<<<<< HEAD
       console.log(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
 
       // Send push notification
@@ -554,11 +555,15 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         console.error('[Support Reply] Error sending push notification:', pushError.message);
         // Don't fail ticket reply if push notification fails
       }
+=======
+      logger.info(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
     
     // If ticket is related to seller's order/product, notify the seller
     if (ticket.role === 'buyer' && (ticket.relatedOrderId || ticket.relatedProductId)) {
       const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
       const Product = mongoose.model('Product');
       let sellerId = null;
       
@@ -581,11 +586,11 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
           'seller',
           `${replierName} replied to a support ticket related to your order/product: "${ticket.title}"`
         );
-        console.log(`[Support Reply] Notification created for seller ${sellerId}`);
+        logger.info(`[Support Reply] Notification created for seller ${sellerId}`);
       }
     }
   } catch (notificationError) {
-    console.error('[Support Reply] Error creating notifications:', notificationError);
+    logger.error('[Support Reply] Error creating notifications:', notificationError);
     // Don't fail ticket reply if notification fails
   }
   
@@ -713,12 +718,12 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
   }
 
   // Debug logging for admin queries
-  console.log('[getAllTickets] Admin user:', {
+  logger.info('[getAllTickets] Admin user:', {
     id: req.user.id,
     role: req.user.role,
     email: req.user.email,
   });
-  console.log('[getAllTickets] Query parameters:', {
+  logger.info('[getAllTickets] Query parameters:', {
     status,
     department,
     priority,
@@ -729,7 +734,7 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
     page,
     limit,
   });
-  console.log('[getAllTickets] Final query:', JSON.stringify(query, null, 2));
+  logger.info('[getAllTickets] Final query:', JSON.stringify(query, null, 2));
 
   // Pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -737,7 +742,7 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
 
   // Get total count first (before pagination)
   const total = await SupportTicket.countDocuments(query);
-  console.log('[getAllTickets] Total tickets found:', total);
+  logger.info('[getAllTickets] Total tickets found:', total);
 
   // Get tickets - NO filtering by userId, returns ALL tickets
   const tickets = await SupportTicket.find(query)
@@ -751,9 +756,9 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
     .populate('assignedTo', 'name email')
     .lean();
 
-  console.log('[getAllTickets] Tickets returned:', tickets.length);
+  logger.info('[getAllTickets] Tickets returned:', tickets.length);
   if (tickets.length > 0) {
-    console.log('[getAllTickets] Sample ticket:', {
+    logger.info('[getAllTickets] Sample ticket:', {
       id: tickets[0]._id,
       title: tickets[0].title,
       userId: tickets[0].userId,

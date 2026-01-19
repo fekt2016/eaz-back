@@ -3,6 +3,7 @@ const catchAsync = require('../utils/helpers/catchAsync');
 const AppError = require('../utils/errors/appError');
 const TokenBlacklist = require('../models/user/tokenBlackListModal');
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
 
 /**
  * Middleware to check for critical security risks and force logout
@@ -36,7 +37,7 @@ exports.checkCriticalRisk = catchAsync(async (req, res, next) => {
           reason: 'Critical security risk detected',
         });
       } catch (error) {
-        console.error('[SecurityCheck] Error blacklisting token:', error);
+        logger.error('[SecurityCheck] Error blacklisting token:', error);
       }
     }
 

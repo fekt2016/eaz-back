@@ -4,6 +4,7 @@ const Seller = require('../../models/user/sellerModel');
 const DispatchFees = require('../../models/shipping/dispatchFeesModel');
 const PickupCenter = require('../../models/shipping/pickupCenterModel');
 const EazShopShippingFees = require('../../models/shipping/eazshopShippingFeesModel');
+const logger = require('../../utils/logger');
 const {
   calculateCartWeight,
   detectZone,
@@ -241,7 +242,7 @@ async function calculateDispatchShipping(items, buyerCity) {
  * @returns {Object} - Shipping quote with per-seller breakdown and total
  */
 async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pickupCenterId = null, deliverySpeed = 'standard') {
-  console.log('[calculateShippingQuote] Starting calculation:', {
+  logger.info('[calculateShippingQuote] Starting calculation:', {
     buyerCity,
     itemsCount: items.length,
     method,
@@ -278,7 +279,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
     .populate('seller', 'role');
   
   if (products.length !== productIds.length) {
-    console.warn(`[calculateShippingQuote] Some products not found. Expected ${productIds.length}, found ${products.length}`);
+    logger.warn(`[calculateShippingQuote] Some products not found. Expected ${productIds.length}, found ${products.length}`);
   }
   
   // Check if cart has EazShop products
@@ -295,7 +296,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
   
   items.forEach(item => {
     if (!item.sellerId) {
-      console.warn('[calculateShippingQuote] Item missing sellerId:', item);
+      logger.warn('[calculateShippingQuote] Item missing sellerId:', item);
       return;
     }
     const sellerId = item.sellerId.toString();
@@ -396,7 +397,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
         }
       } catch (error) {
         // Fallback to old system if new system fails
-        console.warn('[calculateShippingQuote] New shipping system failed, falling back to old system:', error.message);
+        logger.warn('[calculateShippingQuote] New shipping system failed, falling back to old system:', error.message);
         const dispatchInfo = await calculateDispatchShipping(allItems, buyerCity);
         totalShippingFee = dispatchInfo.shippingFee;
         dispatchType = 'EAZSHOP';
@@ -491,7 +492,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
     dispatchType,
   };
 
-  console.log('[calculateShippingQuote] Calculation complete:', {
+  logger.info('[calculateShippingQuote] Calculation complete:', {
     totalShippingFee: result.totalShippingFee,
     perSellerCount: result.perSeller.length,
     deliveryMethod: result.deliveryMethod,

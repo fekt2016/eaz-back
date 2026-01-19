@@ -1,6 +1,7 @@
 const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const { generateGhanaPostAddress } = require('../../utils/gpsToGhanaPost');
 
 /**
@@ -69,7 +70,7 @@ exports.createPickupLocation = catchAsync(async (req, res, next) => {
     try {
       generatedDigitalAddress = generateGhanaPostAddress(latitude, longitude);
     } catch (error) {
-      console.error('[Pickup Location] Error generating digital address:', error.message);
+      logger.error('[Pickup Location] Error generating digital address:', error.message);
       // Don't fail if digital address generation fails, just log it
     }
   }
@@ -151,7 +152,7 @@ exports.updatePickupLocation = catchAsync(async (req, res, next) => {
         try {
           location.digitalAddress = generateGhanaPostAddress(newLat, newLng).toUpperCase().trim();
         } catch (error) {
-          console.error('[Pickup Location] Error generating digital address:', error.message);
+          logger.error('[Pickup Location] Error generating digital address:', error.message);
           // Don't fail if digital address generation fails
         }
       } else {

@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { lookupDigitalAddress } = require('../utils/helpers/digitalAddressHelper');
 
 /**
@@ -122,7 +123,7 @@ async function coordinatesToPhysicalAddress(latitude, longitude, digitalAddress)
   try {
     addressData = await lookupDigitalAddress(digitalAddress);
   } catch (error) {
-    console.warn('Digital address lookup failed, using coordinates only:', error.message);
+    logger.warn('Digital address lookup failed, using coordinates only:', error.message);
   }
 
   // If we have address data, enhance it with coordinates

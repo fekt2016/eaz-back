@@ -117,7 +117,7 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     // Only save if there's a significant discrepancy (more than 1 cent)
     seller.withdrawableBalance = calculatedWithdrawable;
     await seller.save({ validateBeforeSave: false }); // Save without full validation to prevent loops
-    console.log(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
+    logger.info(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
   }
 
   // Calculate total revenue: balance (current) + totalWithdrawn (all time)
@@ -131,7 +131,7 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
   const balanceCheck = Math.abs((seller.balance || 0) - ((seller.withdrawableBalance || 0) + (seller.lockedBalance || 0) + (seller.pendingBalance || 0)));
   const revenueCheck = totalRevenue >= calculatedAvailableBalance; // Available balance should never exceed total revenue
 
-  console.log(`[getSellerBalance] Seller ${sellerId} balance data:`, {
+  logger.info(`[getSellerBalance] Seller ${sellerId} balance data:`, {
     balance: seller.balance,
     lockedBalance: seller.lockedBalance, // Funds locked by admin due to disputes/issues
     pendingBalance: seller.pendingBalance, // Funds in withdrawal requests awaiting approval/OTP
@@ -150,8 +150,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
 
   // Warn if available balance exceeds total revenue (should never happen)
   if (!revenueCheck) {
-    console.warn(`[getSellerBalance] ⚠️ WARNING: Available balance (${calculatedAvailableBalance}) exceeds total revenue (${totalRevenue}) for seller ${sellerId}`);
-    console.warn(`[getSellerBalance] This indicates a data inconsistency. Balance: ${seller.balance}, Total Withdrawn: ${totalWithdrawn}`);
+    logger.warn(`[getSellerBalance] ⚠️ WARNING: Available balance (${calculatedAvailableBalance}); exceeds total revenue (${totalRevenue}) for seller ${sellerId}`);
+    logger.warn(`[getSellerBalance] This indicates a data inconsistency. Balance: ${seller.balance}, Total Withdrawn: ${totalWithdrawn}`);
   }
 
   res.status(200).json({
@@ -231,9 +231,9 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
 
-    console.log(`[cancelWithdrawalRequest] Pending balance deduction for seller ${sellerId}:`);
-    console.log(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
-    console.log(`  Withdrawable Balance: ${seller.withdrawableBalance}`);
+    logger.info(`[cancelWithdrawalRequest] Pending balance deduction for seller ${sellerId}:`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
+    logger.info(`  Withdrawable Balance: ${seller.withdrawableBalance}`);
 
     // Update payment request status (PaymentRequest doesn't have 'cancelled', use 'rejected')
     withdrawalRequest.status = 'rejected';
@@ -271,7 +271,7 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[cancelWithdrawalRequest] Error:', error);
+    logger.error('[cancelWithdrawalRequest] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -333,7 +333,7 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
 
     // Validate pendingBalance has the amount
     if (amount > oldPendingBalance) {
-      console.warn(`[deleteWithdrawalRequest] Pending balance (${oldPendingBalance}) is less than requested amount (${amount}). Proceeding with refund anyway.`);
+      logger.warn(`[deleteWithdrawalRequest] Pending balance (${oldPendingBalance}); is less than requested amount (${amount}). Proceeding with refund anyway.`);
     }
 
     // Refund from pendingBalance (the amount was moved to pendingBalance when request was created)
@@ -345,10 +345,10 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
 
-    console.log(`[deleteWithdrawalRequest] Pending balance refund for seller ${sellerId}:`);
-    console.log(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
-    console.log(`  Total Balance: ${oldBalance} (unchanged)`);
-    console.log(`  Available Balance: ${seller.withdrawableBalance}`);
+    logger.info(`[deleteWithdrawalRequest] Pending balance refund for seller ${sellerId}:`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
+    logger.info(`  Total Balance: ${oldBalance} (unchanged);`);
+    logger.info(`  Available Balance: ${seller.withdrawableBalance}`);
 
     // Log finance audit
     try {
@@ -362,7 +362,7 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
         'Cancelled by seller'
       );
     } catch (auditError) {
-      console.error('[deleteWithdrawalRequest] Failed to log finance audit (non-critical):', auditError);
+      logger.error('[deleteWithdrawalRequest] Failed to log finance audit (non-critical);:', auditError);
     }
 
     // Log seller revenue history for withdrawal cancellation/refund
@@ -385,9 +385,9 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
           refundType: 'pendingBalance_refund', // Indicates this is a pendingBalance refund
         },
       });
-      console.log(`[deleteWithdrawalRequest] ✅ Seller revenue history logged for withdrawal cancellation - seller ${sellerId}`);
+      logger.info(`[deleteWithdrawalRequest] ✅ Seller revenue history logged for withdrawal cancellation - seller ${sellerId}`);
     } catch (historyError) {
-      console.error(`[deleteWithdrawalRequest] Failed to log seller revenue history (non-critical) for seller ${sellerId}:`, {
+      logger.error(`[deleteWithdrawalRequest] Failed to log seller revenue history (non-critical); for seller ${sellerId}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -426,7 +426,7 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[deleteWithdrawalRequest] Error:', error);
+    logger.error('[deleteWithdrawalRequest] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -542,7 +542,7 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('[submitTransferPin] Error:', error);
+    logger.error('[submitTransferPin] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -558,33 +558,33 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
  */
 exports.verifyOtp = catchAsync(async (req, res, next) => {
   // Initial diagnostic logging
-  console.log("🚀 VERIFY OTP CONTROLLER HIT:", {
+  logger.info("🚀 VERIFY OTP CONTROLLER HIT:", {
     withdrawalId: req.params.id,
     sellerId: req.user?.id,
     body: req.body
   });
 
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('[verifyOtp] 🔍 FULL DEBUG: verifyOtp controller called');
-  console.log('═══════════════════════════════════════════════════════════');
+  logger.info('═══════════════════════════════════════════════════════════');
+  logger.info('[verifyOtp] 🔍 FULL DEBUG: verifyOtp controller called');
+  logger.info('═══════════════════════════════════════════════════════════');
 
   const { id } = req.params;
   const { otp } = req.body;
 
-  console.log('[verifyOtp] Request Parameters:', {
+  logger.info('[verifyOtp] Request Parameters:', {
     withdrawalId: id,
     otpLength: otp ? otp.length : 0,
     otpPrefix: otp ? otp.substring(0, 2) + '****' : 'missing'
   });
 
-  console.log('[verifyOtp] Request Headers:', {
+  logger.info('[verifyOtp] Request Headers:', {
     authorization: req.headers.authorization ? 'present (length: ' + req.headers.authorization.length + ')' : 'missing',
     cookie: req.headers.cookie ? 'present (length: ' + req.headers.cookie.length + ')' : 'missing',
     'content-type': req.headers['content-type'],
     'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
   });
 
-  console.log('[verifyOtp] Request Cookies:', {
+  logger.info('[verifyOtp] Request Cookies:', {
     hasCookies: !!req.cookies,
     cookieKeys: req.cookies ? Object.keys(req.cookies) : 'none',
     seller_jwt: req.cookies?.seller_jwt ? 'present (length: ' + req.cookies.seller_jwt.length + ')' : 'missing',
@@ -592,7 +592,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     admin_jwt: req.cookies?.admin_jwt ? 'present' : 'missing'
   });
 
-  console.log('[verifyOtp] Request User (req.user):', {
+  logger.info('[verifyOtp] Request User (req.user);:', {
     hasUser: !!req.user,
     userId: req.user?.id,
     userRole: req.user?.role,
@@ -607,11 +607,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
   // CRITICAL: Check if req.user exists (authentication check)
   if (!req.user || !req.user.id) {
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('[verifyOtp] ❌ AUTHENTICATION ERROR: req.user is missing');
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('[verifyOtp] This means protectSeller middleware failed or did not run');
-    console.error('[verifyOtp] Request details:', {
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] ❌ AUTHENTICATION ERROR: req.user is missing');
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] This means protectSeller middleware failed or did not run');
+    logger.error('[verifyOtp] Request details:', {
       path: req.path,
       originalUrl: req.originalUrl,
       method: req.method,
@@ -622,19 +622,19 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       cookies: req.cookies ? Object.keys(req.cookies) : 'none',
       hasUser: !!req.user
     });
-    console.error('[verifyOtp] 🛑 RETURNING 401 - Authentication failed');
-    console.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] 🛑 RETURNING 401 - Authentication failed');
+    logger.error('═══════════════════════════════════════════════════════════');
     return next(new AppError('You are not authenticated. Please log in to get access.', 401));
   }
 
   const sellerId = req.user.id;
 
-  console.log('[verifyOtp] ✅ Authentication successful:', {
+  logger.info('[verifyOtp] ✅ Authentication successful:', {
     sellerId: sellerId,
     sellerRole: req.user.role,
     sellerEmail: req.user.email || req.user.phone
   });
-  console.log('[verifyOtp] Request details:', {
+  logger.info('[verifyOtp] Request details:', {
     withdrawalId: id,
     otpLength: otp ? otp.length : 0,
     sellerId: sellerId
@@ -642,7 +642,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
   // Validate input - return 400 (Bad Request) for validation errors, NOT 401
   if (!otp || String(otp).length !== 6) {
-    console.warn(`[verifyOtp] ⚠️ Validation error - Invalid OTP format: length=${otp ? String(otp).length : 0}`);
+    logger.warn(`[verifyOtp] ⚠️ Validation error - Invalid OTP format: length=${otp ? String(otp).length : 0}`);
     return res.status(400).json({
       success: false,
       message: 'OTP must be 6 digits',
@@ -666,20 +666,20 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
-      console.error("❌ WITHDRAWAL NOT FOUND");
-      console.warn(`[verifyOtp] ⚠️ Withdrawal request not found: ${id}`);
+      logger.error("❌ WITHDRAWAL NOT FOUND");
+      logger.warn(`[verifyOtp] ⚠️ Withdrawal request not found: ${id}`);
       return next(new AppError('Withdrawal request not found', 404));
     }
 
     // Log withdrawal object
-    console.log("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
+    logger.info("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
 
     // Security: Verify seller owns this withdrawal
     const requestSellerId = withdrawalRequest.seller?._id
       ? withdrawalRequest.seller._id.toString()
       : withdrawalRequest.seller?.toString() || String(withdrawalRequest.seller);
 
-    console.log(`[verifyOtp] 🔍 Verifying seller ownership:`, {
+    logger.info(`[verifyOtp] 🔍 Verifying seller ownership:`, {
       requestSellerId,
       currentSellerId: sellerId.toString(),
       match: requestSellerId === sellerId.toString()
@@ -687,11 +687,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     if (requestSellerId !== sellerId.toString()) {
       await session.abortTransaction();
-      console.error(`[verifyOtp] ❌ SECURITY: Seller ${sellerId} attempted to verify withdrawal ${id} owned by ${requestSellerId}`);
+      logger.error(`[verifyOtp] ❌ SECURITY: Seller ${sellerId} attempted to verify withdrawal ${id} owned by ${requestSellerId}`);
       return next(new AppError('You are not authorized to verify this withdrawal', 403));
     }
 
-    console.log(`[verifyOtp] ✅ Seller ownership verified`);
+    logger.info(`[verifyOtp] ✅ Seller ownership verified`);
 
     // Check if withdrawal is in correct status
     if (withdrawalRequest.status !== 'awaiting_paystack_otp' && withdrawalRequest.status !== 'processing') {
@@ -705,7 +705,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     }
 
     // Log withdrawal structure before OTP verification
-    console.log('🧾 WITHDRAWAL BEFORE OTP:', {
+    logger.info('🧾 WITHDRAWAL BEFORE OTP:', {
       _id: withdrawalRequest._id,
       status: withdrawalRequest.status,
       paystackTransferCode: withdrawalRequest.paystackTransferCode,
@@ -726,13 +726,13 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     }
 
     const transferCode = withdrawalRequest.paystackTransferCode || withdrawalRequest.transferCode;
-    console.log("🔑 TRANSFER CODE:", transferCode);
+    logger.info("🔑 TRANSFER CODE:", transferCode);
 
     if (!transferCode) {
       await session.abortTransaction();
-      console.error('❌ NO transferCode FOUND — PAYSTACK WILL FAIL');
-      console.error('❌ MISSING TRANSFER CODE FOR PAYSTACK');
-      console.error('❌ This may indicate the transfer was abandoned. Withdrawal status:', withdrawalRequest.status);
+      logger.error('❌ NO transferCode FOUND — PAYSTACK WILL FAIL');
+      logger.error('❌ MISSING TRANSFER CODE FOR PAYSTACK');
+      logger.error('❌ This may indicate the transfer was abandoned. Withdrawal status:', withdrawalRequest.status);
 
       // If status is otp_expired, provide helpful message
       if (withdrawalRequest.status === 'otp_expired') {
@@ -775,7 +775,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       'Content-Type': 'application/json',
     };
 
-    console.log('💳 [verifyOtp] Paystack finalize_transfer request details:', {
+    logger.info('💳 [verifyOtp] Paystack finalize_transfer request details:', {
       url: paystackUrl,
       endpoint: PAYSTACK_ENDPOINTS.FINALIZE_TRANSFER,
       transferCode: transferCode,
@@ -784,7 +784,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     });
 
     // First, check the current transfer status from Paystack before verifying
-    console.log('🔍 [verifyOtp] Checking transfer status before verifying OTP...');
+    logger.info('🔍 [verifyOtp] Checking transfer status before verifying OTP...');
 
     try {
       const statusResponse = await axios.get(
@@ -797,7 +797,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         }
       );
 
-      console.log('🔍 [verifyOtp] Current transfer status from Paystack:', {
+      logger.info('🔍 [verifyOtp] Current transfer status from Paystack:', {
         status: statusResponse.data?.data?.status,
         transferCode: transferCode,
         requiresOtp: statusResponse.data?.data?.status === 'otp',
@@ -807,9 +807,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
       // If transfer is not in 'otp' status, this will likely fail
       if (statusResponse.data?.data?.status !== 'otp') {
-        console.error('❌ [verifyOtp] Transfer is NOT in OTP status! Current status:', statusResponse.data?.data?.status);
-        console.error('❌ [verifyOtp] Paystack will reject OTP verification. Status must be "otp"');
-        console.error('❌ [verifyOtp] Possible reasons: OTP expired, already verified, or transfer completed');
+        logger.error('❌ [verifyOtp] Transfer is NOT in OTP status! Current status:', statusResponse.data?.data?.status);
+        logger.error('❌ [verifyOtp] Paystack will reject OTP verification. Status must be "otp"');
+        logger.error('❌ [verifyOtp] Possible reasons: OTP expired, already verified, or transfer completed');
 
         await session.abortTransaction();
         return res.status(400).json({
@@ -824,24 +824,24 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         });
       }
     } catch (statusError) {
-      console.error('❌ [verifyOtp] Error checking transfer status:', statusError.response?.data || statusError.message);
+      logger.error('❌ [verifyOtp] Error checking transfer status:', statusError.response?.data || statusError.message);
       // Continue anyway - try to verify
     }
 
     // Log data before calling Paystack
-    console.log("📤 DATA SENT TO PAYSTACK OTP VERIFY:", {
+    logger.info("📤 DATA SENT TO PAYSTACK OTP VERIFY:", {
       otp: req.body.otp,
       transferCode: withdrawalRequest?.transferCode || transferCode,
     });
 
-    console.log("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
+    logger.info("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
 
     if (!withdrawalRequest?.transferCode && !transferCode) {
-      console.error("❌ ERROR: transferCode is missing! Paystack will return 400.");
+      logger.error("❌ ERROR: transferCode is missing! Paystack will return 400.");
     }
 
     // Log raw Paystack payload before sending
-    console.log('💳 PAYSTACK OTP REQUEST:', {
+    logger.info('💳 PAYSTACK OTP REQUEST:', {
       url: paystackUrl,
       payload: otpPayload,
       headers: {
@@ -851,7 +851,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     });
 
     try {
-      console.log("📤 SENDING PAYSTACK OTP VERIFY REQUEST:", {
+      logger.info("📤 SENDING PAYSTACK OTP VERIFY REQUEST:", {
         otp: otpPayload.otp,
         transfer_code: transferCode,
         url: paystackUrl
@@ -863,9 +863,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         timeout: 30000 // 30 second timeout
       });
 
-      console.log("💳 PAYSTACK RESPONSE:", paystackResponse.data);
+      logger.info("💳 PAYSTACK RESPONSE:", paystackResponse.data);
 
-      console.log(`[verifyOtp] ✅ Paystack finalize_transfer response received:`, {
+      logger.info(`[verifyOtp] ✅ Paystack finalize_transfer response received:`, {
         status: paystackResponse.data?.status,
         hasData: !!paystackResponse.data?.data,
         dataKeys: paystackResponse.data?.data ? Object.keys(paystackResponse.data.data) : [],
@@ -873,21 +873,21 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       });
 
       // Log the full response for debugging
-      console.log(`[verifyOtp] 📋 Full Paystack response:`, JSON.stringify(paystackResponse.data, null, 2));
+      logger.info(`[verifyOtp] 📋 Full Paystack response:`, JSON.stringify(paystackResponse.data, null, 2));
     } catch (err) {
       await session.abortTransaction();
 
-      console.log("🔥 PAYSTACK OTP VERIFICATION ERROR RAW RESPONSE:",
+      logger.info("🔥 PAYSTACK OTP VERIFICATION ERROR RAW RESPONSE:",
         err.response?.data || err.message
       );
 
-      console.error("❌ PAYSTACK ERROR:", err.response?.data || err.message);
+      logger.error("❌ PAYSTACK ERROR:", err.response?.data || err.message);
 
       // Log raw Paystack error response
-      console.error('❌ PAYSTACK ERROR RAW:', err);
-      console.error('❌ PAYSTACK ERROR RESPONSE:', err.response?.data);
-      console.error('❌ PAYSTACK STATUS:', err.response?.status);
-      console.error('❌ PAYSTACK HEADERS:', err.response?.headers);
+      logger.error('❌ PAYSTACK ERROR RAW:', err);
+      logger.error('❌ PAYSTACK ERROR RESPONSE:', err.response?.data);
+      logger.error('❌ PAYSTACK STATUS:', err.response?.status);
+      logger.error('❌ PAYSTACK HEADERS:', err.response?.headers);
 
       const paystackError = err.response?.data;
       const paystackMessage = paystackError?.message || err.message || 'Paystack OTP verification failed';
@@ -895,7 +895,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       // Check for specific Paystack error: "Transfer is not currently awaiting OTP"
       if (paystackMessage.includes('not currently awaiting OTP') ||
         paystackMessage.includes('not awaiting OTP')) {
-        console.error('❌ PAYSTACK ERROR: Transfer is not awaiting OTP - may need to resend OTP or transfer already completed');
+        logger.error('❌ PAYSTACK ERROR: Transfer is not awaiting OTP - may need to resend OTP or transfer already completed');
 
         return res.status(400).json({
           success: false,
@@ -916,7 +916,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     // Check Paystack response structure
     if (!paystackResponse.data) {
       await session.abortTransaction();
-      console.error('❌ [verifyOtp] Paystack returned empty response');
+      logger.error('❌ [verifyOtp] Paystack returned empty response');
       return next(new AppError('Invalid response from Paystack. Please try again.', 500));
     }
 
@@ -926,7 +926,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       const errorMessage = paystackResponse.data?.message || 'OTP verification failed';
       const errorCode = paystackResponse.data?.code || 'unknown';
 
-      console.error('❌ [verifyOtp] Paystack returned error:', {
+      logger.error('❌ [verifyOtp] Paystack returned error:', {
         message: errorMessage,
         code: errorCode,
         data: paystackResponse.data
@@ -974,7 +974,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     // Check if response has data
     if (!paystackResponse.data.data) {
       await session.abortTransaction();
-      console.error('❌ [verifyOtp] Paystack response missing data field:', paystackResponse.data);
+      logger.error('❌ [verifyOtp] Paystack response missing data field:', paystackResponse.data);
       return next(new AppError('Invalid response structure from Paystack. Please contact support.', 500));
     }
 
@@ -987,7 +987,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Check transfer status first
     const transferStatus = transferData.status;
-    console.log(`[verifyOtp] Paystack transfer status after OTP verification: ${transferStatus}`);
+    logger.info(`[verifyOtp] Paystack transfer status after OTP verification: ${transferStatus}`);
 
     // Handle different transfer statuses
     if (transferStatus === 'failed') {
@@ -1001,10 +1001,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         seller.calculateWithdrawableBalance();
         await seller.save({ session });
 
-        console.log(`[verifyOtp] Transfer failed - refunded pendingBalance for seller ${sellerId}:`);
-        console.log(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
+        logger.info(`[verifyOtp] Transfer failed - refunded pendingBalance for seller ${sellerId}:`);
+        logger.info(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
       } else {
-        console.warn(`[verifyOtp] Transfer failed but pendingBalance (${oldPendingBalance}) is less than amount (${amountRequested})`);
+        logger.warn(`[verifyOtp] Transfer failed but pendingBalance (${oldPendingBalance}); is less than amount (${amountRequested})`);
       }
 
       // Update withdrawal request status
@@ -1020,7 +1020,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       await session.commitTransaction();
       session.endSession();
 
-      console.error('❌ [verifyOtp] Transfer failed after OTP verification');
+      logger.error('❌ [verifyOtp] Transfer failed after OTP verification');
       return res.status(400).json({
         success: false,
         message: 'Transfer failed after OTP verification. The amount has been refunded to your available balance.',
@@ -1041,10 +1041,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         seller.calculateWithdrawableBalance();
         await seller.save({ session });
 
-        console.log(`[verifyOtp] Transfer abandoned - refunded pendingBalance for seller ${sellerId}:`);
-        console.log(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
+        logger.info(`[verifyOtp] Transfer abandoned - refunded pendingBalance for seller ${sellerId}:`);
+        logger.info(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
       } else {
-        console.warn(`[verifyOtp] Transfer abandoned but pendingBalance (${oldPendingBalance}) is less than amount (${amountRequested})`);
+        logger.warn(`[verifyOtp] Transfer abandoned but pendingBalance (${oldPendingBalance}); is less than amount (${amountRequested})`);
       }
 
       // Mark withdrawal as OTP expired and update session status
@@ -1075,13 +1075,13 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
           seller.pendingBalance
         );
       } catch (auditError) {
-        console.error('[verifyOtp] Failed to log finance audit (non-critical):', auditError);
+        logger.error('[verifyOtp] Failed to log finance audit (non-critical);:', auditError);
       }
 
       await session.commitTransaction();
       session.endSession();
 
-      console.error('❌ [verifyOtp] Transfer was abandoned (OTP expired):', {
+      logger.error('❌ [verifyOtp] Transfer was abandoned (OTP expired);:', {
         withdrawalId: withdrawalRequest._id,
         oldTransferCode: transferCode,
         pendingBalanceRefunded: true,
@@ -1100,19 +1100,19 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // If status is still 'otp', something went wrong
     if (transferStatus === 'otp') {
-      console.warn('⚠️ [verifyOtp] Transfer status is still "otp" after verification - may need to verify again');
+      logger.warn('⚠️ [verifyOtp] Transfer status is still "otp" after verification - may need to verify again');
       // Don't fail - might be a timing issue, continue processing
     }
 
     // Success statuses: 'success', 'pending', 'processing'
     if (!['success', 'pending', 'processing', 'otp'].includes(transferStatus)) {
-      console.warn(`⚠️ [verifyOtp] Unexpected transfer status: ${transferStatus}`);
+      logger.warn(`⚠️ [verifyOtp] Unexpected transfer status: ${transferStatus}`);
       // Continue anyway - might still be processing
     }
 
     // Log all available fields in transferData
-    console.log(`[verifyOtp] Paystack finalize_transfer response keys:`, Object.keys(transferData));
-    console.log(`[verifyOtp] Paystack finalize_transfer full response:`, JSON.stringify(transferData, null, 2));
+    logger.info(`[verifyOtp] Paystack finalize_transfer response keys:`, Object.keys(transferData));
+    logger.info(`[verifyOtp] Paystack finalize_transfer full response:`, JSON.stringify(transferData, null, 2));
 
     // Check for authorization_url (should be null for transfers, but check anyway)
     const authorizationUrl = transferData.authorization_url ||
@@ -1120,7 +1120,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       transferData.url ||
       null;
 
-    console.log(`[verifyOtp] Paystack finalize_transfer response summary:`, {
+    logger.info(`[verifyOtp] Paystack finalize_transfer response summary:`, {
       status: transferData.status,
       transfer_code: transferData.transfer_code,
       reference: transferData.reference,
@@ -1137,15 +1137,15 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     // DO NOT redirect - transfers complete directly after OTP
     // If authorizationUrl somehow exists, log it but ignore it
     if (authorizationUrl) {
-      console.warn(`[verifyOtp] ⚠️ WARNING: Paystack returned authorization_url for transfer finalization`);
-      console.warn(`[verifyOtp] This should NOT happen - transfers complete directly after OTP`);
-      console.warn(`[verifyOtp] Ignoring authorization_url and proceeding with transfer completion`);
-      console.warn(`[verifyOtp] Authorization URL was: ${authorizationUrl}`);
+      logger.warn(`[verifyOtp] ⚠️ WARNING: Paystack returned authorization_url for transfer finalization`);
+      logger.warn(`[verifyOtp] This should NOT happen - transfers complete directly after OTP`);
+      logger.warn(`[verifyOtp] Ignoring authorization_url and proceeding with transfer completion`);
+      logger.warn(`[verifyOtp] Authorization URL was: ${authorizationUrl}`);
       // Continue with normal flow - don't redirect
     }
 
     // If no redirect required, proceed with balance updates
-    console.log(`[verifyOtp] ✅ No redirect required. Transfer status: ${transferData.status}`);
+    logger.info(`[verifyOtp] ✅ No redirect required. Transfer status: ${transferData.status}`);
 
     // Seller already fetched at line 716 - use it here
     // Deduct amount from pendingBalance AND balance when OTP is verified
@@ -1198,22 +1198,22 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
           status: 'completed',
         },
       });
-      console.log(`[verifyOtp] ✅ Seller revenue history logged for completed payout - seller ${sellerId}`);
+      logger.info(`[verifyOtp] ✅ Seller revenue history logged for completed payout - seller ${sellerId}`);
     } catch (historyError) {
-      console.error(`[verifyOtp] Failed to log seller revenue history (non-critical) for seller ${sellerId}:`, {
+      logger.error(`[verifyOtp] Failed to log seller revenue history (non-critical); for seller ${sellerId}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
     }
 
-    console.log(`[verifyOtp] Withdrawal finalized for seller ${sellerId}:`);
-    console.log(`  Amount Requested: ${amountRequested}`);
-    console.log(`  Withholding Tax: ${withholdingTax} (${(withdrawalRequest.withholdingTaxRate || 0) * 100}%)`);
-    console.log(`  Amount Paid to Seller: ${amountPaidToSeller}`);
-    console.log(`  Total Revenue (Balance): ${oldBalance} - ${amountRequested} = ${seller.balance} (deducted)`);
-    console.log(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance} (deducted)`);
-    console.log(`  Locked Balance: ${oldLockedBalance} (unchanged)`);
-    console.log(`  Available Balance: ${seller.withdrawableBalance} (recalculated)`);
+    logger.info(`[verifyOtp] Withdrawal finalized for seller ${sellerId}:`);
+    logger.info(`  Amount Requested: ${amountRequested}`);
+    logger.info(`  Withholding Tax: ${withholdingTax} (${(withdrawalRequest.withholdingTaxRate || 0) * 100}%)`);
+    logger.info(`  Amount Paid to Seller: ${amountPaidToSeller}`);
+    logger.info(`  Total Revenue (Balance);: ${oldBalance} - ${amountRequested} = ${seller.balance} (deducted)`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance} (deducted);`);
+    logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
+    logger.info(`  Available Balance: ${seller.withdrawableBalance} (recalculated);`);
 
     // Update withdrawal request status
     withdrawalRequest.status = 'approved';
@@ -1260,10 +1260,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         const emailDispatcher = require('../../emails/emailDispatcher');
         // Seller is already fetched, use it
         await emailDispatcher.sendWithdrawalApproved(seller, withdrawalRequest);
-        console.log(`[verifyOtp] ✅ Withdrawal approved email sent to seller ${seller.email}`);
+        logger.info(`[verifyOtp] ✅ Withdrawal approved email sent to seller ${seller.email}`);
       }
     } catch (emailError) {
-      console.error('[verifyOtp] Error sending withdrawal approved email:', emailError.message);
+      logger.error('[verifyOtp] Error sending withdrawal approved email:', emailError.message);
       // Don't fail withdrawal if email fails
     }
 
@@ -1286,10 +1286,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       responseData.authorization_url = transferData.authorization_url || transferData.redirect_url;
       responseData.redirect_url = transferData.authorization_url || transferData.redirect_url;
       responseData.requiresRedirect = true;
-      console.log(`[verifyOtp] ⚠️ WARNING: Authorization URL found after balance update: ${responseData.authorization_url}`);
+      logger.info(`[verifyOtp] ⚠️ WARNING: Authorization URL found after balance update: ${responseData.authorization_url}`);
     }
 
-    console.log(`[verifyOtp] ✅ Returning success response:`, {
+    logger.info(`[verifyOtp] ✅ Returning success response:`, {
       status: responseData.status,
       requiresRedirect: responseData.requiresRedirect,
       hasAuthorizationUrl: !!responseData.authorization_url,
@@ -1304,32 +1304,32 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         await session.abortTransaction();
       }
     } catch (abortError) {
-      console.error('[verifyOtp] Error aborting transaction:', abortError);
+      logger.error('[verifyOtp] Error aborting transaction:', abortError);
     }
 
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('[verifyOtp] ❌ UNEXPECTED ERROR IN VERIFY OTP:');
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('[verifyOtp] Error message:', error.message);
-    console.error('[verifyOtp] Error name:', error.name);
-    console.error('[verifyOtp] Error code:', error.code);
-    console.error('[verifyOtp] Error stack:', error.stack);
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] ❌ UNEXPECTED ERROR IN VERIFY OTP:');
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] Error message:', error.message);
+    logger.error('[verifyOtp] Error name:', error.name);
+    logger.error('[verifyOtp] Error code:', error.code);
+    logger.error('[verifyOtp] Error stack:', error.stack);
 
     // Log additional error details
     if (error.response) {
-      console.error('[verifyOtp] Error response status:', error.response.status);
-      console.error('[verifyOtp] Error response data:', JSON.stringify(error.response.data, null, 2));
-      console.error('[verifyOtp] Error response headers:', error.response.headers);
+      logger.error('[verifyOtp] Error response status:', error.response.status);
+      logger.error('[verifyOtp] Error response data:', JSON.stringify(error.response.data, null, 2));
+      logger.error('[verifyOtp] Error response headers:', error.response.headers);
     }
 
     // Handle specific error types
     if (error instanceof AppError) {
-      console.error('[verifyOtp] This is an AppError - passing to error handler');
+      logger.error('[verifyOtp] This is an AppError - passing to error handler');
       // Ensure AppError doesn't return 401 unless it's a real auth error
       if (error.statusCode === 401 && !error.message.toLowerCase().includes('not authenticated') &&
         !error.message.toLowerCase().includes('not logged in') &&
         !error.message.toLowerCase().includes('session expired')) {
-        console.warn('[verifyOtp] ⚠️ Converting 401 to 400 for non-auth error');
+        logger.warn('[verifyOtp] ⚠️ Converting 401 to 400 for non-auth error');
         error.statusCode = 400;
       }
       return next(error);
@@ -1337,28 +1337,28 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Handle Mongoose errors
     if (error.name === 'ValidationError') {
-      console.error('[verifyOtp] Mongoose validation error');
+      logger.error('[verifyOtp] Mongoose validation error');
       return next(new AppError(`Validation error: ${error.message}`, 400));
     }
 
     if (error.name === 'CastError') {
-      console.error('[verifyOtp] Mongoose cast error - invalid ID format');
+      logger.error('[verifyOtp] Mongoose cast error - invalid ID format');
       return next(new AppError('Invalid withdrawal request ID', 400));
     }
 
     // Handle network/timeout errors
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      console.error('[verifyOtp] Request timeout error');
+      logger.error('[verifyOtp] Request timeout error');
       return next(new AppError('Request to Paystack timed out. Please try again.', 504));
     }
 
     if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      console.error('[verifyOtp] Network connection error');
+      logger.error('[verifyOtp] Network connection error');
       return next(new AppError('Unable to connect to Paystack. Please try again later.', 503));
     }
 
     // Generic error handler
-    console.error('[verifyOtp] Generic error - returning 500');
+    logger.error('[verifyOtp] Generic error - returning 500');
     return next(new AppError(
       error.message || 'Failed to verify OTP. Please try again or contact support.',
       500
@@ -1370,7 +1370,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         await session.endSession();
       }
     } catch (endError) {
-      console.error('[verifyOtp] Error ending session:', endError);
+      logger.error('[verifyOtp] Error ending session:', endError);
     }
   }
 });
@@ -1498,7 +1498,7 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
       seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
     } else {
       // If pendingBalance is less, there might be an issue, but proceed anyway
-      console.warn(`[requestWithdrawalReversal] Pending balance (${oldPendingBalance}) is less than requested amount (${amountRequested})`);
+      logger.warn(`[requestWithdrawalReversal] Pending balance (${oldPendingBalance}); is less than requested amount (${amountRequested})`);
       seller.pendingBalance = 0;
     }
 
@@ -1569,9 +1569,9 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
           reverseReason: reason,
         },
       });
-      console.log(`[requestWithdrawalReversal] ✅ Seller revenue history logged for withdrawal reversal request - seller ${sellerId}`);
+      logger.info(`[requestWithdrawalReversal] ✅ Seller revenue history logged for withdrawal reversal request - seller ${sellerId}`);
     } catch (historyError) {
-      console.error(`[requestWithdrawalReversal] Failed to log seller revenue history (non-critical):`, {
+      logger.error(`[requestWithdrawalReversal] Failed to log seller revenue history (non-critical);:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -1607,7 +1607,7 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[requestWithdrawalReversal] Error:', error);
+    logger.error('[requestWithdrawalReversal] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -1685,7 +1685,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
 
     // If no recipient code, recreate it from payment details
     if (!recipientCode) {
-      console.log('⚠️ [resendOtp] Recipient code not found. Recreating from payment details...');
+      logger.info('⚠️ [resendOtp] Recipient code not found. Recreating from payment details...');
 
       // Get payment method and details
       const paymentMethod = isPaymentRequest
@@ -1770,7 +1770,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
 
         if (response.data.status && response.data.data) {
           recipientCode = response.data.data.recipient_code;
-          console.log('✅ [resendOtp] Recreated recipient from payment details:', {
+          logger.info('✅ [resendOtp] Recreated recipient from payment details:', {
             recipientCode,
             paymentMethod,
             recipientName: recipientData.name,
@@ -1783,7 +1783,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
           return next(new AppError('Failed to create Paystack recipient', 500));
         }
       } catch (recipientError) {
-        console.error('❌ [resendOtp] Error recreating recipient:', {
+        logger.error('❌ [resendOtp] Error recreating recipient:', {
           message: recipientError.response?.data?.message || recipientError.message,
           status: recipientError.response?.status,
           data: JSON.stringify(recipientError.response?.data, null, 2),
@@ -1821,7 +1821,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
 
     // Check current transfer status if transfer code exists
     if (transferCode) {
-      console.log('🔍 [resendOtp] Checking current transfer status from Paystack...');
+      logger.info('🔍 [resendOtp] Checking current transfer status from Paystack...');
       try {
         const statusResponse = await axios.get(
           `https://api.paystack.co/transfer/${transferCode}`,
@@ -1834,7 +1834,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         );
 
         currentTransferStatus = statusResponse.data?.data?.status;
-        console.log('🔍 [resendOtp] Current transfer status from Paystack:', {
+        logger.info('🔍 [resendOtp] Current transfer status from Paystack:', {
           status: currentTransferStatus,
           transferCode: transferCode,
           fullStatus: JSON.stringify(statusResponse.data?.data, null, 2)
@@ -1842,14 +1842,14 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
 
         // If transfer is abandoned, we MUST create a new transfer
         if (currentTransferStatus === 'abandoned') {
-          console.log('⚠️ [resendOtp] Transfer is ABANDONED - cannot resend OTP. Creating new transfer...');
+          logger.info('⚠️ [resendOtp] Transfer is ABANDONED - cannot resend OTP. Creating new transfer...');
           shouldCreateNewTransfer = true;
         } else if (currentTransferStatus !== 'otp') {
-          console.warn('⚠️ [resendOtp] Transfer is NOT in OTP status. Current status:', currentTransferStatus);
-          console.warn('⚠️ [resendOtp] Attempting to resend OTP, but may need to create new transfer if it fails');
+          logger.warn('⚠️ [resendOtp] Transfer is NOT in OTP status. Current status:', currentTransferStatus);
+          logger.warn('⚠️ [resendOtp] Attempting to resend OTP, but may need to create new transfer if it fails');
         }
       } catch (statusError) {
-        console.error('❌ [resendOtp] Error checking transfer status:', {
+        logger.error('❌ [resendOtp] Error checking transfer status:', {
           message: statusError.response?.data?.message || statusError.message,
           status: statusError.response?.status,
           data: JSON.stringify(statusError.response?.data, null, 2)
@@ -1859,7 +1859,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       }
     } else {
       // No transfer code means we need to create a new transfer
-      console.log('⚠️ [resendOtp] No transfer code found - creating new transfer...');
+      logger.info('⚠️ [resendOtp] No transfer code found - creating new transfer...');
       shouldCreateNewTransfer = true;
     }
 
@@ -1868,7 +1868,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
 
     // If transfer is abandoned or no transfer code, create NEW transfer
     if (shouldCreateNewTransfer) {
-      console.log('🔄 [resendOtp] Creating NEW Paystack transfer (abandoned transfer cannot be revived)...');
+      logger.info('🔄 [resendOtp] Creating NEW Paystack transfer (abandoned transfer cannot be revived);...');
 
       try {
         const payoutService = require('../../services/payoutService');
@@ -1879,7 +1879,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         );
 
         newTransferCode = transferResult.transfer_code;
-        console.log('✅ [resendOtp] New transfer created:', {
+        logger.info('✅ [resendOtp] New transfer created:', {
           newTransferCode: newTransferCode,
           status: transferResult.status,
           fullResponse: JSON.stringify(transferResult, null, 2)
@@ -1907,11 +1907,11 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         await withdrawalRequest.save({ session });
         await session.commitTransaction();
 
-        console.log('✅ [resendOtp] Withdrawal request updated with new transfer code');
+        logger.info('✅ [resendOtp] Withdrawal request updated with new transfer code');
 
       } catch (transferError) {
         await session.abortTransaction();
-        console.error('❌ [resendOtp] Error creating new transfer:', {
+        logger.error('❌ [resendOtp] Error creating new transfer:', {
           message: transferError.message,
           response: transferError.response?.data,
           fullError: JSON.stringify(transferError.response?.data, null, 2)
@@ -1951,7 +1951,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     }
 
     // If transfer is NOT abandoned, try to resend OTP
-    console.log('📤 [resendOtp] Attempting to resend OTP for existing transfer...');
+    logger.info('📤 [resendOtp] Attempting to resend OTP for existing transfer...');
 
     try {
       paystackResponse = await axios.post(
@@ -1968,24 +1968,25 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         }
       );
 
-      console.log('✅ [resendOtp] Paystack resend_otp success:', {
+      logger.info('✅ [resendOtp] Paystack resend_otp success:', {
         status: paystackResponse.data?.status,
         message: paystackResponse.data?.message,
         data: JSON.stringify(paystackResponse.data?.data, null, 2)
       });
     } catch (paystackError) {
-      console.error('❌ [resendOtp] Paystack resend_otp error:', {
+      logger.error('❌ [resendOtp] Paystack resend_otp error:', {
         message: paystackError.response?.data?.message || paystackError.message,
         status: paystackError.response?.status,
         data: JSON.stringify(paystackError.response?.data, null, 2)
       });
 
       // If resend fails, create a new transfer
-      console.log('🔄 [resendOtp] Resend failed - creating new transfer instead...');
+      logger.info('🔄 [resendOtp] Resend failed - creating new transfer instead...');
 
       try {
         await session.startTransaction();
         const payoutService = require('../../services/payoutService');
+const logger = require('../../utils/logger');
         const transferResult = await payoutService.initiatePayout(
           withdrawalRequest.amount,
           recipientCode,
@@ -1993,7 +1994,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         );
 
         newTransferCode = transferResult.transfer_code;
-        console.log('✅ [resendOtp] New transfer created after resend failure:', {
+        logger.info('✅ [resendOtp] New transfer created after resend failure:', {
           newTransferCode: newTransferCode,
           status: transferResult.status,
           fullResponse: JSON.stringify(transferResult, null, 2)
@@ -2031,7 +2032,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       } catch (transferError) {
         await session.abortTransaction();
         session.endSession();
-        console.error('❌ [resendOtp] Error creating new transfer after resend failure:', transferError);
+        logger.error('❌ [resendOtp] Error creating new transfer after resend failure:', transferError);
         return next(new AppError(
           'Failed to resend OTP and failed to create new transfer. Please contact support.',
           500
@@ -2042,12 +2043,12 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     // Check Paystack response
     if (!paystackResponse.data || paystackResponse.data.status !== true) {
       const errorMessage = paystackResponse.data?.message || 'Failed to resend OTP';
-      console.error('❌ [resendOtp] Paystack resend_otp returned failure:', JSON.stringify(paystackResponse.data, null, 2));
+      logger.error('❌ [resendOtp] Paystack resend_otp returned failure:', JSON.stringify(paystackResponse.data, null, 2));
       return next(new AppError(errorMessage, 400));
     }
 
     // Verify transfer is now in 'otp' status after resend
-    console.log('🔍 [resendOtp] Verifying transfer status after resend...');
+    logger.info('🔍 [resendOtp] Verifying transfer status after resend...');
     try {
       const verifyResponse = await axios.get(
         `https://api.paystack.co/transfer/${transferCode}`,
@@ -2060,20 +2061,20 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       );
 
       const newStatus = verifyResponse.data?.data?.status;
-      console.log('✅ [resendOtp] Transfer status after resend:', {
+      logger.info('✅ [resendOtp] Transfer status after resend:', {
         status: newStatus,
         isOtpStatus: newStatus === 'otp',
         fullStatus: JSON.stringify(verifyResponse.data?.data, null, 2)
       });
 
       if (newStatus !== 'otp') {
-        console.warn('⚠️ [resendOtp] Transfer is still NOT in OTP status after resend. Status:', newStatus);
-        console.warn('⚠️ [resendOtp] This may indicate the transfer cannot accept OTP (already completed, expired, etc.)');
+        logger.warn('⚠️ [resendOtp] Transfer is still NOT in OTP status after resend. Status:', newStatus);
+        logger.warn('⚠️ [resendOtp] This may indicate the transfer cannot accept OTP (already completed, expired, etc.);');
       } else {
-        console.log('✅ [resendOtp] Transfer is now in OTP status - ready for verification');
+        logger.info('✅ [resendOtp] Transfer is now in OTP status - ready for verification');
       }
     } catch (verifyError) {
-      console.error('❌ [resendOtp] Error verifying transfer status after resend:', verifyError.response?.data || verifyError.message);
+      logger.error('❌ [resendOtp] Error verifying transfer status after resend:', verifyError.response?.data || verifyError.message);
       // Don't fail - resend might have worked
     }
 
@@ -2122,7 +2123,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('[resendOtp] Error:', error);
+    logger.error('[resendOtp] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);

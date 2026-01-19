@@ -68,6 +68,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // NEVER trust frontend amount - always use server-side order total
   const serverAmount = order.totalPrice;
 
+<<<<<<< HEAD
   // CRITICAL: Log order details for debugging
   console.log(`[Payment Init] 🔍 Order ${orderId} details:`, {
     totalPrice: order.totalPrice,
@@ -91,6 +92,12 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       orderItems: order.orderItems?.length || 0,
     });
     return next(new AppError('Invalid request. Please try again or contact support.', 400));
+=======
+  // Validate that frontend amount matches (if provided)
+  if (amount && Math.abs(parseFloat(amount) - serverAmount) > 0.01) {
+    logger.warn(`[Payment Init] Amount mismatch for order ${orderId}: Frontend=${amount}, Server=${serverAmount}`);
+    return next(new AppError('Payment amount does not match order total', 400));
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   if (serverAmount <= 0) {
@@ -176,7 +183,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   const envEazmainUrl = process.env.EAZMAIN_URL;
   const envFrontendUrl = process.env.FRONTEND_URL;
 
-  console.log('[Paystack Initialize] 🔍 Environment Variables:', {
+  logger.info('[Paystack Initialize] 🔍 Environment Variables:', {
     MAIN_APP_URL: envMainAppUrl || 'NOT SET',
     EAZMAIN_URL: envEazmainUrl || 'NOT SET',
     FRONTEND_URL: envFrontendUrl || 'NOT SET',
@@ -190,27 +197,27 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     !envMainAppUrl.includes(':5174') &&
     (envMainAppUrl.includes(':5173') || envMainAppUrl.includes('eazmain'))) {
     baseUrl = envMainAppUrl;
-    console.log('[Paystack Initialize] ✅ Using MAIN_APP_URL:', baseUrl);
+    logger.info('[Paystack Initialize] ✅ Using MAIN_APP_URL:', baseUrl);
   } else if (envEazmainUrl &&
     !envEazmainUrl.includes('admin') &&
     !envEazmainUrl.includes('eazadmin') &&
     !envEazmainUrl.includes(':5174')) {
     baseUrl = envEazmainUrl;
-    console.log('[Paystack Initialize] ✅ Using EAZMAIN_URL:', baseUrl);
+    logger.info('[Paystack Initialize] ✅ Using EAZMAIN_URL:', baseUrl);
   } else if (envFrontendUrl &&
     !envFrontendUrl.includes('admin') &&
     !envFrontendUrl.includes('eazadmin') &&
     !envFrontendUrl.includes(':5174') &&
     (envFrontendUrl.includes(':5173') || envFrontendUrl.includes('eazmain'))) {
     baseUrl = envFrontendUrl;
-    console.log('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain):', baseUrl);
+    logger.info('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain);:', baseUrl);
   }
 
   // ALWAYS default to eazmain port (5173) if no valid URL found
   // This is the customer app - NEVER use admin port (5174)
   if (!baseUrl) {
     baseUrl = 'http://localhost:5173';
-    console.log('[Paystack Initialize] ✅ Using default eazmain URL (port 5173):', baseUrl);
+    logger.info('[Paystack Initialize] ✅ Using default eazmain URL (port 5173);:', baseUrl);
   }
 
   // FINAL VALIDATION: Force to eazmain if URL points to admin
@@ -218,9 +225,9 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     baseUrl.includes('eazadmin') ||
     baseUrl.includes(':5174') ||
     baseUrl.toLowerCase().includes('admin')) {
-    console.error('[Paystack Initialize] ❌ CRITICAL: Base URL points to admin! Forcing to eazmain.');
+    logger.error('[Paystack Initialize] ❌ CRITICAL: Base URL points to admin! Forcing to eazmain.');
     baseUrl = 'http://localhost:5173';
-    console.log('[Paystack Initialize] ✅ FORCED to eazmain (port 5173):', baseUrl);
+    logger.info('[Paystack Initialize] ✅ FORCED to eazmain (port 5173);:', baseUrl);
   }
 
   // Remove trailing slash and ensure clean URL
@@ -228,9 +235,9 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
   // Final sanity check - ensure we're using port 5173 (eazmain), not 5174 (admin)
   if (cleanBaseUrl.includes(':5174')) {
-    console.error('[Paystack Initialize] ❌ CRITICAL: URL still contains admin port 5174!');
+    logger.error('[Paystack Initialize] ❌ CRITICAL: URL still contains admin port 5174!');
     const safeBaseUrl = cleanBaseUrl.replace(/:5174/g, ':5173');
-    console.log('[Paystack Initialize] ✅ Replaced admin port with eazmain port:', safeBaseUrl);
+    logger.info('[Paystack Initialize] ✅ Replaced admin port with eazmain port:', safeBaseUrl);
     baseUrl = safeBaseUrl;
   } else {
     baseUrl = cleanBaseUrl;
@@ -243,7 +250,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   const callbackUrl = `${baseUrl}/order-confirmation?orderId=${order._id}`;
 
   // CRITICAL: Log all environment variables for debugging BEFORE validation
-  console.log('[Paystack Initialize] 🔍 Environment Variables Check:', {
+  logger.info('[Paystack Initialize] 🔍 Environment Variables Check:', {
     MAIN_APP_URL: process.env.MAIN_APP_URL || 'NOT SET',
     EAZMAIN_URL: process.env.EAZMAIN_URL || 'NOT SET',
     FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
@@ -258,13 +265,13 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     callbackUrl.includes('eazadmin') ||
     callbackUrl.includes(':5174') ||
     callbackUrl.toLowerCase().includes('admin')) {
-    console.error('[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!', callbackUrl);
-    console.error('[Paystack Initialize] ⚠️ FORCING redirect to eazmain (port 5173) instead');
+    logger.error('[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!', callbackUrl);
+    logger.error('[Paystack Initialize] ⚠️ FORCING redirect to eazmain (port 5173); instead');
 
     // FORCE use of eazmain port (5173) - NEVER use admin port (5174)
     const forcedBaseUrl = 'http://localhost:5173';
     const forcedCallbackUrl = `${forcedBaseUrl}/order-confirmation?orderId=${order._id}`;
-    console.log('[Paystack Initialize] ✅ Using FORCED safe callback URL:', forcedCallbackUrl);
+    logger.info('[Paystack Initialize] ✅ Using FORCED safe callback URL:', forcedCallbackUrl);
 
     // Update callbackUrl to use the forced safe URL
     const safePayload = {
@@ -283,7 +290,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       callback_url: forcedCallbackUrl, // Use forced safe URL
     };
 
-    console.log('[Paystack Initialize] Paystack Payload (with forced URL):', safePayload.callback_url);
+    logger.info('[Paystack Initialize] Paystack Payload (with forced URL);:', safePayload.callback_url);
 
     try {
       const response = await axios.post(
@@ -317,7 +324,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
         );
       }
     } catch (error) {
-      console.error('Paystack API error:', error.response?.data || error.message);
+      logger.error('Paystack API error:', error.response?.data || error.message);
       return next(
         new AppError(
           error.response?.data?.message || 'Payment initialization failed',
@@ -327,9 +334,9 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     }
   }
 
-  console.log('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
-  console.log('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
-  console.log('[Paystack Initialize] ⚠️ VERIFY: This URL MUST point to eazmain (port 5173), NOT eazadmin (port 5174)');
+  logger.info('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
+  logger.info('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
+  logger.info('[Paystack Initialize] ⚠️ VERIFY: This URL MUST point to eazmain (port 5173);, NOT eazadmin (port 5174)');
 
   const payload = {
     email,
@@ -347,8 +354,8 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     callback_url: callbackUrl,
   };
 
-  console.log('[Paystack Initialize] Paystack Payload callback_url:', payload.callback_url);
-  console.log('[Paystack Initialize] Order ID:', order._id.toString());
+  logger.info('[Paystack Initialize] Paystack Payload callback_url:', payload.callback_url);
+  logger.info('[Paystack Initialize] Order ID:', order._id.toString());
 
   try {
     // Make request to Paystack using axios
@@ -383,7 +390,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       );
     }
   } catch (error) {
-    console.error('Paystack API error:', error.response?.data || error.message);
+    logger.error('Paystack API error:', error.response?.data || error.message);
     return next(
       new AppError(
         error.response?.data?.message || 'Payment initialization failed',
@@ -409,7 +416,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
   }
 
   try {
-    console.log(`[Payment Verification] Verifying payment with reference: ${reference}, orderId: ${orderId}`);
+    logger.info(`[Payment Verification] Verifying payment with reference: ${reference}, orderId: ${orderId}`);
 
     // Verify payment with Paystack
     const response = await axios.get(
@@ -421,48 +428,58 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       }
     );
 
-    console.log(`[Payment Verification] Paystack response status: ${response.data?.status}`);
-    console.log(`[Payment Verification] Paystack response data:`, JSON.stringify(response.data, null, 2));
+    logger.info(`[Payment Verification] Paystack response status: ${response.data?.status}`);
+    logger.info(`[Payment Verification] Paystack response data:`, JSON.stringify(response.data, null, 2));
 
     // Check if Paystack returned an error
     if (response.data.status === false) {
       const errorMessage = response.data.message || 'Payment verification failed';
-      console.error(`[Payment Verification] Paystack returned error: ${errorMessage}`);
+      logger.error(`[Payment Verification] Paystack returned error: ${errorMessage}`);
       return next(new AppError(errorMessage, 400));
     }
 
     // Check if response has the expected structure
     if (!response.data || response.data.status !== true || !response.data.data) {
+<<<<<<< HEAD
       console.error(`[Payment Verification] Invalid response structure:`, response.data);
       return next(new AppError('Request could not be processed. Please try again.', 400));
+=======
+      logger.error(`[Payment Verification] Invalid response structure:`, response.data);
+      return next(new AppError('Invalid response from payment gateway', 400));
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     const transaction = response.data.data;
-    console.log(`[Payment Verification] Transaction status: ${transaction.status}`);
+    logger.info(`[Payment Verification] Transaction status: ${transaction.status}`);
 
     // Find order by reference or orderId
     let order;
     if (orderId) {
       order = await Order.findById(orderId);
-      console.log(`[Payment Verification] Found order by ID: ${order ? order._id : 'not found'}`);
+      logger.info(`[Payment Verification] Found order by ID: ${order ? order._id : 'not found'}`);
     } else {
       // Find order by payment reference
       order = await Order.findOne({ paymentReference: reference });
-      console.log(`[Payment Verification] Found order by reference: ${order ? order._id : 'not found'}`);
+      logger.info(`[Payment Verification] Found order by reference: ${order ? order._id : 'not found'}`);
     }
 
     if (!order) {
+<<<<<<< HEAD
       console.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
       return next(new AppError('Requested resource not found', 404));
+=======
+      logger.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
+      return next(new AppError('Order not found', 404));
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Check if payment was successful
     if (transaction.status === 'success') {
-      console.log(`[Payment Verification] Payment successful for order: ${order._id}`);
+      logger.info(`[Payment Verification] Payment successful for order: ${order._id}`);
 
       // Prevent double updates - if already paid, return existing order
       if (order.paymentStatus === 'paid') {
-        console.log(`[Payment Verification] Order ${order._id} already paid, returning existing order`);
+        logger.info(`[Payment Verification] Order ${order._id} already paid, returning existing order`);
         return res.status(200).json({
           success: true,
           status: 'success',
@@ -538,7 +555,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
           order.revenueAmount = orderTotal;
           order.revenueAdded = true;
 
-          console.log(`[Payment Verification] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
+          logger.info(`[Payment Verification] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
         }
       }
 
@@ -560,7 +577,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       });
 
       await order.save({ validateBeforeSave: false });
-      console.log(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
+      logger.info(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
 
       // Reduce product stock after payment is confirmed
       const stockService = require('../../services/stock/stockService');
@@ -589,7 +606,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
         // Sync SellerOrder status to 'confirmed'
         const syncResult = await syncSellerOrderStatus(order._id, 'confirmed');
-        console.log(`[Payment Verification] SellerOrder status sync result:`, syncResult);
+        logger.info(`[Payment Verification] SellerOrder status sync result:`, syncResult);
 
         // Update SellerOrder payment status (but DO NOT credit seller balance - that happens on delivery)
         const sellerOrders = await SellerOrder.find({ order: order._id });
@@ -602,14 +619,14 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
             sellerOrder.paymentReference = reference;
             sellerOrder.paidAt = order.paidAt;
             await sellerOrder.save({ validateBeforeSave: false });
-            console.log(`[Payment Verification] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
+            logger.info(`[Payment Verification] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
           }
         }
 
         // NOTE: Sellers are NOT credited here - they are credited when order is delivered
         // This prevents seller payout before delivery
       } catch (error) {
-        console.error('[Payment Verification] Error syncing SellerOrder:', error);
+        logger.error('[Payment Verification] Error syncing SellerOrder:', error);
         // Don't fail the payment verification if SellerOrder sync fails, but log it
       }
 
@@ -646,7 +663,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       });
     } else {
       // Payment failed or pending
-      console.log(`[Payment Verification] Payment not successful. Status: ${transaction.status}`);
+      logger.info(`[Payment Verification] Payment not successful. Status: ${transaction.status}`);
       order.paymentStatus = transaction.status === 'failed' ? 'failed' : 'pending';
       await order.save();
 
@@ -657,7 +674,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       return next(new AppError(statusMessage, 400));
     }
   } catch (error) {
-    console.error('[Payment Verification] Error details:', {
+    logger.error('[Payment Verification] Error details:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
@@ -705,7 +722,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
 
       // Handle wallet top-up
       if (transactionType === 'wallet_topup' && transaction.status === 'success') {
-        console.log(`[Paystack Webhook] Processing wallet top-up: ${reference}`);
+        logger.info(`[Paystack Webhook] Processing wallet top-up: ${reference}`);
 
         try {
           const walletService = require('../../services/walletService');
@@ -713,7 +730,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
           const amount = transaction.amount / 100; // Convert from smallest currency unit
 
           if (!userId) {
-            console.error('[Paystack Webhook] User ID not found in wallet top-up metadata');
+            logger.error('[Paystack Webhook] User ID not found in wallet top-up metadata');
             return res.status(200).json({ received: true });
           }
 
@@ -732,14 +749,14 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
           );
 
           if (result.isDuplicate) {
-            console.log(`[Paystack Webhook] Wallet top-up ${reference} already processed`);
+            logger.info(`[Paystack Webhook] Wallet top-up ${reference} already processed`);
           } else {
-            console.log(`[Paystack Webhook] Wallet top-up successful: GH₵${amount} credited to user ${userId}`);
+            logger.info(`[Paystack Webhook] Wallet top-up successful: GH₵${amount} credited to user ${userId}`);
           }
 
           return res.status(200).json({ received: true });
         } catch (error) {
-          console.error('[Paystack Webhook] Error processing wallet top-up:', error);
+          logger.error('[Paystack Webhook] Error processing wallet top-up:', error);
           // Don't fail webhook, but log error
           return res.status(200).json({ received: true });
         }
@@ -755,11 +772,11 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
       }
 
       if (order && transaction.status === 'success') {
-        console.log(`[Paystack Webhook] Processing successful payment for order: ${order._id}`);
+        logger.info(`[Paystack Webhook] Processing successful payment for order: ${order._id}`);
 
         // Prevent double updates - if already paid, skip
         if (order.paymentStatus === 'paid') {
-          console.log(`[Paystack Webhook] Order ${order._id} already paid, skipping update`);
+          logger.info(`[Paystack Webhook] Order ${order._id} already paid, skipping update`);
           return res.status(200).json({ received: true });
         }
 
@@ -817,7 +834,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
             order.revenueAmount = orderTotal;
             order.revenueAdded = true;
 
-            console.log(`[Paystack Webhook] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
+            logger.info(`[Paystack Webhook] Added GH₵${orderTotal} to platform revenue for order ${order._id}`);
           }
         }
 
@@ -840,7 +857,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         });
 
         await order.save({ validateBeforeSave: false });
-        console.log(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
+        logger.info(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
 
         // Reduce product stock after payment is confirmed
         const stockService = require('../../services/stock/stockService');
@@ -869,7 +886,7 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
 
           // Sync SellerOrder status to 'confirmed'
           const syncResult = await syncSellerOrderStatus(order._id, 'confirmed');
-          console.log(`[Paystack Webhook] SellerOrder status sync result:`, syncResult);
+          logger.info(`[Paystack Webhook] SellerOrder status sync result:`, syncResult);
 
           // Update SellerOrder payment status (but DO NOT credit seller balance - that happens on delivery)
           const sellerOrders = await SellerOrder.find({ order: order._id });
@@ -882,14 +899,14 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
               sellerOrder.paymentReference = reference;
               sellerOrder.paidAt = order.paidAt;
               await sellerOrder.save({ validateBeforeSave: false });
-              console.log(`[Paystack Webhook] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
+              logger.info(`[Paystack Webhook] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
             }
           }
 
           // NOTE: Sellers are NOT credited here - they are credited when order is delivered
           // This prevents seller payout before delivery
         } catch (error) {
-          console.error('[Paystack Webhook] Error syncing SellerOrder:', error);
+          logger.error('[Paystack Webhook] Error syncing SellerOrder:', error);
           // Don't fail the webhook if SellerOrder sync fails, but log it
         }
       }
@@ -916,6 +933,7 @@ exports.createPaymentRequest = catchAsync(async (req, res, next) => {
   try {
     // Use shared service function
     const paymentRequestService = require('../../services/paymentRequestService');
+const logger = require('../../utils/logger');
     const paymentRequest = await paymentRequestService.createPaymentRequest(
       seller,
       amount,
@@ -1083,10 +1101,10 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
 
-    console.log(`[processPaymentRequest] Withdrawal approved for seller ${seller._id}:`);
-    console.log(`  Total Balance: ${oldBalance} - ${paymentRequest.amount} = ${seller.balance}`);
-    console.log(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
-    console.log(`  Available Balance: ${newWithdrawableBalance}`);
+    logger.info(`[processPaymentRequest] Withdrawal approved for seller ${seller._id}:`);
+    logger.info(`  Total Balance: ${oldBalance} - ${paymentRequest.amount} = ${seller.balance}`);
+    logger.info(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
+    logger.info(`  Available Balance: ${newWithdrawableBalance}`);
 
     // Log seller revenue history for approved payout
     try {
@@ -1107,9 +1125,9 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
           transactionId,
         },
       });
-      console.log(`[processPaymentRequest] ✅ Seller revenue history logged for approved payout - seller ${seller._id}`);
+      logger.info(`[processPaymentRequest] ✅ Seller revenue history logged for approved payout - seller ${seller._id}`);
     } catch (historyError) {
-      console.error(`[processPaymentRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
+      logger.error(`[processPaymentRequest] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -1138,10 +1156,10 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
 
-    console.log(`[processPaymentRequest] Withdrawal rejected for seller ${seller._id}:`);
-    console.log(`  Total Balance: ${seller.balance} (unchanged)`);
-    console.log(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
-    console.log(`  Available Balance: ${newWithdrawableBalance}`);
+    logger.info(`[processPaymentRequest] Withdrawal rejected for seller ${seller._id}:`);
+    logger.info(`  Total Balance: ${seller.balance} (unchanged);`);
+    logger.info(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
+    logger.info(`  Available Balance: ${newWithdrawableBalance}`);
   }
 
   await seller.save();
@@ -1249,18 +1267,18 @@ exports.deletePaymentRequest = catchAsync(async (req, res, next) => {
     const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance - seller.pendingBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
 
-    console.log(`[deletePaymentRequest] Pending balance deduction for seller ${sellerId}:`);
-    console.log(`  Total Balance: ${seller.balance} (unchanged)`);
-    console.log(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
-    console.log(`  Locked Balance: ${seller.lockedBalance} (unchanged)`);
-    console.log(`  Available Balance: ${newWithdrawableBalance}`);
+    logger.info(`[deletePaymentRequest] Pending balance deduction for seller ${sellerId}:`);
+    logger.info(`  Total Balance: ${seller.balance} (unchanged);`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
+    logger.info(`  Locked Balance: ${seller.lockedBalance} (unchanged);`);
+    logger.info(`  Available Balance: ${newWithdrawableBalance}`);
 
     await seller.save({ session });
 
     // Verify the save worked
     const savedSeller = await Seller.findById(sellerId).session(session).select('balance lockedBalance pendingBalance withdrawableBalance');
     if (savedSeller) {
-      console.log(`[deletePaymentRequest] ✅ Verified save - Balance: ${savedSeller.balance}, LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
+      logger.info(`[deletePaymentRequest] ✅ Verified save - Balance: ${savedSeller.balance}, LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
     }
 
     // Create a "refund" transaction record
@@ -1296,7 +1314,7 @@ exports.deletePaymentRequest = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    console.error('[deletePaymentRequest] Error:', error);
+    logger.error('[deletePaymentRequest] Error:', error);
 
     if (error instanceof AppError) {
       return next(error);
@@ -1320,19 +1338,19 @@ async function processPayment(method, details, amount) {
   }
 
   // For cash payments, just log
-  console.log(`Processing cash payment of GHS ${amount.toFixed(2)}`);
+  logger.info(`Processing cash payment of GHS ${amount.toFixed(2)}`);
   return { success: true };
 }
 
 async function simulateMobileMoneyPayment(phone, amount) {
-  console.log(`Sending GHS ${amount.toFixed(2)} to ${phone} via mobile money`);
+  logger.info(`Sending GHS ${amount.toFixed(2)} to ${phone} via mobile money`);
   // Actual integration would use something like:
   // const result = await momoProvider.sendPayment(phone, amount);
   return { success: true, transactionId: `MM_${Date.now()}` };
 }
 
 async function simulateBankTransfer(accountNumber, amount) {
-  console.log(
+  logger.info(
     `Transferring GHS ${amount.toFixed(2)} to account ${accountNumber}`,
   );
   // Actual integration would use bank API

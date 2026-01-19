@@ -25,9 +25,13 @@ const { isPublicRoute,
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+<<<<<<< HEAD
 // Shared helpers for standardized auth
 const { normalizeEmail, normalizePhone, OTP_TYPES } = require('../../utils/helpers/authHelpers');
 const { generateOtp } = require('../../utils/helpers/otpHelpers');
+=======
+const logger = require('../../utils/logger');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
 // Initialize route cache (5 minutes TTL)
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
@@ -66,6 +70,7 @@ const publicRoutes = [
 
 // Controllers/authController.js (signup part)
 exports.signup = catchAsync(async (req, res, next) => {
+<<<<<<< HEAD
   // Normalize and validate email (required)
   const normalizedEmail = normalizeEmail(req.body.email);
   if (!normalizedEmail) {
@@ -76,23 +81,85 @@ exports.signup = catchAsync(async (req, res, next) => {
   const normalizedPhone = normalizePhone(req.body.phone);
   if (req.body.phone && normalizedPhone && !validateGhanaPhone(normalizedPhone)) {
     return next(new AppError('Please provide a valid Ghana phone number', 400));
+=======
+  // Early validation - collect field-level errors
+  const fieldErrors = {};
+  
+  // Name validation
+  if (!req.body.name || !req.body.name.trim()) {
+    fieldErrors.name = 'Name is required';
   }
 
-  if (!req.body.password || !req.body.passwordConfirm) {
-    return next(
-      new AppError(
-        'Please provide both password and password confirmation',
-        400,
-      ),
-    );
+  // Require either email or phone
+  if (!req.body.email && !req.body.phone) {
+    fieldErrors.email = 'Please provide either email or phone number';
+    fieldErrors.phone = 'Please provide either email or phone number';
+>>>>>>> 6d2bc77 (first ci/cd push)
+  }
+
+  // Email validation
+  if (req.body.email) {
+    if (!validator.isEmail(req.body.email)) {
+      fieldErrors.email = 'Please provide a valid email address';
+    }
+  }
+
+  // Phone validation
+  if (req.body.phone && !validateGhanaPhone(req.body.phone)) {
+    fieldErrors.phone = 'Please provide a valid Ghana phone number';
+  }
+
+  // Password validation
+  if (!req.body.password) {
+    fieldErrors.password = 'Password is required';
+  } else if (req.body.password.length < 8) {
+    fieldErrors.password = 'Password must be at least 8 characters long';
+  }
+
+  if (!req.body.passwordConfirm) {
+    fieldErrors.passwordConfirm = 'Please confirm your password';
+  } else if (req.body.password && req.body.passwordConfirm !== req.body.password) {
+    fieldErrors.passwordConfirm = 'Passwords do not match';
+  }
+
+  // Return field-level errors if any
+  if (Object.keys(fieldErrors).length > 0) {
+    return next(new AppError('Please check the form for errors', 400, fieldErrors));
   }
 
   try {
+<<<<<<< HEAD
     // SECURITY: Enforce role server-side (buyer only)
     // Build user object - only include phone if provided
     const userData = {
       name: req.body.name,
       email: normalizedEmail,
+=======
+    // Convert phone to Number if provided (schema expects Number, not String)
+    let phoneNumber = undefined;
+    if (req.body.phone) {
+      const cleanedPhone = req.body.phone.replace(/\D/g, '');
+      if (cleanedPhone) {
+        phoneNumber = parseInt(cleanedPhone, 10);
+        if (isNaN(phoneNumber)) {
+          return next(new AppError('Please provide a valid phone number', 400));
+        }
+      }
+    }
+
+    // Log incoming request for debugging
+    logger.info('[Buyer Signup] Creating user:', {
+      name: req.body.name,
+      email: req.body.email,
+      hasPhone: !!phoneNumber,
+      phoneLength: phoneNumber ? String(phoneNumber).length : 0,
+    });
+
+    const newUser = await User.create({
+      name: req.body.name,
+      email: req.body.email,
+      phone: phoneNumber,
+>>>>>>> 6d2bc77 (first ci/cd push)
       password: req.body.password,
       passwordConfirm: req.body.passwordConfirm,
       passwordChangedAt: req.body.passwordChangedAt,
@@ -119,6 +186,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     const otp = generateOtp(newUser, OTP_TYPES.SIGNUP);
     await newUser.save({ validateBeforeSave: false });
 
+<<<<<<< HEAD
     // SECURITY: Log OTP generation for development only (NEVER in production)
     if (process.env.NODE_ENV !== 'production') {
       // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
@@ -132,14 +200,31 @@ exports.signup = catchAsync(async (req, res, next) => {
         // OTP value is NEVER logged, even in development
       });
     }
+=======
+  
+>>>>>>> 6d2bc77 (first ci/cd push)
 
-    // Send OTP via email
-    try {
-      await sendLoginOtpEmail(newUser.email, otp, newUser.name);
-      console.log(`[Buyer Signup] OTP sent to ${newUser.email}`);
-    } catch (emailError) {
-      console.error('[Buyer Signup] Failed to send OTP email:', emailError.message);
-      // Don't fail signup if email fails - OTP is still generated
+    // Send OTP via email (only if email exists)
+    if (newUser.email) {
+      try {
+        logger.info(`[Buyer Signup] 📧 Sending OTP email to ${newUser.email} via email provider...`);
+        const { data: emailData, error: emailError } = await sendLoginOtpEmail(newUser.email, otp, newUser.name);
+        
+        if (emailError) {
+          throw new Error(emailError.message || 'Failed to send OTP email');
+        }
+        
+        logger.info(`[Buyer Signup] ✅ OTP email sent successfully to ${newUser.email}`);
+        if (emailData?.id) {
+          logger.info(`[Buyer Signup] 📨 Email ID: ${emailData.id}`);
+        }
+      } catch (emailError) {
+        logger.error('[Buyer Signup] ❌ Failed to send OTP email:', emailError.message);
+        if (emailError.response) {
+          logger.error('[Buyer Signup] Error details:', JSON.stringify(emailError.response.body || emailError.response.data, null, 2));
+        }
+        // Don't fail signup if email fails - OTP is still generated
+      }
     }
 
     // If phone is provided, also send SMS OTP
@@ -150,9 +235,9 @@ exports.signup = catchAsync(async (req, res, next) => {
           to: newUser.phone,
           message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
         });
-        console.log(`[Buyer Signup] OTP sent to phone ${newUser.phone}`);
+        logger.info(`[Buyer Signup] OTP sent to phone ${newUser.phone}`);
       } catch (smsError) {
-        console.error('[Buyer Signup] Failed to send SMS:', smsError.message);
+        logger.error('[Buyer Signup] Failed to send SMS:', smsError.message);
       }
     }
 
@@ -171,17 +256,44 @@ exports.signup = catchAsync(async (req, res, next) => {
       },
     });
   } catch (err) {
-    // If email fails, delete unverified user
+    // Log full error details for debugging
+    logger.error('[Buyer Signup] Signup Error:', {
+      name: err.name,
+      message: err.message,
+      code: err.code,
+      errors: err.errors,
+      keyPattern: err.keyPattern,
+      keyValue: err.keyValue,
+      stack: err.stack?.split('\n').slice(0, 10).join('\n'),
+    });
+
+    // Handle duplicate key error (email or phone already exists)
     if (err.code === 11000) {
+<<<<<<< HEAD
       // SECURITY: Generic error message to prevent account enumeration
       return next(
         new AppError(
           'Unable to process request',
           400,
+=======
+      const duplicateField = err.keyPattern?.email ? 'email' : 'phone';
+      const fieldErrors = {};
+      fieldErrors[duplicateField] = duplicateField === 'email' 
+        ? 'An account with this email already exists. Please log in or use a different email.'
+        : 'An account with this phone number already exists. Please log in or use a different phone number.';
+      return next(
+        new AppError(
+          duplicateField === 'email' 
+            ? 'An account with this email already exists'
+            : 'An account with this phone number already exists',
+          409,
+          fieldErrors
+>>>>>>> 6d2bc77 (first ci/cd push)
         ),
       );
     }
 
+<<<<<<< HEAD
     // Clean up: Delete user if creation failed (use normalized email)
     if (normalizedEmail) {
       await User.findOneAndDelete({ email: normalizedEmail });
@@ -206,8 +318,67 @@ exports.signup = catchAsync(async (req, res, next) => {
           400,
         ),
       );
+=======
+    // Handle Mongoose validation errors
+    if (err.name === 'ValidationError') {
+      const fieldErrors = {};
+      Object.keys(err.errors || {}).forEach(key => {
+        fieldErrors[key] = err.errors[key].message;
+      });
+      const errorMessage = Object.keys(fieldErrors).length > 0 
+        ? 'Please check the form for errors'
+        : 'Please provide valid registration information';
+      return next(new AppError(errorMessage, 400, fieldErrors));
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
 
+    // Handle pre-save hook errors (e.g., "Please provide either email or phone")
+    if (err.message?.includes('Please provide either email or phone')) {
+      const fieldErrors = {
+        email: 'Please provide either email or phone number',
+        phone: 'Please provide either email or phone number'
+      };
+      return next(new AppError(err.message, 400, fieldErrors));
+    }
+
+    // Handle password validation errors
+    if (err.message?.includes('password') || err.message?.includes('Password')) {
+      const fieldErrors = {};
+      if (err.message?.toLowerCase().includes('confirm')) {
+        fieldErrors.passwordConfirm = err.message;
+      } else {
+        fieldErrors.password = err.message;
+      }
+      return next(new AppError(err.message, 400, fieldErrors));
+    }
+
+    // Handle CastError (e.g., invalid ObjectId, invalid Number)
+    if (err.name === 'CastError') {
+      const field = err.path || 'field';
+      const fieldErrors = {};
+      fieldErrors[field] = `Invalid ${field} format`;
+      return next(new AppError(`Invalid ${field} format`, 400, fieldErrors));
+    }
+
+    // Cleanup: Delete user if creation succeeded but something else failed
+    // Only delete if we can identify the user (email or phone)
+    try {
+      if (req.body.email) {
+        await User.findOneAndDelete({ email: req.body.email });
+        logger.info('[Buyer Signup] Cleaned up user with email:', req.body.email);
+      } else if (req.body.phone) {
+        const cleanPhone = req.body.phone.replace(/\D/g, '');
+        const phoneNumber = parseInt(cleanPhone, 10);
+        if (!isNaN(phoneNumber)) {
+          await User.findOneAndDelete({ phone: phoneNumber });
+          logger.info('[Buyer Signup] Cleaned up user with phone:', phoneNumber);
+        }
+      }
+    } catch (cleanupError) {
+      logger.error('[Buyer Signup] Cleanup error (user may not exist);:', cleanupError.message);
+    }
+
+    // For unknown errors, return generic 500 but log details internally
     return next(
       new AppError(
         'There was an error creating your account. Please try again.',
@@ -641,6 +812,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
+<<<<<<< HEAD
   
   // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
@@ -651,14 +823,18 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     expires: new Date(user.otpExpires).toLocaleString(),
     // OTP value is NEVER logged, even in development
   });
+=======
+  // SECURITY FIX #5: Don't log actual OTP value
+  logger.info('[Auth] OTP generated for user:', user._id);
+>>>>>>> 6d2bc77 (first ci/cd push)
 
-  // Send OTP via email using SendGrid
+  // Send OTP via email
   if (validator.isEmail(loginId)) {
     try {
       await sendLoginOtpEmail(user.email, otp, user.name);
-      console.log(`[Auth] Login OTP email sent to ${user.email}`);
+      logger.info(`[Auth] Login OTP email sent to ${user.email}`);
     } catch (error) {
-      console.error('[Auth] Failed to send login OTP email:', error.message);
+      logger.error('[Auth] Failed to send login OTP email:', error.message);
       // Don't fail the request if email fails, OTP is still generated
     }
   }
@@ -674,7 +850,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 });
 
 exports.verifyOtp = catchAsync(async (req, res, next) => {
-  console.log('req.body', req.body);
+  logger.info('req.body', req.body);
   try {
     const { loginId, otp, password, redirectTo } = req.body;
 
@@ -687,7 +863,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     let user;
     const query = User.findOne();
-    console.log('query', query);
+    logger.info('query', query);
 
 
     if (validator.isEmail(loginId)) {
@@ -702,10 +878,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     query.select('+password +otp +otpExpires +otpAttempts +otpLockedUntil');
     user = await query;
-    console.log('user', user);
+    logger.info('user', user);
 
     if (!user) {
-      console.log('[verifyOtp] User not found for:', loginId);
+      logger.info('[verifyOtp] User not found for:', loginId);
       return next(
         new AppError('No user found with that email or phone number', 404),
       );
@@ -753,7 +929,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     if (user.emailVerified) verifiedBy.push('email');
     if (user.phoneVerified) verifiedBy.push('phone');
 
-    console.log('[verifyOtp] User found:', {
+    logger.info('[verifyOtp] User found:', {
       id: user._id,
       email: user.email,
       phone: user.phone,
@@ -826,9 +1002,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Verify password
     const passwordValid = await user.correctPassword(password);
-    console.log('[verifyOtp] Password verification result:', passwordValid);
+    logger.info('[verifyOtp] Password verification result:', passwordValid);
 
     if (!passwordValid) {
+<<<<<<< HEAD
       console.log('[verifyOtp] Password validation failed');
       // SECURITY: Generic error message to prevent information leakage
       return next(new AppError('Invalid credentials', 401));
@@ -877,6 +1054,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       } else if (!verified) {
         return next(new AppError('Invalid 2FA code. Please try again.', 401));
       }
+=======
+      logger.info('[verifyOtp] Password validation failed');
+      // Security: Use generic message to avoid revealing which field is incorrect
+      return next(new AppError('Invalid email or password', 401));
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Capture IP and device
@@ -947,7 +1129,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     user.lastLogin = Date.now();
     user.lastActivity = Date.now(); // SECURITY FIX #9: Initialize session activity
     await user.save({ validateBeforeSave: false });
-    console.log('2', user);
+    logger.info('2', user);
 
     // Log login activity with security info
     const loginLog = await ActivityLog.create({
@@ -978,10 +1160,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Check if critical risk requires force logout
     if (riskLevel === 'critical') {
-      console.warn(`[User Login] CRITICAL RISK detected for user ${user.email || user.phone}. Login allowed but logged.`);
+      logger.warn(`[User Login] CRITICAL RISK detected for user ${user.email || user.phone}. Login allowed but logged.`);
     }
 
-    // Send login notification email using SendGrid
+    // Send login notification email
     if (user.email) {
       try {
         const loginInfo = {
@@ -990,33 +1172,33 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
           location: location || 'Unknown location',
         };
         await sendLoginEmail(user.email, user.name, loginInfo);
-        console.log(`[Auth] Login notification email sent to ${user.email}`);
+        logger.info(`[Auth] Login notification email sent to ${user.email}`);
       } catch (error) {
-        console.error('[Auth] Failed to send login notification email:', error.message);
+        logger.error('[Auth] Failed to send login notification email:', error.message);
         // Don't fail the login if email fails
       }
     }
 
     // Sanitize redirect path
     const sanitizedRedirectTo = sanitizePath(redirectTo, '/');
-    console.log(`[Auth] Redirect path: ${redirectTo} -> ${sanitizedRedirectTo}`);
+    logger.info(`[Auth] Redirect path: ${redirectTo} -> ${sanitizedRedirectTo}`);
 
     // Create device session and generate tokens
     const { createDeviceSession } = require('../../utils/helpers/createDeviceSession');
     let sessionData;
     try {
-      console.log('[Auth] Creating device session for user:', user._id);
+      logger.info('[Auth] Creating device session for user:', user._id);
       sessionData = await createDeviceSession(req, user, 'eazmain');
-      console.log('[Auth] Device session created successfully:', sessionData.deviceId);
+      logger.info('[Auth] Device session created successfully:', sessionData.deviceId);
     } catch (deviceError) {
       // If device limit exceeded, return error (only in production)
       if (process.env.NODE_ENV === 'production' && deviceError.message && deviceError.message.includes('Too many devices')) {
         return next(new AppError(deviceError.message, 403));
       }
       // For other errors, log full error details and continue without device session (fallback)
-      console.error('[Auth] ❌ Error creating device session:', deviceError.message || deviceError);
-      console.error('[Auth] Error stack:', deviceError.stack);
-      console.error('[Auth] Full error object:', JSON.stringify(deviceError, Object.getOwnPropertyNames(deviceError)));
+      logger.error('[Auth] ❌ Error creating device session:', deviceError.message || deviceError);
+      logger.error('[Auth] Error stack:', deviceError.stack);
+      logger.error('[Auth] Full error object:', JSON.stringify(deviceError, Object.getOwnPropertyNames(deviceError)));
       sessionData = null;
     }
 
@@ -1051,12 +1233,16 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     res.cookie('main_jwt', token, cookieOptions);
+<<<<<<< HEAD
     
     // Generate CSRF token on successful authentication
     const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
     generateCSRFToken(res);
     
     console.log(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
+=======
+    logger.info(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
 
     // Remove sensitive data
     user.password = undefined;
@@ -1109,7 +1295,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    logger.error('Verify OTP error:', error);
   }
 });
 
@@ -1127,7 +1313,7 @@ exports.logout = catchAsync(async (req, res, next) => {
       timeoutPromise,
     ]);
   } catch (error) {
-    console.error('[Auth] Error logging out device session:', error.message);
+    logger.error('[Auth] Error logging out device session:', error.message);
     // Continue with cookie clearing even if device session logout fails or times out
   }
 
@@ -1142,7 +1328,7 @@ exports.logout = catchAsync(async (req, res, next) => {
         req,
       });
     } catch (error) {
-      console.error('[Auth] Error logging activity:', error.message);
+      logger.error('[Auth] Error logging activity:', error.message);
       // Don't block logout if activity logging fails
     }
   }
@@ -1185,7 +1371,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Check public routes with caching
   if (isPublicRoute(fullPath, method)) {
-    console.log(`Allowing ${method} access to ${fullPath} (public route)`);
+    logger.info(`Allowing ${method} access to ${fullPath} (public route);`);
     return next();
   }
   // SECURITY: Cookie-only authentication - tokens MUST be in HTTP-only cookies
@@ -1273,7 +1459,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Enhanced debug logging for verify-otp and payout routes
   if (fullPath.includes('/verify-otp') || fullPath.includes('/payout')) {
-    console.log(`[Auth] 🔍 Payout/OTP route detected:`, {
+    logger.info(`[Auth] 🔍 Payout/OTP route detected:`, {
       fullPath,
       method,
       isSellerRoute,
@@ -1286,15 +1472,20 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Debug logging for route detection
+<<<<<<< HEAD
   if (fullPath.includes('/order') || fullPath.includes('/logs')) {
     console.log(`[Auth] Route detected: ${fullPath}, method: ${method}, isSellerRoute: ${isSellerRoute}, isAdminRoute: ${isAdminRoute}, isAdminOnlySharedRoute: ${isAdminOnlySharedRoute}, cookieName: ${cookieName}`);
+=======
+  if (fullPath.includes('/order/')) {
+    logger.info(`[Auth] Order route detected: ${fullPath}, isSellerRoute: ${isSellerRoute}, cookieName: ${cookieName}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   // Security: For seller routes, ONLY accept seller_jwt, never main_jwt
   if (isSellerRoute) {
     // Explicitly check for seller_jwt only
     if (req.cookies && req.cookies.main_jwt) {
-      console.warn(`[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: ${fullPath}`);
+      logger.warn(`[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: ${fullPath}`);
       // Don't use main_jwt for seller routes - this prevents cross-app authentication
     }
   }
@@ -1305,24 +1496,24 @@ exports.protect = catchAsync(async (req, res, next) => {
       // Try seller_jwt first (sellers creating tickets)
       if (req.cookies.seller_jwt) {
         token = req.cookies.seller_jwt;
-        console.log(`[Auth] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
+        logger.info(`[Auth] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
       }
       // Then try admin_jwt (admins creating tickets)
       else if (req.cookies.admin_jwt) {
         token = req.cookies.admin_jwt;
-        console.log(`[Auth] ✅ Token found in admin_jwt cookie for ${method} ${fullPath}`);
+        logger.info(`[Auth] ✅ Token found in admin_jwt cookie for ${method} ${fullPath}`);
       }
       // Finally try main_jwt (buyers creating tickets)
       else if (req.cookies.main_jwt) {
         token = req.cookies.main_jwt;
-        console.log(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
+        logger.info(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
       }
     }
 
     // For specific routes, use the determined cookie name
     if (!token && req.cookies && req.cookies[cookieName]) {
       token = req.cookies[cookieName];
-      console.log(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
+      logger.info(`[Auth] ✅ Token found in cookie (${cookieName}); for ${method} ${fullPath}`);
     }
     
     // For admin-only shared routes, also try admin_jwt if main_jwt was defaulted
@@ -1337,6 +1528,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       const isVerifyOtpRoute = fullPath.includes('/verify-otp');
       const isSellerCouponRoute = fullPath.startsWith('/api/v1/seller/coupon');
 
+<<<<<<< HEAD
       console.error('═══════════════════════════════════════════════════════════');
       console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : isSellerCouponRoute ? 'seller coupon' : 'protected'} route`);
       console.error('═══════════════════════════════════════════════════════════');
@@ -1357,30 +1549,34 @@ exports.protect = catchAsync(async (req, res, next) => {
           console.error(`[Auth] seller_jwt length: ${req.cookies.seller_jwt.length}`);
         }
       }
+=======
+      logger.error('═══════════════════════════════════════════════════════════');
+      logger.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : 'protected'} route`);
+      logger.error('═══════════════════════════════════════════════════════════');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
       if (isVerifyOtpRoute) {
-        console.error(`[Auth] Route: ${method} ${fullPath}`);
-        console.error(`[Auth] Request details:`, {
+        logger.error(`[Auth] Route: ${method} ${fullPath}`);
+        logger.error(`[Auth] Request details:`, {
           url: req.url,
           originalUrl: req.originalUrl,
           path: req.path,
           method: req.method,
           timestamp: new Date().toISOString()
         });
-        console.error(`[Auth] Headers:`, {
+        // SECURITY: Never log full auth headers or cookie strings (tokens / session IDs)
+        logger.error(`[Auth] Headers (sanitized):`, {
           authorization: req.headers.authorization ? {
             present: true,
             length: req.headers.authorization.length,
-            prefix: req.headers.authorization.substring(0, 20) + '...',
-            full: req.headers.authorization // Log full header for debugging
+            prefix: req.headers.authorization.substring(0, 20) + '...' // prefix only
           } : 'missing',
           cookie: req.headers.cookie ? {
             present: true,
-            length: req.headers.cookie.length,
-            cookieString: req.headers.cookie // Log full cookie string for debugging
+            length: req.headers.cookie.length
           } : 'missing'
         });
-        console.error(`[Auth] Cookies (parsed):`, req.cookies ? {
+        logger.error(`[Auth] Cookies (parsed):`, req.cookies ? {
           keys: Object.keys(req.cookies),
           seller_jwt: req.cookies.seller_jwt ? {
             present: true,
@@ -1389,38 +1585,48 @@ exports.protect = catchAsync(async (req, res, next) => {
           } : 'missing',
           main_jwt: req.cookies.main_jwt ? 'present' : 'missing',
           admin_jwt: req.cookies.admin_jwt ? 'present' : 'missing',
-          allCookies: req.cookies // Log all cookies for debugging
+          cookieCount: Object.keys(req.cookies).length
         } : 'undefined');
-        console.error(`[Auth] Route Detection:`, {
+        logger.error(`[Auth] Route Detection:`, {
           isSellerRoute,
           cookieName,
           isSharedSupportRoute
         });
       } else {
         // Standard logging for other routes
-        console.log(`[Auth] ❌ No token found for protected route: ${method} ${fullPath}`);
-        console.log(`[Auth] Authorization header: ${req.headers.authorization ? 'present' : 'missing'}`);
-        console.log(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
+        logger.info(`[Auth] ❌ No token found for protected route: ${method} ${fullPath}`);
+        logger.info(`[Auth] Authorization header: ${req.headers.authorization ? 'present' : 'missing'}`);
+        logger.info(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
       }
 
       if (isSharedSupportRoute) {
-        console.log(`[Auth] Shared route - checked seller_jwt: ${req.cookies?.seller_jwt ? 'present' : 'missing'}, admin_jwt: ${req.cookies?.admin_jwt ? 'present' : 'missing'}, main_jwt: ${req.cookies?.main_jwt ? 'present' : 'missing'}`);
+        logger.info(`[Auth] Shared route - checked seller_jwt: ${req.cookies?.seller_jwt ? 'present' : 'missing'}, admin_jwt: ${req.cookies?.admin_jwt ? 'present' : 'missing'}, main_jwt: ${req.cookies?.main_jwt ? 'present' : 'missing'}`);
       } else {
-        console.log(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
+        logger.info(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
       }
       // Log all cookies for debugging (but don't log values for security)
-      console.log(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
+      logger.info(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
 
+<<<<<<< HEAD
       console.error(`[Auth] 🛑 RETURNING 401 - No token found`);
       console.error(`[Auth] Route: ${method} ${fullPath}`);
       console.error(`[Auth] Expected cookie: ${cookieName}`);
       console.error(`[Auth] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
       console.error('═══════════════════════════════════════════════════════════');
+=======
+      logger.error(`[Auth] 🛑 RETURNING 401 - No token found`);
+      logger.error('═══════════════════════════════════════════════════════════');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401),
       );
     }
+<<<<<<< HEAD
+=======
+  } else {
+    logger.info(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
   // Check token blacklist using the helper method (hashes token before checking)
   const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
@@ -1434,7 +1640,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   const { decoded, error } = await verifyToken(token, fullPath);
 
   if (error || !decoded) {
-    console.error(
+    logger.error(
       'Token verification failed:',
       error?.message || 'Invalid token',
     );
@@ -1446,7 +1652,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (!currentUser) {
     const isVerifyOtpRoute = fullPath.includes('/verify-otp');
     if (isVerifyOtpRoute) {
-      console.error(`[Auth] ❌ User not found for token in verify-otp route:`, {
+      logger.error(`[Auth] ❌ User not found for token in verify-otp route:`, {
         userId: decoded.id,
         role: decoded.role,
         fullPath
@@ -1461,7 +1667,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     const isVerifyOtpRoute = fullPath.includes('/verify-otp');
     if (isVerifyOtpRoute) {
-      console.error(`[Auth] ❌ Password changed after token issued for verify-otp route:`, {
+      logger.error(`[Auth] ❌ Password changed after token issued for verify-otp route:`, {
         userId: currentUser.id,
         fullPath
       });
@@ -1526,7 +1732,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (isSellerRouteCheck) {
     if (currentUser.role !== 'seller') {
-      console.error(`[Auth] ❌ SECURITY: Seller route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
+      logger.error(`[Auth] ❌ SECURITY: Seller route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
       return next(
         new AppError(`You do not have permission to perform this action. Required role: seller, Your role: ${currentUser.role}`, 403)
       );
@@ -1559,9 +1765,13 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (isAdminRouteCheck) {
     if (currentUser.role !== 'admin') {
+<<<<<<< HEAD
       console.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
       console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
       console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);
+=======
+      logger.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone});`);
+>>>>>>> 6d2bc77 (first ci/cd push)
       return next(
         new AppError(`You do not have permission to perform this action. Required role: admin, Your role: ${currentUser.role}`, 403)
       );
@@ -1570,14 +1780,14 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Enhanced logging for verify-otp routes
   if (fullPath.includes('/verify-otp')) {
-    console.log(`[Auth] ✅ Authentication successful for verify-otp:`, {
+    logger.info(`[Auth] ✅ Authentication successful for verify-otp:`, {
       userId: currentUser.id,
       role: currentUser.role,
       email: currentUser.email || currentUser.phone,
       fullPath
     });
   } else {
-    console.log(
+    logger.info(
       `Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`,
     );
   }
@@ -1588,7 +1798,7 @@ exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     // Ensure req.user exists
     if (!req.user) {
-      console.error(`[restrictTo] ❌ No user found in request. Path: ${req.path}, Method: ${req.method}`);
+      logger.error(`[restrictTo] ❌ No user found in request. Path: ${req.path}, Method: ${req.method}`);
       return next(
         new AppError('You are not authenticated. Please log in to get access.', 401),
       );
@@ -1597,6 +1807,7 @@ exports.restrictTo = (...roles) => {
     // Get role from user object, fallback to 'user' if not set
     const userRole = req.user.role || 'user';
 
+<<<<<<< HEAD
     console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}, Method: ${req.method}, Full URL: ${req.originalUrl}`);
 
     if (!roles.includes(userRole)) {
@@ -1606,12 +1817,18 @@ exports.restrictTo = (...roles) => {
         'referer': req.headers['referer'],
         'origin': req.headers['origin'],
       });
+=======
+    logger.info(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}`);
+
+    if (!roles.includes(userRole)) {
+      logger.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, User ID: ${req.user.id}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
       return next(
         new AppError(`You do not have permission to perform this action. Required role: ${roles.join(' or ')}, Your role: ${userRole}`, 403),
       );
     }
 
-    console.log(`[restrictTo] ✅ Permission granted - User role: ${userRole} matches required roles`);
+    logger.info(`[restrictTo] ✅ Permission granted - User role: ${userRole} matches required roles`);
     next();
   };
 };
@@ -1634,6 +1851,7 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
     // SECURITY FIX #1: Prevent account enumeration - always return same response
     // Find user silently (don't reveal if user exists)
     const user = await User.findOne(query);
+<<<<<<< HEAD
 
     // SECURITY FIX #1: Always return generic success message (prevent account enumeration)
     // Even if user doesn't exist, return the same message to prevent timing attacks
@@ -1673,6 +1891,28 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
         console.error('[Password Reset] Failed to send OTP:', emailError);
         // Still return success to prevent account enumeration
       }
+=======
+    if (!user)
+      return next(new AppError('User not found, check your credential', 403));
+
+    // Generate and store hashed OTP using user model helper
+    const otp = user.createOtp();
+    user.otpType = 'passwordReset'; // Differentiate from login OTP
+    await user.save({ validateBeforeSave: false });
+
+    // SECURITY: Do not log the raw OTP
+    logger.info('[Auth] Password reset OTP generated for user', {
+      userId: user._id,
+      isEmail,
+      hasPhone: !!user.phone,
+      expiresAt: user.otpExpires,
+    });
+
+    // Send OTP via email or SMS
+    if (isEmail) {
+      await sendLoginOtpEmail(user.email, otp, user.name);
+      logger.info(`[Auth] Password reset OTP email sent to ${user.email}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
     } else {
       // User doesn't exist - add small random delay to prevent timing attacks
       // This makes response time similar whether user exists or not
@@ -1683,6 +1923,7 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
     // OTP is NEVER sent in API response (even in development)
     res.status(200).json(genericResponse);
   } catch (error) {
+<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (don't leak internal details)
     console.error('[Password Reset] Error:', error);
     // Always return same generic message even on errors
@@ -1690,6 +1931,12 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
       message: 'If an account exists, a reset code has been sent.',
       method: req.body.loginId?.includes('@') ? 'email' : 'phone',
     });
+=======
+    logger.error('Password reset initiation error:', error);
+    res
+      .status(500)
+      .json({ error: 'Failed to initiate password reset. Please try again.' });
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 });
 // SECURITY FIX: Legacy OTP verification (deprecated - use resetPasswordWithToken instead)
@@ -1699,7 +1946,11 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
     const { loginId, otp } = req.body;
 
     // Validate input
+<<<<<<< HEAD
     if (!loginId || !otp) {
+=======
+    if (!loginId || !otp)
+>>>>>>> 6d2bc77 (first ci/cd push)
       return next(new AppError('Please provide loginId and OTP', 400));
     }
 
@@ -1707,13 +1958,17 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
 
+<<<<<<< HEAD
     // Find user with valid OTP
+=======
+    // Find user with matching OTP type (OTP validity is checked via verifyOtp)
+>>>>>>> 6d2bc77 (first ci/cd push)
     const user = await User.findOne({
       ...query,
       otpType: 'passwordReset',
-      otpExpires: { $gt: Date.now() }, // Check if OTP is not expired
-    }).select('+otp +otpExpires');
+    }).select('+otp +otpExpires +otpAttempts +otpLockedUntil');
 
+<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (prevent account enumeration)
     if (!user) {
       // Add small delay to prevent timing attacks
@@ -1749,6 +2004,38 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
 
     user.otpVerified = true;
     // Generate reset token (cryptographically secure)
+=======
+    if (!user)
+      return next(new AppError('User not found, check your credential', 403));
+
+    const otpResult = user.verifyOtp(otp);
+
+    if (!otpResult.valid) {
+      // Handle locked accounts explicitly
+      if (otpResult.locked) {
+        const minutesRemaining = otpResult.minutesRemaining || 0;
+        return next(
+          new AppError(
+            `Account locked. Please try again in ${minutesRemaining} minute(s).`,
+            429,
+          ),
+        );
+      }
+
+      // For all other reasons, return a generic error (don't leak exact reason)
+      return next(new AppError('Invalid or expired OTP', 400));
+    }
+
+    // Mark OTP as verified and clear sensitive fields
+    user.otpVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    user.otpAttempts = 0;
+    user.otpLockedUntil = null;
+    user.otpType = undefined;
+
+    // Generate reset token
+>>>>>>> 6d2bc77 (first ci/cd push)
     const resetToken = crypto.randomBytes(32).toString('hex');
 
     // Hash token before storing in database
@@ -1776,8 +2063,12 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
       message: 'OTP verified. You can now reset your password.',
     });
   } catch (error) {
+<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (don't leak internal details)
     console.error('[Verify OTP] Error:', error);
+=======
+    logger.error('Verify OTP error:', error);
+>>>>>>> 6d2bc77 (first ci/cd push)
     res.status(500).json({ error: 'Failed to verify OTP. Please try again.' });
   }
 });
@@ -1786,12 +2077,16 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   try {
     const { loginId, newPassword } = req.body;
 
+<<<<<<< HEAD
     // SECURITY FIX: Get reset token from httpOnly cookie (not from request body)
     const resetToken = req.cookies['reset-token'];
     
     if (!resetToken) {
       return next(new AppError('Reset token expired or invalid. Please verify OTP again.', 403));
     }
+=======
+    logger.info('reset', loginId, newPassword, resetToken);
+>>>>>>> 6d2bc77 (first ci/cd push)
 
     // Validate input
     if (!loginId || !newPassword) {
@@ -1815,6 +2110,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       .update(resetToken)
       .digest('hex');
 
+<<<<<<< HEAD
     // Find user with valid reset token
     const user = await User.findOne({
       ...query,
@@ -1823,6 +2119,22 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       otpType: 'passwordReset',
     }).select(
       '+otp +otpExpires +otpVerified +resetPasswordToken +resetTokenExpires +password',
+=======
+    // If resetToken is provided, add it to search criteria
+    if (resetToken) {
+      logger.info('with token');
+      searchCriteria.resetToken = resetToken;
+      searchCriteria.resetTokenExpires = { $gt: Date.now() };
+    } else {
+      // If no resetToken, require OTP to be verified
+      searchCriteria.otpVerified = true;
+      searchCriteria.otpExpires = { $gt: Date.now() };
+    }
+    logger.info('resetToken', resetToken, searchCriteria);
+    // Find user with valid reset credentials
+    const user = await User.findOne({ email: loginId }).select(
+      '+otp +otpExpires +otpVerified +resetToken +resetTokenExpires +password',
+>>>>>>> 6d2bc77 (first ci/cd push)
     );
 
     if (!user) {
@@ -1877,7 +2189,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
     res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
-    console.error('Password reset error:', error);
+    logger.error('Password reset error:', error);
     res
       .status(500)
       .json({ error: 'Failed to reset password. Please try again.' });
@@ -2187,6 +2499,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
 
+<<<<<<< HEAD
   // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(user._id, user.email || user.phone, 'resend');
@@ -2195,14 +2508,22 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     loginId: user.email || user.phone,
     // OTP value is NEVER logged, even in development
   });
+=======
+  // Log OTP to console for development
+  logger.info('========================================');
+  logger.info(`[Resend OTP] 🔐 OTP PIN: ${otp}`);
+  logger.info(`[Resend OTP] User: ${user.email || user.phone}`);
+  logger.info(`[Resend OTP] OTP expires in 10 minutes`);
+  logger.info('========================================');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
   // Send OTP via email
   if (user.email) {
     try {
       await sendLoginOtpEmail(user.email, otp, user.name);
-      console.log(`[Resend OTP] OTP sent to ${user.email}`);
+      logger.info(`[Resend OTP] OTP sent to ${user.email}`);
     } catch (error) {
-      console.error('[Resend OTP] Failed to send email:', error.message);
+      logger.error('[Resend OTP] Failed to send email:', error.message);
     }
   }
 
@@ -2214,9 +2535,9 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         to: user.phone,
         message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
       });
-      console.log(`[Resend OTP] OTP sent to phone ${user.phone}`);
+      logger.info(`[Resend OTP] OTP sent to phone ${user.phone}`);
     } catch (error) {
-      console.error('[Resend OTP] Failed to send SMS:', error.message);
+      logger.error('[Resend OTP] Failed to send SMS:', error.message);
     }
   }
 
@@ -2372,7 +2693,7 @@ exports.emailVerification = catchAsync(async (req, res, next) => {
 
   try {
     await sendLoginOtpEmail(user.email, otp, user.name);
-    console.log(`[Email Verification] OTP sent to ${user.email}`);
+    logger.info(`[Email Verification] OTP sent to ${user.email}`);
 
     res.status(200).json({
       status: 'success',

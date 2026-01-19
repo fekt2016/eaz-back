@@ -609,6 +609,7 @@ productSchema.virtual('taxBreakdown').get(function () {
 // Get base price before VAT for a specific variant
 productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
   const taxService = require('../../services/tax/taxService');
+const logger = require('../../utils/logger');
   const variant = this.variants?.[variantIndex];
   if (!variant) return null;
   return taxService.extractTaxFromPrice(variant.price || 0);
@@ -616,7 +617,7 @@ productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
 
 // Method to apply discounts to a product
 productSchema.methods.applyDiscounts = async function () {
-  console.log('applyDiscounts called');
+  logger.info('applyDiscounts called');
   const Discount = mongoose.model('Discount');
   const now = new Date();
 
@@ -631,14 +632,14 @@ productSchema.methods.applyDiscounts = async function () {
     startDate: { $lte: now },
     endDate: { $gte: now },
   });
-  console.log(discounts);
+  logger.info(discounts);
   // Track if any discount was applied
   let discountApplied = false;
-  // console.log('variants', this.variants);
+  // logger.info('variants', this.variants);
   // Apply the best discount to each variant
   for (let i = 0; i < this.variants.length; i++) {
     let bestDiscountedPrice = this.variants[i].price;
-    // console.log('bestDiscountedPrice', bestDiscountedPrice);
+    // logger.info('bestDiscountedPrice', bestDiscountedPrice);
     let bestDiscount = null;
 
     // Store original price if not already set
@@ -662,13 +663,13 @@ productSchema.methods.applyDiscounts = async function () {
           );
           break;
       }
-      // console.log('discountedPrice', discountedPrice);
+      // logger.info('discountedPrice', discountedPrice);
       // Track the best discount (lowest price)
       if (discountedPrice < bestDiscountedPrice) {
         bestDiscountedPrice = discountedPrice;
-        // console.log('bestDiscountedPrice', bestDiscountedPrice);
+        // logger.info('bestDiscountedPrice', bestDiscountedPrice);
         bestDiscount = discount;
-        // console.log('bestDiscount', bestDiscount);
+        // logger.info('bestDiscount', bestDiscount);
       }
     }
 
@@ -676,7 +677,7 @@ productSchema.methods.applyDiscounts = async function () {
     if (bestDiscount) {
       this.variants[i].price = Math.round(bestDiscountedPrice * 100) / 100;
       // Round to 2 decimal places
-      // console.log('variant price', this.variants[i].price);
+      // logger.info('variant price', this.variants[i].price);
       discountApplied = true;
     } else {
       // Reset to original price if no discount applies
@@ -688,7 +689,7 @@ productSchema.methods.applyDiscounts = async function () {
   const prices = this.variants.map((v) => v.price);
   this.minPrice = Math.min(...prices);
   this.maxPrice = Math.max(...prices);
-  console.log('discountApplied', discountApplied);
+  logger.info('discountApplied', discountApplied);
   return discountApplied;
 };
 
@@ -763,7 +764,7 @@ productSchema.post('save', async function (doc) {
       );
     }
   } catch (error) {
-    console.error('Error updating category products array:', error);
+    logger.error('Error updating category products array:', error);
     // Don't throw error to prevent blocking product save
   }
 });
@@ -795,7 +796,7 @@ productSchema.pre('save', async function (next) {
         }
       }
     } catch (error) {
-      console.error('Error removing product from old categories:', error);
+      logger.error('Error removing product from old categories:', error);
       // Continue with save even if this fails
     }
   }
@@ -827,7 +828,7 @@ productSchema.post(['findOneAndDelete', 'findOneAndRemove', 'remove'], async fun
         );
       }
     } catch (error) {
-      console.error('Error removing product from categories on delete:', error);
+      logger.error('Error removing product from categories on delete:', error);
     }
   }
 });
@@ -860,7 +861,7 @@ productSchema.post('deleteOne', async function () {
         }
       }
     } catch (error) {
-      console.error('Error removing product from categories on deleteOne:', error);
+      logger.error('Error removing product from categories on deleteOne:', error);
     }
   }
 });

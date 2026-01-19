@@ -1,5 +1,6 @@
 const NotificationSettings = require('../../models/notification/notificationModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const logger = require('../../utils/logger');
 
 // Get user's notification settings
 exports.getUserSettings = catchAsync(async (req, res, next) => {
@@ -18,13 +19,13 @@ exports.getUserSettings = catchAsync(async (req, res, next) => {
 
 // Update notification settings
 exports.updateSettings = catchAsync(async (req, res, next) => {
-  console.log('req.body', req.body);
+  logger.info('req.body', req.body);
   const updatedSettings = await NotificationSettings.findOneAndUpdate(
     { user: req.user.id },
     req.body,
     { new: true, runValidators: true },
   );
-  console.log('updatedSettings', updatedSettings);
+  logger.info('updatedSettings', updatedSettings);
 
   res.status(200).json(updatedSettings);
 });

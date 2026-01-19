@@ -1,18 +1,76 @@
+<<<<<<< HEAD
 // AppError is not used in this file, but kept for potential future use
 // const AppError = require('../../utils/errors/appError');
 
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
+=======
+// Controllers/errorController.js
+const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
+
+const handleCastErrorDB = (err) => {
+  const message = `Invalid ${err.path}: ${err.value}`;
+  return new AppError(message, 400);
+};
+
+const handleDuplicateFieldsDB = (err) => {
+  let value = 'unknown';
+
+  if (err.keyValue) {
+    value = JSON.stringify(err.keyValue);
+  } else if (err.errmsg) {
+    const match = err.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/);
+    value = match ? match[0] : 'unknown';
+  }
+
+  const message = `Duplicate field value: ${value}. Please use another value.`;
+  return new AppError(message, 400);
+};
+
+const handleValidationErrorDB = (err) => {
+  const errors = Object.values(err.errors).map((el) => el.message);
+  const message = `Invalid input data. ${errors.join('. ')}`;
+  return new AppError(message, 400);
+};
+
+const handleJsonWebTokenErrorJWT = () =>
+  new AppError('Invalid token, please log in again.', 401);
+
+const handleTokenExpiredError = () =>
+  new AppError('Your token has expired! Please log in again.', 401);
+
+const sendErrorDev = (err, res) => {
+  const errorResponse = {
+    success: false,
+>>>>>>> 6d2bc77 (first ci/cd push)
     status: err.status,
-    error: err,
     message: err.message,
+    error: err,
     stack: err.stack,
+<<<<<<< HEAD
   });
+=======
+  };
+
+  // Include field-level errors if they exist
+  if (err.fieldErrors) {
+    errorResponse.fieldErrors = err.fieldErrors;
+  }
+
+  // Include custom error properties if they exist (for OTP expiration, etc.)
+  if (err.code) errorResponse.code = err.code;
+  if (err.isExpired !== undefined) errorResponse.isExpired = err.isExpired;
+  if (err.isInvalid !== undefined) errorResponse.isInvalid = err.isInvalid;
+
+  res.status(err.statusCode).json(errorResponse);
+>>>>>>> 6d2bc77 (first ci/cd push)
 };
 
 const sendErrorProd = (err, res) => {
   // Operational, trusted error: send message to client
   if (err.isOperational) {
+<<<<<<< HEAD
     // SECURITY FIX #7: Generic error messages in production
     // Don't leak internal details, account existence, or system structure
     let genericMessage = err.message;
@@ -78,7 +136,34 @@ const sendErrorProd = (err, res) => {
   } else {
     // Programming or other unknown error: don't leak error details
     console.error('ERROR 💥', err);
+=======
+    // Operational errors: trusted errors we can send to client
+    const errorResponse = {
+      success: false,
+      status: err.status,
+      message: err.message,
+    };
+
+    // Include field-level errors if they exist (for validation errors)
+    if (err.fieldErrors) {
+      errorResponse.fieldErrors = err.fieldErrors;
+    }
+
+    res.status(err.statusCode).json(errorResponse);
+    // SECURITY: Never send stack trace or error details in production
+  } else {
+    // Programming or unknown errors: don't leak error details
+    logger.error('Internal server error', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+      code: err.code,
+    });
+
+    // SECURITY: Send generic message to client
+>>>>>>> 6d2bc77 (first ci/cd push)
     res.status(500).json({
+      success: false,
       status: 'error',
       message: 'Something went wrong!',
     });

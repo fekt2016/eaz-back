@@ -21,13 +21,15 @@ exports.addHistoryItem = catchAsync(async (req, res, next) => {
   // This would be called from product/seller view pages
 
   const { type, itemId, itemData } = req.body;
-  // Prevent duplicate entries for the same item in a short time
+  
+  // Check if entry exists for this item in the last 24 hours
   const existingEntry = await BrowserHistory.findOne({
     user: req.user.id,
     itemId: new mongoose.Types.ObjectId(itemId),
     viewedAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // 24 hours
   });
 
+<<<<<<< HEAD
   // If entry already exists within 24 hours, return success with skipped flag
   // This is NOT an error condition - it's expected behavior
   if (existingEntry) {
@@ -49,6 +51,23 @@ exports.addHistoryItem = catchAsync(async (req, res, next) => {
   });
 
   // Return success response for newly created entry
+=======
+  if (existingEntry) {
+    // Update the timestamp if entry already exists (within 24 hours)
+    existingEntry.viewedAt = new Date();
+    existingEntry.itemData = itemData || existingEntry.itemData; // Update item data if provided
+    await existingEntry.save();
+  } else {
+    // Create new entry if it doesn't exist
+    await BrowserHistory.create({
+      user: req.user.id,
+      type,
+      itemId,
+      itemData,
+    });
+  }
+
+>>>>>>> 6d2bc77 (first ci/cd push)
   res.status(201).json({
     status: 'success',
     skipped: false,

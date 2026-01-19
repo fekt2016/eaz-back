@@ -2,6 +2,7 @@ const DeviceSession = require('../../models/user/deviceSessionModel');
 const AppError = require('../../utils/errors/appError');
 const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 const catchAsync = require('../../utils/helpers/catchAsync');
+const logger = require('../../utils/logger');
 
 /**
  * Middleware to track session activity on every protected route
@@ -99,10 +100,10 @@ exports.trackSessionActivity = catchAsync(async (req, res, next) => {
       const newLocation = await getIpLocation(currentIp);
       if (newLocation && newLocation !== 'Unknown Location' && newLocation !== 'Location Unavailable') {
         session.location = newLocation;
-        console.log(`[trackSessionActivity] Location updated: ${newLocation}`);
+        logger.info(`[trackSessionActivity] Location updated: ${newLocation}`);
       }
     } catch (locationError) {
-      console.error('[trackSessionActivity] Error updating location:', locationError.message);
+      logger.error('[trackSessionActivity] Error updating location:', locationError.message);
     }
   }
 
@@ -113,10 +114,10 @@ exports.trackSessionActivity = catchAsync(async (req, res, next) => {
       const detectedLocation = await getIpLocation(session.ipAddress);
       if (detectedLocation && detectedLocation !== 'Unknown Location' && detectedLocation !== 'Location Unavailable') {
         session.location = detectedLocation;
-        console.log(`[trackSessionActivity] Location detected and updated: ${detectedLocation}`);
+        logger.info(`[trackSessionActivity] Location detected and updated: ${detectedLocation}`);
       }
     } catch (locationError) {
-      console.error('[trackSessionActivity] Error detecting location:', locationError.message);
+      logger.error('[trackSessionActivity] Error detecting location:', locationError.message);
     }
   }
 

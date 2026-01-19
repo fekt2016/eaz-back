@@ -2,6 +2,7 @@ const Follow = require('../../models/user/followModel');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const Seller = require('../../models/user/sellerModel');
+const logger = require('../../utils/logger');
 
 exports.followSeller = catchAsync(async (req, res, next) => {
   const { sellerId } = req.params;
@@ -86,7 +87,7 @@ exports.getFollowStatus = catchAsync(async (req, res, next) => {
     const { sellerId } = req.params;
     const userId = req.user.id; // From authentication middleware
 
-    console.log(sellerId, userId);
+    logger.info(sellerId, userId);
     // 1. Validate sellerId
     if (!sellerId) {
       return next(new AppError('Seller ID is required', 400));
@@ -114,7 +115,7 @@ exports.getFollowStatus = catchAsync(async (req, res, next) => {
       followersCount,
     });
   } catch (error) {
-    console.error('Follow status error:', error);
+    logger.error('Follow status error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get follow status',

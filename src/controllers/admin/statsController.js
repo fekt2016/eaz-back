@@ -3,6 +3,7 @@ const AppError = require('../../utils/errors/appError');
 const PlatformStats = require('../../models/platform/platformStatsModel');
 const Order = require('../../models/order/orderModel');
 const Seller = require('../../models/user/sellerModel');
+const logger = require('../../utils/logger');
 
 /**
  * Get platform statistics
@@ -26,7 +27,7 @@ exports.getPlatformStats = catchAsync(async (req, res, next) => {
 
   // Update platformStats with calculated revenue (sync with database)
   if (platformStats.totalRevenue !== calculatedTotalRevenue) {
-    console.log(`[getPlatformStats] Syncing revenue: ${platformStats.totalRevenue} → ${calculatedTotalRevenue}`);
+    logger.info(`[getPlatformStats] Syncing revenue: ${platformStats.totalRevenue} → ${calculatedTotalRevenue}`);
     platformStats.totalRevenue = calculatedTotalRevenue;
     platformStats.lastUpdated = new Date();
     await platformStats.save();

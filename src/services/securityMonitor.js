@@ -38,7 +38,7 @@ const detectIPChange = async (user, currentIp, role) => {
       currentIp: changed ? currentIp : null,
     };
   } catch (error) {
-    console.error('[SecurityMonitor] Error detecting IP change:', error);
+    logger.error('[SecurityMonitor] Error detecting IP change:', error);
     return { changed: false, previousIp: null };
   }
 };
@@ -74,7 +74,7 @@ const detectDeviceChange = async (user, currentUserAgent, role) => {
       currentDevice: changed ? currentUserAgent : null,
     };
   } catch (error) {
-    console.error('[SecurityMonitor] Error detecting device change:', error);
+    logger.error('[SecurityMonitor] Error detecting device change:', error);
     return { changed: false, previousDevice: null };
   }
 };
@@ -108,7 +108,7 @@ const detectMultipleIps = async (user, role) => {
       uniqueIps,
     };
   } catch (error) {
-    console.error('[SecurityMonitor] Error detecting multiple IPs:', error);
+    logger.error('[SecurityMonitor] Error detecting multiple IPs:', error);
     return { multipleIps: false, ipCount: 0, uniqueIps: [] };
   }
 };
@@ -148,7 +148,7 @@ const detectGeoMismatch = async (user, currentIp, role) => {
       currentLocation: null, // Would be set by IP lookup service
     };
   } catch (error) {
-    console.error('[SecurityMonitor] Error detecting geo mismatch:', error);
+    logger.error('[SecurityMonitor] Error detecting geo mismatch:', error);
     return { mismatch: false, previousLocation: null };
   }
 };
@@ -222,19 +222,19 @@ const triggerSecurityAlert = async (user, log, role) => {
           subject: emailSubject,
           message: emailMessage,
         });
-        console.log(`[SecurityMonitor] Security alert email sent to ${user.email}`);
+        logger.info(`[SecurityMonitor] Security alert email sent to ${user.email}`);
       } catch (emailError) {
-        console.error('[SecurityMonitor] Error sending security alert email:', emailError);
+        logger.error('[SecurityMonitor] Error sending security alert email:', emailError);
       }
     }
 
     // Also notify admins for critical events
     if (riskLevel === 'critical') {
       // Log admin notification (would be handled by admin notification system)
-      console.log(`[SecurityMonitor] CRITICAL: Suspicious activity for ${role} ${user._id || user.id}`);
+      logger.info(`[SecurityMonitor] CRITICAL: Suspicious activity for ${role} ${user._id || user.id}`);
     }
   } catch (error) {
-    console.error('[SecurityMonitor] Error triggering security alert:', error);
+    logger.error('[SecurityMonitor] Error triggering security alert:', error);
   }
 };
 
@@ -266,7 +266,7 @@ const forceLogoutIfCritical = async (user, role) => {
 
     return { shouldLogout: false };
   } catch (error) {
-    console.error('[SecurityMonitor] Error checking for force logout:', error);
+    logger.error('[SecurityMonitor] Error checking for force logout:', error);
     return { shouldLogout: false };
   }
 };
@@ -286,6 +286,7 @@ const getIpLocation = async (ip) => {
     // Use ip-api.com (free tier: 45 requests/minute)
     // Alternative: ipapi.co, ipgeolocation.io, etc.
     const axios = require('axios');
+const logger = require('../utils/logger');
     const response = await axios.get(`http://ip-api.com/json/${ip}?fields=status,message,country,regionName,city,lat,lon`, {
       timeout: 5000, // 5 second timeout
     });
@@ -303,7 +304,7 @@ const getIpLocation = async (ip) => {
 
     return 'Unknown Location';
   } catch (error) {
-    console.error('[getIpLocation] Error fetching location:', error.message);
+    logger.error('[getIpLocation] Error fetching location:', error.message);
     // Fallback: return IP-based identifier
     return 'Location Unavailable';
   }

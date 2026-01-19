@@ -1,5 +1,6 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const { calculateShippingQuote } = require('../../services/shipping/shippingCalculationService');
 
 // Calculate shipping quote
@@ -7,7 +8,7 @@ exports.calculateShippingQuote = catchAsync(async (req, res, next) => {
 
   
   const { buyerCity, items, method, pickupCenterId, deliverySpeed } = req.body;
-  console.log("🚀 Extracted from body:", { buyerCity, itemsCount: items?.length, method, pickupCenterId, deliverySpeed });
+  logger.info("🚀 Extracted from body:", { buyerCity, itemsCount: items?.length, method, pickupCenterId, deliverySpeed });
 
   // Validate input
   if (!buyerCity) {
@@ -54,7 +55,7 @@ exports.calculateShippingQuote = catchAsync(async (req, res, next) => {
   }
 
   try {
-    console.log("Calling calculateShippingQuote with:", {
+    logger.info("Calling calculateShippingQuote with:", {
       buyerCity,
       itemsCount: items.length,
       method: deliveryMethod,
@@ -63,7 +64,7 @@ exports.calculateShippingQuote = catchAsync(async (req, res, next) => {
 
     const quote = await calculateShippingQuote(buyerCity, items, deliveryMethod, pickupCenterId, deliverySpeed);
 
-    console.log("Shipping quote calculated successfully:", {
+    logger.info("Shipping quote calculated successfully:", {
       totalShippingFee: quote.totalShippingFee,
       perSellerCount: quote.perSeller?.length || 0,
       deliveryMethod: quote.deliveryMethod,
@@ -79,8 +80,8 @@ exports.calculateShippingQuote = catchAsync(async (req, res, next) => {
       dispatchType: quote.dispatchType,
     });
   } catch (error) {
-    console.error("Error calculating shipping quote:", error);
-    console.error("Error stack:", error.stack);
+    logger.error("Error calculating shipping quote:", error);
+    logger.error("Error stack:", error.stack);
     return next(new AppError(error.message || 'Failed to calculate shipping quote', 500));
   }
 });

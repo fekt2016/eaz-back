@@ -6,6 +6,7 @@ const User = require('../../models/user/userModel');
 const Seller = require('../../models/user/sellerModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel'); // Required for populate to work
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 
 /**
  * GET /api/v1/admin/wallet-history
@@ -16,11 +17,11 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
   
   try {
     // ========== STEP 1: Initial Logging ==========
-    console.log(`${logPrefix} ========== START ==========`);
-    console.log(`${logPrefix} Request received at: ${new Date().toISOString()}`);
-    console.log(`${logPrefix} Method: ${req.method}`);
-    console.log(`${logPrefix} URL: ${req.originalUrl || req.url}`);
-    console.log(`${logPrefix} Query params:`, JSON.stringify(req.query, null, 2));
+    logger.info(`${logPrefix} ========== START ==========`);
+    logger.info(`${logPrefix} Request received at: ${new Date().toISOString()}`);
+    logger.info(`${logPrefix} Method: ${req.method}`);
+    logger.info(`${logPrefix} URL: ${req.originalUrl || req.url}`);
+    logger.info(`${logPrefix} Query params:`, JSON.stringify(req.query, null, 2));
     
     // Log user info (sanitized)
     try {
@@ -31,25 +32,25 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         hasId: !!req.user.id,
         has_id: !!req.user._id,
       } : null;
-      console.log(`${logPrefix} User info:`, JSON.stringify(userInfo, null, 2));
+      logger.info(`${logPrefix} User info:`, JSON.stringify(userInfo, null, 2));
     } catch (userLogError) {
-      console.error(`${logPrefix} Error logging user info:`, userLogError);
+      logger.error(`${logPrefix} Error logging user info:`, userLogError);
     }
 
     // ========== STEP 2: Authentication Check ==========
     try {
-      console.log(`${logPrefix} [STEP 2] Checking authentication...`);
+      logger.info(`${logPrefix} [STEP 2] Checking authentication...`);
       if (!req.user || !req.user.id || req.user.role !== 'admin') {
-        console.error(`${logPrefix} [STEP 2] Authentication failed:`, {
+        logger.error(`${logPrefix} [STEP 2] Authentication failed:`, {
           hasUser: !!req.user,
           userId: req.user?.id || req.user?._id || 'N/A',
           role: req.user?.role || 'N/A',
         });
         return next(new AppError('Admin authentication required', 401));
       }
-      console.log(`${logPrefix} [STEP 2] Authentication passed`);
+      logger.info(`${logPrefix} [STEP 2] Authentication passed`);
     } catch (authError) {
-      console.error(`${logPrefix} [STEP 2] Error during auth check:`, {
+      logger.error(`${logPrefix} [STEP 2] Error during auth check:`, {
         error: authError.message,
         stack: authError.stack,
       });
@@ -57,7 +58,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     }
 
     // ========== STEP 3: Helper Functions ==========
-    console.log(`${logPrefix} [STEP 3] Setting up helper functions...`);
+    logger.info(`${logPrefix} [STEP 3] Setting up helper functions...`);
     
     // Enhanced normalization function for query parameters
     const normalizeParam = (value) => {
@@ -90,12 +91,12 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       }
     };
     
-    console.log(`${logPrefix} [STEP 3] Helper functions ready`);
+    logger.info(`${logPrefix} [STEP 3] Helper functions ready`);
 
     // ========== STEP 4: Extract Query Parameters ==========
     let rawParams, normalizedParams;
     try {
-      console.log(`${logPrefix} [STEP 4] Extracting query parameters...`);
+      logger.info(`${logPrefix} [STEP 4] Extracting query parameters...`);
       
       const {
         page = 1,
@@ -127,7 +128,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         sortOrder,
       };
       
-      console.log(`${logPrefix} [STEP 4] Raw params:`, JSON.stringify(rawParams, null, 2));
+      logger.info(`${logPrefix} [STEP 4] Raw params:`, JSON.stringify(rawParams, null, 2));
       
       // Normalize all parameters
       const normalizedUserId = normalizeParam(userId);
@@ -152,9 +153,9 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         sortOrder,
       };
       
-      console.log(`${logPrefix} [STEP 4] Normalized params:`, JSON.stringify(normalizedParams, null, 2));
+      logger.info(`${logPrefix} [STEP 4] Normalized params:`, JSON.stringify(normalizedParams, null, 2));
     } catch (paramError) {
-      console.error(`${logPrefix} [STEP 4] Error extracting/normalizing params:`, {
+      logger.error(`${logPrefix} [STEP 4] Error extracting/normalizing params:`, {
         error: paramError.message,
         stack: paramError.stack,
       });
@@ -164,14 +165,14 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     // ========== STEP 5: Validate Pagination & Sort ==========
     let pageNum, limitNum, skip, sort;
     try {
-      console.log(`${logPrefix} [STEP 5] Validating pagination and sort...`);
+      logger.info(`${logPrefix} [STEP 5] Validating pagination and sort...`);
       
       // Validate and parse pagination parameters
       pageNum = Math.max(1, parseInt(rawParams.page, 10) || 1);
       limitNum = Math.min(100, Math.max(1, parseInt(rawParams.limit, 10) || 20)); // Cap at 100
       skip = (pageNum - 1) * limitNum;
 
-      console.log(`${logPrefix} [STEP 5] Pagination:`, {
+      logger.info(`${logPrefix} [STEP 5] Pagination:`, {
         rawPage: rawParams.page,
         rawLimit: rawParams.limit,
         pageNum,
@@ -185,7 +186,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       const sortDirection = normalizedParams.sortOrder === 'asc' ? 1 : -1;
       sort = { [sortField]: sortDirection };
 
-      console.log(`${logPrefix} [STEP 5] Sort:`, {
+      logger.info(`${logPrefix} [STEP 5] Sort:`, {
         rawSortBy: rawParams.sortBy,
         rawSortOrder: rawParams.sortOrder,
         sortField,
@@ -193,7 +194,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         sort,
       });
     } catch (validationError) {
-      console.error(`${logPrefix} [STEP 5] Error validating pagination/sort:`, {
+      logger.error(`${logPrefix} [STEP 5] Error validating pagination/sort:`, {
         error: validationError.message,
         stack: validationError.stack,
       });
@@ -203,21 +204,21 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     // ========== STEP 6: Build Query Object ==========
     let query = {};
     try {
-      console.log(`${logPrefix} [STEP 6] Building query object...`);
+      logger.info(`${logPrefix} [STEP 6] Building query object...`);
 
       // Filter by user ID - only apply if valid 24-char hex string
       if (normalizedParams.userId) {
         try {
-          console.log(`${logPrefix} [STEP 6.1] Processing userId filter: ${normalizedParams.userId}`);
+          logger.info(`${logPrefix} [STEP 6.1] Processing userId filter: ${normalizedParams.userId}`);
           const userIdObjectId = safeObjectId(normalizedParams.userId);
           if (!userIdObjectId) {
-            console.error(`${logPrefix} [STEP 6.1] Invalid userId format: ${normalizedParams.userId}`);
+            logger.error(`${logPrefix} [STEP 6.1] Invalid userId format: ${normalizedParams.userId}`);
             return next(new AppError(`Invalid user ID format. Must be a valid 24-character hex string. Received: ${normalizedParams.userId}`, 400));
           }
           query.userId = userIdObjectId;
-          console.log(`${logPrefix} [STEP 6.1] userId filter added: ${userIdObjectId}`);
+          logger.info(`${logPrefix} [STEP 6.1] userId filter added: ${userIdObjectId}`);
         } catch (userIdError) {
-          console.error(`${logPrefix} [STEP 6.1] Error processing userId:`, {
+          logger.error(`${logPrefix} [STEP 6.1] Error processing userId:`, {
             userId: normalizedParams.userId,
             error: userIdError.message,
             stack: userIdError.stack,
@@ -229,11 +230,11 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       // Filter by type (transaction type)
       if (normalizedParams.type) {
         try {
-          console.log(`${logPrefix} [STEP 6.2] Processing type filter: ${normalizedParams.type}`);
+          logger.info(`${logPrefix} [STEP 6.2] Processing type filter: ${normalizedParams.type}`);
           query.type = normalizedParams.type;
-          console.log(`${logPrefix} [STEP 6.2] type filter added: ${normalizedParams.type}`);
+          logger.info(`${logPrefix} [STEP 6.2] type filter added: ${normalizedParams.type}`);
         } catch (typeError) {
-          console.error(`${logPrefix} [STEP 6.2] Error processing type:`, {
+          logger.error(`${logPrefix} [STEP 6.2] Error processing type:`, {
             type: normalizedParams.type,
             error: typeError.message,
           });
@@ -244,16 +245,16 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       // Filter by adminId - only apply if valid ObjectId
       if (normalizedParams.adminId) {
         try {
-          console.log(`${logPrefix} [STEP 6.3] Processing adminId filter: ${normalizedParams.adminId}`);
+          logger.info(`${logPrefix} [STEP 6.3] Processing adminId filter: ${normalizedParams.adminId}`);
           const adminIdObjectId = safeObjectId(normalizedParams.adminId);
           if (!adminIdObjectId) {
-            console.error(`${logPrefix} [STEP 6.3] Invalid adminId format: ${normalizedParams.adminId}`);
+            logger.error(`${logPrefix} [STEP 6.3] Invalid adminId format: ${normalizedParams.adminId}`);
             return next(new AppError(`Invalid admin ID format. Must be a valid 24-character hex string. Received: ${normalizedParams.adminId}`, 400));
           }
           query.adminId = adminIdObjectId;
-          console.log(`${logPrefix} [STEP 6.3] adminId filter added: ${adminIdObjectId}`);
+          logger.info(`${logPrefix} [STEP 6.3] adminId filter added: ${adminIdObjectId}`);
         } catch (adminIdError) {
-          console.error(`${logPrefix} [STEP 6.3] Error processing adminId:`, {
+          logger.error(`${logPrefix} [STEP 6.3] Error processing adminId:`, {
             adminId: normalizedParams.adminId,
             error: adminIdError.message,
             stack: adminIdError.stack,
@@ -265,33 +266,33 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       // Filter by date range with validation
       if (normalizedParams.startDate || normalizedParams.endDate) {
         try {
-          console.log(`${logPrefix} [STEP 6.4] Processing date range filter...`);
+          logger.info(`${logPrefix} [STEP 6.4] Processing date range filter...`);
           query.createdAt = {};
           if (normalizedParams.startDate) {
             const startDateObj = new Date(normalizedParams.startDate);
             if (!isNaN(startDateObj.getTime())) {
               query.createdAt.$gte = startDateObj;
-              console.log(`${logPrefix} [STEP 6.4] Start date added: ${startDateObj.toISOString()}`);
+              logger.info(`${logPrefix} [STEP 6.4] Start date added: ${startDateObj.toISOString()}`);
             } else {
-              console.warn(`${logPrefix} [STEP 6.4] Invalid start date: ${normalizedParams.startDate}`);
+              logger.warn(`${logPrefix} [STEP 6.4] Invalid start date: ${normalizedParams.startDate}`);
             }
           }
           if (normalizedParams.endDate) {
             const endDateObj = new Date(normalizedParams.endDate);
             if (!isNaN(endDateObj.getTime())) {
               query.createdAt.$lte = endDateObj;
-              console.log(`${logPrefix} [STEP 6.4] End date added: ${endDateObj.toISOString()}`);
+              logger.info(`${logPrefix} [STEP 6.4] End date added: ${endDateObj.toISOString()}`);
             } else {
-              console.warn(`${logPrefix} [STEP 6.4] Invalid end date: ${normalizedParams.endDate}`);
+              logger.warn(`${logPrefix} [STEP 6.4] Invalid end date: ${normalizedParams.endDate}`);
             }
           }
           // Remove date filter if no valid dates
           if (Object.keys(query.createdAt).length === 0) {
             delete query.createdAt;
-            console.log(`${logPrefix} [STEP 6.4] No valid dates, removed date filter`);
+            logger.info(`${logPrefix} [STEP 6.4] No valid dates, removed date filter`);
           }
         } catch (dateError) {
-          console.error(`${logPrefix} [STEP 6.4] Error processing date range:`, {
+          logger.error(`${logPrefix} [STEP 6.4] Error processing date range:`, {
             startDate: normalizedParams.startDate,
             endDate: normalizedParams.endDate,
             error: dateError.message,
@@ -304,33 +305,33 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       // Filter by amount range with validation
       if (normalizedParams.minAmount !== null || normalizedParams.maxAmount !== null) {
         try {
-          console.log(`${logPrefix} [STEP 6.5] Processing amount range filter...`);
+          logger.info(`${logPrefix} [STEP 6.5] Processing amount range filter...`);
           query.amount = {};
           if (normalizedParams.minAmount !== null) {
             const min = parseFloat(normalizedParams.minAmount);
             if (!isNaN(min) && isFinite(min) && min >= 0) {
               query.amount.$gte = min;
-              console.log(`${logPrefix} [STEP 6.5] Min amount added: ${min}`);
+              logger.info(`${logPrefix} [STEP 6.5] Min amount added: ${min}`);
             } else {
-              console.warn(`${logPrefix} [STEP 6.5] Invalid min amount: ${normalizedParams.minAmount}`);
+              logger.warn(`${logPrefix} [STEP 6.5] Invalid min amount: ${normalizedParams.minAmount}`);
             }
           }
           if (normalizedParams.maxAmount !== null) {
             const max = parseFloat(normalizedParams.maxAmount);
             if (!isNaN(max) && isFinite(max) && max >= 0) {
               query.amount.$lte = max;
-              console.log(`${logPrefix} [STEP 6.5] Max amount added: ${max}`);
+              logger.info(`${logPrefix} [STEP 6.5] Max amount added: ${max}`);
             } else {
-              console.warn(`${logPrefix} [STEP 6.5] Invalid max amount: ${normalizedParams.maxAmount}`);
+              logger.warn(`${logPrefix} [STEP 6.5] Invalid max amount: ${normalizedParams.maxAmount}`);
             }
           }
           // Remove amount filter if no valid values
           if (Object.keys(query.amount).length === 0) {
             delete query.amount;
-            console.log(`${logPrefix} [STEP 6.5] No valid amounts, removed amount filter`);
+            logger.info(`${logPrefix} [STEP 6.5] No valid amounts, removed amount filter`);
           }
         } catch (amountError) {
-          console.error(`${logPrefix} [STEP 6.5] Error processing amount range:`, {
+          logger.error(`${logPrefix} [STEP 6.5] Error processing amount range:`, {
             minAmount: normalizedParams.minAmount,
             maxAmount: normalizedParams.maxAmount,
             error: amountError.message,
@@ -343,11 +344,11 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       // ========== STEP 7: Build Search Query ==========
       const searchConditions = [];
       try {
-        console.log(`${logPrefix} [STEP 7] Building search query...`);
+        logger.info(`${logPrefix} [STEP 7] Building search query...`);
         
         // Search by reference and description
         if (normalizedParams.search) {
-          console.log(`${logPrefix} [STEP 7] Processing search term: ${normalizedParams.search}`);
+          logger.info(`${logPrefix} [STEP 7] Processing search term: ${normalizedParams.search}`);
           searchConditions.push(
             { reference: { $regex: normalizedParams.search, $options: 'i' } },
             { description: { $regex: normalizedParams.search, $options: 'i' } }
@@ -356,7 +357,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
           // If searching by user email/name, find user IDs first (only if userId not already specified)
           if (!normalizedParams.userId) {
             try {
-              console.log(`${logPrefix} [STEP 7.1] Searching for users by email/name...`);
+              logger.info(`${logPrefix} [STEP 7.1] Searching for users by email/name...`);
               const users = await User.find({
                 $or: [
                   { email: { $regex: normalizedParams.search, $options: 'i' } },
@@ -364,17 +365,17 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
                 ],
               }).select('_id').limit(100).lean(); // Limit to prevent performance issues
               
-              console.log(`${logPrefix} [STEP 7.1] Found ${users.length} matching users`);
+              logger.info(`${logPrefix} [STEP 7.1] Found ${users.length} matching users`);
               
               if (users.length > 0) {
                 const userIds = users.map(u => u._id).filter(id => id); // Filter out nulls
                 if (userIds.length > 0) {
                   searchConditions.push({ userId: { $in: userIds } });
-                  console.log(`${logPrefix} [STEP 7.1] Added ${userIds.length} user IDs to search conditions`);
+                  logger.info(`${logPrefix} [STEP 7.1] Added ${userIds.length} user IDs to search conditions`);
                 }
               }
             } catch (searchError) {
-              console.error(`${logPrefix} [STEP 7.1] Error searching users:`, {
+              logger.error(`${logPrefix} [STEP 7.1] Error searching users:`, {
                 search: normalizedParams.search,
                 error: searchError.message,
                 stack: searchError.stack,
@@ -390,21 +391,21 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         // This is the correct behavior - we want to filter by other criteria AND match search
         if (searchConditions.length > 0) {
           query.$or = searchConditions;
-          console.log(`${logPrefix} [STEP 7] Added ${searchConditions.length} search conditions to query`);
+          logger.info(`${logPrefix} [STEP 7] Added ${searchConditions.length} search conditions to query`);
         } else {
-          console.log(`${logPrefix} [STEP 7] No search conditions to add`);
+          logger.info(`${logPrefix} [STEP 7] No search conditions to add`);
         }
       } catch (searchBuildError) {
-        console.error(`${logPrefix} [STEP 7] Error building search query:`, {
+        logger.error(`${logPrefix} [STEP 7] Error building search query:`, {
           error: searchBuildError.message,
           stack: searchBuildError.stack,
         });
         return next(new AppError('Failed to build search query', 500));
       }
       
-      console.log(`${logPrefix} [STEP 6] Final query object:`, JSON.stringify(query, null, 2));
+      logger.info(`${logPrefix} [STEP 6] Final query object:`, JSON.stringify(query, null, 2));
     } catch (queryBuildError) {
-      console.error(`${logPrefix} [STEP 6] Error building query:`, {
+      logger.error(`${logPrefix} [STEP 6] Error building query:`, {
         error: queryBuildError.message,
         stack: queryBuildError.stack,
       });
@@ -414,10 +415,10 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     // ========== STEP 8: Execute Database Query ==========
     let history, total;
     try {
-      console.log(`${logPrefix} [STEP 8] Executing database query...`);
-      console.log(`${logPrefix} [STEP 8] Query:`, JSON.stringify(query, null, 2));
-      console.log(`${logPrefix} [STEP 8] Sort:`, JSON.stringify(sort, null, 2));
-      console.log(`${logPrefix} [STEP 8] Pagination: skip=${skip}, limit=${limitNum}`);
+      logger.info(`${logPrefix} [STEP 8] Executing database query...`);
+      logger.info(`${logPrefix} [STEP 8] Query:`, JSON.stringify(query, null, 2));
+      logger.info(`${logPrefix} [STEP 8] Sort:`, JSON.stringify(sort, null, 2));
+      logger.info(`${logPrefix} [STEP 8] Pagination: skip=${skip}, limit=${limitNum}`);
       
       const queryStartTime = Date.now();
       [history, total] = await Promise.all([
@@ -434,10 +435,10 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       ]);
       const queryDuration = Date.now() - queryStartTime;
       
-      console.log(`${logPrefix} [STEP 8] Query completed in ${queryDuration}ms`);
-      console.log(`${logPrefix} [STEP 8] Results: Found ${history.length} records, Total: ${total}`);
+      logger.info(`${logPrefix} [STEP 8] Query completed in ${queryDuration}ms`);
+      logger.info(`${logPrefix} [STEP 8] Results: Found ${history.length} records, Total: ${total}`);
     } catch (dbError) {
-      console.error(`${logPrefix} [STEP 8] Database error:`, {
+      logger.error(`${logPrefix} [STEP 8] Database error:`, {
         errorName: dbError.name,
         errorMessage: dbError.message,
         errorStack: dbError.stack,
@@ -446,7 +447,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       
       // Handle CastError and other MongoDB errors gracefully
       if (dbError.name === 'CastError' || dbError.name === 'BSONTypeError') {
-        console.error(`${logPrefix} [STEP 8] Cast/BSON error - invalid query parameters`);
+        logger.error(`${logPrefix} [STEP 8] Cast/BSON error - invalid query parameters`);
         return next(new AppError(`Invalid query parameters. Please check your filters. Error: ${dbError.message}`, 400));
       }
       throw dbError; // Re-throw unexpected errors
@@ -454,7 +455,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
 
     // ========== STEP 9: Build Response ==========
     try {
-      console.log(`${logPrefix} [STEP 9] Building response...`);
+      logger.info(`${logPrefix} [STEP 9] Building response...`);
       
       // Calculate pagination metadata
       const totalPages = Math.ceil(total / limitNum);
@@ -475,7 +476,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         },
       };
       
-      console.log(`${logPrefix} [STEP 9] Response built:`, {
+      logger.info(`${logPrefix} [STEP 9] Response built:`, {
         status: response.status,
         results: response.results,
         total: response.pagination.total,
@@ -483,10 +484,10 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       });
 
       // Return response with consistent structure
-      console.log(`${logPrefix} ========== SUCCESS ==========`);
+      logger.info(`${logPrefix} ========== SUCCESS ==========`);
       res.status(200).json(response);
     } catch (responseError) {
-      console.error(`${logPrefix} [STEP 9] Error building response:`, {
+      logger.error(`${logPrefix} [STEP 9] Error building response:`, {
         error: responseError.message,
         stack: responseError.stack,
       });
@@ -494,15 +495,29 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     }
   } catch (error) {
     // Top-level catch for any unexpected errors
-    console.error(`${logPrefix} ========== TOP-LEVEL ERROR ==========`);
-    console.error(`${logPrefix} Error type:`, error.constructor.name);
-    console.error(`${logPrefix} Error message:`, error.message);
-    console.error(`${logPrefix} Error stack:`, error.stack);
-    console.error(`${logPrefix} Full error object:`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    logger.error(`${logPrefix} ========== TOP-LEVEL ERROR ==========`);
+    logger.error(`${logPrefix} Error type:`, error.constructor.name);
+    logger.error(`${logPrefix} Error message:`, error.message);
+    logger.error(`${logPrefix} Error stack:`, error.stack);
+    // Safely stringify error object - handle circular references
+    try {
+      const errorProps = Object.getOwnPropertyNames(error);
+      const errorObj = {};
+      errorProps.forEach(key => {
+        try {
+          errorObj[key] = error[key];
+        } catch (e) {
+          errorObj[key] = '[Cannot serialize]';
+        }
+      });
+      logger.error(`${logPrefix} Full error object:`, JSON.stringify(errorObj, null, 2));
+    } catch (stringifyError) {
+      logger.error(`${logPrefix} Error serialization failed:`, stringifyError.message);
+    }
     
     // This prevents small errors from bubbling into "Invalid ID Format"
     if (error instanceof AppError) {
-      console.log(`${logPrefix} Error is AppError, passing to error handler`);
+      logger.info(`${logPrefix} Error is AppError, passing to error handler`);
       return next(error);
     }
     // Log unexpected errors for debugging
@@ -760,7 +775,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
     }
 
     // Debug: Log query for troubleshooting (remove in production if needed)
-    console.log('SellerRevenueHistory Query:', JSON.stringify(query, null, 2));
+    logger.info('SellerRevenueHistory Query:', JSON.stringify(query, null, 2));
 
     // Execute queries with error handling
     let history, total;
@@ -779,7 +794,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
         SellerRevenueHistory.countDocuments(query),
       ]);
       
-      console.log(`SellerRevenueHistory Query Results: Found ${history.length} records, Total: ${total}`);
+      logger.info(`SellerRevenueHistory Query Results: Found ${history.length} records, Total: ${total}`);
     } catch (dbError) {
       // Handle CastError and other MongoDB errors gracefully
       if (dbError.name === 'CastError' || dbError.name === 'BSONTypeError') {
@@ -813,7 +828,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
       return next(error);
     }
     // Log unexpected errors for debugging
-    console.error('Error in getAllSellerRevenueHistory:', error);
+    logger.error('Error in getAllSellerRevenueHistory:', error);
     return next(new AppError('An error occurred while fetching seller revenue history', 500));
   }
 });

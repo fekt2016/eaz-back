@@ -3,6 +3,7 @@ const Sequence = require('../../models/category/sequenceModel');
 randomTxt = () => Math.random().toString(36).substring(7).toLocaleUpperCase();
 randomNumbers = () => Math.floor(1000 + Math.random() * 9000);
 const mongoose = require('mongoose');
+const logger = require('../logger');
 
 const generateOrderNumber = async () => {
   const today = new Date();
@@ -25,7 +26,7 @@ const generateOrderNumber = async () => {
 
     return `ORD-${datePart}-${sequence.seq.toString().padStart(4, '0')}`;
   } catch (error) {
-    console.error('Failed to generate order number:', error);
+    logger.error('Failed to generate order number:', error);
     // Fallback to timestamp + random number
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.floor(1000 + Math.random() * 9000);

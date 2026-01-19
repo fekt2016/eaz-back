@@ -79,7 +79,7 @@ exports.createCouponBatch = catchAsync(async (req, res, next) => {
 
   if (discountType === 'percentage' && discountValue > 90) {
     // Warn for high discounts (could require admin approval in future)
-    console.warn(`High discount coupon created: ${discountValue}% by seller ${req.user.id}`);
+    logger.warn(`High discount coupon created: ${discountValue}% by seller ${req.user.id}`);
   }
 
   if (discountType === 'fixed' && discountValue > 1000) {
@@ -133,10 +133,10 @@ exports.createCouponBatch = catchAsync(async (req, res, next) => {
       quantity
     );
 
-    console.log(`[createCouponBatch] ✅ Notification sent to admins about new coupon batch ${couponBatch._id}`);
+    logger.info(`[createCouponBatch] ✅ Notification sent to admins about new coupon batch ${couponBatch._id}`);
   } catch (notificationError) {
     // Don't fail coupon creation if notification fails
-    console.error('[createCouponBatch] Error creating admin notification:', notificationError);
+    logger.error('[createCouponBatch] Error creating admin notification:', notificationError);
   }
 
   res.status(201).json({
@@ -237,13 +237,13 @@ exports.updateCouponBatch = catchAsync(async (req, res, next) => {
 
             if (user && user.email) {
               await emailDispatcher.sendCouponToBuyer(user, coupon, updatedBatch, seller);
-              console.log(`[updateCouponBatch] ✅ Coupon email sent to ${user.email}`);
+              logger.info(`[updateCouponBatch] ✅ Coupon email sent to ${user.email}`);
             }
           }
         }
       }
     } catch (emailError) {
-      console.error('[updateCouponBatch] Error sending coupon emails:', emailError.message);
+      logger.error('[updateCouponBatch] Error sending coupon emails:', emailError.message);
       // Don't fail update if email fails
     }
   }
@@ -375,7 +375,7 @@ exports.assignCouponToBuyer = catchAsync(async (req, res, next) => {
   // Get the updated coupon
   const savedCoupon = updateResult.coupons.find(c => c.code === couponCode.toUpperCase());
   if (savedCoupon && savedCoupon.recipient) {
-    console.log(`[assignCouponToBuyer] ✅ Recipient assigned: ${savedCoupon.recipient.toString()}`);
+    logger.info(`[assignCouponToBuyer] ✅ Recipient assigned: ${savedCoupon.recipient.toString()}`);
   }
 
   // Update batch reference for email
@@ -389,10 +389,10 @@ exports.assignCouponToBuyer = catchAsync(async (req, res, next) => {
 
     if (user && user.email) {
       await emailDispatcher.sendCouponToBuyer(user, savedCoupon || coupon, updatedBatch, updatedBatch.seller);
-      console.log(`[assignCouponToBuyer] ✅ Coupon email sent to ${user.email}`);
+      logger.info(`[assignCouponToBuyer] ✅ Coupon email sent to ${user.email}`);
     }
   } catch (emailError) {
-    console.error('[assignCouponToBuyer] Error sending coupon email:', emailError.message);
+    logger.error('[assignCouponToBuyer] Error sending coupon email:', emailError.message);
     // Don't fail assignment if email fails
   }
 
@@ -643,20 +643,21 @@ exports.sendCouponEmail = catchAsync(async (req, res, next) => {
     // Verify the recipient was saved
     const savedCoupon = updateResult.coupons.find(c => c.code === couponCode.toUpperCase());
     if (savedCoupon && savedCoupon.recipient) {
-      console.log(`[sendCouponEmail] ✅ Recipient assigned: ${savedCoupon.recipient.toString()} === ${buyerObjectId.toString()}`);
+      logger.info(`[sendCouponEmail] ✅ Recipient assigned: ${savedCoupon.recipient.toString()} === ${buyerObjectId.toString()}`);
     } else {
-      console.error('[sendCouponEmail] ⚠️ Warning: Recipient may not have been saved correctly');
+      logger.error('[sendCouponEmail] ⚠️ Warning: Recipient may not have been saved correctly');
     }
 
     // Now send the email
     const emailDispatcher = require('../../emails/emailDispatcher');
+const logger = require('../../utils/logger');
     const seller = updateResult.seller || { name: 'A seller', shopName: 'A seller' };
 
     // Get the updated coupon for email
     const updatedCoupon = savedCoupon || updateResult.coupons.find(c => c.code === couponCode.toUpperCase());
     await emailDispatcher.sendCouponToBuyer(buyer, updatedCoupon, updateResult, seller, message);
 
-    console.log(`[sendCouponEmail] ✅ Coupon email sent to ${buyer.email} and recipient assigned`);
+    logger.info(`[sendCouponEmail] ✅ Coupon email sent to ${buyer.email} and recipient assigned`);
 
     res.status(200).json({
       status: 'success',
@@ -674,7 +675,7 @@ exports.sendCouponEmail = catchAsync(async (req, res, next) => {
       },
     });
   } catch (emailError) {
-    console.error('[sendCouponEmail] Error sending coupon email:', emailError.message);
+    logger.error('[sendCouponEmail] Error sending coupon email:', emailError.message);
     return next(new AppError(`Failed to send email: ${emailError.message}`, 500));
   }
 });
@@ -836,7 +837,7 @@ exports.getUserCoupons = catchAsync(async (req, res, next) => {
 });
 
 exports.applyUserCoupon = catchAsync(async (req, res, next) => {
-  console.log('applyUserCoupon called', req.body);
+  logger.info('applyUserCoupon called', req.body);
 
   const { couponCode } = req.body;
   const userId = new mongoose.Types.ObjectId(req.user.id);
@@ -849,7 +850,7 @@ exports.applyUserCoupon = catchAsync(async (req, res, next) => {
       return res.status(400).json({ message: 'Coupon code is required' });
     }
 
-    // console.log('Applying coupon for user:', userId, couponCode);
+    // logger.info('Applying coupon for user:', userId, couponCode);
 
     // Validate the coupon using new service
     const couponData = await couponService.validateUserCoupon(
@@ -857,7 +858,7 @@ exports.applyUserCoupon = catchAsync(async (req, res, next) => {
       userId,
     );
 
-    console.log('Coupon validated:', couponData);
+    logger.info('Coupon validated:', couponData);
     //check if coupon has already been used
     if (couponData.used) {
       return next(new AppError('This coupon has already been used', 400));
@@ -907,7 +908,7 @@ exports.applyUserCoupon = catchAsync(async (req, res, next) => {
       await creditBalance.save();
     }
 
-    // console.log('Credit balance updated:', creditBalance);
+    // logger.info('Credit balance updated:', creditBalance);
 
     // Mark coupon as used using new service
     await couponService.markCouponAsUsed(
@@ -933,7 +934,7 @@ exports.applyUserCoupon = catchAsync(async (req, res, next) => {
       newBalance: creditBalance.balance,
     });
   } catch (error) {
-    console.error('Error applying coupon:', error);
+    logger.error('Error applying coupon:', error);
     return next(new AppError(error.message, 400));
   }
 });

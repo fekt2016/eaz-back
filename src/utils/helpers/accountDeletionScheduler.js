@@ -1,4 +1,5 @@
 const User = require('../../models/user/userModel');
+const logger = require('../logger');
 const { sendAccountDeletionConfirmation } = require('../email/emailService');
 
 exports.processScheduledDeletions = async () => {
@@ -11,11 +12,11 @@ exports.processScheduledDeletions = async () => {
       'accountDeletion.scheduledAt': { $lte: now },
     });
 
-    console.log(`Processing ${users.length} account deletions`);
+    logger.info(`Processing ${users.length} account deletions`);
 
     for (const user of users) {
       try {
-        console.log(`Deleting account for ${user.email}`);
+        logger.info(`Deleting account for ${user.email}`);
 
         // 1. Update deletion status to processing
         user.accountDeletion.status = 'processing';
@@ -33,13 +34,13 @@ exports.processScheduledDeletions = async () => {
         user.active = false;
         await user.save();
       } catch (error) {
-        console.error(`Failed to delete account ${user.email}:`, error);
+        logger.error(`Failed to delete account ${user.email}:`, error);
         user.accountDeletion.status = 'failed';
         await user.save();
       }
     }
   } catch (error) {
-    console.error('Account deletion scheduler error:', error);
+    logger.error('Account deletion scheduler error:', error);
   }
 };
 
@@ -67,4 +68,4 @@ async function anonymizeUserData(userId) {
 
   // Add additional data cleanup as needed
 }
-console.log('testing');
+logger.info('testing');

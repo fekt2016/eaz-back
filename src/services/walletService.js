@@ -127,7 +127,7 @@ async function creditWallet(userId, amount, type, description, reference = null,
       adminId: metadata.adjustedBy ? mongoose.Types.ObjectId(metadata.adjustedBy) : null,
       metadata,
     }).catch(err => {
-      console.error('[WalletService] Failed to log wallet history (non-critical):', err);
+      logger.error('[WalletService] Failed to log wallet history (non-critical);:', err);
     });
 
     // Send wallet credit email for significant transactions (not for every small operation)
@@ -140,10 +140,10 @@ async function creditWallet(userId, amount, type, description, reference = null,
         
         if (user && user.email) {
           await emailDispatcher.sendWalletCredit(user, amount, description);
-          console.log(`[WalletService] ✅ Wallet credit email sent to ${user.email}`);
+          logger.info(`[WalletService] ✅ Wallet credit email sent to ${user.email}`);
         }
       } catch (emailError) {
-        console.error('[WalletService] Error sending wallet credit email:', emailError.message);
+        logger.error('[WalletService] Error sending wallet credit email:', emailError.message);
         // Don't fail wallet operation if email fails
       }
     }
@@ -293,7 +293,7 @@ async function debitWallet(userId, amount, type, description, reference = null, 
       adminId: metadata.adjustedBy ? mongoose.Types.ObjectId(metadata.adjustedBy) : null,
       metadata,
     }).catch(err => {
-      console.error('[WalletService] Failed to log wallet history (non-critical):', err);
+      logger.error('[WalletService] Failed to log wallet history (non-critical);:', err);
     });
 
     // Send wallet debit email for order payments (not for every small operation)
@@ -302,14 +302,15 @@ async function debitWallet(userId, amount, type, description, reference = null, 
       try {
         const emailDispatcher = require('../emails/emailDispatcher');
         const User = require('../models/user/userModel');
+const logger = require('../utils/logger');
         const user = await User.findById(userId).select('name email').lean();
         
         if (user && user.email) {
           await emailDispatcher.sendWalletDebit(user, amount, description);
-          console.log(`[WalletService] ✅ Wallet debit email sent to ${user.email}`);
+          logger.info(`[WalletService] ✅ Wallet debit email sent to ${user.email}`);
         }
       } catch (emailError) {
-        console.error('[WalletService] Error sending wallet debit email:', emailError.message);
+        logger.error('[WalletService] Error sending wallet debit email:', emailError.message);
         // Don't fail wallet operation if email fails
       }
     }

@@ -106,7 +106,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       }).session(session);
 
       if (existingTransaction) {
-        console.log(`[OrderService] Transaction already exists for seller ${sellerId} and order ${orderId}`);
+        logger.info(`[OrderService] Transaction already exists for seller ${sellerId} and order ${orderId}`);
         continue;
       }
 
@@ -114,14 +114,14 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       const sellerEarnings = await calculateSellerEarnings(sellerOrder);
 
       if (sellerEarnings <= 0) {
-        console.log(`[OrderService] No earnings for seller ${sellerId} (amount: ${sellerEarnings})`);
+        logger.info(`[OrderService] No earnings for seller ${sellerId} (amount: ${sellerEarnings});`);
         continue;
       }
 
       // Update seller balance
       const seller = await Seller.findById(sellerId).session(session);
       if (!seller) {
-        console.log(`[OrderService] Seller ${sellerId} not found`);
+        logger.info(`[OrderService] Seller ${sellerId} not found`);
         continue;
       }
 
@@ -140,12 +140,12 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       const expectedWithdrawableBalance = Math.max(0, seller.balance - (seller.lockedBalance || 0));
       seller.withdrawableBalance = expectedWithdrawableBalance;
       
-      console.log(`[OrderService] Seller ${sellerId} balance update in seller model:`);
-      console.log(`  Old Balance: ${oldBalance}`);
-      console.log(`  Seller Earnings: ${sellerEarnings}`);
-      console.log(`  New Balance: ${seller.balance}`);
-      console.log(`  WithdrawableBalance: ${oldWithdrawableBalance} → ${seller.withdrawableBalance}`);
-      console.log(`  LockedBalance: ${seller.lockedBalance || 0}`);
+      logger.info(`[OrderService] Seller ${sellerId} balance update in seller model:`);
+      logger.info(`  Old Balance: ${oldBalance}`);
+      logger.info(`  Seller Earnings: ${sellerEarnings}`);
+      logger.info(`  New Balance: ${seller.balance}`);
+      logger.info(`  WithdrawableBalance: ${oldWithdrawableBalance} → ${seller.withdrawableBalance}`);
+      logger.info(`  LockedBalance: ${seller.lockedBalance || 0}`);
       
       // Save the updated balance to the seller model
       await seller.save({ session });
@@ -153,12 +153,12 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       // Verify the save worked by re-fetching the seller
       const savedSeller = await Seller.findById(sellerId).session(session);
       if (savedSeller) {
-        console.log(`[OrderService] ✅ Verified save - Seller balance in model: ${savedSeller.balance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
+        logger.info(`[OrderService] ✅ Verified save - Seller balance in model: ${savedSeller.balance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
         if (savedSeller.balance !== seller.balance) {
-          console.error(`[OrderService] ❌ ERROR: Balance mismatch! Expected: ${seller.balance}, Saved: ${savedSeller.balance}`);
+          logger.error(`[OrderService] ❌ ERROR: Balance mismatch! Expected: ${seller.balance}, Saved: ${savedSeller.balance}`);
         }
       } else {
-        console.error(`[OrderService] ❌ ERROR: Could not verify save - Seller ${sellerId} not found after save`);
+        logger.error(`[OrderService] ❌ ERROR: Could not verify save - Seller ${sellerId} not found after save`);
       }
 
       // Create transaction record
@@ -238,16 +238,16 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
             shippingCost: sellerOrder.shippingCost,
           },
         });
-        console.log(`[OrderService] ✅ Seller revenue history logged for seller ${sellerId}`);
+        logger.info(`[OrderService] ✅ Seller revenue history logged for seller ${sellerId}`);
       } catch (historyError) {
         // Log error but don't fail the transaction
-        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${sellerId}:`, {
+        logger.error(`[OrderService] Failed to log seller revenue history (non-critical); for seller ${sellerId}:`, {
           error: historyError.message,
           stack: historyError.stack,
         });
       }
 
-      console.log(`[OrderService] Credited ${sellerEarnings} to seller ${sellerId} for order ${orderId}`);
+      logger.info(`[OrderService] Credited ${sellerEarnings} to seller ${sellerId} for order ${orderId}`);
     }
 
     // Mark order as seller credited to prevent double-crediting
@@ -278,7 +278,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         // Deduct seller payouts from admin revenue
         if (totalSellerPayouts > 0) {
           platformStats.totalRevenue = Math.max(0, platformStats.totalRevenue - totalSellerPayouts);
-          console.log(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}`);
+          logger.info(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}`);
         }
         
         // Add to daily revenue tracking
@@ -293,7 +293,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         platformStats.lastUpdated = new Date();
         await platformStats.save({ session });
         
-        console.log(`[OrderService] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId} (payment_on_delivery), then deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts. Net: GH₵${(orderTotal - totalSellerPayouts).toFixed(2)}`);
+        logger.info(`[OrderService] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId} (payment_on_delivery), then deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts. Net: GH₵${(orderTotal - totalSellerPayouts).toFixed(2)}`);
       }
       
       // Mark order as revenue added to prevent double-counting
@@ -307,7 +307,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       if (totalSellerPayouts > 0) {
         const oldRevenue = platformStats.totalRevenue || 0;
         platformStats.totalRevenue = Math.max(0, oldRevenue - totalSellerPayouts);
-        console.log(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}. Revenue: GH₵${oldRevenue.toFixed(2)} → GH₵${platformStats.totalRevenue.toFixed(2)}`);
+        logger.info(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}. Revenue: GH₵${oldRevenue.toFixed(2)} → GH₵${platformStats.totalRevenue.toFixed(2)}`);
       }
       
       platformStats.totalDeliveredOrders = (platformStats.totalDeliveredOrders || 0) + 1;
@@ -324,7 +324,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       platformStats.lastUpdated = new Date();
       await platformStats.save({ session });
       
-      console.log(`[OrderService] Revenue already added at payment time for order ${orderId}. Deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts, incremented delivered orders count`);
+      logger.info(`[OrderService] Revenue already added at payment time for order ${orderId}. Deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts, incremented delivered orders count`);
     }
     
     // Log seller payout activity
@@ -348,14 +348,81 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
     
     await order.save({ session });
 
+<<<<<<< HEAD
     // NOTE: Stock reduction happens AFTER payment confirmation, not on delivery
     // Stock is reduced in paymentController.verifyPaystackPayment and paymentController.paystackWebhook
     // This function only credits seller balances when order is delivered
+=======
+    // Reduce product inventory when order is delivered
+    // Get all order items for this order
+    const OrderItem = require('../../models/order/OrderItemModel');
+const logger = require('../../utils/logger');
+    const orderItems = await OrderItem.find({ 
+      _id: { $in: order.orderItems } 
+    }).session(session);
+
+    // Check if inventory was already reduced (prevent double reduction)
+>>>>>>> 6d2bc77 (first ci/cd push)
     const inventoryReduced = order.metadata?.inventoryReduced || false;
     if (!inventoryReduced) {
+<<<<<<< HEAD
       console.warn(`[OrderService] ⚠️ Order ${orderId} delivered but inventory was not reduced. This may indicate a payment flow issue.`);
       // Don't reduce stock here - stock should have been reduced after payment
       // If it wasn't, it's a bug that needs investigation
+=======
+      logger.info(`[OrderService] Reducing inventory for order ${orderId}`);
+      
+      for (const orderItem of orderItems) {
+        const product = await Product.findById(orderItem.product).session(session);
+        if (!product) {
+          logger.info(`[OrderService] Product ${orderItem.product} not found, skipping inventory reduction`);
+          continue;
+        }
+
+        // Find the variant if it exists
+        if (orderItem.variant && product.variants && product.variants.length > 0) {
+          const variant = product.variants.id(orderItem.variant);
+          if (variant) {
+            // Check if stock is sufficient
+            if (variant.stock >= orderItem.quantity) {
+              variant.stock -= orderItem.quantity;
+              logger.info(`[OrderService] Reduced ${orderItem.quantity} from variant ${variant._id} of product ${product._id}. New stock: ${variant.stock}`);
+            } else {
+              logger.warn(`[OrderService] Insufficient stock for variant ${variant._id}. Stock: ${variant.stock}, Requested: ${orderItem.quantity}`);
+              // Still reduce to prevent negative stock issues, but log warning
+              variant.stock = Math.max(0, variant.stock - orderItem.quantity);
+            }
+          } else {
+            logger.warn(`[OrderService] Variant ${orderItem.variant} not found in product ${product._id}`);
+          }
+        } else {
+          // If no variant, reduce from product stock (if it exists)
+          if (product.stock !== undefined && product.stock !== null) {
+            if (product.stock >= orderItem.quantity) {
+              product.stock -= orderItem.quantity;
+              logger.info(`[OrderService] Reduced ${orderItem.quantity} from product ${product._id}. New stock: ${product.stock}`);
+            } else {
+              logger.warn(`[OrderService] Insufficient stock for product ${product._id}. Stock: ${product.stock}, Requested: ${orderItem.quantity}`);
+              product.stock = Math.max(0, product.stock - orderItem.quantity);
+            }
+          }
+        }
+
+        await product.save({ session });
+      }
+
+      // Mark inventory as reduced in order metadata
+      if (!order.metadata) {
+        order.metadata = {};
+      }
+      order.metadata.inventoryReduced = true;
+      order.metadata.inventoryReducedAt = new Date();
+      await order.save({ session });
+      
+      logger.info(`[OrderService] Inventory reduction completed for order ${orderId}`);
+    } else {
+      logger.info(`[OrderService] Inventory already reduced for order ${orderId}, skipping`);
+>>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     await session.commitTransaction();
@@ -367,7 +434,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
     };
   } catch (error) {
     await session.abortTransaction();
-    console.error('[OrderService] Error updating seller balances:', error);
+    logger.error('[OrderService] Error updating seller balances:', error);
     throw error;
   } finally {
     session.endSession();
@@ -409,7 +476,7 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
 
       // Check if seller has sufficient balance
       if ((seller.balance || 0) < transaction.amount) {
-        console.log(`[OrderService] Insufficient balance to revert for seller ${transaction.seller}`);
+        logger.info(`[OrderService] Insufficient balance to revert for seller ${transaction.seller}`);
         continue;
       }
 
@@ -440,9 +507,9 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
             orderNumber: order?.orderNumber,
           },
         });
-        console.log(`[OrderService] ✅ Seller revenue history logged for refund - seller ${transaction.seller}`);
+        logger.info(`[OrderService] ✅ Seller revenue history logged for refund - seller ${transaction.seller}`);
       } catch (historyError) {
-        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${transaction.seller}:`, {
+        logger.error(`[OrderService] Failed to log seller revenue history (non-critical); for seller ${transaction.seller}:`, {
           error: historyError.message,
           stack: historyError.stack,
         });
@@ -493,7 +560,7 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
     };
   } catch (error) {
     await session.abortTransaction();
-    console.error('[OrderService] Error reverting seller balances:', error);
+    logger.error('[OrderService] Error reverting seller balances:', error);
     throw error;
   } finally {
     session.endSession();
@@ -543,7 +610,7 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
     for (const [sellerIdStr, sellerRefund] of sellerRefundMap) {
       const seller = await Seller.findById(sellerRefund.sellerId).session(session);
       if (!seller) {
-        console.log(`[OrderService] Seller ${sellerIdStr} not found for item refund`);
+        logger.info(`[OrderService] Seller ${sellerIdStr} not found for item refund`);
         continue;
       }
 
@@ -558,7 +625,7 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
         const deficit = refundAmount - balanceBefore;
         seller.balance = 0;
         seller.negativeBalance = (seller.negativeBalance || 0) + deficit;
-        console.log(`[OrderService] Insufficient balance for seller ${sellerIdStr}. Deficit: ${deficit}. Negative balance: ${seller.negativeBalance}`);
+        logger.info(`[OrderService] Insufficient balance for seller ${sellerIdStr}. Deficit: ${deficit}. Negative balance: ${seller.negativeBalance}`);
       } else {
         // Deduct from seller balance
         seller.balance = balanceBefore - refundAmount;
@@ -589,9 +656,9 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
             orderNumber: order?.orderNumber,
           },
         });
-        console.log(`[OrderService] ✅ Seller revenue history logged for item refund - seller ${sellerIdStr}`);
+        logger.info(`[OrderService] ✅ Seller revenue history logged for item refund - seller ${sellerIdStr}`);
       } catch (historyError) {
-        console.error(`[OrderService] Failed to log seller revenue history (non-critical) for seller ${sellerIdStr}:`, {
+        logger.error(`[OrderService] Failed to log seller revenue history (non-critical); for seller ${sellerIdStr}:`, {
           error: historyError.message,
           stack: historyError.stack,
         });
@@ -663,7 +730,7 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
     };
   } catch (error) {
     await session.abortTransaction();
-    console.error('[OrderService] Error reverting seller balances for items:', error);
+    logger.error('[OrderService] Error reverting seller balances for items:', error);
     throw error;
   } finally {
     session.endSession();

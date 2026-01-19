@@ -6,6 +6,7 @@
 const SellerRevenueHistory = require('../models/history/sellerRevenueHistoryModel');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 /**
  * Log finance operation with comprehensive details
@@ -89,7 +90,7 @@ exports.logFinanceOperation = async ({
       }
     }
 
-    console.log(`[FinanceAudit] ✅ Logged ${type} for seller ${sellerId}:`, {
+    logger.info(`[FinanceAudit] ✅ Logged ${type} for seller ${sellerId}:`, {
       amount,
       oldBalance,
       newBalance,
@@ -98,7 +99,7 @@ exports.logFinanceOperation = async ({
       requestId,
     });
   } catch (error) {
-    console.error('[FinanceAudit] ❌ Error logging finance operation:', error);
+    logger.error('[FinanceAudit] ❌ Error logging finance operation:', error);
     // Don't throw - logging failures shouldn't break the operation
   }
 };

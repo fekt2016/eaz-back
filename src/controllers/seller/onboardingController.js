@@ -227,9 +227,9 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
           seller._id,
           seller.shopName || seller.name
         );
-        console.log(`[Onboarding] Admin notification created for seller verification submission ${seller._id}`);
+        logger.info(`[Onboarding] Admin notification created for seller verification submission ${seller._id}`);
       } catch (notificationError) {
-        console.error('[Onboarding] Error creating admin notification:', notificationError);
+        logger.error('[Onboarding] Error creating admin notification:', notificationError);
         // Don't fail onboarding if notification fails
       }
     }
@@ -337,9 +337,9 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
       updatedSeller._id,
       'approved'
     );
-    console.log(`[Approve Seller Verification] Notification created for seller ${updatedSeller._id}`);
+    logger.info(`[Approve Seller Verification] Notification created for seller ${updatedSeller._id}`);
   } catch (notificationError) {
-    console.error('[Approve Seller Verification] Error creating notification:', notificationError);
+    logger.error('[Approve Seller Verification] Error creating notification:', notificationError);
     // Don't fail verification approval if notification fails
   }
 
@@ -386,15 +386,16 @@ exports.rejectSellerVerification = catchAsync(async (req, res, next) => {
   // Notify seller about verification rejection
   try {
     const notificationService = require('../../services/notification/notificationService');
+const logger = require('../../utils/logger');
     await notificationService.createVerificationNotification(
       seller._id,
       'seller',
       seller._id,
       'rejected'
     );
-    console.log(`[Reject Seller Verification] Notification created for seller ${seller._id}`);
+    logger.info(`[Reject Seller Verification] Notification created for seller ${seller._id}`);
   } catch (notificationError) {
-    console.error('[Reject Seller Verification] Error creating notification:', notificationError);
+    logger.error('[Reject Seller Verification] Error creating notification:', notificationError);
     // Don't fail verification rejection if notification fails
   }
 

@@ -302,7 +302,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   
   // PROTECTION: Prevent negative pendingBalance
   if (oldPendingBalance < 0) {
-    console.warn(`[createPaymentRequest] ⚠️ Seller ${seller.id} has negative pendingBalance: ${oldPendingBalance}. Resetting to 0.`);
+    logger.warn(`[createPaymentRequest] ⚠️ Seller ${seller.id} has negative pendingBalance: ${oldPendingBalance}. Resetting to 0.`);
     currentSeller.pendingBalance = 0;
   }
   
@@ -313,7 +313,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   // PROTECTION: Prevent double-adding (check if amount already in pendingBalance)
   // This is a safety check - in normal flow, amount should not already be in pendingBalance
   if (newPendingBalance > oldBalance) {
-    console.warn(`[createPaymentRequest] ⚠️ New pendingBalance (${newPendingBalance}) exceeds balance (${oldBalance}). This may indicate a double-add.`);
+    logger.warn(`[createPaymentRequest] ⚠️ New pendingBalance (${newPendingBalance}); exceeds balance (${oldBalance}). This may indicate a double-add.`);
   }
   
   currentSeller.pendingBalance = newPendingBalance;
@@ -329,16 +329,16 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   
   // Verify balance was NOT modified
   if (currentSeller.balance !== oldBalance) {
-    console.error(`[createPaymentRequest] ERROR: Balance was modified! Old: ${oldBalance}, New: ${currentSeller.balance}`);
+    logger.error(`[createPaymentRequest] ERROR: Balance was modified! Old: ${oldBalance}, New: ${currentSeller.balance}`);
     // Restore balance if it was accidentally modified
     currentSeller.balance = oldBalance;
   }
   
-  console.log(`[createPaymentRequest] Pending balance update for seller ${seller.id}:`);
-  console.log(`  Total Revenue (Balance): ${oldBalance} (UNCHANGED - not deducted)`);
-  console.log(`  Pending Balance: ${oldPendingBalance} + ${amount} = ${currentSeller.pendingBalance}`);
-  console.log(`  Locked Balance: ${oldLockedBalance} (unchanged)`);
-  console.log(`  Available Balance: ${oldWithdrawableBalance} - ${amount} = ${newWithdrawableBalance} (decreased due to pending withdrawal)`);
+  logger.info(`[createPaymentRequest] Pending balance update for seller ${seller.id}:`);
+  logger.info(`  Total Revenue (Balance);: ${oldBalance} (UNCHANGED - not deducted)`);
+  logger.info(`  Pending Balance: ${oldPendingBalance} + ${amount} = ${currentSeller.pendingBalance}`);
+  logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
+  logger.info(`  Available Balance: ${oldWithdrawableBalance} - ${amount} = ${newWithdrawableBalance} (decreased due to pending withdrawal);`);
   
   // Auto-update onboarding if bank details are being added
   if (!currentSeller.requiredSetup.hasAddedBankDetails) {
@@ -361,11 +361,11 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   if (savedSeller) {
     // Verify balance (total revenue) was NOT modified
     if (Math.abs((savedSeller.balance || 0) - oldBalance) > 0.01) {
-      console.error(`[createPaymentRequest] ❌ ERROR: Total Revenue (Balance) was modified! Expected: ${oldBalance}, Actual: ${savedSeller.balance}`);
+      logger.error(`[createPaymentRequest] ❌ ERROR: Total Revenue (Balance); was modified! Expected: ${oldBalance}, Actual: ${savedSeller.balance}`);
     } else {
-      console.log(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance): ${savedSeller.balance} (UNCHANGED)`);
+      logger.info(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance);: ${savedSeller.balance} (UNCHANGED)`);
     }
-    console.log(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
+    logger.info(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
     
     // Log finance audit
     try {
@@ -378,7 +378,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
         savedSeller.pendingBalance
       );
     } catch (auditError) {
-      console.error('[createPaymentRequest] Failed to log finance audit (non-critical):', auditError);
+      logger.error('[createPaymentRequest] Failed to log finance audit (non-critical);:', auditError);
     }
   }
 
@@ -388,15 +388,16 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   // Notify all admins about withdrawal request
   try {
     const notificationService = require('../services/notification/notificationService');
+const logger = require('../utils/logger');
     await notificationService.createWithdrawalRequestNotification(
       paymentRequest._id,
       seller.id,
       currentSeller.shopName || currentSeller.name || 'Seller',
       amount
     );
-    console.log(`[Payment Request] Admin notification created for withdrawal ${paymentRequest._id}`);
+    logger.info(`[Payment Request] Admin notification created for withdrawal ${paymentRequest._id}`);
   } catch (notificationError) {
-    console.error('[Payment Request] Error creating admin notification:', notificationError);
+    logger.error('[Payment Request] Error creating admin notification:', notificationError);
     // Don't fail payment request if notification fails
   }
 

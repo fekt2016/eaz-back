@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const app = require('./app');
 const { validateEnvironment } = require('./config/env');
 const connectDatabase = require('./config/database');
+const logger = require('./utils/logger');
 
 // Validate environment variables
 validateEnvironment();
@@ -39,6 +40,7 @@ class Server {
       }
 
       this.server = app.listen(port, host, () => {
+<<<<<<< HEAD
         const timestamp = new Date().toISOString();
         console.log('\n' + '='.repeat(60));
         console.log(`🚀 Server started at ${timestamp}`);
@@ -51,57 +53,65 @@ class Server {
         );
         console.log('⚠️  Background jobs are disabled (Bull/Redis removed)');
         console.log('='.repeat(60) + '\n');
+=======
+        logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
+        logger.info(`Listening on http://${host}:${port}`);
+        if (process.env.NODE_ENV !== 'production') {
+          logger.info(`Access locally at: http://localhost:${port} or http://127.0.0.1:${port}`);
+        }
+>>>>>>> 6d2bc77 (first ci/cd push)
 
         if (process.env.NODE_ENV === 'production') {
-          console.log('Production server is ready');
+          logger.info('Production server is ready');
         }
       });
 
       // Handle server errors
       this.server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
-          console.error(`\n❌ Port ${port} is already in use`);
-          console.error(
-            `\nTo fix this, you can:\n  1. Stop the process using port ${port}\n  2. Use a different port by setting PORT environment variable\n  3. Find the process: lsof -i :${port}`,
-          );
-          console.error(
-            `\nSuggested alternative ports: ${port + 1}, ${port + 2}, 3000, 5000`,
-          );
+          logger.error(`Port ${port} is already in use`, {
+            code: error.code,
+            port,
+            suggestion: `Stop the process using port ${port}, use a different port, or find process: lsof -i :${port}`,
+          });
         } else if (error.code === 'EACCES') {
-          console.error(
-            `\n❌ Permission denied: Cannot bind to port ${port}`,
-          );
-          console.error(
-            `Ports below 1024 require root privileges. Use a port >= 1024 or run with sudo.`,
-          );
+          logger.error(`Permission denied: Cannot bind to port ${port}`, {
+            code: error.code,
+            port,
+            suggestion: 'Ports below 1024 require root privileges. Use a port >= 1024 or run with sudo.',
+          });
         } else if (error.code === 'EADDRNOTAVAIL') {
-          console.error(
-            `\n❌ Address not available: Cannot bind to ${host}:${port}`,
-          );
-          console.error(`Check your HOST environment variable.`);
+          logger.error(`Address not available: Cannot bind to ${host}:${port}`, {
+            code: error.code,
+            host,
+            port,
+            suggestion: 'Check your HOST environment variable.',
+          });
         } else {
-          console.error(`\n❌ Server error: ${error.message}`);
-          console.error(`Error code: ${error.code}`);
+          logger.error(`Server error: ${error.message}`, {
+            code: error.code,
+            error: error.message,
+          });
         }
         process.exit(1);
       });
 
       return this.server;
     } catch (error) {
-      console.error('Failed to start server:', error.message);
+      logger.error('Failed to start server', { error: error.message, stack: error.stack });
       throw error;
     }
   }
 
   async gracefulShutdown(signal) {
-    console.log(`${signal} received. Shutting down gracefully...`);
+    logger.info(`${signal} received. Shutting down gracefully...`);
 
     try {
       // Close HTTP server
       if (this.server) {
         await new Promise((resolve) => {
           this.server.close(() => {
-            console.log('HTTP server closed.');
+            logger.info('HTTP server closed.');
             resolve();
           });
         });
@@ -110,20 +120,23 @@ class Server {
       // Close MongoDB connection
       if (mongoose.connection.readyState !== 0) {
         await mongoose.connection.close(false);
-        console.log('MongoDB connection closed.');
+        logger.info('MongoDB connection closed.');
       }
 
-      console.log('Shutdown completed.');
+      logger.info('Shutdown completed.');
       process.exit(0);
     } catch (error) {
-      console.error('Error during shutdown:', error.message);
+      logger.error('Error during shutdown', { error: error.message, stack: error.stack });
       process.exit(1);
     }
   }
 
   handleUnhandledRejection(err) {
-    console.error('UNHANDLED REJECTION! 🔥 Shutting down');
-    console.error('Error:', err.name, err.message);
+    logger.error('UNHANDLED REJECTION! Shutting down', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    });
 
     if (this.server) {
       this.server.close(() => {
@@ -135,8 +148,11 @@ class Server {
   }
 
   handleUncaughtException(err) {
-    console.error('UNCAUGHT EXCEPTION! 🔥 Shutting down');
-    console.error('Error:', err.name, err.message);
+    logger.error('UNCAUGHT EXCEPTION! Shutting down', {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    });
     process.exit(1);
   }
 
@@ -157,14 +173,14 @@ class Server {
       startCleanupJob();
       
       if (process.env.NODE_ENV === 'production') {
-        console.log('✅ Cron jobs initialized');
+        logger.info('Cron jobs initialized');
       } else {
-        console.log('✅ Cron jobs initialized (including withdrawal cleanup)');
+        logger.info('Cron jobs initialized (including withdrawal cleanup)');
       }
       
       await this.startServer();
     } catch (error) {
-      console.error('Failed to initialize application:', error.message);
+      logger.error('Failed to initialize application', { error: error.message, stack: error.stack });
       process.exit(1);
     }
   }

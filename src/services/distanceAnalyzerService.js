@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { DELIVERY_ZONES } = require('../config/zonesWithTowns');
 const { getDistanceMeters } = require('../utils/googleDistance');
 const { WAREHOUSE_LOCATION } = require('../config/warehouseConfig');
@@ -51,7 +52,7 @@ async function processBatch(items, processor, concurrency = 3) {
   }
 
   if (errors.length > 0) {
-    console.warn(`Distance Analyzer: ${errors.length} errors occurred:`, errors.slice(0, 5));
+    logger.warn(`Distance Analyzer: ${errors.length} errors occurred:`, errors.slice(0, 5));
   }
 
   return { results, errors };
@@ -65,13 +66,13 @@ async function analyzeAllZonesDistance() {
   const warehouseLat = WAREHOUSE_LOCATION.lat;
   const warehouseLng = WAREHOUSE_LOCATION.lng;
 
-  console.log(`Starting distance analysis from warehouse (${warehouseLat}, ${warehouseLng})`);
+  logger.info(`Starting distance analysis from warehouse (${warehouseLat}, ${warehouseLng});`);
 
   const analysisResults = {};
 
   // Process each zone
   for (const [zone, towns] of Object.entries(DELIVERY_ZONES)) {
-    console.log(`Analyzing Zone ${zone}: ${towns.length} towns`);
+    logger.info(`Analyzing Zone ${zone}: ${towns.length} towns`);
 
     const zoneResults = [];
 
@@ -144,7 +145,7 @@ async function analyzeAllZonesDistance() {
       all: zoneResults,
     };
 
-    console.log(
+    logger.info(
       `Zone ${zone} complete: Closest=${closest?.distanceKm || 'N/A'}km, Farthest=${farthest?.distanceKm || 'N/A'}km, Average=${average || 'N/A'}km`
     );
   }

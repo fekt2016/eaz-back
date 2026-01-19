@@ -5,6 +5,7 @@
 
 const { paystackApi, PAYSTACK_ENDPOINTS } = require('../config/paystack');
 const AppError = require('../utils/errors/appError');
+const logger = require('../utils/logger');
 
 /**
  * Map bank name to Paystack bank code
@@ -100,7 +101,7 @@ exports.getBankCodeFromName = function getBankCodeFromName(bankName) {
     }
   }
   
-  console.warn(`[PayoutService] Bank code not found for: "${bankName}" (normalized: "${normalized}")`);
+  logger.warn(`[PayoutService] Bank code not found for: "${bankName}" (normalized: "${normalized}");`);
   return null;
 }
 
@@ -123,7 +124,7 @@ exports.createRecipientForSeller = async (seller) => {
       let bankCode = bank.bankCode;
       if (!bankCode && bank.bankName) {
         bankCode = exports.getBankCodeFromName(bank.bankName);
-        console.log(`[PayoutService] Mapped bank name "${bank.bankName}" to code: ${bankCode}`);
+        logger.info(`[PayoutService] Mapped bank name "${bank.bankName}" to code: ${bankCode}`);
       }
       
       if (!bankCode) {
@@ -135,7 +136,7 @@ exports.createRecipientForSeller = async (seller) => {
       
       // Validate bank code format (should be 3 digits)
       if (!/^\d{3}$/.test(bankCode)) {
-        console.warn(`[PayoutService] Bank code format may be invalid: ${bankCode}`);
+        logger.warn(`[PayoutService] Bank code format may be invalid: ${bankCode}`);
       }
       
       if (!bank.accountNumber) {
@@ -154,7 +155,7 @@ exports.createRecipientForSeller = async (seller) => {
         currency: 'GHS',
       };
       
-      console.log(`[PayoutService] Creating bank recipient:`, {
+      logger.info(`[PayoutService] Creating bank recipient:`, {
         name: recipientData.name,
         account_number: recipientData.account_number,
         bank_code: recipientData.bank_code,
@@ -199,7 +200,7 @@ exports.createRecipientForSeller = async (seller) => {
 
     throw new AppError('Failed to create Paystack recipient', 500);
   } catch (error) {
-    console.error('[PayoutService] Error creating recipient:', {
+    logger.error('[PayoutService] Error creating recipient:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
@@ -272,7 +273,7 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
       currency: 'GHS',
     };
 
-    console.log('💳 [PayoutService] Initiating Paystack transfer:', {
+    logger.info('💳 [PayoutService] Initiating Paystack transfer:', {
       amount: amountInPesewas,
       recipientCode,
       reason,
@@ -281,7 +282,7 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
 
     const response = await paystackApi.post(PAYSTACK_ENDPOINTS.INITIATE_TRANSFER, transferData);
 
-    console.log('💳 [PayoutService] Paystack transfer initiated response:', {
+    logger.info('💳 [PayoutService] Paystack transfer initiated response:', {
       status: response.data?.status,
       transferStatus: response.data?.data?.status,
       transferCode: response.data?.data?.transfer_code,
@@ -295,11 +296,11 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
       
       // Log OTP generation info
       if (transferStatus === 'otp' || response.data.data.requires_approval === 1) {
-        console.log('🔐 [PayoutService] ⚠️ PAYSTACK WILL GENERATE AND SEND OTP AUTOMATICALLY');
-        console.log('🔐 [PayoutService] Paystack automatically sends OTP to recipient phone/email when transfer requires OTP');
-        console.log('🔐 [PayoutService] Our backend does NOT generate the OTP - Paystack handles it');
-        console.log('🔐 [PayoutService] Transfer status:', transferStatus);
-        console.log('🔐 [PayoutService] Transfer code:', response.data.data.transfer_code);
+        logger.info('🔐 [PayoutService] ⚠️ PAYSTACK WILL GENERATE AND SEND OTP AUTOMATICALLY');
+        logger.info('🔐 [PayoutService] Paystack automatically sends OTP to recipient phone/email when transfer requires OTP');
+        logger.info('🔐 [PayoutService] Our backend does NOT generate the OTP - Paystack handles it');
+        logger.info('🔐 [PayoutService] Transfer status:', transferStatus);
+        logger.info('🔐 [PayoutService] Transfer code:', response.data.data.transfer_code);
       }
       
       return {
@@ -313,7 +314,7 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
 
     throw new AppError('Failed to initiate Paystack transfer', 500);
   } catch (error) {
-    console.error('[PayoutService] Error initiating transfer:', error.response?.data || error.message);
+    logger.error('[PayoutService] Error initiating transfer:', error.response?.data || error.message);
     
     if (error.response?.data?.message) {
       throw new AppError(`Paystack error: ${error.response.data.message}`, error.response.status || 500);
@@ -365,7 +366,7 @@ exports.submitTransferPin = async (transferCode, pin) => {
 
     throw new AppError('Failed to submit PIN', 500);
   } catch (error) {
-    console.error('[PayoutService] Error submitting PIN:', error.response?.data || error.message);
+    logger.error('[PayoutService] Error submitting PIN:', error.response?.data || error.message);
     
     if (error.response?.data?.message) {
       // Provide user-friendly error messages
@@ -412,7 +413,7 @@ exports.verifyTransferStatus = async (transferId) => {
 
     throw new AppError('Transfer not found', 404);
   } catch (error) {
-    console.error('[PayoutService] Error verifying transfer:', error.response?.data || error.message);
+    logger.error('[PayoutService] Error verifying transfer:', error.response?.data || error.message);
     
     if (error.response?.status === 404) {
       throw new AppError('Transfer not found', 404);
@@ -445,7 +446,7 @@ exports.getSupportedBanks = async () => {
 
     return [];
   } catch (error) {
-    console.error('[PayoutService] Error fetching banks:', error.response?.data || error.message);
+    logger.error('[PayoutService] Error fetching banks:', error.response?.data || error.message);
     return [];
   }
 };
@@ -475,7 +476,7 @@ exports.resolveBankAccount = async (accountNumber, bankCode) => {
 
     throw new AppError('Failed to resolve bank account', 400);
   } catch (error) {
-    console.error('[PayoutService] Error resolving bank:', error.response?.data || error.message);
+    logger.error('[PayoutService] Error resolving bank:', error.response?.data || error.message);
     
     if (error.response?.data?.message) {
       throw new AppError(`Paystack error: ${error.response.data.message}`, error.response.status || 400);

@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const logger = require('../../utils/logger');
 
 const tokenBlacklistSchema = new mongoose.Schema(
   {
@@ -110,7 +111,7 @@ tokenBlacklistSchema.statics.blacklistToken = async function (token, userId = nu
     const hashedToken = this.hashToken(token);
     const expiry = new Date(decoded.exp * 1000);
 
-    console.log('[TokenBlacklist] Blacklisting token:', {
+    logger.info('[TokenBlacklist] Blacklisting token:', {
       userId: userId || decoded.id,
       userType,
       reason,
@@ -130,11 +131,11 @@ tokenBlacklistSchema.statics.blacklistToken = async function (token, userId = nu
       { upsert: true, new: true },
     );
 
-    console.log('[TokenBlacklist] ✅ Token blacklisted successfully, collection created if needed');
+    logger.info('[TokenBlacklist] ✅ Token blacklisted successfully, collection created if needed');
     return result;
   } catch (error) {
-    console.error('[TokenBlacklist] ❌ Error blacklisting token:', error.message);
-    console.error('[TokenBlacklist] Error stack:', error.stack);
+    logger.error('[TokenBlacklist] ❌ Error blacklisting token:', error.message);
+    logger.error('[TokenBlacklist] Error stack:', error.stack);
     throw error;
   }
 };

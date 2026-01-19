@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Address = require('../../models/user/addressModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const { lookupDigitalAddress } = require('../../utils/helpers/digitalAddressHelper');
 
 // Get all addresses for current user
@@ -66,8 +67,8 @@ exports.createAddress = catchAsync(async (req, res, next) => {
 // Update address
 exports.updateAddress = catchAsync(async (req, res, next ) => {
   const { isDefault, ...updateData } = req.body;
-  console.log("updateData received:", updateData);
-  console.log("address ID from params:", req.params.id);
+  logger.info("updateData received:", updateData);
+  logger.info("address ID from params:", req.params.id);
   
   // Find address for this user
   const address = await Address.findOne({
@@ -146,9 +147,9 @@ exports.updateAddress = catchAsync(async (req, res, next ) => {
   // Save the address
   try {
     await address.save();
-    console.log("Address saved successfully:", address);
+    logger.info("Address saved successfully:", address);
   } catch (error) {
-    console.error("Error saving address:", error);
+    logger.error("Error saving address:", error);
     return res.status(400).json({
       success: false,
       message: error.message || "Failed to update address",

@@ -22,10 +22,20 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide email and password', 400));
   }
 
+<<<<<<< HEAD
   // SECURITY: Normalize email to prevent case-sensitivity issues
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
     return next(new AppError('Please provide a valid email address', 400));
+=======
+  logger.info(`[Admin Login] Attempting login for email: ${email}`);
+
+  const admin = await Admin.findOne({ email }).select('+password');
+
+  if (!admin) {
+    logger.info(`[Admin Login] No admin found with email: ${email}`);
+    return next(new AppError('Incorrect email or password', 401));
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   if (process.env.NODE_ENV !== 'production') {
@@ -41,12 +51,17 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
 
   // SECURITY: Check if admin is active
   if (admin.active === false) {
+<<<<<<< HEAD
+=======
+    logger.info(`[Admin Login] Admin account is deactivated: ${email}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
     return next(new AppError('Your account has been deactivated. Please contact support.', 401));
   }
 
   // SECURITY: Verify password
   const isPasswordCorrect = await admin.correctPassword(password, admin.password);
   if (!isPasswordCorrect) {
+<<<<<<< HEAD
     // SECURITY: Increment failed login attempts (if field exists)
     if (admin.failedLoginAttempts !== undefined) {
       admin.failedLoginAttempts = (admin.failedLoginAttempts || 0) + 1;
@@ -85,6 +100,13 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[Admin Login] Successful login for email: ${normalizedEmail}`);
   }
+=======
+    logger.info(`[Admin Login] Incorrect password for email: ${email}`);
+    return next(new AppError('Incorrect email or password', 401));
+  }
+
+  logger.info(`[Admin Login] Successful login for email: ${email}`);
+>>>>>>> 6d2bc77 (first ci/cd push)
   
   // Capture IP and device
   const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
@@ -183,11 +205,12 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
   if (riskLevel === 'critical') {
     // For critical risk, we'll still allow login but log it
     // In production, you might want to require additional verification
-    console.warn(`[Admin Login] CRITICAL RISK detected for admin ${admin.email}. Login allowed but logged.`);
+    logger.warn(`[Admin Login] CRITICAL RISK detected for admin ${admin.email}. Login allowed but logged.`);
   }
 
   // Use standardized login helper
   try {
+<<<<<<< HEAD
     const response = await handleSuccessfulLogin(req, res, admin, 'admin');
     res.status(200).json(response);
   } catch (deviceError) {
@@ -197,6 +220,62 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
     // In dev, continue without device session
     const response = await handleSuccessfulLogin(req, res, admin, 'admin', { skipDeviceSession: true });
     res.status(200).json(response);
+=======
+    logger.info('[Admin Auth] Creating device session for admin:', admin._id);
+    sessionData = await createDeviceSession(req, admin, 'eazadmin');
+    logger.info('[Admin Auth] Device session created successfully:', sessionData?.deviceId);
+  } catch (deviceError) {
+    // If device limit exceeded, return error
+      // If device limit exceeded, return error (only in production)
+      if (process.env.NODE_ENV === 'production' && deviceError.message && deviceError.message.includes('Too many devices')) {
+        return next(new AppError(deviceError.message, 403));
+      }
+    // For other errors, log and continue without device session (fallback)
+    logger.error('[Admin Auth] ❌ Error creating device session:', deviceError.message || deviceError);
+    logger.error('[Admin Auth] Error stack:', deviceError.stack);
+    sessionData = null;
+  }
+
+  // Use createSendToken - pass null for req to avoid creating duplicate device session
+  // since we already created it above
+  try {
+    // If sessionData exists, use the deviceId from it, otherwise let createSendToken create one
+    if (sessionData) {
+      // Create token with existing deviceId
+      const jwt = require('jsonwebtoken');
+const logger = require('../../utils/logger');
+      const token = jwt.sign(
+        { id: admin._id, role: admin.role, deviceId: sessionData.deviceId },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '90d' }
+      );
+      
+      const isProduction = process.env.NODE_ENV === 'production';
+      res.cookie('admin_jwt', token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+        path: '/',
+        expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000),
+        ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+      });
+
+      admin.password = undefined;
+      res.status(200).json({
+        status: 'success',
+        token,
+        deviceId: sessionData.deviceId,
+        refreshToken: sessionData.refreshToken,
+        data: { user: admin },
+      });
+    } else {
+      // Fallback: create token without device session
+      await createSendToken(admin, 200, res, null, 'admin_jwt', null, null);
+    }
+  } catch (error) {
+    logger.error('[Admin Auth] Error in token creation:', error);
+    createSendToken(admin, 200, res, null, 'admin_jwt');
+>>>>>>> 6d2bc77 (first ci/cd push)
   }
 });
 

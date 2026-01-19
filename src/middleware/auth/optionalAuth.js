@@ -1,6 +1,7 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
+const logger = require('../../utils/logger');
 const { extractToken, verifyToken, findUserByToken } = require('../../utils/helpers/routeUtils');
 
 /**
@@ -60,7 +61,7 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
     req.user.deviceId = decoded.deviceId;
   }
   
-  console.log(`[OptionalAuth] Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`);
+  logger.info(`[OptionalAuth] Authenticated as ${currentUser.role}: ${currentUser.email || currentUser.phone}`);
   next();
 });
 

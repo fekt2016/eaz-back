@@ -5,6 +5,7 @@ const multerStorage = multer.memoryStorage();
 const cloudinary = require('cloudinary');
 const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
+const logger = require('../../utils/logger');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -37,14 +38,14 @@ exports.uploadProfileImage = upload.single('imageCover');
 exports.resizeImage = async (req, res, next) => {
   req.body = { ...req.body };
   req.file = { ...req.file };
-  console.log(req.body);
-  console.log(req.file);
+  logger.info(req.body);
+  logger.info(req.file);
 
   try {
     const cloudinary = req.app.get('cloudinary');
     if (req.file) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      console.log(uniqueSuffix);
+      logger.info(uniqueSuffix);
 
       const uploadFromBuffer = (buffer, options) => {
         return new Promise((resolve, reject) => {
@@ -74,11 +75,11 @@ exports.resizeImage = async (req, res, next) => {
         });
 
         req.body.avatar = coverResult.secure_url;
-        console.log('Cover image URL:', req.body.avatar);
+        logger.info('Cover image URL:', req.body.avatar);
       }
     }
   } catch (err) {
-    console.error(`Upload Failed: ${err.message}`);
+    logger.error(`Upload Failed: ${err.message}`);
     return res.status(408).json({
       status: 'error',
       message: `Upload failed: ${err.message}`,
@@ -96,7 +97,7 @@ exports.resizeImage = async (req, res, next) => {
   //     })
   //     .webp({ quality: 70, force: true }) // Force WebP format
   //     .toBuffer();
-  //   console.log(`Optimized size: ${optimizedBuffer.length / 1024}KB`);
+  //   logger.info(`Optimized size: ${optimizedBuffer.length / 1024}KB`);
   //   // 2. Modern upload function with abort control
   //   const uploadWithTimeout = (buffer, options) => {
   //     return new Promise((resolve, reject) => {
@@ -124,7 +125,7 @@ exports.resizeImage = async (req, res, next) => {
   //         uploadStream.destroy();
   //       });
   //       pipeline(bufferStream, uploadStream, { signal: controller.signal })
-  //         .then(() => console.log('Chunk upload complete'))
+  //         .then(() => logger.info('Chunk upload complete');)
   //         .catch((err) => {
   //           if (!controller.signal.aborted) reject(err);
   //         });
@@ -138,11 +139,11 @@ exports.resizeImage = async (req, res, next) => {
   //     public_id: `avatar-${Date.now()}`,
   //     transformation: [{ width: 500, height: 500, crop: 'fill' }],
   //   });
-  //   console.log(`Upload completed in ${(Date.now() - start) / 1000}s`);
+  //   logger.info(`Upload completed in ${(Date.now(); - start) / 1000}s`);
   //   req.body.avatar = result.secure_url;
   //   next();
   // } catch (err) {
-  //   console.error(`Upload Failed: ${err.message}`);
+  //   logger.error(`Upload Failed: ${err.message}`);
   //   return res.status(408).json({
   //     status: 'error',
   //     message: `Upload failed: ${err.message}`,

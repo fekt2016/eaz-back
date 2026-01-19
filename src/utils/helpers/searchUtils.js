@@ -91,6 +91,7 @@ exports.expandKeywords = async (query, useAI = true) => {
   if (useAI) {
     try {
       const aiSearchService = require('../../services/aiSearchService');
+const logger = require('../logger');
       if (aiSearchService.isAIEnabled()) {
         const aiExpanded = await aiSearchService.expandKeywordsWithAI(normalized);
         if (aiExpanded && aiExpanded.length > 1) {
@@ -98,7 +99,7 @@ exports.expandKeywords = async (query, useAI = true) => {
         }
       }
     } catch (error) {
-      console.warn('[Search Utils] AI expansion failed, using rule-based:', error.message);
+      logger.warn('[Search Utils] AI expansion failed, using rule-based:', error.message);
     }
   }
 

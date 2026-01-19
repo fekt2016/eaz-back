@@ -3,7 +3,11 @@ const TokenBlacklist = require('../models/user/tokenBlackListModal');
 const DeviceSession = require('../models/user/deviceSessionModel');
 const fs = require('fs');
 const path = require('path');
+<<<<<<< HEAD
 const { safeFs, safePath } = require('../utils/safePath');
+=======
+const logger = require('../utils/logger');
+>>>>>>> 6d2bc77 (first ci/cd push)
 
 /**
  * 90-Day Token Cleanup Cron Job
@@ -15,8 +19,8 @@ const tokenCleanup = async () => {
     const now = new Date();
     const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
 
-    console.log(`[TokenCleanup] Starting cleanup at ${now.toISOString()}`);
-    console.log(`[TokenCleanup] Removing tokens older than ${cutoff.toISOString()}`);
+    logger.info(`[TokenCleanup] Starting cleanup at ${now.toISOString()}`);
+    logger.info(`[TokenCleanup] Removing tokens older than ${cutoff.toISOString()}`);
 
     // Delete blacklisted tokens older than 90 days
     // Note: MongoDB TTL index should handle this automatically, but we'll do a manual cleanup as well
@@ -49,7 +53,7 @@ const tokenCleanup = async () => {
 
     const logMessage = `🧹 TokenCleanup: Removed ${result.deletedCount} expired tokens, deactivated ${expiredSessions.modifiedCount} expired sessions, and ${inactiveSessions.modifiedCount} inactive sessions at ${now.toISOString()}\n`;
 
-    console.log(logMessage);
+    logger.info(logMessage);
 
     // Log to file (with error handling) - USE SAFE VERSIONS
     try {
@@ -93,8 +97,8 @@ const tokenCleanup = async () => {
     };
   } catch (error) {
     const errorMessage = `[TokenCleanup] Error: ${error.message} at ${new Date().toISOString()}\n`;
-    console.error(errorMessage);
-    console.error(error);
+    logger.error(errorMessage);
+    logger.error(error);
 
     // Log error to file (with error handling) - USE SAFE VERSIONS
     try {
@@ -136,7 +140,7 @@ const schedule = '0 2 * * *';
 
 // Only schedule cron job in production
 if (process.env.NODE_ENV === 'production') {
-  console.log(`[TokenCleanup] Scheduling cron job: ${schedule} (Daily at 02:00 AM)`);
+  logger.info(`[TokenCleanup] Scheduling cron job: ${schedule} (Daily at 02:00 AM);`);
   
   cron.schedule(schedule, async () => {
     await tokenCleanup();
@@ -145,8 +149,8 @@ if (process.env.NODE_ENV === 'production') {
     timezone: 'UTC', // Adjust timezone as needed
   });
 } else {
-  console.log(`[TokenCleanup] ⚠️  Cron job DISABLED in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`[TokenCleanup] To enable, set NODE_ENV=production`);
+  logger.info(`[TokenCleanup] ⚠️  Cron job DISABLED in ${process.env.NODE_ENV || 'development'} mode`);
+  logger.info(`[TokenCleanup] To enable, set NODE_ENV=production`);
 }
 
 // Run cleanup immediately on startup (optional, for testing)

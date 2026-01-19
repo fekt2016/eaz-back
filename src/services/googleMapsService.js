@@ -1,4 +1,5 @@
 const axios = require('axios');
+const logger = require('../utils/logger');
 
 /**
  * Google Maps Service
@@ -50,7 +51,7 @@ async function reverseGeocodeSimple(lat, lng) {
       formattedAddress: results[0].formatted_address || '',
     };
   } catch (error) {
-    console.error('Google Maps API error:', error.message);
+    logger.error('Google Maps API error:', error.message);
     throw new Error(`Failed to reverse geocode: ${error.message}`);
   }
 }
@@ -65,7 +66,7 @@ async function reverseGeocode(lat, lng) {
   const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!googleMapsApiKey) {
-    console.warn('Google Maps API key not found, using mock reverse geocoding');
+    logger.warn('Google Maps API key not found, using mock reverse geocoding');
     return mockReverseGeocode(lat, lng);
   }
 
@@ -85,15 +86,15 @@ async function reverseGeocode(lat, lng) {
     if (response.data.status === 'OK' && response.data.results.length > 0) {
       return parseGoogleMapsResponse(response.data.results[0], lat, lng);
     } else if (response.data.status === 'ZERO_RESULTS') {
-      console.warn('Google Maps API returned zero results, using mock data');
+      logger.warn('Google Maps API returned zero results, using mock data');
       return mockReverseGeocode(lat, lng);
     } else {
-      console.warn(`Google Maps API error: ${response.data.status}, using mock data`);
+      logger.warn(`Google Maps API error: ${response.data.status}, using mock data`);
       return mockReverseGeocode(lat, lng);
     }
   } catch (error) {
-    console.error('Google Maps API error:', error.message);
-    console.warn('Falling back to mock reverse geocoding');
+    logger.error('Google Maps API error:', error.message);
+    logger.warn('Falling back to mock reverse geocoding');
     return mockReverseGeocode(lat, lng);
   }
 }

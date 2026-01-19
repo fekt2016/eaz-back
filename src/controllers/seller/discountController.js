@@ -3,6 +3,7 @@ const Product = require('../../models/product/productModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 
 // Helper function to update products when discounts change
 const updateAffectedProducts = async (discount) => {
@@ -35,7 +36,7 @@ const updateAffectedProducts = async (discount) => {
 
     return products.length;
   } catch (error) {
-    console.error('Error updating affected products:', error);
+    logger.error('Error updating affected products:', error);
     throw error;
   }
 };

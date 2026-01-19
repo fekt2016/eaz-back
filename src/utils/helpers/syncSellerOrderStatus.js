@@ -1,4 +1,5 @@
 const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../logger');
 
 /**
  * Maps Order currentStatus to SellerOrder status
@@ -38,7 +39,7 @@ const syncSellerOrderStatus = async (orderId, orderStatus, session = null) => {
     const sellerOrders = await SellerOrder.find({ order: orderId }).session(session || null);
     
     if (!sellerOrders || sellerOrders.length === 0) {
-      console.log(`[syncSellerOrderStatus] No SellerOrder documents found for order ${orderId}`);
+      logger.info(`[syncSellerOrderStatus] No SellerOrder documents found for order ${orderId}`);
       return { success: true, updated: 0, errors: [] };
     }
 
@@ -52,11 +53,11 @@ const syncSellerOrderStatus = async (orderId, orderStatus, session = null) => {
           } else {
             await sellerOrder.save();
           }
-          console.log(`[syncSellerOrderStatus] Updated SellerOrder ${sellerOrder._id} status to ${sellerOrderStatus}`);
+          logger.info(`[syncSellerOrderStatus] Updated SellerOrder ${sellerOrder._id} status to ${sellerOrderStatus}`);
         }
         return { success: true, sellerOrderId: sellerOrder._id };
       } catch (error) {
-        console.error(`[syncSellerOrderStatus] Error updating SellerOrder ${sellerOrder._id}:`, error);
+        logger.error(`[syncSellerOrderStatus] Error updating SellerOrder ${sellerOrder._id}:`, error);
         return { success: false, sellerOrderId: sellerOrder._id, error: error.message };
       }
     });
@@ -72,7 +73,7 @@ const syncSellerOrderStatus = async (orderId, orderStatus, session = null) => {
       errors: errors,
     };
   } catch (error) {
-    console.error('[syncSellerOrderStatus] Error syncing SellerOrder status:', error);
+    logger.error('[syncSellerOrderStatus] Error syncing SellerOrder status:', error);
     return {
       success: false,
       updated: 0,

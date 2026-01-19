@@ -8,16 +8,17 @@ const fs = require('fs');
 const envPath = path.join(__dirname, '../.env');
 const configEnvPath = path.join(__dirname, '../config.env');
 
+// Note: Logger not available yet during env loading, use console for initial setup
 if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });
-  console.log(`✅ [app.js] Loaded environment from: ${envPath}`);
+  // Will be replaced with logger after it's initialized
 } else if (fs.existsSync(configEnvPath)) {
   dotenv.config({ path: configEnvPath });
-  console.log(`✅ [app.js] Loaded environment from: ${configEnvPath}`);
+  // Will be replaced with logger after it's initialized
 } else {
   // Try default .env location
   dotenv.config({ path: envPath });
-  console.log(`⚠️  [app.js] Attempting to load from: ${envPath} (file may not exist)`);
+  // Will be replaced with logger after it's initialized
 }
 
 const express = require('express');
@@ -40,6 +41,7 @@ const configureCloudinary = require('./config/cloudinary');
 // Utils and error handling
 const AppError = require('./utils/errors/appError');
 const globalErrorHandler = require('./controllers/shared/errorController');
+const logger = require('./utils/logger');
 
 // Import routers by role
 const userRoutes = require('./routes/buyer/userRoutes');
@@ -179,7 +181,9 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) {
-      console.log('[CORS] Request with no origin, allowing');
+      if (isDevelopment) {
+        logger.info('[CORS] Request with no origin, allowing');
+      }
       return callback(null, true);
     }
 
@@ -198,10 +202,13 @@ const corsOptions = {
 
       // Check if origin is in the allowed list
       if (devOrigins.includes(origin)) {
-        console.log(`[CORS] Development - allowing origin: ${origin}`);
+        if (isDevelopment) {
+          logger.info(`[CORS] Development - allowing origin: ${origin}`);
+        }
         return callback(null, true);
       }
 
+<<<<<<< HEAD
       // Allow network IP ranges for mobile app connections (development only)
       if (origin) {
         if (
@@ -220,11 +227,21 @@ const corsOptions = {
     }
 
     // Production: Allow specific origins and *.amplifyapp.com domains
+=======
+      if (isDevelopment) {
+        logger.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
+      }
+      return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
+    }
+
+    // Production: Only allow specific origins (no logging to prevent info leakage)
+>>>>>>> 6d2bc77 (first ci/cd push)
     if (allowedOrigins.includes(origin)) {
-      console.log(`[CORS] Production - allowing origin: ${origin}`);
+      // Silently allow in production (no logging)
       return callback(null, true);
     }
 
+<<<<<<< HEAD
     // Allow AWS Amplify domains (*.amplifyapp.com)
     if (origin && origin.endsWith('.amplifyapp.com')) {
       console.log(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
@@ -232,6 +249,9 @@ const corsOptions = {
     }
 
     console.warn(`[CORS] Blocked origin: ${origin}`);
+=======
+    // Silently block in production (no logging)
+>>>>>>> 6d2bc77 (first ci/cd push)
     callback(new Error(`CORS not allowed for origin: ${origin}`), false);
   },
   credentials: true, // REQUIRED for cookies
@@ -258,26 +278,20 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
+<<<<<<< HEAD
 // SECURITY FIX #9 (Phase 3 Enhancement): Enhanced HTTPS Enforcement
 const { enforceHttps } = require('./middleware/security/httpsEnforcement');
 app.use(enforceHttps); // Enforces HTTPS in production
 
 // Logging
+=======
+// Logging - Use Winston logger for HTTP requests
+>>>>>>> 6d2bc77 (first ci/cd push)
 if (isDevelopment) {
-  app.use(morgan('dev'));
+  app.use(morgan('dev', { stream: logger.stream }));
 } else {
-  app.use(
-    morgan('combined', {
-      skip: (req, res) => res.statusCode < 400,
-      stream: process.stderr,
-    }),
-  );
-  app.use(
-    morgan('combined', {
-      skip: (req, res) => res.statusCode >= 400,
-      stream: process.stdout,
-    }),
-  );
+  // Production: Log all requests to Winston
+  app.use(morgan('combined', { stream: logger.stream }));
 }
 app.set('trust proxy', 1);
 
@@ -324,6 +338,7 @@ const authLimiter = rateLimit({
 app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
 
+<<<<<<< HEAD
 // 📦 Body parsing with strict size limits (SECURITY)
 app.use(express.json({ 
   limit: '20kb',
@@ -345,6 +360,12 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '20kb' }));
+=======
+// 📦 Body parsing with reasonable size limits (SECURITY)
+// Note: File uploads use multer with separate limits, so JSON can be larger
+app.use(express.json({ limit: '10mb' })); // Increased from 20kb for API requests
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+>>>>>>> 6d2bc77 (first ci/cd push)
 app.use(cookieParser());
 
 // SECURITY FIX #7: CSRF Protection for authenticated routes
@@ -404,10 +425,8 @@ app.use(
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
 
-  res.setHeader(
-    'Strict-Transport-Security',
-    'max-age=31536000; includeSubDomains; preload',
-  );
+  // Note: HSTS is already set by Helmet (line 165-169), so we don't set it again here
+  // Additional security headers (Helmet also sets these, but keeping for explicit control)
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -484,6 +503,7 @@ app.use('/api/v1/support', supportRoutes);
 
 // Health check endpoint (improved for Docker/K8s)
 app.get('/health', (req, res) => {
+<<<<<<< HEAD
   res.status(200).json({
     status: 'success',
     message: 'Server is running',
@@ -526,6 +546,36 @@ app.get('/health/live', (req, res) => {
     status: 'alive',
     timestamp: new Date().toISOString(),
   });
+=======
+  const mongoose = require('mongoose');
+  const dbStatus = mongoose.connection.readyState;
+  const dbStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+
+  const health = {
+    status: dbStatus === 1 ? 'healthy' : 'degraded',
+    message: dbStatus === 1 ? 'Server is running' : 'Server is running but database is disconnected',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    database: {
+      status: dbStates[dbStatus] || 'unknown',
+      readyState: dbStatus,
+    },
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
+    },
+    environment: process.env.NODE_ENV || 'development',
+  };
+
+  // Return 503 if database is not connected, 200 otherwise
+  const statusCode = dbStatus === 1 ? 200 : 503;
+  res.status(statusCode).json(health);
+>>>>>>> 6d2bc77 (first ci/cd push)
 });
 
 // 5. Error handling
@@ -536,7 +586,7 @@ app.all('*', (req, res, next) => {
 // 🛡️ CSRF Error Handler (SECURITY)
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
-    console.error('[CSRF] Invalid CSRF token detected:', {
+    logger.warn('Invalid CSRF token detected', {
       ip: req.ip,
       path: req.path,
       method: req.method,
