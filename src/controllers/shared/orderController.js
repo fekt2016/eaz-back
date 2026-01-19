@@ -87,163 +87,8 @@ exports.updateProductTotalSold = async (order) => {
 // DEPRECATED: Use stockService.reduceOrderStock instead
 // Keeping for backward compatibility but redirecting to service
 exports.reduceOrderStock = async (order, session = null) => {
-<<<<<<< HEAD
   const stockService = require('../../services/stock/stockService');
   return await stockService.reduceOrderStock(order, session);
-=======
-  try {
-    // Populate orderItems if not already populated
-    let orderItems;
-    if (order.orderItems && order.orderItems[0] && order.orderItems[0].product) {
-      // Already populated
-      orderItems = order.orderItems;
-    } else {
-      // Need to populate
-      const populatedOrder = await Order.findById(order._id)
-        .populate({
-          path: 'orderItems',
-          select: 'product variant quantity',
-        })
-        .session(session || null);
-      orderItems = populatedOrder.orderItems;
-    }
-
-    if (!orderItems || orderItems.length === 0) {
-      logger.info(`[reduceOrderStock] No order items found for order ${order._id}`);
-      return;
-    }
-
-    // Process each order item
-    for (const orderItem of orderItems) {
-      const productId = orderItem.product?._id || orderItem.product;
-      const variantId = orderItem.variant?._id || orderItem.variant;
-      const quantity = orderItem.quantity;
-
-      if (!productId || !quantity) {
-        logger.warn(`[reduceOrderStock] Skipping invalid order item:`, orderItem);
-        continue;
-      }
-
-      // Find product
-      const product = await Product.findById(productId).session(session || null);
-      if (!product) {
-        logger.warn(`[reduceOrderStock] Product ${productId} not found`);
-        continue;
-      }
-
-      // SECURITY FIX #31: Atomic stock deduction (race condition prevention)
-      // Use findOneAndUpdate with conditional check instead of manual save
-      if (variantId && product.variants && product.variants.length > 0) {
-        const variant = product.variants.id(variantId);
-        if (variant) {
-          const oldStock = variant.stock;
-
-          // SECURITY: Atomic update with stock check
-          const updateResult = await Product.findOneAndUpdate(
-            {
-              _id: productId,
-              'variants._id': variantId,
-              'variants.stock': { $gte: quantity }, // Only update if stock sufficient
-            },
-            {
-              $inc: { 'variants.$.stock': -quantity },
-            },
-            { session: session || null, new: true }
-          );
-
-          if (!updateResult) {
-            logger.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for variant ${variantId}`);
-            throw new Error(`Insufficient stock for ${product.name}`);
-          }
-
-          logger.info(`[reduceOrderStock] Product ${product.name} - Variant ${variant.name}: ${oldStock} - ${quantity} (atomic);`);
-        } else {
-          logger.warn(`[reduceOrderStock] Variant ${variantId} not found in product ${product.name}`);
-          // Fallback: reduce from first variant if variant not found
-          if (product.variants.length > 0) {
-            const firstVariant = product.variants[0];
-            const oldStock = firstVariant.stock;
-
-            const updateResult = await Product.findOneAndUpdate(
-              {
-                _id: productId,
-                'variants.0.stock': { $gte: quantity },
-              },
-              {
-                $inc: { 'variants.0.stock': -quantity },
-              },
-              { session: session || null, new: true }
-            );
-
-            if (!updateResult) {
-              logger.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for first variant (fallback);`);
-              throw new Error(`Insufficient stock for ${product.name}`);
-            }
-            logger.info(`[reduceOrderStock] Fallback: Product ${product.name} - First variant ${firstVariant.name}: ${oldStock} - ${quantity} (atomic);`);
-          }
-        }
-      } else if (product.variants && product.variants.length > 0) {
-        // No variant specified, reduce from first variant atomically
-        const firstVariant = product.variants[0];
-        const oldStock = firstVariant.stock;
-
-        const updateResult = await Product.findOneAndUpdate(
-          {
-            _id: productId,
-            'variants.0.stock': { $gte: quantity },
-          },
-          {
-            $inc: { 'variants.0.stock': -quantity },
-          },
-          { session: session || null, new: true }
-        );
-
-        if (!updateResult) {
-          logger.error(`[reduceOrderStock] RACE CONDITION: Stock insufficient for first variant`);
-          throw new Error(`Insufficient stock for ${product.name}`);
-        }
-
-        logger.info(`[reduceOrderStock] Product ${product.name} - First variant: ${oldStock} - ${quantity} (atomic);`);
-      } else {
-        logger.warn(`[reduceOrderStock] Product ${product.name} has no variants`);
-        continue;
-      }
-
-      // Update product status based on total stock
-      const totalStock = product.variants.reduce((sum, variant) => sum + variant.stock, 0);
-      if (totalStock === 0 && product.status !== 'draft') {
-        product.status = 'out_of_stock';
-      } else if (totalStock > 0 && product.status === 'out_of_stock') {
-        product.status = 'active';
-      }
-
-      // Save product
-      if (session) {
-        await product.save({ session });
-      } else {
-        await product.save();
-      }
-    }
-
-    // Mark inventory as reduced in order metadata to prevent double reduction
-    if (!order.metadata) {
-      order.metadata = {};
-    }
-    order.metadata.inventoryReduced = true;
-    order.metadata.inventoryReducedAt = new Date();
-
-    if (session) {
-      await order.save({ session, validateBeforeSave: false });
-    } else {
-      await order.save({ validateBeforeSave: false });
-    }
-
-    logger.info(`[reduceOrderStock] ✅ Stock reduced successfully for order ${order._id}`);
-  } catch (error) {
-    logger.error(`[reduceOrderStock] Error reducing stock for order ${order._id}:`, error);
-    // Don't throw - log error but don't fail the payment process
-  }
->>>>>>> 6d2bc77 (first ci/cd push)
 };
 
 /**
@@ -435,10 +280,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
   try {
     const { orderItems, address, couponCode } = req.body;
-<<<<<<< HEAD
-=======
-    logger.info('Received couponCode:', couponCode);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     /* ---------------------------------- */
     /* 1. BASIC VALIDATION                 */
@@ -461,11 +302,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     const orderNumber = await generateOrderNumber();
     const trackingNumber = generateTrackingNumber();
-<<<<<<< HEAD
-=======
-    logger.info('Generated order number:', orderNumber);
-    logger.info('Generated tracking number:', trackingNumber);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     /* ---------------------------------- */
     /* 2. FETCH PRODUCTS (DB TRUTH ONLY)   */
@@ -539,29 +375,45 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             400
           );
         }
-<<<<<<< HEAD
-=======
+      } else {
+        sellableUnit = product;
+      }
 
-        // SECURITY: Validate quantity
-        const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
-        if (quantity !== item.quantity) {
-          throw new AppError(`Invalid quantity for product ${item.product}`, 400);
-        }
+      // Get price from sellableUnit (variant or product)
+      const vatInclusivePrice = sellableUnit.price || product.price;
 
-        // SECURITY: Log if frontend price doesn't match database price (for fraud detection)
-        if (item.price && Math.abs(item.price - vatInclusivePrice) > 0.01) {
-          logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${vatInclusivePrice}`);
-          // Don't reject immediately - might be rounding differences, but log for review
-        }
+      // SECURITY: Validate quantity
+      const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
+      if (quantity !== item.quantity) {
+        throw new AppError(`Invalid quantity for product ${item.product}`, 400);
+      }
 
-        const taxBreakdown = await taxService.extractTaxFromPrice(vatInclusivePrice, platformSettings);
+      // SECURITY: Log if frontend price doesn't match database price (for fraud detection)
+      if (item.price && Math.abs(item.price - vatInclusivePrice) > 0.01) {
+        logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${vatInclusivePrice}`);
+        // Don't reject immediately - might be rounding differences, but log for review
+      }
+
+      normalizedItems.push({
+        product: item.product,
+        variant: sellableUnit._id !== product._id ? sellableUnit._id : null,
+        quantity: quantity,
+        price: vatInclusivePrice,
+        sku: sku,
+      });
+    }
+
+    // Calculate taxes for all items
+    const orderItemsWithTax = await Promise.all(
+      normalizedItems.map(async (item) => {
+        const taxBreakdown = await taxService.extractTaxFromPrice(item.price, platformSettings);
         const covidLevy = await taxService.calculateCovidLevy(taxBreakdown.basePrice, platformSettings);
 
         return {
           product: item.product,
-          variant: item.variant?._id,
-          quantity: quantity, // SECURITY: Use validated quantity
-          price: vatInclusivePrice, // SECURITY: Use database price, not frontend price
+          variant: item.variant,
+          quantity: item.quantity,
+          price: item.price,
           basePrice: taxBreakdown.basePrice,
           vat: taxBreakdown.vat,
           nhil: taxBreakdown.nhil,
@@ -576,8 +428,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     const orderItemDocs = await OrderItems.insertMany(orderItemsWithTax, { session });
 
     // SECURITY: Products already fetched above for price validation
-    // Reuse productsWithPrices instead of fetching again
-    const products = productsWithPrices;
+    // Reuse products array that was already fetched
     logger.info('Found products:', products.length);
 
     // EazShop Seller ID constant
@@ -1090,251 +941,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             type: 'payment',
           },
         });
->>>>>>> 6d2bc77 (first ci/cd push)
-      } else {
-        sellableUnit = product;
-      }
-
-      const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
-
-      normalizedItems.push({
-        product,
-        sku,
-        sellableUnit,
-        quantity,
-      });
-    }
-
-    /* ---------------------------------- */
-    /* 4. STOCK VALIDATION (SKU-ONLY)      */
-    /* ---------------------------------- */
-    for (const item of normalizedItems) {
-      const available =
-        item.sellableUnit.stock - (item.sellableUnit.sold || 0);
-
-      if (available < item.quantity) {
-        throw new AppError(
-          `Insufficient stock for SKU ${item.sku}. Available: ${available}`,
-          400
-        );
       }
     }
 
-    /* ---------------------------------- */
-    /* 5. CREATE ORDER ITEMS (SNAPSHOT)    */
-    /* ---------------------------------- */
-    const OrderItemsDocs = [];
-
-    for (const item of normalizedItems) {
-      const price = item.sellableUnit.price || item.product.defaultPrice;
-
-      OrderItemsDocs.push({
-        product: item.product._id,
-        sku: item.sku,
-        quantity: item.quantity,
-        price,
-        productName: item.product.name,
-        variantName: item.sellableUnit.name || null,
-        variantAttributes: item.sellableUnit.attributes || [],
-      });
-    }
-
-    const orderItemDocs = await OrderItems.insertMany(OrderItemsDocs, {
-      session,
-    });
-
-    /* ---------------------------------- */
-    /* 5.5. CALCULATE ORDER TOTALS         */
-    /* ---------------------------------- */
-    // Calculate subtotal from order items
-    const subtotal = orderItemDocs.reduce((sum, item) => {
-      return sum + (item.price * item.quantity);
-    }, 0);
-
-    // Get shipping fee from request body (frontend calculates this)
-    const shippingFee = parseFloat(req.body.shippingFee || req.body.shippingCost || 0);
-    
-    // Calculate discount amount (if coupon was applied)
-    let discountAmount = 0;
-    let appliedCouponBatchId = null;
-    let appliedCouponId = null;
-    
-    if (req.body.couponCode) {
-      try {
-        // Validate and calculate coupon discount server-side
-        const productIds = products.map(p => p._id.toString());
-        const categoryIds = [...new Set(products.map(p => p.category?.toString()).filter(Boolean))];
-        const sellerIds = [...new Set(products.map(p => p.seller?._id?.toString()).filter(Boolean))];
-        
-        const couponData = await couponService.validateCoupon(
-          req.body.couponCode,
-          req.user.id.toString(),
-          subtotal, // Order amount for discount calculation
-          productIds,
-          categoryIds,
-          sellerIds,
-          session
-        );
-        
-        discountAmount = couponData.discountAmount || 0;
-        appliedCouponBatchId = couponData.batchId;
-        appliedCouponId = couponData.couponId;
-        
-        console.log('[createOrder] Coupon validated and discount calculated:', {
-          couponCode: req.body.couponCode,
-          discountAmount,
-          batchId: appliedCouponBatchId,
-        });
-      } catch (couponError) {
-        // If coupon validation fails, fail the order creation with clear error
-        // Frontend should validate coupon before checkout, but backend must also validate
-        console.error('[createOrder] Coupon validation failed:', {
-          error: couponError.message,
-          couponCode: req.body.couponCode,
-        });
-        await session.abortTransaction();
-        return next(new AppError(
-          couponError.message || 'Invalid or expired coupon code. Please remove the coupon and try again.',
-          400
-        ));
-      }
-    } else if (req.body.couponId || req.body.batchId) {
-      // If only couponId/batchId is provided without couponCode, log warning but proceed
-      // This might be from a pre-validated coupon, but we can't validate it without the code
-      console.warn('[createOrder] Coupon ID provided without coupon code - skipping coupon validation');
-    }
-
-    // Calculate total price: subtotal + shipping - discount
-    const totalPrice = Math.max(0, subtotal + shippingFee - discountAmount);
-
-    console.log('[createOrder] Calculated order totals:', {
-      subtotal,
-      shippingFee,
-      discountAmount,
-      totalPrice,
-      orderItemsCount: orderItemDocs.length,
-      hasCoupon: !!(req.body.couponCode || req.body.couponId),
-      paymentMethod: req.body.paymentMethod,
-    });
-
-    /* ---------------------------------- */
-    /* 5.5. WALLET PAYMENT VALIDATION      */
-    /* ---------------------------------- */
-    // CRITICAL: Check wallet balance BEFORE creating order (for credit_balance payments)
-    const paymentMethod = req.body.paymentMethod || 'mobile_money';
-    const isWalletPayment = paymentMethod === 'credit_balance' || paymentMethod === 'wallet';
-    
-    if (isWalletPayment) {
-      console.log('[createOrder] 💰 Wallet payment detected - validating balance...');
-      
-      // Get or create wallet
-      let wallet = await Creditbalance.findOne({ user: req.user.id }).session(session);
-      
-      if (!wallet) {
-        // Create wallet if it doesn't exist
-        wallet = await Creditbalance.create([{
-          user: req.user.id,
-          balance: 0,
-          availableBalance: 0,
-          holdAmount: 0,
-          currency: 'GHS',
-        }], { session });
-        wallet = wallet[0];
-        console.log('[createOrder] ✅ Created new wallet for user:', req.user.id);
-      }
-      
-      // CRITICAL: Recalculate availableBalance to ensure it's always correct
-      // This handles cases where the database might have stale availableBalance
-      const calculatedAvailableBalance = Math.max(0, (wallet.balance || 0) - (wallet.holdAmount || 0));
-      
-      // Use the calculated value (always accurate) instead of stored value
-      // This ensures frontend and backend use the same calculation
-      const availableBalance = calculatedAvailableBalance;
-      const currentBalance = wallet.balance || 0;
-      
-      // Update wallet's availableBalance if it's out of sync (but don't save yet - will save after deduction)
-      if (Math.abs((wallet.availableBalance || 0) - calculatedAvailableBalance) > 0.01) {
-        console.warn('[createOrder] ⚠️ Wallet availableBalance out of sync, recalculating:', {
-          storedAvailableBalance: wallet.availableBalance,
-          calculatedAvailableBalance,
-          balance: currentBalance,
-          holdAmount: wallet.holdAmount || 0,
-        });
-      }
-      
-      // DEBUG: Log wallet details for troubleshooting
-      console.log('[createOrder] 💰 Wallet validation details:', {
-        userId: req.user.id,
-        balance: currentBalance,
-        holdAmount: wallet.holdAmount || 0,
-        storedAvailableBalance: wallet.availableBalance,
-        calculatedAvailableBalance,
-        availableBalance, // This is what we're using for validation
-        orderTotal: totalPrice,
-        shortfall: totalPrice - availableBalance,
-        walletId: wallet._id?.toString(),
-      });
-      
-      // Check sufficient available balance (what user can actually spend)
-      if (availableBalance < totalPrice) {
-        await session.abortTransaction();
-        console.error('[createOrder] ❌ Insufficient wallet balance:', {
-          balance: currentBalance,
-          availableBalance,
-          holdAmount: wallet.holdAmount || 0,
-          requiredAmount: totalPrice,
-          shortfall: totalPrice - availableBalance,
-        });
-        return next(new AppError(
-          `Insufficient wallet balance. Your available balance is GH₵${availableBalance.toFixed(2)}, but required amount is GH₵${totalPrice.toFixed(2)}. ${wallet.holdAmount > 0 ? `You have GH₵${wallet.holdAmount.toFixed(2)} on hold. ` : ''}Please top up your wallet or choose a different payment method.`,
-          400
-        ));
-      }
-      
-      console.log('[createOrder] ✅ Wallet balance sufficient:', {
-        balance: currentBalance,
-        availableBalance,
-        holdAmount: wallet.holdAmount || 0,
-        requiredAmount: totalPrice,
-        remainingBalance: availableBalance - totalPrice,
-      });
-    }
-
-    /* ---------------------------------- */
-    /* 6. CREATE ORDER                     */
-    /* ---------------------------------- */
-    const newOrder = new Order({
-      orderNumber,
-      trackingNumber,
-      user: req.user.id,
-      shippingAddress: addressDoc._id,
-      orderItems: orderItemDocs.map(i => i._id),
-      paymentMethod: req.body.paymentMethod || 'mobile_money',
-      paymentStatus: 'pending',
-      orderStatus: 'pending',
-      // CRITICAL: Set order totals
-      subtotal: Math.round(subtotal * 100) / 100,
-      shippingCost: Math.round(shippingFee * 100) / 100,
-      shippingFee: Math.round(shippingFee * 100) / 100,
-      discountAmount: Math.round(discountAmount * 100) / 100,
-      totalPrice: Math.round(totalPrice * 100) / 100,
-      // Store coupon info if applied
-      ...(appliedCouponBatchId && { 
-        appliedCouponBatchId,
-        appliedCouponId,
-        coupon: appliedCouponBatchId, // Legacy field
-      }),
-      // Store delivery method and speed if provided
-      ...(req.body.deliveryMethod && { deliveryMethod: req.body.deliveryMethod }),
-      ...(req.body.deliverySpeed && { deliverySpeed: req.body.deliverySpeed }),
-      ...(req.body.shippingType && { shippingType: req.body.shippingType }),
-      ...(req.body.pickupCenterId && { pickupCenterId: req.body.pickupCenterId }),
-    });
-
-    /* ---------------------------------- */
-    /* 7. SAVE ORDER (GET _id)             */
-    /* ---------------------------------- */
-    // Save order first to get _id (needed for wallet transaction reference)
+    // Save order
     await newOrder.save({ session });
 
     /* ---------------------------------- */
@@ -1506,173 +1116,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* ---------------------------------- */
     if (newOrder.paymentStatus === 'paid') {
       await exports.updateProductTotalSold(newOrder);
-<<<<<<< HEAD
     }
 
     /* ---------------------------------- */
     /* 10. RESPONSE                        */
     /* ---------------------------------- */
     // Verify order was saved correctly before responding
-=======
-    } catch (totalSoldError) {
-      // Don't fail the order if totalSold update fails
-      logger.error('[createOrder] Error updating product totalSold:', totalSoldError);
-    }
-
-    // Create notification for buyer about order placement
-    try {
-      await notificationService.createOrderNotification(
-        req.user.id,
-        newOrder._id,
-        newOrder.orderNumber,
-        'pending'
-      );
-    } catch (notificationError) {
-      // Don't fail the order if notification creation fails
-      logger.error('[createOrder] Error creating order notification:', notificationError);
-    }
-
-    // Create notifications for sellers about new orders
-    try {
-      if (!sellerOrders || sellerOrders.length === 0) {
-        logger.info('[createOrder] ⚠️ No seller orders found, skipping seller notifications');
-      } else {
-        logger.info(`[createOrder] 📦 Found ${sellerOrders.length} seller order IDs:`, sellerOrders);
-
-        // Query seller orders with populated seller field to get seller IDs
-        const populatedSellerOrders = await SellerOrder.find({ _id: { $in: sellerOrders } })
-          .populate('seller', '_id')
-          .lean();
-
-        logger.info(`[createOrder] ✅ Found ${populatedSellerOrders.length} populated seller orders for notification`);
-
-        if (populatedSellerOrders.length === 0) {
-          logger.warn('[createOrder] ⚠️ No seller orders found after population. Seller order IDs:', sellerOrders);
-        }
-
-        for (const sellerOrder of populatedSellerOrders) {
-          if (sellerOrder.seller && sellerOrder.seller._id) {
-            try {
-              // Ensure seller ID is in the correct format (ObjectId or string)
-              const sellerId = sellerOrder.seller._id.toString ? sellerOrder.seller._id.toString() : sellerOrder.seller._id;
-
-              logger.info(`[createOrder] 📧 Creating notification for seller:`, {
-                sellerId,
-                sellerIdType: typeof sellerId,
-                sellerIdValue: sellerId,
-                orderId: newOrder._id.toString(),
-                orderNumber: newOrder.orderNumber
-              });
-
-              await notificationService.createSellerOrderNotification(
-                sellerId,
-                newOrder._id,
-                newOrder.orderNumber,
-                'pending'
-              );
-              logger.info(`[createOrder] ✅ Notification created for seller ${sellerId}`);
-            } catch (notifError) {
-              logger.error(`[createOrder] ❌ Error creating notification for seller ${sellerOrder.seller._id}:`, notifError.message);
-              logger.error('[createOrder] Full error:', notifError);
-            }
-          } else {
-            logger.warn(`[createOrder] ⚠️ Seller order ${sellerOrder._id} has no seller field populated. SellerOrder data:`, {
-              _id: sellerOrder._id,
-              seller: sellerOrder.seller,
-              hasSeller: !!sellerOrder.seller
-            });
-          }
-        }
-      }
-    } catch (sellerNotificationError) {
-      // Don't fail the order if seller notification creation fails
-      logger.error('[createOrder] ❌ Error creating seller order notification:', sellerNotificationError.message);
-      logger.error('[createOrder] Full error stack:', sellerNotificationError.stack);
-    }
-
-    // Create notifications for all active admins about new orders
-    try {
-      // Note: 'active' field has select: false, so we need to explicitly include it with +active
-      const allAdmins = await Admin.find({
-        status: 'active'
-      }).select('+active _id').lean();
-
-      // Filter to only active admins (active defaults to true, but we check explicitly)
-      const activeAdmins = allAdmins.filter(admin => admin.active !== false);
-
-      logger.info(`[createOrder] Found ${activeAdmins.length} active admins for notification (out of ${allAdmins.length} total with status 'active');`);
-
-      for (const admin of activeAdmins) {
-        try {
-          await notificationService.createAdminOrderNotification(
-            admin._id,
-            newOrder._id,
-            newOrder.orderNumber,
-            'pending'
-          );
-          logger.info(`[createOrder] ✅ Notification created for admin ${admin._id}`);
-        } catch (notifError) {
-          logger.error(`[createOrder] Error creating notification for admin ${admin._id}:`, notifError);
-        }
-      }
-    } catch (adminNotificationError) {
-      // Don't fail the order if admin notification creation fails
-      logger.error('[createOrder] Error creating admin order notification:', adminNotificationError);
-    }
-
-    // Remove ordered products from wishlist
-    try {
-      const WishList = require('../../models/product/wishListModel');
-      const orderedProductIds = orderItems.map(item => item.product.toString());
-
-      // Find user's wishlist
-      const wishlist = await WishList.findOne({ user: req.user.id });
-
-      if (wishlist && wishlist.products && wishlist.products.length > 0) {
-        // Get current product IDs in wishlist
-        const wishlistProductIds = wishlist.products.map(item => {
-          const productId = item.product;
-          return productId ? productId.toString() : null;
-        }).filter(id => id !== null);
-
-        // Find products that are in both wishlist and order
-        const productsToRemove = orderedProductIds.filter(productId =>
-          wishlistProductIds.includes(productId)
-        );
-
-        if (productsToRemove.length > 0) {
-          // Convert product IDs to ObjectIds for $pull query
-          const productIdsToRemove = productsToRemove.map(id => new mongoose.Types.ObjectId(id));
-
-          // Remove ordered products from wishlist using $pull with $in
-          const updateResult = await WishList.findOneAndUpdate(
-            { user: req.user.id },
-            {
-              $pull: {
-                products: {
-                  product: { $in: productIdsToRemove }
-                }
-              }
-            },
-            { new: true }
-          );
-
-          // Check if wishlist is now empty (all items were ordered)
-          if (updateResult && (!updateResult.products || updateResult.products.length === 0)) {
-            logger.info(`[createOrder] All wishlist items were ordered and removed for user ${req.user.id}`);
-          } else {
-            const remainingCount = updateResult?.products?.length || 0;
-            logger.info(`[createOrder] Removed ${productsToRemove.length} product(s); from wishlist. ${remainingCount} item(s) remaining for user ${req.user.id}`);
-          }
-        }
-      }
-    } catch (wishlistError) {
-      // Don't fail the order if wishlist update fails
-      logger.error('[createOrder] Error removing products from wishlist:', wishlistError);
-    }
-
-    // Fetch populated order
->>>>>>> 6d2bc77 (first ci/cd push)
     const fullOrder = await Order.findById(newOrder._id)
       .populate('orderItems')
       .populate('user', 'name email')
@@ -1694,8 +1143,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       totalPrice: fullOrder.totalPrice,
     });
 
-<<<<<<< HEAD
-=======
     // Send order confirmation email to buyer
     try {
       const emailDispatcher = require('../../emails/emailDispatcher');
@@ -1731,7 +1178,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       // Don't fail the order if email fails
     }
 
->>>>>>> 6d2bc77 (first ci/cd push)
     res.status(201).json({
       status: 'success',
       data: { order: fullOrder },
@@ -1739,7 +1185,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
   } catch (error) {
     await session.abortTransaction();
-<<<<<<< HEAD
     console.error('[createOrder] ❌ Order creation failed:', {
       error: error.message,
       stack: error.stack,
@@ -1756,18 +1201,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       ? error.message 
       : (error.message || 'Failed to create order');
     return next(new AppError(errorMessage, 400));
-=======
-    logger.error('Order creation error:', error.message);
-    logger.error('Error stack:', error.stack);
-
-    if (error.code === 11000 && error.keyPattern?.orderNumber) {
-      return next(
-        new AppError('Duplicate order number detected. Please try again.', 400),
-      );
-    }
-
-    return next(new AppError(`Order creation failed: ${error.message}`, 500));
->>>>>>> 6d2bc77 (first ci/cd push)
   } finally {
     session.endSession();
   }

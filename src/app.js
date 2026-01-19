@@ -208,7 +208,6 @@ const corsOptions = {
         return callback(null, true);
       }
 
-<<<<<<< HEAD
       // Allow network IP ranges for mobile app connections (development only)
       if (origin) {
         if (
@@ -217,41 +216,33 @@ const corsOptions = {
           origin.startsWith('http://172.') ||
           origin.startsWith('http://10.')
         ) {
-          console.log(`[CORS] Development - allowing network origin: ${origin}`);
+          if (isDevelopment) {
+            logger.info(`[CORS] Development - allowing network origin: ${origin}`);
+          }
           return callback(null, true);
         }
       }
 
-      console.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
-      return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
-    }
-
-    // Production: Allow specific origins and *.amplifyapp.com domains
-=======
       if (isDevelopment) {
         logger.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
       }
       return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
     }
 
-    // Production: Only allow specific origins (no logging to prevent info leakage)
->>>>>>> 6d2bc77 (first ci/cd push)
+    // Production: Allow specific origins and *.amplifyapp.com domains
     if (allowedOrigins.includes(origin)) {
-      // Silently allow in production (no logging)
       return callback(null, true);
     }
 
-<<<<<<< HEAD
     // Allow AWS Amplify domains (*.amplifyapp.com)
     if (origin && origin.endsWith('.amplifyapp.com')) {
-      console.log(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
+      if (isDevelopment) {
+        logger.info(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
+      }
       return callback(null, true);
     }
 
-    console.warn(`[CORS] Blocked origin: ${origin}`);
-=======
-    // Silently block in production (no logging)
->>>>>>> 6d2bc77 (first ci/cd push)
+    // Silently block in production (no logging to prevent info leakage)
     callback(new Error(`CORS not allowed for origin: ${origin}`), false);
   },
   credentials: true, // REQUIRED for cookies
@@ -278,15 +269,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-<<<<<<< HEAD
 // SECURITY FIX #9 (Phase 3 Enhancement): Enhanced HTTPS Enforcement
 const { enforceHttps } = require('./middleware/security/httpsEnforcement');
 app.use(enforceHttps); // Enforces HTTPS in production
 
-// Logging
-=======
 // Logging - Use Winston logger for HTTP requests
->>>>>>> 6d2bc77 (first ci/cd push)
 if (isDevelopment) {
   app.use(morgan('dev', { stream: logger.stream }));
 } else {
@@ -338,7 +325,6 @@ const authLimiter = rateLimit({
 app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
 
-<<<<<<< HEAD
 // 📦 Body parsing with strict size limits (SECURITY)
 app.use(express.json({ 
   limit: '20kb',
@@ -360,12 +346,6 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ extended: true, limit: '20kb' }));
-=======
-// 📦 Body parsing with reasonable size limits (SECURITY)
-// Note: File uploads use multer with separate limits, so JSON can be larger
-app.use(express.json({ limit: '10mb' })); // Increased from 20kb for API requests
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
->>>>>>> 6d2bc77 (first ci/cd push)
 app.use(cookieParser());
 
 // SECURITY FIX #7: CSRF Protection for authenticated routes
@@ -503,15 +483,35 @@ app.use('/api/v1/support', supportRoutes);
 
 // Health check endpoint (improved for Docker/K8s)
 app.get('/health', (req, res) => {
-<<<<<<< HEAD
-  res.status(200).json({
-    status: 'success',
-    message: 'Server is running',
+  const mongoose = require('mongoose');
+  const dbStatus = mongoose.connection.readyState;
+  const dbStates = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting',
+  };
+
+  const health = {
+    status: dbStatus === 1 ? 'healthy' : 'degraded',
+    message: dbStatus === 1 ? 'Server is running' : 'Server is running but database is disconnected',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    uptime: Math.floor(process.uptime()),
+    database: {
+      status: dbStates[dbStatus] || 'unknown',
+      readyState: dbStatus,
+    },
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
+    },
     environment: process.env.NODE_ENV || 'development',
     version: process.env.npm_package_version || '1.0.0',
-  });
+  };
+
+  // Return 503 if database is not connected, 200 otherwise
+  const statusCode = dbStatus === 1 ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Readiness probe (check database connection)
@@ -546,36 +546,6 @@ app.get('/health/live', (req, res) => {
     status: 'alive',
     timestamp: new Date().toISOString(),
   });
-=======
-  const mongoose = require('mongoose');
-  const dbStatus = mongoose.connection.readyState;
-  const dbStates = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting',
-  };
-
-  const health = {
-    status: dbStatus === 1 ? 'healthy' : 'degraded',
-    message: dbStatus === 1 ? 'Server is running' : 'Server is running but database is disconnected',
-    timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
-    database: {
-      status: dbStates[dbStatus] || 'unknown',
-      readyState: dbStatus,
-    },
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
-    },
-    environment: process.env.NODE_ENV || 'development',
-  };
-
-  // Return 503 if database is not connected, 200 otherwise
-  const statusCode = dbStatus === 1 ? 200 : 503;
-  res.status(statusCode).json(health);
->>>>>>> 6d2bc77 (first ci/cd push)
 });
 
 // 5. Error handling
@@ -601,4 +571,4 @@ app.use((err, req, res, next) => {
 
 app.use(globalErrorHandler);
 
-module.exports = app;;
+module.exports = app;

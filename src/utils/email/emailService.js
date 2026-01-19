@@ -9,19 +9,11 @@ const resendService = require('./resendService');
 
 // Brand Configuration (configurable via environment variables)
 const BRAND_CONFIG = {
-<<<<<<< HEAD
   name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saysay',
   tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
   url: process.env.FRONTEND_URL || 'https://saiisai.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
   fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
-=======
-  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
-  tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
-  url: process.env.FRONTEND_URL || 'https://eazworld.com',
-  supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
-  fromName: process.env.EMAIL_FROM_NAME || 'Saiisai',
->>>>>>> 6d2bc77 (first ci/cd push)
 };
 
 // Log brand configuration
@@ -77,13 +69,6 @@ const sendOrderDetailEmail = async (toEmail, order, name) => {
   return resendService.sendOrderDetailEmail(toEmail, order, name);
 };
 
-const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
-  if (!sendGridService) {
-    throw new Error('SendGrid service is not available. Please check your configuration.');
-  }
-  return sendGridService.sendPasswordResetEmail(toEmail, resetToken, name);
-};
-
 /**
  * Send SMS message (stub implementation)
  * 
@@ -135,11 +120,8 @@ module.exports = {
   sendLoginEmail,
   sendLoginOtpEmail,
   sendPasswordResetEmail,
-<<<<<<< HEAD
-=======
   sendOrderConfirmationEmail,
   sendOrderDetailEmail,
->>>>>>> 6d2bc77 (first ci/cd push)
   sendSMS,
   get brandConfig() {
     return BRAND_CONFIG;

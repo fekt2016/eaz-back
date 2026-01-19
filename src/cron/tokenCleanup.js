@@ -3,11 +3,8 @@ const TokenBlacklist = require('../models/user/tokenBlackListModal');
 const DeviceSession = require('../models/user/deviceSessionModel');
 const fs = require('fs');
 const path = require('path');
-<<<<<<< HEAD
 const { safeFs, safePath } = require('../utils/safePath');
-=======
 const logger = require('../utils/logger');
->>>>>>> 6d2bc77 (first ci/cd push)
 
 /**
  * 90-Day Token Cleanup Cron Job

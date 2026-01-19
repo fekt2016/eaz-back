@@ -25,13 +25,9 @@ const { isPublicRoute,
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
-<<<<<<< HEAD
 // Shared helpers for standardized auth
 const { normalizeEmail, normalizePhone, OTP_TYPES } = require('../../utils/helpers/authHelpers');
 const { generateOtp } = require('../../utils/helpers/otpHelpers');
-=======
-const logger = require('../../utils/logger');
->>>>>>> 6d2bc77 (first ci/cd push)
 
 // Initialize route cache (5 minutes TTL)
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
@@ -70,7 +66,6 @@ const publicRoutes = [
 
 // Controllers/authController.js (signup part)
 exports.signup = catchAsync(async (req, res, next) => {
-<<<<<<< HEAD
   // Normalize and validate email (required)
   const normalizedEmail = normalizeEmail(req.body.email);
   if (!normalizedEmail) {
@@ -81,20 +76,6 @@ exports.signup = catchAsync(async (req, res, next) => {
   const normalizedPhone = normalizePhone(req.body.phone);
   if (req.body.phone && normalizedPhone && !validateGhanaPhone(normalizedPhone)) {
     return next(new AppError('Please provide a valid Ghana phone number', 400));
-=======
-  // Early validation - collect field-level errors
-  const fieldErrors = {};
-  
-  // Name validation
-  if (!req.body.name || !req.body.name.trim()) {
-    fieldErrors.name = 'Name is required';
-  }
-
-  // Require either email or phone
-  if (!req.body.email && !req.body.phone) {
-    fieldErrors.email = 'Please provide either email or phone number';
-    fieldErrors.phone = 'Please provide either email or phone number';
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   // Email validation
@@ -128,38 +109,11 @@ exports.signup = catchAsync(async (req, res, next) => {
   }
 
   try {
-<<<<<<< HEAD
     // SECURITY: Enforce role server-side (buyer only)
     // Build user object - only include phone if provided
     const userData = {
       name: req.body.name,
       email: normalizedEmail,
-=======
-    // Convert phone to Number if provided (schema expects Number, not String)
-    let phoneNumber = undefined;
-    if (req.body.phone) {
-      const cleanedPhone = req.body.phone.replace(/\D/g, '');
-      if (cleanedPhone) {
-        phoneNumber = parseInt(cleanedPhone, 10);
-        if (isNaN(phoneNumber)) {
-          return next(new AppError('Please provide a valid phone number', 400));
-        }
-      }
-    }
-
-    // Log incoming request for debugging
-    logger.info('[Buyer Signup] Creating user:', {
-      name: req.body.name,
-      email: req.body.email,
-      hasPhone: !!phoneNumber,
-      phoneLength: phoneNumber ? String(phoneNumber).length : 0,
-    });
-
-    const newUser = await User.create({
-      name: req.body.name,
-      email: req.body.email,
-      phone: phoneNumber,
->>>>>>> 6d2bc77 (first ci/cd push)
       password: req.body.password,
       passwordConfirm: req.body.passwordConfirm,
       passwordChangedAt: req.body.passwordChangedAt,
@@ -186,7 +140,6 @@ exports.signup = catchAsync(async (req, res, next) => {
     const otp = generateOtp(newUser, OTP_TYPES.SIGNUP);
     await newUser.save({ validateBeforeSave: false });
 
-<<<<<<< HEAD
     // SECURITY: Log OTP generation for development only (NEVER in production)
     if (process.env.NODE_ENV !== 'production') {
       // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
@@ -200,9 +153,6 @@ exports.signup = catchAsync(async (req, res, next) => {
         // OTP value is NEVER logged, even in development
       });
     }
-=======
-  
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Send OTP via email (only if email exists)
     if (newUser.email) {
@@ -269,31 +219,15 @@ exports.signup = catchAsync(async (req, res, next) => {
 
     // Handle duplicate key error (email or phone already exists)
     if (err.code === 11000) {
-<<<<<<< HEAD
       // SECURITY: Generic error message to prevent account enumeration
       return next(
         new AppError(
           'Unable to process request',
           400,
-=======
-      const duplicateField = err.keyPattern?.email ? 'email' : 'phone';
-      const fieldErrors = {};
-      fieldErrors[duplicateField] = duplicateField === 'email' 
-        ? 'An account with this email already exists. Please log in or use a different email.'
-        : 'An account with this phone number already exists. Please log in or use a different phone number.';
-      return next(
-        new AppError(
-          duplicateField === 'email' 
-            ? 'An account with this email already exists'
-            : 'An account with this phone number already exists',
-          409,
-          fieldErrors
->>>>>>> 6d2bc77 (first ci/cd push)
         ),
       );
     }
 
-<<<<<<< HEAD
     // Clean up: Delete user if creation failed (use normalized email)
     if (normalizedEmail) {
       await User.findOneAndDelete({ email: normalizedEmail });
@@ -318,18 +252,6 @@ exports.signup = catchAsync(async (req, res, next) => {
           400,
         ),
       );
-=======
-    // Handle Mongoose validation errors
-    if (err.name === 'ValidationError') {
-      const fieldErrors = {};
-      Object.keys(err.errors || {}).forEach(key => {
-        fieldErrors[key] = err.errors[key].message;
-      });
-      const errorMessage = Object.keys(fieldErrors).length > 0 
-        ? 'Please check the form for errors'
-        : 'Please provide valid registration information';
-      return next(new AppError(errorMessage, 400, fieldErrors));
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Handle pre-save hook errors (e.g., "Please provide either email or phone")
@@ -812,7 +734,6 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
-<<<<<<< HEAD
   
   // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
@@ -823,10 +744,6 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     expires: new Date(user.otpExpires).toLocaleString(),
     // OTP value is NEVER logged, even in development
   });
-=======
-  // SECURITY FIX #5: Don't log actual OTP value
-  logger.info('[Auth] OTP generated for user:', user._id);
->>>>>>> 6d2bc77 (first ci/cd push)
 
   // Send OTP via email
   if (validator.isEmail(loginId)) {
@@ -1005,7 +922,6 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     logger.info('[verifyOtp] Password verification result:', passwordValid);
 
     if (!passwordValid) {
-<<<<<<< HEAD
       console.log('[verifyOtp] Password validation failed');
       // SECURITY: Generic error message to prevent information leakage
       return next(new AppError('Invalid credentials', 401));
@@ -1054,11 +970,6 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       } else if (!verified) {
         return next(new AppError('Invalid 2FA code. Please try again.', 401));
       }
-=======
-      logger.info('[verifyOtp] Password validation failed');
-      // Security: Use generic message to avoid revealing which field is incorrect
-      return next(new AppError('Invalid email or password', 401));
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Capture IP and device
@@ -1233,16 +1144,12 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     res.cookie('main_jwt', token, cookieOptions);
-<<<<<<< HEAD
     
     // Generate CSRF token on successful authentication
     const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
     generateCSRFToken(res);
     
     console.log(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
-=======
-    logger.info(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Remove sensitive data
     user.password = undefined;
@@ -1472,13 +1379,8 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Debug logging for route detection
-<<<<<<< HEAD
   if (fullPath.includes('/order') || fullPath.includes('/logs')) {
     console.log(`[Auth] Route detected: ${fullPath}, method: ${method}, isSellerRoute: ${isSellerRoute}, isAdminRoute: ${isAdminRoute}, isAdminOnlySharedRoute: ${isAdminOnlySharedRoute}, cookieName: ${cookieName}`);
-=======
-  if (fullPath.includes('/order/')) {
-    logger.info(`[Auth] Order route detected: ${fullPath}, isSellerRoute: ${isSellerRoute}, cookieName: ${cookieName}`);
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   // Security: For seller routes, ONLY accept seller_jwt, never main_jwt
@@ -1528,7 +1430,6 @@ exports.protect = catchAsync(async (req, res, next) => {
       const isVerifyOtpRoute = fullPath.includes('/verify-otp');
       const isSellerCouponRoute = fullPath.startsWith('/api/v1/seller/coupon');
 
-<<<<<<< HEAD
       console.error('═══════════════════════════════════════════════════════════');
       console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : isSellerCouponRoute ? 'seller coupon' : 'protected'} route`);
       console.error('═══════════════════════════════════════════════════════════');
@@ -1549,11 +1450,6 @@ exports.protect = catchAsync(async (req, res, next) => {
           console.error(`[Auth] seller_jwt length: ${req.cookies.seller_jwt.length}`);
         }
       }
-=======
-      logger.error('═══════════════════════════════════════════════════════════');
-      logger.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : 'protected'} route`);
-      logger.error('═══════════════════════════════════════════════════════════');
->>>>>>> 6d2bc77 (first ci/cd push)
 
       if (isVerifyOtpRoute) {
         logger.error(`[Auth] Route: ${method} ${fullPath}`);
@@ -1607,26 +1503,16 @@ exports.protect = catchAsync(async (req, res, next) => {
       // Log all cookies for debugging (but don't log values for security)
       logger.info(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
 
-<<<<<<< HEAD
       console.error(`[Auth] 🛑 RETURNING 401 - No token found`);
       console.error(`[Auth] Route: ${method} ${fullPath}`);
       console.error(`[Auth] Expected cookie: ${cookieName}`);
       console.error(`[Auth] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
       console.error('═══════════════════════════════════════════════════════════');
-=======
-      logger.error(`[Auth] 🛑 RETURNING 401 - No token found`);
-      logger.error('═══════════════════════════════════════════════════════════');
->>>>>>> 6d2bc77 (first ci/cd push)
 
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401),
       );
     }
-<<<<<<< HEAD
-=======
-  } else {
-    logger.info(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
->>>>>>> 6d2bc77 (first ci/cd push)
   }
   // Check token blacklist using the helper method (hashes token before checking)
   const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
@@ -1765,13 +1651,9 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   if (isAdminRouteCheck) {
     if (currentUser.role !== 'admin') {
-<<<<<<< HEAD
       console.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
       console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
       console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);
-=======
-      logger.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone});`);
->>>>>>> 6d2bc77 (first ci/cd push)
       return next(
         new AppError(`You do not have permission to perform this action. Required role: admin, Your role: ${currentUser.role}`, 403)
       );
@@ -1807,7 +1689,6 @@ exports.restrictTo = (...roles) => {
     // Get role from user object, fallback to 'user' if not set
     const userRole = req.user.role || 'user';
 
-<<<<<<< HEAD
     console.log(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}, Method: ${req.method}, Full URL: ${req.originalUrl}`);
 
     if (!roles.includes(userRole)) {
@@ -1817,12 +1698,6 @@ exports.restrictTo = (...roles) => {
         'referer': req.headers['referer'],
         'origin': req.headers['origin'],
       });
-=======
-    logger.info(`[restrictTo] Checking permissions - User role: ${userRole}, Required roles:`, roles, `Path: ${req.path}`);
-
-    if (!roles.includes(userRole)) {
-      logger.error(`[restrictTo] ❌ Permission denied - User role: ${userRole}, Required: ${roles.join(' or ')}, Path: ${req.path}, User ID: ${req.user.id}`);
->>>>>>> 6d2bc77 (first ci/cd push)
       return next(
         new AppError(`You do not have permission to perform this action. Required role: ${roles.join(' or ')}, Your role: ${userRole}`, 403),
       );
@@ -1851,7 +1726,6 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
     // SECURITY FIX #1: Prevent account enumeration - always return same response
     // Find user silently (don't reveal if user exists)
     const user = await User.findOne(query);
-<<<<<<< HEAD
 
     // SECURITY FIX #1: Always return generic success message (prevent account enumeration)
     // Even if user doesn't exist, return the same message to prevent timing attacks
@@ -1891,28 +1765,6 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
         console.error('[Password Reset] Failed to send OTP:', emailError);
         // Still return success to prevent account enumeration
       }
-=======
-    if (!user)
-      return next(new AppError('User not found, check your credential', 403));
-
-    // Generate and store hashed OTP using user model helper
-    const otp = user.createOtp();
-    user.otpType = 'passwordReset'; // Differentiate from login OTP
-    await user.save({ validateBeforeSave: false });
-
-    // SECURITY: Do not log the raw OTP
-    logger.info('[Auth] Password reset OTP generated for user', {
-      userId: user._id,
-      isEmail,
-      hasPhone: !!user.phone,
-      expiresAt: user.otpExpires,
-    });
-
-    // Send OTP via email or SMS
-    if (isEmail) {
-      await sendLoginOtpEmail(user.email, otp, user.name);
-      logger.info(`[Auth] Password reset OTP email sent to ${user.email}`);
->>>>>>> 6d2bc77 (first ci/cd push)
     } else {
       // User doesn't exist - add small random delay to prevent timing attacks
       // This makes response time similar whether user exists or not
@@ -1923,7 +1775,6 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
     // OTP is NEVER sent in API response (even in development)
     res.status(200).json(genericResponse);
   } catch (error) {
-<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (don't leak internal details)
     console.error('[Password Reset] Error:', error);
     // Always return same generic message even on errors
@@ -1931,12 +1782,6 @@ exports.sendPasswordResetOtp = catchAsync(async (req, res, next) => {
       message: 'If an account exists, a reset code has been sent.',
       method: req.body.loginId?.includes('@') ? 'email' : 'phone',
     });
-=======
-    logger.error('Password reset initiation error:', error);
-    res
-      .status(500)
-      .json({ error: 'Failed to initiate password reset. Please try again.' });
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 });
 // SECURITY FIX: Legacy OTP verification (deprecated - use resetPasswordWithToken instead)
@@ -1946,11 +1791,7 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
     const { loginId, otp } = req.body;
 
     // Validate input
-<<<<<<< HEAD
     if (!loginId || !otp) {
-=======
-    if (!loginId || !otp)
->>>>>>> 6d2bc77 (first ci/cd push)
       return next(new AppError('Please provide loginId and OTP', 400));
     }
 
@@ -1958,17 +1799,12 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
     const isEmail = loginId.includes('@');
     const query = isEmail ? { email: loginId } : { phone: loginId };
 
-<<<<<<< HEAD
     // Find user with valid OTP
-=======
-    // Find user with matching OTP type (OTP validity is checked via verifyOtp)
->>>>>>> 6d2bc77 (first ci/cd push)
     const user = await User.findOne({
       ...query,
       otpType: 'passwordReset',
     }).select('+otp +otpExpires +otpAttempts +otpLockedUntil');
 
-<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (prevent account enumeration)
     if (!user) {
       // Add small delay to prevent timing attacks
@@ -2004,38 +1840,6 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
 
     user.otpVerified = true;
     // Generate reset token (cryptographically secure)
-=======
-    if (!user)
-      return next(new AppError('User not found, check your credential', 403));
-
-    const otpResult = user.verifyOtp(otp);
-
-    if (!otpResult.valid) {
-      // Handle locked accounts explicitly
-      if (otpResult.locked) {
-        const minutesRemaining = otpResult.minutesRemaining || 0;
-        return next(
-          new AppError(
-            `Account locked. Please try again in ${minutesRemaining} minute(s).`,
-            429,
-          ),
-        );
-      }
-
-      // For all other reasons, return a generic error (don't leak exact reason)
-      return next(new AppError('Invalid or expired OTP', 400));
-    }
-
-    // Mark OTP as verified and clear sensitive fields
-    user.otpVerified = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    user.otpAttempts = 0;
-    user.otpLockedUntil = null;
-    user.otpType = undefined;
-
-    // Generate reset token
->>>>>>> 6d2bc77 (first ci/cd push)
     const resetToken = crypto.randomBytes(32).toString('hex');
 
     // Hash token before storing in database
@@ -2063,12 +1867,8 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
       message: 'OTP verified. You can now reset your password.',
     });
   } catch (error) {
-<<<<<<< HEAD
     // SECURITY FIX #2: Generic error message (don't leak internal details)
     console.error('[Verify OTP] Error:', error);
-=======
-    logger.error('Verify OTP error:', error);
->>>>>>> 6d2bc77 (first ci/cd push)
     res.status(500).json({ error: 'Failed to verify OTP. Please try again.' });
   }
 });
@@ -2077,16 +1877,12 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   try {
     const { loginId, newPassword } = req.body;
 
-<<<<<<< HEAD
     // SECURITY FIX: Get reset token from httpOnly cookie (not from request body)
     const resetToken = req.cookies['reset-token'];
     
     if (!resetToken) {
       return next(new AppError('Reset token expired or invalid. Please verify OTP again.', 403));
     }
-=======
-    logger.info('reset', loginId, newPassword, resetToken);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Validate input
     if (!loginId || !newPassword) {
@@ -2110,7 +1906,6 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       .update(resetToken)
       .digest('hex');
 
-<<<<<<< HEAD
     // Find user with valid reset token
     const user = await User.findOne({
       ...query,
@@ -2119,22 +1914,6 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       otpType: 'passwordReset',
     }).select(
       '+otp +otpExpires +otpVerified +resetPasswordToken +resetTokenExpires +password',
-=======
-    // If resetToken is provided, add it to search criteria
-    if (resetToken) {
-      logger.info('with token');
-      searchCriteria.resetToken = resetToken;
-      searchCriteria.resetTokenExpires = { $gt: Date.now() };
-    } else {
-      // If no resetToken, require OTP to be verified
-      searchCriteria.otpVerified = true;
-      searchCriteria.otpExpires = { $gt: Date.now() };
-    }
-    logger.info('resetToken', resetToken, searchCriteria);
-    // Find user with valid reset credentials
-    const user = await User.findOne({ email: loginId }).select(
-      '+otp +otpExpires +otpVerified +resetToken +resetTokenExpires +password',
->>>>>>> 6d2bc77 (first ci/cd push)
     );
 
     if (!user) {
@@ -2499,7 +2278,6 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
 
-<<<<<<< HEAD
   // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(user._id, user.email || user.phone, 'resend');
@@ -2508,14 +2286,6 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     loginId: user.email || user.phone,
     // OTP value is NEVER logged, even in development
   });
-=======
-  // Log OTP to console for development
-  logger.info('========================================');
-  logger.info(`[Resend OTP] 🔐 OTP PIN: ${otp}`);
-  logger.info(`[Resend OTP] User: ${user.email || user.phone}`);
-  logger.info(`[Resend OTP] OTP expires in 10 minutes`);
-  logger.info('========================================');
->>>>>>> 6d2bc77 (first ci/cd push)
 
   // Send OTP via email
   if (user.email) {

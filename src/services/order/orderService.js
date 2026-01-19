@@ -348,81 +348,14 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
     
     await order.save({ session });
 
-<<<<<<< HEAD
     // NOTE: Stock reduction happens AFTER payment confirmation, not on delivery
     // Stock is reduced in paymentController.verifyPaystackPayment and paymentController.paystackWebhook
     // This function only credits seller balances when order is delivered
-=======
-    // Reduce product inventory when order is delivered
-    // Get all order items for this order
-    const OrderItem = require('../../models/order/OrderItemModel');
-const logger = require('../../utils/logger');
-    const orderItems = await OrderItem.find({ 
-      _id: { $in: order.orderItems } 
-    }).session(session);
-
-    // Check if inventory was already reduced (prevent double reduction)
->>>>>>> 6d2bc77 (first ci/cd push)
     const inventoryReduced = order.metadata?.inventoryReduced || false;
     if (!inventoryReduced) {
-<<<<<<< HEAD
       console.warn(`[OrderService] ⚠️ Order ${orderId} delivered but inventory was not reduced. This may indicate a payment flow issue.`);
       // Don't reduce stock here - stock should have been reduced after payment
       // If it wasn't, it's a bug that needs investigation
-=======
-      logger.info(`[OrderService] Reducing inventory for order ${orderId}`);
-      
-      for (const orderItem of orderItems) {
-        const product = await Product.findById(orderItem.product).session(session);
-        if (!product) {
-          logger.info(`[OrderService] Product ${orderItem.product} not found, skipping inventory reduction`);
-          continue;
-        }
-
-        // Find the variant if it exists
-        if (orderItem.variant && product.variants && product.variants.length > 0) {
-          const variant = product.variants.id(orderItem.variant);
-          if (variant) {
-            // Check if stock is sufficient
-            if (variant.stock >= orderItem.quantity) {
-              variant.stock -= orderItem.quantity;
-              logger.info(`[OrderService] Reduced ${orderItem.quantity} from variant ${variant._id} of product ${product._id}. New stock: ${variant.stock}`);
-            } else {
-              logger.warn(`[OrderService] Insufficient stock for variant ${variant._id}. Stock: ${variant.stock}, Requested: ${orderItem.quantity}`);
-              // Still reduce to prevent negative stock issues, but log warning
-              variant.stock = Math.max(0, variant.stock - orderItem.quantity);
-            }
-          } else {
-            logger.warn(`[OrderService] Variant ${orderItem.variant} not found in product ${product._id}`);
-          }
-        } else {
-          // If no variant, reduce from product stock (if it exists)
-          if (product.stock !== undefined && product.stock !== null) {
-            if (product.stock >= orderItem.quantity) {
-              product.stock -= orderItem.quantity;
-              logger.info(`[OrderService] Reduced ${orderItem.quantity} from product ${product._id}. New stock: ${product.stock}`);
-            } else {
-              logger.warn(`[OrderService] Insufficient stock for product ${product._id}. Stock: ${product.stock}, Requested: ${orderItem.quantity}`);
-              product.stock = Math.max(0, product.stock - orderItem.quantity);
-            }
-          }
-        }
-
-        await product.save({ session });
-      }
-
-      // Mark inventory as reduced in order metadata
-      if (!order.metadata) {
-        order.metadata = {};
-      }
-      order.metadata.inventoryReduced = true;
-      order.metadata.inventoryReducedAt = new Date();
-      await order.save({ session });
-      
-      logger.info(`[OrderService] Inventory reduction completed for order ${orderId}`);
-    } else {
-      logger.info(`[OrderService] Inventory already reduced for order ${orderId}, skipping`);
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     await session.commitTransaction();

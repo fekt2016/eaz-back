@@ -46,7 +46,6 @@ exports.generateUserDataArchive = async (userData) => {
       const archive = archiver('zip', { zlib: { level: 9 } });
 
       output.on('close', () => {
-<<<<<<< HEAD
         console.log(`Archive created: ${archive.pointer()} bytes`);
         
         // VALIDATION: Ensure filePath and fileName are strings
@@ -60,9 +59,6 @@ exports.generateUserDataArchive = async (userData) => {
         
         console.log(`[generateUserDataArchive] ✅ Returning filePath: ${filePath} (type: ${typeof filePath})`);
         console.log(`[generateUserDataArchive] ✅ Returning fileName: ${fileName} (type: ${typeof fileName})`);
-=======
-        logger.info(`Archive created: ${archive.pointer()} bytes`);
->>>>>>> 6d2bc77 (first ci/cd push)
         resolve({ filePath, fileName });
       });
 

@@ -40,7 +40,6 @@ class Server {
       }
 
       this.server = app.listen(port, host, () => {
-<<<<<<< HEAD
         const timestamp = new Date().toISOString();
         console.log('\n' + '='.repeat(60));
         console.log(`🚀 Server started at ${timestamp}`);
@@ -53,14 +52,6 @@ class Server {
         );
         console.log('⚠️  Background jobs are disabled (Bull/Redis removed)');
         console.log('='.repeat(60) + '\n');
-=======
-        logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
-        logger.info(`Listening on http://${host}:${port}`);
-        if (process.env.NODE_ENV !== 'production') {
-          logger.info(`Access locally at: http://localhost:${port} or http://127.0.0.1:${port}`);
-        }
->>>>>>> 6d2bc77 (first ci/cd push)
-
         if (process.env.NODE_ENV === 'production') {
           logger.info('Production server is ready');
         }

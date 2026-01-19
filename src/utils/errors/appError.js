@@ -13,8 +13,4 @@ class AppError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 6d2bc77 (first ci/cd push)
 module.exports = AppError;

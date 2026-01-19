@@ -5,12 +5,8 @@ const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
-<<<<<<< HEAD
 const { isMobileApp } = require('../../middleware/mobileAppGuard');
 const { checkFeature, FEATURES } = require('../../utils/featureFlags');
-=======
-const logger = require('../../utils/logger');
->>>>>>> 6d2bc77 (first ci/cd push)
 // Get permissions - creates default permissions if not found
 exports.getPermissions = catchAsync(async (req, res, next) => {
   try {
@@ -243,14 +239,9 @@ exports.requestAccountDeletion = catchAsync(async (req, res, next) => {
 
   // 2. Verify password - using updated method signature
   if (!(await user.correctPassword(req.body.password, user.password))) {
-<<<<<<< HEAD
     console.log('Incorrect password');
     // SECURITY: Generic error message to prevent information leakage
     return next(new AppError('Invalid credentials', 401));
-=======
-    logger.info('Incorrect password');
-    return next(new AppError('Incorrect password', 401));
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   // Schedule deletion

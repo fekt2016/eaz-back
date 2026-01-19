@@ -112,7 +112,6 @@ exports.processDataExportJob = async (job, cloudinary) => {
 
     return { success: true };
   } catch (error) {
-<<<<<<< HEAD
     // Enhanced error logging for ERR_INVALID_ARG_TYPE
     if (error.message && error.message.includes('ERR_INVALID_ARG_TYPE')) {
       console.error('\n🚨 ERR_INVALID_ARG_TYPE DETECTED IN DATA EXPORT JOB - FULL STACK TRACE:');
@@ -130,9 +129,6 @@ exports.processDataExportJob = async (job, cloudinary) => {
         console.error('Stack trace:', error.stack);
       }
     }
-=======
-    logger.error('Export job failed:', error);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Update status to failed
     if (userId) {

@@ -30,12 +30,8 @@ const userSchema = new mongoose.Schema(
       type: Number,
       // Required validation handled in pre-save hook (at least one of email or phone must be provided)
       unique: true,
-<<<<<<< HEAD
       sparse: true, // Allow multiple null values (unique only for non-null values)
       required: false, // Phone is optional - email-only login is supported
-=======
-      sparse: true, // Allow multiple documents with null/undefined phone
->>>>>>> 6d2bc77 (first ci/cd push)
     },
     photo: { type: String, default: 'default.jpg' },
     gender: {

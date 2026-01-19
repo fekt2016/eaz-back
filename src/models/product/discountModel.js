@@ -37,17 +37,6 @@ const discountSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: [true, 'End date is required'],
-<<<<<<< HEAD
-    
-=======
-      // validate: {
-      //   validator: function (value) {
-      //     logger.info('value', value, this.startDate);
-      //     return value > this.startDate;
-      //   },
-      //   message: 'End date must be after start date',
-      // },
->>>>>>> 6d2bc77 (first ci/cd push)
     },
     active: {
       type: Boolean,

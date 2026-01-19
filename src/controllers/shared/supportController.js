@@ -538,7 +538,6 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         ticket.role,
         `${replierName} replied to your support ticket: "${ticket.title}"`
       );
-<<<<<<< HEAD
       console.log(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
 
       // Send push notification
@@ -555,9 +554,6 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         console.error('[Support Reply] Error sending push notification:', pushError.message);
         // Don't fail ticket reply if push notification fails
       }
-=======
-      logger.info(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
->>>>>>> 6d2bc77 (first ci/cd push)
     }
     
     // If ticket is related to seller's order/product, notify the seller

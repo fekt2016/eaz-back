@@ -305,14 +305,8 @@ exports.getSuspiciousLogins = catchAsync(async (req, res, next) => {
  * Get cron cleanup logs (Admin only)
  */
 exports.getCleanupLogs = catchAsync(async (req, res, next) => {
-<<<<<<< HEAD
   // USE SAFE VERSIONS - never crashes
   const logFile = safePath.joinSafe(__dirname, '../../../logs/cron.log');
-=======
-  const fs = require('fs');
-  const path = require('path');
-const logger = require('../../utils/logger');
->>>>>>> 6d2bc77 (first ci/cd push)
 
   if (!logFile) {
     return res.status(200).json({

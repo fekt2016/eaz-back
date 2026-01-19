@@ -68,7 +68,6 @@ exports.uploadProductImage = upload.any();
 exports.resizeProductImages = catchAsync(async (req, res, next) => {
   // logger.info(req);
   req.body = { ...req.body };
-<<<<<<< HEAD
   
   // Convert req.files array to object format for easier access
   // When using upload.any(), files are in array format with fieldname property
@@ -86,21 +85,12 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   
   req.files = filesObj;
   console.log('req.files', req.files);
-=======
-  req.files = { ...req.files };
-  logger.info('req.files', req.files);
->>>>>>> 6d2bc77 (first ci/cd push)
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
-<<<<<<< HEAD
     // console.log('cloudinary', cloudinary);
     if (req.files && Object.keys(req.files).length > 0) {
-=======
-    // logger.info('cloudinary', cloudinary);
-    if (req.files) {
->>>>>>> 6d2bc77 (first ci/cd push)
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
       const uploadFromBuffer = (buffer, options) => {
@@ -736,7 +726,6 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     if (req.query.maxPrice) baseQuery.price.$lte = Number(req.query.maxPrice);
   }
 
-<<<<<<< HEAD
   // 5. Apply buyer-safe filter (exclude unverified seller products)
   const isAdmin = req.user?.role === 'admin';
   const isSeller = req.user?.role === 'seller';
@@ -749,11 +738,6 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   const products = await Product.find(buyerSafeQuery);
   // console.log(products);
   // console.log(products);
-=======
-  const products = await Product.find(baseQuery);
-  // logger.info(products);
-  // logger.info(products);
->>>>>>> 6d2bc77 (first ci/cd push)
   // 5. Execute query
   // const features = new APIFeatures(Product.find(baseQuery), req.query)
   //   .filter()
@@ -762,15 +746,9 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   //   .paginate();
 
   // const products = await features.query;
-<<<<<<< HEAD
   // console.log(products);
   const totalCount = await Product.countDocuments(buyerSafeQuery);
   // console.log(products);
-=======
-  // logger.info(products);
-  const totalCount = await Product.countDocuments(baseQuery);
-  // logger.info(products);
->>>>>>> 6d2bc77 (first ci/cd push)
   // 6. Send response
   res.status(200).json({
     status: 'success',

@@ -226,13 +226,8 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
-<<<<<<< HEAD
   console.log("body",req.body);
   let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks, paymentMethods } = req.body;
-=======
-  logger.info("body",req.body);
-  let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks } = req.body;
->>>>>>> 6d2bc77 (first ci/cd push)
 
   // Parse JSON strings if they exist (from FormData)
   // Support shopAddress, location (legacy), and shopLocation (new) for backward compatibility

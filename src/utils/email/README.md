@@ -24,20 +24,12 @@ npm install resend
 Add to your `.env` file:
 
 ```env
-<<<<<<< HEAD
 # SendGrid Configuration (REQUIRED)
 SENDGRID_API_KEY=your_sendgrid_api_key_here
 SENDGRID_FROM_EMAIL=noreply@yourdomain.com  # Optional: Override default sender
 EMAIL_FROM_NAME=Saysay  # Optional: Sender name
 EMAIL_FROM=noreply@yourdomain.com  # Default sender email
 FRONTEND_URL=https://eazworld.com  # For email links
-=======
-# Resend Configuration (REQUIRED)
-RESEND_API_KEY=your_resend_api_key_here
-EMAIL_FROM=noreply@yourdomain.com        # Default sender email (must be verified in Resend)
-EMAIL_FROM_NAME=EazShop                  # Optional: Sender name
-FRONTEND_URL=https://eazworld.com        # For email links
->>>>>>> 6d2bc77 (first ci/cd push)
 ```
 
 ### 4. Verify Domain in Resend (Production)

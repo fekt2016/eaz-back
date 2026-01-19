@@ -127,20 +127,11 @@ exports.updateOne = (Model) =>
     });
   });
 
-<<<<<<< HEAD
 exports.createOne = (Model) => catchAsync(async (req, res, next) => {
   // console.log(req.files);
   // console.log('req.body', req.body);
   // const { files } = req;
   let body = req.body;
-=======
-exports.createOne = (Model) => async (req, res, next) => {
-  // logger.info(req.files);
-  // logger.info('req.body', req.body);
-  try {
-    // const { files } = req;
-    let body = req.body;
->>>>>>> 6d2bc77 (first ci/cd push)
 
     if (body.attributes && typeof body.attributes === 'string') {
       try {

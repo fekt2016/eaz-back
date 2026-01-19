@@ -130,7 +130,6 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
   // Send OTP via email
   try {
     await sendLoginOtpEmail(newSeller.email, otp, newSeller.name || newSeller.shopName);
-<<<<<<< HEAD
     secureLog.debug('Seller signup OTP email sent', {
       userId: newSeller._id,
       email: newSeller.email,
@@ -140,11 +139,6 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
       userId: newSeller._id,
       error: emailError.message,
     });
-=======
-    logger.info(`[Seller Signup] OTP sent to ${newSeller.email}`);
-  } catch (emailError) {
-    logger.error('[Seller Signup] Failed to send OTP email:', emailError.message);
->>>>>>> 6d2bc77 (first ci/cd push)
     // Don't fail signup if email fails - OTP is still generated
   }
 
@@ -165,13 +159,9 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
       newSeller.shopName || newSeller.name,
       newSeller.email
     );
-<<<<<<< HEAD
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[Seller Signup] Admin notification created for new seller ${newSeller._id}`);
     }
-=======
-    logger.info(`[Seller Signup] Admin notification created for new seller ${newSeller._id}`);
->>>>>>> 6d2bc77 (first ci/cd push)
   } catch (notificationError) {
     logger.error('[Seller Signup] Error creating admin notification:', notificationError);
     // Don't fail signup if notification fails
@@ -222,7 +212,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     );
   }
 
-<<<<<<< HEAD
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -241,13 +230,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
         400
       )
     );
-=======
-  // Ensure role is ALWAYS 'seller' (never 'user' or any other value)
-  // This is critical for proper authorization
-  if (!seller.role || seller.role !== 'seller') {
-    logger.info(`[Seller Auth] Correcting role from "${seller.role}" to "seller" for: ${seller.email}`);
-    seller.role = 'seller';
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   if (!validator.isEmail(email)) {
@@ -265,7 +247,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     console.log('[Seller Login] Normalized email:', normalizedEmail);
   }
 
-<<<<<<< HEAD
   // Find seller with password and 2FA status
   const seller = await Seller.findOne({ email: normalizedEmail }).select('+password +twoFactorEnabled');
 
@@ -385,26 +366,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       data: {
         userId: seller._id,
         email: seller.email,
-=======
-  // Log IP change if detected
-  if (ipChange.changed) {
-    await ActivityLog.create({
-        userId: seller._id,
-      userModel: 'Seller',
-      role: 'seller',
-      action: 'IP_CHANGE',
-      description: `IP address changed from ${ipChange.previousIp} to ${ipChange.currentIp}`,
-      activityType: 'IP_CHANGE',
-      ipAddress: ipChange.currentIp,
-      previousIp: ipChange.previousIp,
-      userAgent,
-      location,
-      riskLevel: 'medium',
-      platform: 'eazseller',
-      metadata: {
-        previousIp: ipChange.previousIp,
-        currentIp: ipChange.currentIp,
->>>>>>> 6d2bc77 (first ci/cd push)
       },
     });
   }
@@ -422,48 +383,6 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
     res.status(200).json(response);
   }
-<<<<<<< HEAD
-=======
-
-  seller.lastLogin = Date.now();
-
-  // Save seller to persist lastLogin and role
-  await seller.save({ validateBeforeSave: false });
-
-  // Log login activity with security info
-  const loginLog = await ActivityLog.create({
-    userId: seller._id,
-    userModel: 'Seller',
-    role: 'seller',
-    action: 'LOGIN',
-    description: `Seller logged in via email/password`,
-    activityType: 'LOGIN',
-    ipAddress,
-    previousIp: ipChange.previousIp || null,
-    userAgent,
-    location,
-    riskLevel,
-    platform: 'eazseller',
-    metadata: {
-      ipChanged: ipChange.changed,
-      deviceChanged: deviceChange.changed,
-      multipleIps: multipleIps.multipleIps,
-      ipCount: multipleIps.ipCount,
-    },
-  });
-
-  // Trigger security alert if risk is high or critical
-  if (riskLevel === 'high' || riskLevel === 'critical') {
-    await securityMonitor.triggerSecurityAlert(seller, loginLog, 'seller');
-  }
-
-  // Check if critical risk requires force logout
-  if (riskLevel === 'critical') {
-    logger.warn(`[Seller Login] CRITICAL RISK detected for seller ${seller.email}. Login allowed but logged.`);
-  }
-
-  createSendToken(seller, 200, res, null, 'seller_jwt');
->>>>>>> 6d2bc77 (first ci/cd push)
 });
 
 /**
@@ -576,7 +495,6 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
   const otp = generateOtp(seller, OTP_TYPES.LOGIN);
   await seller.save({ validateBeforeSave: false });
 
-<<<<<<< HEAD
   // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(seller._id, loginId, 'login');
@@ -585,18 +503,11 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
     loginId,
     // OTP value is NEVER logged, even in development
   });
-=======
-  // SECURITY FIX #5: Log OTP generation without exposing the OTP value
-  logger.info('[Seller Auth] OTP generated for seller:', seller._id);
-  logger.info('[Seller Auth] Email:', seller.email);
-  logger.info('[Seller Auth] Expires:', new Date(seller.otpExpires).toLocaleString());
->>>>>>> 6d2bc77 (first ci/cd push)
 
   // Send OTP via email
   if (validator.isEmail(loginId)) {
     try {
       await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-<<<<<<< HEAD
       secureLog.debug('Login OTP email sent', {
         userId: seller._id,
         email: seller.email,
@@ -606,11 +517,6 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
         userId: seller._id,
         error: error.message,
       });
-=======
-      logger.info(`✅ [Seller Auth] Login OTP email sent to ${seller.email}`);
-    } catch (error) {
-      logger.error('❌ [Seller Auth] Failed to send login OTP email:', error.message);
->>>>>>> 6d2bc77 (first ci/cd push)
       // Don't fail the request if email fails, OTP is still generated
     }
   }
@@ -629,10 +535,6 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 exports.verifyOtp = catchAsync(async (req, res, next) => {
   try {
     const { loginId, otp, password, redirectTo } = req.body;
-<<<<<<< HEAD
-=======
-    logger.info('[Seller Auth] Verifying OTP:', { loginId, otp: otp ? '***' : 'missing', password: password ? '***' : 'missing' });
->>>>>>> 6d2bc77 (first ci/cd push)
 
     if (!loginId || !otp || !password) {
       return next(
@@ -664,17 +566,8 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       );
     }
 
-<<<<<<< HEAD
     // Verify OTP using shared helper
     const otpResult = verifyOtp(seller, otp, OTP_TYPES.LOGIN);
-=======
-    // SECURITY FIX #5: Log OTP verification attempt without exposing OTP values
-    logger.info('[Seller Auth] OTP verification attempt for seller:', seller._id);
-    logger.info('[Seller Auth] Email:', seller.email);
-    logger.info('[Seller Auth] OTP Expires:', seller.otpExpires ? new Date(seller.otpExpires).toLocaleString() : 'N/A');
-    logger.info('[Seller Auth] Current Time:', new Date().toLocaleString());
-    logger.info('[Seller Auth] Valid:', seller.verifyOtp(otp) ? 'YES' : 'NO');
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Handle account lockout
     if (otpResult.locked) {
@@ -708,13 +601,8 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Verify password
     if (!(await seller.correctPassword(password, seller.password))) {
-<<<<<<< HEAD
       // SECURITY: Generic error message to prevent information leakage
       return next(new AppError('Invalid credentials', 401));
-=======
-      logger.info('[Seller Auth] Incorrect password');
-      return next(new AppError('Incorrect password', 401));
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Clear OTP and update last login
@@ -723,10 +611,6 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Ensure role is ALWAYS 'seller'
     if (!seller.role || seller.role !== 'seller') {
-<<<<<<< HEAD
-=======
-      logger.info(`[Seller Auth] Correcting role from "${seller.role}" to "seller" for: ${seller.email}`);
->>>>>>> 6d2bc77 (first ci/cd push)
       seller.role = 'seller';
     }
 
@@ -734,127 +618,24 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     if (!seller.verification?.emailVerified) {
       seller.verification = seller.verification || {};
       seller.verification.emailVerified = true;
-<<<<<<< HEAD
     }
 
     await seller.save({ validateBeforeSave: false });
-=======
-      logger.info('[Seller Auth] Email marked as verified for:', seller.email);
-    }
-
-    await seller.save({ validateBeforeSave: false });
-    logger.info('[Seller Auth] OTP verified successfully for:', seller.email);
-    logger.info('[Seller Auth] Seller role:', seller.role);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Use standardized login helper
     try {
-<<<<<<< HEAD
       const response = await handleSuccessfulLogin(req, res, seller, 'seller');
       response.redirectTo = redirectTo || '/';
       res.status(200).json(response);
-=======
-      logger.info('[Seller Auth] Creating device session for seller:', seller._id);
-      sessionData = await createDeviceSession(req, seller, 'eazseller');
-      logger.info('[Seller Auth] Device session created successfully:', sessionData?.deviceId);
->>>>>>> 6d2bc77 (first ci/cd push)
     } catch (deviceError) {
       if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
         return next(new AppError(deviceError.message, 403));
       }
-<<<<<<< HEAD
       // In dev, continue without device session
       const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
       response.redirectTo = redirectTo || '/';
       res.status(200).json(response);
     }
-=======
-      // For other errors, log and continue without device session (fallback)
-      logger.error('[Seller Auth] ❌ Error creating device session:', deviceError.message || deviceError);
-      logger.error('[Seller Auth] Error stack:', deviceError.stack);
-      sessionData = null;
-    }
-
-    // Create token with deviceId
-    const expiresIn = process.env.JWT_EXPIRES_IN || '90d';
-    const signToken = (id, role, deviceId) => {
-      const payload = { id, role };
-      if (deviceId) {
-        payload.deviceId = deviceId;
-      }
-      return jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: expiresIn,
-      });
-    };
-
-    const token = signToken(seller._id, seller.role, sessionData?.deviceId);
-
-    // Set cookie (same as createSendToken)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
-      expires: new Date(
-        Date.now() +
-        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
-      ),
-      // Set domain for production to allow cookie sharing across subdomains
-      // Only set in production, leave undefined in development (localhost)
-      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
-    };
-
-    res.cookie('seller_jwt', token, cookieOptions);
-    logger.info(`[Seller Auth] JWT cookie set (seller_jwt);: httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}`);
-
-    // Remove sensitive data
-    seller.password = undefined;
-    seller.otp = undefined;
-    seller.otpExpires = undefined;
-
-    // Sanitize redirect path if needed
-    const sanitizedRedirectTo = redirectTo || '/';
-
-    // Log activity
-    logActivityAsync({
-      userId: seller._id,
-      role: 'seller',
-      action: 'LOGIN',
-      description: `Seller logged in via OTP verification`,
-      req,
-    });
-
-    // Return JSON with token, deviceId, refreshToken and redirectTo
-    const response = {
-      status: 'success',
-      message: 'OTP verified',
-      token,
-      data: {
-        seller: {
-          id: seller._id,
-          name: seller.name,
-          email: seller.email,
-          shopName: seller.shopName,
-          role: seller.role,
-          status: seller.status,
-          lastLogin: seller.lastLogin,
-        },
-      },
-      redirectTo: sanitizedRedirectTo,
-    };
-
-    // Add device session info if created
-    if (sessionData) {
-      response.deviceId = sessionData.deviceId;
-      response.refreshToken = sessionData.refreshToken;
-      if (sessionData.suspicious) {
-        response.warning = 'New device detected. Please verify this is you.';
-      }
-    }
-
-    res.status(200).json(response);
->>>>>>> 6d2bc77 (first ci/cd push)
   } catch (error) {
     logger.error('[Seller Auth] OTP verification error:', error);
     return next(new AppError('Failed to verify OTP. Please try again.', 500));
@@ -872,7 +653,6 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide OTP', 400));
   }
 
-<<<<<<< HEAD
   // SECURITY: Normalize email
   const normalizedEmail = normalizeEmail(email);
 
@@ -905,15 +685,6 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
           verification: seller.verification,
         },
       },
-=======
-  const resetURL = `${req.protocol}://${req.get('host')}/api/v1/sellers/resetPassword/${resetToken}`;
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
-  try {
-    await sendEmail({
-        email: seller.email,
-      subject: 'Your password reset token (valid for 10 min)',
-      message,
->>>>>>> 6d2bc77 (first ci/cd push)
     });
   }
 
@@ -1086,7 +857,6 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
   const otp = generateOtp(seller, OTP_TYPES.SIGNUP);
   await seller.save({ validateBeforeSave: false });
 
-<<<<<<< HEAD
   // SECURITY FIX #2: Secure logging (masks sensitive data, never logs OTP)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(seller._id, seller.email, 'emailVerification');
@@ -1095,17 +865,10 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
     email: seller.email,
     // OTP value is NEVER logged, even in development
   });
-=======
-  // SECURITY FIX #5: Log OTP generation without exposing OTP value
-  logger.info('[Seller Verification] OTP generated for seller:', seller._id);
-  logger.info('[Seller Verification] Email:', seller.email);
-  logger.info('[Seller Verification] Expires:', new Date(seller.otpExpires).toLocaleString());
->>>>>>> 6d2bc77 (first ci/cd push)
 
   // Send OTP via email
   try {
     await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-<<<<<<< HEAD
     secureLog.debug('Email verification OTP sent', {
       userId: seller._id,
       email: seller.email,
@@ -1115,11 +878,6 @@ exports.sendEmailVerificationOtp = catchAsync(async (req, res, next) => {
       userId: seller._id,
       error: error.message,
     });
-=======
-    logger.info(`✅ [Seller Verification] Email OTP sent to ${seller.email}`);
-  } catch (error) {
-    logger.error('❌ [Seller Verification] Failed to send email OTP:', error.message);
->>>>>>> 6d2bc77 (first ci/cd push)
     // Don't fail the request if email fails, OTP is still generated
   }
 
@@ -1161,72 +919,10 @@ exports.requestPasswordReset = catchAsync(async (req, res, next) => {
     return next(new AppError('Please provide an email address', 400));
   }
 
-<<<<<<< HEAD
   // Normalize email
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
     // Silently return success to prevent account enumeration
-=======
-  const seller = await Seller.findOne({ email });
-
-  if (!seller) {
-    return next(new AppError('No seller found with that email', 404));
-  }
-
-  // Check if account is locked
-  if (seller.otpLockedUntil && new Date(seller.otpLockedUntil).getTime() > Date.now()) {
-    const minutesRemaining = Math.ceil(
-      (new Date(seller.otpLockedUntil).getTime() - Date.now()) / (1000 * 60)
-    );
-    return next(
-      new AppError(
-        `Account locked. Please try again in ${minutesRemaining} minute(s).`,
-        429
-      )
-    );
-  }
-
-  // Generate new OTP
-  const otp = seller.createOtp();
-  await seller.save({ validateBeforeSave: false });
-
-  // SECURITY FIX #5: Log OTP generation without exposing OTP value
-  logger.info('[Resend OTP - Seller] OTP generated for seller:', seller._id);
-  logger.info('[Resend OTP - Seller] Email:', seller.email);
-  logger.info('[Resend OTP - Seller] Expires in 10 minutes');
-
-  // Send OTP via email
-  try {
-    await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
-    logger.info(`[Resend OTP] OTP sent to ${seller.email}`);
-  } catch (error) {
-    logger.error('[Resend OTP] Failed to send email:', error.message);
-  }
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Verification code sent to your email!',
-    otp: process.env.NODE_ENV !== 'production' ? otp : undefined, // Only in dev
-  });
-});
-
-// Verify email with OTP (for existing sellers)
-exports.verifyEmail = catchAsync(async (req, res, next) => {
-  const { otp } = req.body;
-
-  if (!otp) {
-    return next(new AppError('Please provide OTP', 400));
-  }
-
-  const seller = await Seller.findById(req.user.id).select('+otp +otpExpires');
-
-  if (!seller) {
-    return next(new AppError('No seller found', 404));
-  }
-
-  // If already verified, return success
-  if (seller.verification?.emailVerified) {
->>>>>>> 6d2bc77 (first ci/cd push)
     return res.status(200).json({
       status: 'success',
       message: 'If an account exists, a reset email has been sent.',
@@ -1259,7 +955,6 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   const resetToken = seller.createPasswordResetToken();
   await seller.save({ validateBeforeSave: false });
 
-<<<<<<< HEAD
   try {
     // Send password reset email
     await sendPasswordResetEmail(seller.email, resetToken, seller.name || 'Seller');
@@ -1270,9 +965,6 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
     seller.passwordResetToken = undefined;
     seller.passwordResetExpires = undefined;
     await seller.save({ validateBeforeSave: false });
-=======
-  logger.info(`✅ [Seller Verification] Email verified for: ${seller.email}`);
->>>>>>> 6d2bc77 (first ci/cd push)
 
     // Still return success to prevent information leakage
     console.error('[Seller Password Reset] Failed to send reset email:', err);
@@ -1348,11 +1040,8 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
 
   // SECURITY: Invalidate all active sessions
   const DeviceSession = require('../../models/user/deviceSessionModel');
-<<<<<<< HEAD
-=======
   const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const logger = require('../../utils/logger');
->>>>>>> 6d2bc77 (first ci/cd push)
   await DeviceSession.deactivateAll(seller._id);
   await TokenBlacklist.invalidateAllSessions(seller._id);
 
@@ -1383,24 +1072,12 @@ const logger = require('../../utils/logger');
   }
 });
 
-<<<<<<< HEAD
 // Legacy endpoints (kept for backward compatibility)
 /**
  * POST /seller/forgotPassword
  * @deprecated Use requestPasswordReset instead
  */
 exports.forgotPassword = exports.requestPasswordReset;
-=======
-exports.logout = catchAsync(async (req, res, next) => {
-  // Logout device session
-  const { logoutDevice } = require('../../utils/helpers/createDeviceSession');
-  try {
-    await logoutDevice(req);
-  } catch (error) {
-    logger.error('[Seller Auth] Error logging out device session:', error);
-    // Continue with cookie clearing even if device session logout fails
-  }
->>>>>>> 6d2bc77 (first ci/cd push)
 
 /**
  * PATCH /seller/resetPassword/:token
@@ -1412,40 +1089,11 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   const { password, passwordConfirm } = req.body;
 
   if (!token) {
-<<<<<<< HEAD
     return next(new AppError('Reset token is required', 400));
   }
 
   if (!password || !passwordConfirm) {
     return next(new AppError('Please provide both password and confirmation', 400));
-=======
-    await SecurityLog.create({
-      eventType: 'logout_attempt',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { reason: 'No token provided' },
-    }).catch((logError) => logger.error('Security log error:', logError));
-
-    return res.status(200).json(successResponse);
-  }
-
-  let decoded;
-  try {
-    // 5. Attempt to decode token
-    decoded = jwt.decode(token);
-    // Add logging
-  } catch (decodeError) {
-    logger.error('Token decode error:', decodeError); // Add logging
-
-    await SecurityLog.create({
-      eventType: 'logout_attempt',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { error: 'Invalid token format' },
-    }).catch((logError) => logger.error('Security log error:', logError));
-
-    return res.status(200).json(successResponse);
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   if (password !== passwordConfirm) {
@@ -1485,55 +1133,10 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
   // Log seller in with new password
   try {
-<<<<<<< HEAD
     await createSendToken(seller, 200, res, null, 'seller_jwt', req, 'eazseller');
   } catch (error) {
     console.error('[Seller Auth] Error creating device session on password reset:', error);
     createSendToken(seller, 200, res, null, 'seller_jwt');
-=======
-    // 6. Add token to blacklist using the proper method (handles hashing)
-    logger.info('[Seller Logout] Adding token to blacklist');
-    await TokenBlacklist.blacklistToken(
-      token,
-      decoded?.id || null,
-      'seller',
-      'logout',
-    );
-
-    // 7. Create security log
-    await SecurityLog.create({
-      user: decoded?.id || null,
-      userTypeModel: decoded?.id ? 'Seller' : null,
-      eventType: 'logout',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      shopName: seller?.shopName || 'N/A',
-      metadata: { tokenExpiration: expiresAt },
-    });
-
-    return res.status(200).json(successResponse);
-  } catch (err) {
-    logger.error('Logout processing error:', err);
-
-    // Handle duplicate key error separately
-    if (err.code === 11000) {
-      return res.status(200).json(successResponse);
-    }
-
-    await SecurityLog.create({
-      user: decoded?.id || null,
-      userTypeModel: decoded?.id ? 'Seller' : null,
-      eventType: 'logout_error',
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      metadata: { error: err.message },
-    }).catch((logError) => logger.error('Security log error:', logError));
-
-    return res.status(200).json({
-      ...successResponse,
-      message: 'Logged out with minor issues',
-    });
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 });
 

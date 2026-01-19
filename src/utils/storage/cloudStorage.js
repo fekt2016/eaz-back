@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-<<<<<<< HEAD
 const { toPathString, safeFs } = require('../safePath');
 const { checkFeature, FEATURES } = require('../featureFlags');
 
@@ -71,9 +70,6 @@ exports.uploadToCloudStorage = async (filePath, fileName, cloudinary, req = null
   if (!safeFs.existsSyncSafe(resolvedPath, { label: 'cloud storage upload' })) {
     throw new Error(`File not found: ${resolvedPath}`);
   }
-=======
-const logger = require('../logger');
->>>>>>> 6d2bc77 (first ci/cd push)
 
   try {
     // 🔍 DEBUG: Log before cloudinary.uploader.upload
@@ -120,7 +116,6 @@ const logger = require('../logger');
 
     return downloadUrl;
   } catch (error) {
-<<<<<<< HEAD
     // Enhanced error logging for ERR_INVALID_ARG_TYPE
     if (error.message && error.message.includes('ERR_INVALID_ARG_TYPE')) {
       console.error('\n🚨 ERR_INVALID_ARG_TYPE DETECTED IN uploadToCloudStorage - FULL STACK TRACE:');
@@ -141,9 +136,5 @@ const logger = require('../logger');
       }
     }
     throw new Error(`Failed to upload to cloud storage: ${error.message}`);
-=======
-    logger.error('Cloudinary upload error:', error);
-    throw new Error('Failed to upload to cloud storage');
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 };

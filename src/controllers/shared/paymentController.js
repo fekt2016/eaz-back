@@ -68,7 +68,6 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // NEVER trust frontend amount - always use server-side order total
   const serverAmount = order.totalPrice;
 
-<<<<<<< HEAD
   // CRITICAL: Log order details for debugging
   console.log(`[Payment Init] 🔍 Order ${orderId} details:`, {
     totalPrice: order.totalPrice,
@@ -92,12 +91,6 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
       orderItems: order.orderItems?.length || 0,
     });
     return next(new AppError('Invalid request. Please try again or contact support.', 400));
-=======
-  // Validate that frontend amount matches (if provided)
-  if (amount && Math.abs(parseFloat(amount) - serverAmount) > 0.01) {
-    logger.warn(`[Payment Init] Amount mismatch for order ${orderId}: Frontend=${amount}, Server=${serverAmount}`);
-    return next(new AppError('Payment amount does not match order total', 400));
->>>>>>> 6d2bc77 (first ci/cd push)
   }
 
   if (serverAmount <= 0) {
@@ -440,13 +433,8 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
     // Check if response has the expected structure
     if (!response.data || response.data.status !== true || !response.data.data) {
-<<<<<<< HEAD
       console.error(`[Payment Verification] Invalid response structure:`, response.data);
       return next(new AppError('Request could not be processed. Please try again.', 400));
-=======
-      logger.error(`[Payment Verification] Invalid response structure:`, response.data);
-      return next(new AppError('Invalid response from payment gateway', 400));
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     const transaction = response.data.data;
@@ -464,13 +452,8 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     }
 
     if (!order) {
-<<<<<<< HEAD
       console.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
       return next(new AppError('Requested resource not found', 404));
-=======
-      logger.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
-      return next(new AppError('Order not found', 404));
->>>>>>> 6d2bc77 (first ci/cd push)
     }
 
     // Check if payment was successful

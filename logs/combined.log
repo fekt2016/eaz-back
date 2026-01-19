@@ -2132,3 +2132,41 @@
 {"level":"error","message":"═══════════════════════════════════════════════════════════","service":"backend-api","timestamp":"2026-01-19 11:13:16"}
 {"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[33m401\u001b[0m 8.187 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 11:13:16"}
 {"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[33m401\u001b[0m 2.519 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 11:13:16"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saysay | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:00"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-19 18:20:01"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-19 18:20:01"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-19 18:20:01"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-19 18:20:01"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-19 18:20:01"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-19 18:20:04"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saysay | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:24"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-19 18:20:25"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-19 18:20:25"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-19 18:20:25"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-19 18:20:25"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-19 18:20:25"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-19 18:20:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[31m500\u001b[0m 27.517 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-19 18:20:43"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/public/featured?limit=8&minRating=4 \u001b[31m500\u001b[0m 272.550 ms - 320\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 544.236 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/eazshop \u001b[32m200\u001b[0m 1124.358 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 1154.716 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1393.243 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[32m200\u001b[0m 1933.908 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-19 18:20:45"}
