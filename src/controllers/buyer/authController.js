@@ -25,9 +25,10 @@ const { isPublicRoute,
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+const logger = require('../../utils/logger');
 // Shared helpers for standardized auth
-const { normalizeEmail, normalizePhone, OTP_TYPES } = require('../../utils/helpers/authHelpers');
-const { generateOtp } = require('../../utils/helpers/otpHelpers');
+const { normalizeEmail, normalizePhone } = require('../../utils/helpers/authHelpers');
+const { generateOtp, OTP_TYPES } = require('../../utils/helpers/otpHelpers');
 
 // Initialize route cache (5 minutes TTL)
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
@@ -45,6 +46,8 @@ const publicRoutes = [
   { path: '/api/v1/users/login', methods: ['POST'] },
   { path: '/api/v1/users/send-otp', methods: ['POST'] },
   { path: '/api/v1/users/verify-otp', methods: ['POST'] },
+  { path: '/api/v1/users/verify-account', methods: ['POST'] },
+  { path: '/api/v1/users/resend-otp', methods: ['POST'] },
   { path: '/api/v1/users/forgot-password', methods: ['POST'] },
   { path: '/api/v1/users/reset-password/:token', methods: ['PATCH'] },
   { path: '/api/v1/admin/login', methods: ['POST'] },
@@ -66,6 +69,9 @@ const publicRoutes = [
 
 // Controllers/authController.js (signup part)
 exports.signup = catchAsync(async (req, res, next) => {
+  // Early validation - collect field-level errors
+  const fieldErrors = {};
+
   // Normalize and validate email (required)
   const normalizedEmail = normalizeEmail(req.body.email);
   if (!normalizedEmail) {
@@ -220,6 +226,14 @@ exports.signup = catchAsync(async (req, res, next) => {
     // Handle duplicate key error (email or phone already exists)
     if (err.code === 11000) {
       // SECURITY: Generic error message to prevent account enumeration
+      // In development, log more details but still return generic message to client
+      if (process.env.NODE_ENV !== 'production') {
+        logger.warn('[Buyer Signup] Duplicate key error detected:', {
+          keyPattern: err.keyPattern,
+          keyValue: err.keyValue,
+          message: 'Account with this email or phone already exists',
+        });
+      }
       return next(
         new AppError(
           'Unable to process request',

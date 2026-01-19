@@ -22,6 +22,8 @@ const publicRoutes = [
   { path: '/api/v1/users/login', methods: ['POST'] },
   { path: '/api/v1/users/send-otp', methods: ['POST'] },
   { path: '/api/v1/users/verify-otp', methods: ['POST'] },
+  { path: '/api/v1/users/verify-account', methods: ['POST'] },
+  { path: '/api/v1/users/resend-otp', methods: ['POST'] },
   { path: '/api/v1/users/forgot-password', methods: ['POST'] },
   { path: '/api/v1/users/reset-password/:token', methods: ['PATCH'] },
   { path: '/api/v1/admin/login', methods: ['POST'] },
