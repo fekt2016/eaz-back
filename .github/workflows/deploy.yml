@@ -1,40 +1,34 @@
-name: Deploy Backend to EC2
+name: Deploy to Production
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to EC2
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          debug: true
           script: |
-            set -e
+            set -euxo pipefail
+
+            whoami
+            pwd
+            ls -la
 
             cd /var/www/saiisai-backend
 
-            echo "Pulling latest code..."
+            git status
             git pull origin main
 
-            echo "Stopping old containers..."
-            docker compose down || true
-
-            echo "Building containers..."
-            docker compose build
-
-            echo "Starting containers..."
-            docker compose up -d
-
-            echo "Cleaning unused images..."
-            docker image prune -f
+            docker compose ps
+            docker compose up -d --build
