@@ -37,11 +37,56 @@ async function getZoneFromNeighborhood(neighborhoodId) {
  * @returns {Promise<Object>} { neighborhood, zone }
  */
 async function getZoneFromNeighborhoodName(neighborhoodName, city) {
-  const neighborhood = await Neighborhood.findOne({
-    name: { $regex: new RegExp(`^${neighborhoodName}$`, 'i') },
-    city: city,
+  // Normalize inputs
+  const normalizedName = neighborhoodName.trim().toLowerCase();
+  const normalizedCity = city.trim();
+  
+  // Escape special regex characters in the neighborhood name
+  const escapedName = normalizedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Try multiple search strategies (most specific to least specific)
+  let neighborhood = null;
+  
+  // 1. Exact match (case-insensitive)
+  neighborhood = await Neighborhood.findOne({
+    name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+    city: normalizedCity,
     isActive: true,
   });
+  
+  // 2. If not found, try partial match (neighborhood name contains the search term)
+  if (!neighborhood) {
+    neighborhood = await Neighborhood.findOne({
+      name: { $regex: new RegExp(escapedName, 'i') },
+      city: normalizedCity,
+      isActive: true,
+    });
+  }
+  
+  // 3. If still not found, try fuzzy matching (search term contains neighborhood name or vice versa)
+  if (!neighborhood) {
+    // Split the search term into keywords and try matching any of them
+    const keywords = normalizedName.split(/\s+/).filter(k => k.length > 2); // Filter out short words
+    
+    if (keywords.length > 0) {
+      // Build regex pattern that matches if any keyword is found in neighborhood name
+      const keywordPattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      
+      neighborhood = await Neighborhood.findOne({
+        name: { $regex: new RegExp(keywordPattern, 'i') },
+        city: normalizedCity,
+        isActive: true,
+      });
+    }
+  }
+  
+  // 4. If still not found, try without city constraint (fallback)
+  if (!neighborhood) {
+    neighborhood = await Neighborhood.findOne({
+      name: { $regex: new RegExp(escapedName, 'i') },
+      isActive: true,
+    });
+  }
 
   if (!neighborhood) {
     throw new Error(`Neighborhood "${neighborhoodName}" in ${city} not found`);

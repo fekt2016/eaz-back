@@ -5,6 +5,7 @@ const stream = require('stream');
 const Product = require('../../models/product/productModel');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const multer = require('multer');
 const mongoose = require('mongoose');
 const { uploadMultipleFields } = require('../../middleware/upload/cloudinaryUpload');
@@ -701,7 +702,6 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
 
 exports.getBestSellers = catchAsync(async (req, res, next) => {
   const SellerOrder = require('../../models/order/sellerOrderModel');
-const logger = require('../../utils/logger');
   
   // Get query parameters with defaults
   const page = parseInt(req.query.page) || 1;

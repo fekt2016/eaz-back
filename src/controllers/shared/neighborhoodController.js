@@ -95,6 +95,7 @@ exports.getNeighborhood = catchAsync(async (req, res, next) => {
 
 /**
  * Search neighborhoods by name (autocomplete)
+ * Also searches by municipality if no direct name matches are found
  * GET /api/v1/neighborhoods/search?q=...
  */
 exports.searchNeighborhoods = catchAsync(async (req, res, next) => {
@@ -110,20 +111,43 @@ exports.searchNeighborhoods = catchAsync(async (req, res, next) => {
     });
   }
 
-  const filter = {
-    name: { $regex: q.trim(), $options: 'i' },
+  const searchQuery = q.trim();
+  const searchLimit = parseInt(limit, 10);
+
+  // First, try searching by neighborhood name
+  const nameFilter = {
+    name: { $regex: searchQuery, $options: 'i' },
     isActive: true,
   };
 
   if (city) {
-    filter.city = city;
+    nameFilter.city = city;
   }
 
-  const neighborhoods = await Neighborhood.find(filter)
+  let neighborhoods = await Neighborhood.find(nameFilter)
     .sort({ name: 1 })
-    .limit(parseInt(limit, 10))
-    .select('name city municipality lat lng')
+    .limit(searchLimit)
+    .select('name city municipality lat lng assignedZone')
     .lean();
+
+  // If no results by name, try searching by municipality
+  // This handles cases where the search term is a municipality (e.g., "Ayawaso")
+  if (neighborhoods.length === 0) {
+    const municipalityFilter = {
+      municipality: { $regex: searchQuery, $options: 'i' },
+      isActive: true,
+    };
+
+    if (city) {
+      municipalityFilter.city = city;
+    }
+
+    neighborhoods = await Neighborhood.find(municipalityFilter)
+      .sort({ name: 1 })
+      .limit(searchLimit)
+      .select('name city municipality lat lng assignedZone')
+      .lean();
+  }
 
   res.status(200).json({
     status: 'success',

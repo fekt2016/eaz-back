@@ -63,6 +63,10 @@ const publicRoutes = [
   { path: '/api/v1/discount', methods: ['GET'] },
   { path: '/api/v1/newsletter', methods: ['POST'] },
   { path: '/api/v1/search/results', methods: ['GET'] },
+  { path: '/api/v1/shipping/quote', methods: ['POST'] }, // Public shipping quote calculation
+  { path: '/api/v1/shipping/shipping-options', methods: ['POST'] }, // Public shipping options for checkout
+  { path: '/api/v1/shipping/calc-shipping', methods: ['POST'] }, // Public shipping calculation
+  { path: '/api/v1/shipping/pickup-centers', methods: ['GET'] }, // Public pickup centers
 ];
 
 // Controller methods ===========================================================

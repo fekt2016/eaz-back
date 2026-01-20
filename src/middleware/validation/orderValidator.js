@@ -44,15 +44,15 @@ exports.validateOrder = [
     .toInt(),
 
   body('orderItems.*.sku')
-    .notEmpty()
+    .optional()
     .trim()
     .isLength({ min: 1, max: 100 })
-    .withMessage('SKU is required and must be between 1 and 100 characters')
+    .withMessage('SKU must be between 1 and 100 characters')
     .matches(/^[A-Z0-9\-_]+$/)
     .withMessage('SKU must contain only uppercase letters, numbers, hyphens, and underscores')
     .customSanitizer((value) => {
-      // Ensure SKU is uppercase
-      return typeof value === 'string' ? value.toUpperCase().trim() : value;
+      // Ensure SKU is uppercase if provided
+      return value && typeof value === 'string' ? value.toUpperCase().trim() : value;
     }),
 
   // Validate address
@@ -66,6 +66,13 @@ exports.validateOrder = [
       return true;
     }),
 
+  // Validate payment method
+  body('paymentMethod')
+    .notEmpty()
+    .withMessage('Payment method is required')
+    .isIn(['payment_on_delivery', 'mobile_money', 'bank', 'credit_balance'])
+    .withMessage('Invalid payment method'),
+
   // Validate coupon code (optional)
   body('couponCode')
     .optional()
@@ -75,10 +82,83 @@ exports.validateOrder = [
     .matches(/^[A-Z0-9\-_]+$/)
     .withMessage('Coupon code must contain only uppercase letters, numbers, hyphens, and underscores'),
 
+  // Validate coupon ID (optional)
+  body('couponId')
+    .optional()
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid coupon ID format');
+      }
+      return true;
+    }),
+
+  // Validate batch ID (optional)
+  body('batchId')
+    .optional()
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid batch ID format');
+      }
+      return true;
+    }),
+
+  // Validate delivery method
+  body('deliveryMethod')
+    .notEmpty()
+    .withMessage('Delivery method is required')
+    .isIn(['dispatch', 'pickup_center', 'seller_delivery'])
+    .withMessage('Invalid delivery method. Must be dispatch, pickup_center, or seller_delivery'),
+
+  // Validate pickup center ID (optional, required if deliveryMethod is pickup_center)
+  body('pickupCenterId')
+    .optional()
+    .custom((value, { req }) => {
+      // If deliveryMethod is pickup_center, pickupCenterId should be provided
+      if (req.body.deliveryMethod === 'pickup_center' && !value) {
+        throw new Error('Pickup center ID is required when delivery method is pickup_center');
+      }
+      // If provided, validate ObjectId format
+      if (value && !mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid pickup center ID format');
+      }
+      return true;
+    }),
+
+  // Validate delivery speed (optional, for dispatch method)
+  body('deliverySpeed')
+    .optional()
+    .isIn(['standard', 'same_day'])
+    .withMessage('Invalid delivery speed. Must be standard or same_day'),
+
+  // Validate shipping type (optional, for dispatch method)
+  body('shippingType')
+    .optional()
+    .isIn(['standard', 'same_day'])
+    .withMessage('Invalid shipping type. Must be standard or same_day'),
+
+  // Validate shipping fee (optional, for dispatch method)
+  body('shippingFee')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Shipping fee must be a positive number')
+    .toFloat(),
+
   // Reject unknown fields (prevent mass assignment)
   body()
     .custom((value, { req }) => {
-      const allowedFields = ['orderItems', 'address', 'couponCode', 'paymentMethod'];
+      const allowedFields = [
+        'orderItems',
+        'address',
+        'paymentMethod',
+        'couponCode',
+        'couponId',
+        'batchId',
+        'deliveryMethod',
+        'pickupCenterId',
+        'deliverySpeed',
+        'shippingType',
+        'shippingFee',
+      ];
       const receivedFields = Object.keys(req.body);
       const unknownFields = receivedFields.filter(field => !allowedFields.includes(field));
       

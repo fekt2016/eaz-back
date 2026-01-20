@@ -13,6 +13,7 @@ const { sendPaymentNotification } = require('../../utils/helpers/notificationSer
 const axios = require('axios');
 const mongoose = require('mongoose');
 const { logSellerRevenue } = require('../../services/historyLogger');
+const logger = require('../../utils/logger');
 
 exports.getAllPayment = handleFactory.getAll(Payment);
 exports.getPayment = handleFactory.getOne(Payment);

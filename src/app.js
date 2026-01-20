@@ -139,7 +139,32 @@ app.use((req, res, next) => {
           "'self'",
           'https://api.cloudinary.com',
           'https://api.paystack.co',
+          'https://*.paystack.com', // Allow all Paystack subdomains
           'https://checkout.paystack.com',
+          'https://nominatim.openstreetmap.org', // OpenStreetMap Nominatim API for reverse geocoding
+          // Development origins - specific ports
+          ...(process.env.NODE_ENV === 'development' 
+            ? [
+                'http://localhost:5173', // eazmain
+                'http://localhost:5174', // eazadmin
+                'http://localhost:5175', // eazseller
+                'http://localhost:3000',
+                'http://localhost:3001',
+                'http://127.0.0.1:5173',
+                'http://127.0.0.1:5174',
+                'http://127.0.0.1:5175',
+              ]
+            : []
+          ),
+          // Production origins
+          ...(process.env.NODE_ENV === 'production'
+            ? [
+                'https://api.saiisai.com',
+                'https://saiisai.com',
+                'https://www.saiisai.com',
+              ]
+            : []
+          ),
         ],
         frameSrc: [
           "'self'",

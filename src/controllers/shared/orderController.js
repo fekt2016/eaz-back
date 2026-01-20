@@ -20,6 +20,8 @@ const notificationService = require('../../services/notification/notificationSer
 const Creditbalance = require('../../models/user/creditbalanceModel');
 const WalletTransaction = require('../../models/user/walletTransactionModel');
 const { logBuyerWallet } = require('../../services/historyLogger');
+const taxService = require('../../services/tax/taxService');
+const logger = require('../../utils/logger');
 
 
 exports.updateProductTotalSold = async (order) => {
@@ -404,16 +406,18 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     }
 
     // Calculate taxes for all items
+    // NOTE: taxService will internally load PlatformSettings when settings are not provided
     const orderItemsWithTax = await Promise.all(
       normalizedItems.map(async (item) => {
-        const taxBreakdown = await taxService.extractTaxFromPrice(item.price, platformSettings);
-        const covidLevy = await taxService.calculateCovidLevy(taxBreakdown.basePrice, platformSettings);
+        const taxBreakdown = await taxService.extractTaxFromPrice(item.price);
+        const covidLevy = await taxService.calculateCovidLevy(taxBreakdown.basePrice);
 
         return {
           product: item.product,
           variant: item.variant,
           quantity: item.quantity,
           price: item.price,
+          sku: item.sku, // Required by OrderItem schema
           basePrice: taxBreakdown.basePrice,
           vat: taxBreakdown.vat,
           nhil: taxBreakdown.nhil,
@@ -563,6 +567,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Create SellerOrders
     const sellerOrders = [];
+    // Load platform commission rate once (defaults to 0 if not set)
+    const PlatformSettings = require('../../models/platform/platformSettingsModel');
+    const platformSettings = await PlatformSettings.getSettings();
+    const platformCommissionRate = platformSettings.platformCommissionRate || 0;
     let orderTotal = 0;
     const shippingBreakdown = shippingQuote.perSeller || [];
 
@@ -948,9 +956,14 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     await newOrder.save({ session });
 
     /* ---------------------------------- */
-    /* 7.1. PAYMENT HANDLING               */
+    /* 7.1. PAYMENT HANDLING (LEGACY)      */
     /* ---------------------------------- */
-    // Handle wallet payment (credit_balance) - deduct balance atomically
+    // NOTE: Wallet payments are now handled via walletService above when
+    // paymentMethod === 'credit_balance'. To avoid double-charging and
+    // undefined variable errors, this legacy block is effectively disabled.
+    const isWalletPayment = false;
+
+    // Handle wallet payment (credit_balance) - legacy path (currently disabled)
     if (isWalletPayment) {
       console.log('[createOrder] 💰 Processing wallet payment deduction...');
       
@@ -1087,6 +1100,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* 7.5. APPLY COUPON TO ORDER          */
     /* ---------------------------------- */
     // Mark coupon as used after order is saved (within transaction)
+    const appliedCouponBatchId = newOrder.appliedCouponBatchId;
+    const appliedCouponId = newOrder.appliedCouponId;
     if (appliedCouponBatchId && appliedCouponId) {
       try {
         await couponService.applyCouponToOrder(

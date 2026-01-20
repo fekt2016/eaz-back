@@ -35,6 +35,10 @@ const publicRoutes = [
   { path: '/api/v1/seller/send-otp', methods: ['POST'] },
   { path: '/api/v1/seller/verify-otp', methods: ['POST'] },
   { path: '/api/v1/seller/forgotPassword', methods: ['POST'] },
+  { path: '/api/v1/shipping/quote', methods: ['POST'] }, // Public shipping quote calculation
+  { path: '/api/v1/shipping/shipping-options', methods: ['POST'] }, // Public shipping options for checkout
+  { path: '/api/v1/shipping/calc-shipping', methods: ['POST'] }, // Public shipping calculation
+  { path: '/api/v1/shipping/pickup-centers', methods: ['GET'] }, // Public pickup centers
 ];
 
 const escapeRegex = (string) => {
