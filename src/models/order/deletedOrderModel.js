@@ -68,11 +68,11 @@ const deletedOrderSchema = new mongoose.Schema(
     },
     deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Admin',
+      refPath: 'deletedByRole', // Can reference Admin, Seller, or User based on role
     },
     deletedByRole: {
       type: String,
-      enum: ['admin', 'system'],
+      enum: ['admin', 'seller', 'user', 'system'],
       default: 'admin',
     },
     // Store full order data as JSON for complete backup

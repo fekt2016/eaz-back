@@ -1385,11 +1385,19 @@ exports.getOrderBySeller = catchAsync(async (req, res, next) => {
 });
 
 exports.OrderDeleteOrderItem = catchAsync(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  // For normal users, we no longer hard-delete order items.
+  // Deletion is now handled as cancel + archive in deleteOrder.
+  if (req.user && req.user.role === 'user') {
+    return next();
+  }
 
-  order.orderItems.map(async (item) => {
-    await OrderItems.findByIdAndDelete(item);
-  });
+  // Admin flow: still clean up order items when performing a hard delete
+  const order = await Order.findById(req.params.id);
+  if (order && Array.isArray(order.orderItems)) {
+    await Promise.all(
+      order.orderItems.map((item) => OrderItems.findByIdAndDelete(item))
+    );
+  }
   next();
 });
 exports.getUserOrders = catchAsync(async (req, res, next) => {
@@ -1403,11 +1411,21 @@ exports.getUserOrders = catchAsync(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 20;
   const skip = (page - 1) * limit;
 
-  // Get total count for pagination metadata
-  const total = await Order.countDocuments({ user: req.user.id });
+  const includeArchived = String(req.query.includeArchived || '').toLowerCase() === 'true';
+
+  // Base filter: orders for this user
+  const baseFilter = { user: req.user.id };
+
+  // By default, hide archived orders from user list
+  const filter = includeArchived
+    ? baseFilter
+    : { ...baseFilter, archivedByUser: { $ne: true } };
+
+  // Get total count for pagination metadata (respecting archive filter)
+  const total = await Order.countDocuments(filter);
 
   // Get paginated orders
-  const orders = await Order.find({ user: req.user.id })
+  const orders = await Order.find(filter)
     .sort({ createdAt: -1 }) // Most recent first
     .skip(skip)
     .limit(limit)
@@ -1730,43 +1748,44 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
 exports.deleteOrder = catchAsync(async (req, res, next) => {
   const { orderItems, shippingAddress } = req.body;
   const userId = req.user._id;
+  const role = req.user?.role;
 
-  // SECURITY FIX #25: Order items validation
-  if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-    return next(new AppError('Order must contain at least one item', 400));
-  }
+  // SECURITY FIX #25: Order items validation (only when items are explicitly provided)
+  // For delete operations, the order and its items already exist in the database.
+  // We should NOT require the client to re-send all items just to delete an order.
+  if (orderItems && Array.isArray(orderItems) && orderItems.length > 0) {
+    // Validate each provided order item (defensive, but optional)
+    for (const item of orderItems) {
+      // Validate quantity
+      if (!item.quantity || item.quantity <= 0) {
+        return next(new AppError('Item quantity must be greater than zero', 400));
+      }
 
-  // Validate each order item
-  for (const item of orderItems) {
-    // Validate quantity
-    if (!item.quantity || item.quantity <= 0) {
-      return next(new AppError('Item quantity must be greater than zero', 400));
-    }
+      if (!Number.isInteger(item.quantity)) {
+        return next(new AppError('Item quantity must be a whole number', 400));
+      }
 
-    if (!Number.isInteger(item.quantity)) {
-      return next(new AppError('Item quantity must be a whole number', 400));
-    }
+      // Validate product exists
+      if (!item.product) {
+        return next(new AppError('Product ID is required for all items', 400));
+      }
 
-    // Validate product exists
-    if (!item.product) {
-      return next(new AppError('Product ID is required for all items', 400));
-    }
+      // Check product exists and has sufficient stock
+      const Product = require('../../models/product/productModel'); // Assuming Product model is needed here
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return next(new AppError(`Product ${item.product} not found`, 404));
+      }
 
-    // Check product exists and has sufficient stock
-    const Product = require('../../models/product/productModel'); // Assuming Product model is needed here
-    const product = await Product.findById(item.product);
-    if (!product) {
-      return next(new AppError(`Product ${item.product} not found`, 404));
-    }
-
-    // SECURITY: Check stock availability
-    if (product.stock < item.quantity) {
-      return next(
-        new AppError(
-          `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
-          400
-        )
-      );
+      // SECURITY: Check stock availability
+      if (product.stock < item.quantity) {
+        return next(
+          new AppError(
+            `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
+            400
+          )
+        );
+      }
     }
   }
 
@@ -1783,6 +1802,61 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
   if (!order) {
     return next(new AppError('Order not found', 404));
   }
+
+  // USER FLOW: Cancel + archive instead of hard delete
+  if (role === 'user') {
+    const isPaidOrShipped =
+      ['paid', 'completed'].includes(order.paymentStatus) ||
+      ['paid', 'confirmed', 'processing', 'partially_shipped', 'completed'].includes(order.status) ||
+      [
+        'payment_completed',
+        'processing',
+        'confirmed',
+        'preparing',
+        'ready_for_dispatch',
+        'out_for_delivery',
+        'delivered',
+      ].includes(order.currentStatus);
+
+    if (isPaidOrShipped) {
+      return next(
+        new AppError('This order can no longer be cancelled.', 400)
+      );
+    }
+
+    // Cancel order (unpaid / pending payment)
+    order.status = 'cancelled';
+    order.orderStatus = 'cancelled';
+    order.FulfillmentStatus = 'cancelled';
+    order.currentStatus = 'cancelled';
+    order.cancelledAt = new Date();
+
+    // Archive from user's list
+    order.archivedByUser = true;
+    order.archivedAt = new Date();
+
+    // Add tracking history entry for audit
+    order.trackingHistory.push({
+      status: 'cancelled',
+      message: 'Order cancelled by customer',
+      location: '',
+      updatedBy: req.user.id,
+      updatedByModel: 'User',
+      timestamp: new Date(),
+    });
+
+    await order.save();
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Order cancelled and archived from your list.',
+      data: {
+        order,
+      },
+    });
+  }
+
+  // ADMIN FLOW: Hard delete with backup (no change in external behavior)
 
   // Create backup of order info before deletion
   const orderBackup = {
@@ -1808,7 +1882,7 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     fullOrderData: order.toObject(),
   };
 
-  // Save backup to a collection (we'll create a DeletedOrder model)
+  // Save backup to a collection
   const DeletedOrder = require('../../models/order/deletedOrderModel');
   await DeletedOrder.create(orderBackup);
 
@@ -1825,8 +1899,16 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     platformStats.lastUpdated = new Date();
     await platformStats.save();
 
-    logger.info(`[deleteOrder] Deducted GH₵${deductionAmount.toFixed(2)} from admin revenue for deleted order ${orderId}`);
-    logger.info(`[deleteOrder] Revenue: GH₵${oldRevenue.toFixed(2)} → GH₵${platformStats.totalRevenue.toFixed(2)}`);
+    logger.info(
+      `[deleteOrder] Deducted GH₵${deductionAmount.toFixed(
+        2
+      )} from admin revenue for deleted order ${orderId}`
+    );
+    logger.info(
+      `[deleteOrder] Revenue: GH₵${oldRevenue.toFixed(
+        2
+      )} → GH₵${platformStats.totalRevenue.toFixed(2)}`
+    );
 
     // Log activity
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
@@ -1834,7 +1916,9 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
       userId: adminId,
       role: req.user?.role || 'admin',
       action: 'ORDER_DELETED',
-      description: `Order ${order.orderNumber || orderId} deleted. Revenue deducted: GH₵${deductionAmount.toFixed(2)}`,
+      description: `Order ${order.orderNumber || orderId} deleted. Revenue deducted: GH₵${deductionAmount.toFixed(
+        2
+      )}`,
       req,
       metadata: {
         orderId: order._id,

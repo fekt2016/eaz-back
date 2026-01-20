@@ -1,13 +1,21 @@
 // AppError is not used in this file, but kept for potential future use
 // const AppError = require('../../utils/errors/appError');
+const { buildErrorResponse } = require('../../utils/helpers/responseHelper');
 
 const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
-    status: err.status,
+  const payload = buildErrorResponse({
     message: err.message,
-    error: err,
-    stack: err.stack,
+    statusCode: err.statusCode,
+    errorCode: err.code || null,
+    details: err.fieldErrors || null,
+    status: err.status,
   });
+
+  // In development, also include raw error & stack for easier debugging
+  payload.error = err;
+  payload.stack = err.stack;
+
+  res.status(err.statusCode).json(payload);
 };
 
 const sendErrorProd = (err, res) => {
@@ -23,8 +31,14 @@ const sendErrorProd = (err, res) => {
     // Generic error messages based on error type and status code
     const messageLower = err.message.toLowerCase();
     
+    // Too many requests / rate limiting (e.g. login lockout)
+    if (err.statusCode === 429) {
+      // Keep the original, user-friendly message but avoid leaking internals
+      // Example: "Too many failed login attempts. Account locked for 15 minutes."
+      genericMessage = err.message || 'Too many requests. Please try again later.';
+    }
     // Authentication and authorization errors
-    if (err.statusCode === 401 || err.statusCode === 403) {
+    else if (err.statusCode === 401 || err.statusCode === 403) {
       if (messageLower.includes('user') || messageLower.includes('password') || 
           messageLower.includes('email') || messageLower.includes('login') ||
           messageLower.includes('credential') || messageLower.includes('token') ||
@@ -71,17 +85,25 @@ const sendErrorProd = (err, res) => {
       genericMessage = 'Unable to process request';
     }
     
-    res.status(err.statusCode).json({
-      status: err.status,
+    const payload = buildErrorResponse({
       message: genericMessage,
+      statusCode: err.statusCode,
+      errorCode: err.code || null,
+      details: err.fieldErrors || null,
+      status: err.status,
     });
+
+    res.status(err.statusCode).json(payload);
   } else {
     // Programming or other unknown error: don't leak error details
     console.error('ERROR 💥', err);
-    res.status(500).json({
-      status: 'error',
+    const payload = buildErrorResponse({
       message: 'Something went wrong!',
+      statusCode: 500,
+      status: 'error',
     });
+
+    res.status(500).json(payload);
   }
 };
 

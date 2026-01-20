@@ -137,6 +137,10 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'paid', 'completed', 'failed', 'refunded', 'partial_refund'],
       default: 'pending',
     },
+    // Timestamp when order was cancelled (if applicable)
+    cancelledAt: {
+      type: Date,
+    },
     createdAt: {
       type: Date,
       default: Date.now(),
@@ -254,6 +258,14 @@ const orderSchema = new mongoose.Schema(
         'cancelled',
       ],
       default: 'pending',
+    },
+    // User-facing archive flags (order hidden from user's default list but kept for audit)
+    archivedByUser: {
+      type: Boolean,
+      default: false,
+    },
+    archivedAt: {
+      type: Date,
     },
     // Order Tracking System
     currentStatus: {
