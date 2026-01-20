@@ -11465,3 +11465,15 @@
 {"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-20 15:17:55"}
 {"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-20 15:17:55"}
 {"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-20 15:17:55"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-20 15:22:59"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-20 15:23:00"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-20 15:23:00"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-20 15:23:00"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-20 15:23:00"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-20 15:23:00"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-20 15:23:02"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-20 15:23:02"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-20 15:23:03"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-20 15:23:03"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-20 15:23:03"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-20 15:23:03"}
