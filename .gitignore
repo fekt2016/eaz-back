@@ -10,3 +10,6 @@ config.env
 # Documentation files (not for version control)
 *.md
 !README.md
+.env*
+.env*
+.env*
