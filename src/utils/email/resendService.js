@@ -2,13 +2,13 @@ const logger = require('../logger');
 const { getResend } = require('./resendClient');
 
 // Brand Configuration (same as emailService.js to avoid circular dependency)
-// Priority: APP_NAME > BRAND_NAME > default 'Saysay'
+// Priority: APP_NAME > BRAND_NAME > default 'Saiisai'
 const getBrandConfig = () => ({
-  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saysay',
+  name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
   tagline: process.env.BRAND_TAGLINE || 'Online Marketplace',
   url: process.env.FRONTEND_URL || 'https://saiisai.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
-  fromName: process.env.EMAIL_FROM_NAME || 'Saysay',
+  fromName: process.env.EMAIL_FROM_NAME || 'Saiisai',
 });
 
 /**

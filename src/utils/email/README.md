@@ -27,7 +27,7 @@ Add to your `.env` file:
 # SendGrid Configuration (REQUIRED)
 SENDGRID_API_KEY=your_sendgrid_api_key_here
 SENDGRID_FROM_EMAIL=noreply@yourdomain.com  # Optional: Override default sender
-EMAIL_FROM_NAME=Saysay  # Optional: Sender name
+EMAIL_FROM_NAME=Saiisai  # Optional: Sender name
 EMAIL_FROM=noreply@yourdomain.com  # Default sender email
 FRONTEND_URL=https://saiisai.com  # For email links
 ```
