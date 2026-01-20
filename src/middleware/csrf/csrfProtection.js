@@ -63,6 +63,13 @@ exports.csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // Allow logout endpoints without CSRF token.
+  // CSRF risk here is limited to forced logout, which is acceptable, and
+  // avoids blocking users from logging out if the CSRF token is missing.
+  if (fullPath === '/api/v1/users/logout') {
+    return next();
+  }
+
   // Get token from header
   const tokenFromHeader = req.headers['x-csrf-token'];
   

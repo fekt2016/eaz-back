@@ -7,37 +7,65 @@ const { logBuyerWallet } = require('./historyLogger');
 /**
  * Get or create wallet for user
  * Ensures availableBalance is always correctly calculated
+ *
+ * Uses a safe find-or-create pattern with upsert to avoid race conditions.
+ * When used inside a transaction, pass the session so the operation
+ * participates in the same transaction.
  */
-async function getOrCreateWallet(userId) {
-  let wallet = await Creditbalance.findOne({ user: userId });
-  
-  if (!wallet) {
-    wallet = await Creditbalance.create({
-      user: userId,
-      balance: 0,
-      availableBalance: 0,
-      holdAmount: 0,
-      currency: 'GHS',
-    });
-  } else {
-    // CRITICAL: Recalculate availableBalance to ensure it's always correct
-    // This handles cases where the database might have stale availableBalance
-    const calculatedAvailableBalance = Math.max(0, (wallet.balance || 0) - (wallet.holdAmount || 0));
-    
-    // Only update if there's a discrepancy (more than 0.01 to avoid floating point issues)
-    if (Math.abs((wallet.availableBalance || 0) - calculatedAvailableBalance) > 0.01) {
-      console.log(`[getOrCreateWallet] Recalculating availableBalance for user ${userId}:`, {
+async function getOrCreateWallet(userId, session = null) {
+  // Use findOneAndUpdate with upsert + $setOnInsert to avoid duplicate inserts
+  const query = Creditbalance.findOneAndUpdate(
+    { user: userId },
+    {
+      $setOnInsert: {
+        user: userId,
+        balance: 0,
+        availableBalance: 0,
+        holdAmount: 0,
+        currency: 'GHS',
+      },
+    },
+    {
+      new: true,
+      upsert: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+
+  if (session) {
+    query.session(session);
+  }
+
+  const wallet = await query;
+
+  // CRITICAL: Recalculate availableBalance to ensure it's always correct
+  const calculatedAvailableBalance = Math.max(
+    0,
+    (wallet.balance || 0) - (wallet.holdAmount || 0)
+  );
+
+  if (
+    Math.abs((wallet.availableBalance || 0) - calculatedAvailableBalance) >
+    0.01
+  ) {
+    console.log(
+      `[getOrCreateWallet] Recalculating availableBalance for user ${userId}:`,
+      {
         oldAvailableBalance: wallet.availableBalance,
         newAvailableBalance: calculatedAvailableBalance,
         balance: wallet.balance,
         holdAmount: wallet.holdAmount,
-      });
-      wallet.availableBalance = calculatedAvailableBalance;
-      // Save without validation to prevent triggering pre-save hook unnecessarily
+      }
+    );
+    wallet.availableBalance = calculatedAvailableBalance;
+    // Save without validation to prevent triggering pre-save hook unnecessarily
+    if (session) {
+      await wallet.save({ validateBeforeSave: false, session });
+    } else {
       await wallet.save({ validateBeforeSave: false });
     }
   }
-  
+
   return wallet;
 }
 
@@ -70,8 +98,8 @@ async function creditWallet(userId, amount, type, description, reference = null,
       }
     }
 
-    // Get or create wallet
-    const wallet = await getOrCreateWallet(userId);
+    // Get or create wallet (participate in current transaction)
+    const wallet = await getOrCreateWallet(userId, session);
     const balanceBefore = wallet.balance || 0;
     const balanceAfter = balanceBefore + amount;
 

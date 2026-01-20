@@ -10,8 +10,10 @@ const creditbalanceSchema = new mongoose.Schema({
   admin: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
-    // required: true,
-    // unique: true,
+    // NOTE:
+    // - Admin wallet rows should ALWAYS have a valid admin ObjectId
+    // - Regular user wallets should leave this field undefined/null
+    // Uniqueness for admin is enforced via a partial index below
   },
   balance: {
     type: Number,
@@ -49,6 +51,17 @@ const creditbalanceSchema = new mongoose.Schema({
     },
   ],
 });
+
+// Ensure there is at most one Creditbalance per admin,
+// but allow multiple documents where admin is null/undefined.
+// This prevents E11000 duplicate key errors on admin=null.
+creditbalanceSchema.index(
+  { admin: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { admin: { $type: 'objectId' } },
+  }
+);
 
 creditbalanceSchema.pre('save', function (next) {
   // Calculate available balance: balance - holdAmount

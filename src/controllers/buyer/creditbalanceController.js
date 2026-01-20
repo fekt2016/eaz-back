@@ -3,25 +3,25 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const mongoose = require('mongoose');
 
-// Get user's credit balance
+// Get user's credit balance (READ-ONLY: no writes inside GET)
 exports.getCreditBalance = catchAsync(async (req, res, next) => {
-  // logger.info('user', req.user.id);
   const userId = new mongoose.Types.ObjectId(req.user.id);
-  const creditbalance = await Creditbalance.findOne({
-    user: userId,
-  });
+  const creditbalance = await Creditbalance.findOne({ user: userId });
 
   if (!creditbalance) {
-    // Initialize if doesn't exist
-    try {
-      const newCredit = await Creditbalance.create({ user: userId });
-      logger.info('newCredit', newCredit);
-    } catch (error) {
-      logger.info('error', error);
-    }
+    // Do NOT create a new document in a GET route.
+    // Return a synthetic zero-balance object so callers can render safely.
     return res.json({
       status: 'success',
-      data: { creditbalance: newCredit },
+      data: {
+        creditbalance: {
+          user: userId,
+          balance: 0,
+          availableBalance: 0,
+          holdAmount: 0,
+          currency: 'GHS',
+        },
+      },
     });
   }
 
