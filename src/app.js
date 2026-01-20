@@ -194,10 +194,17 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const allowedOrigins = [
+  // Main customer site
   'https://saiisai.com',
   'https://www.saiisai.com',
+  // API domain
   'https://api.saiisai.com',
-  'https://checkout.paystack.com', // Allow Paystack checkout domain
+  // Seller & admin dashboards
+  'https://seller.saiisai.com',
+  'https://admin.saiisai.com',
+  // Paystack checkout domain
+  'https://checkout.paystack.com',
+  // Fallback / additional frontend URL from env
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 

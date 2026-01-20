@@ -1,0 +1,34 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          debug: true
+          script: |
+            set -euxo pipefail
+
+            whoami
+            pwd
+            ls -la
+
+            cd /var/www/saiisai-backend
+
+            git status
+            git pull origin main
+
+            docker compose ps
+            docker compose up -d --build
