@@ -4,6 +4,8 @@ const Order = require('../../models/order/orderModel');
 const orderService = require('../../services/order/orderService');
 const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 
 /**
  * Update order status
@@ -450,17 +452,24 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
 
   // Handle shippingAddress - check if it's a reference (ObjectId string) or embedded object
   let shippingAddress = order.shippingAddress;
-  if (shippingAddress && typeof shippingAddress === 'string') {
-    // If it's a string (ObjectId), populate from Address model
+  
+  // Check if shippingAddress is an ObjectId (string or ObjectId instance) rather than an embedded object
+  if (shippingAddress && (typeof shippingAddress === 'string' || mongoose.Types.ObjectId.isValid(shippingAddress))) {
+    // If it's a string/ObjectId (reference to Address model), populate from Address model
     try {
       const Address = require('../../models/user/addressModel');
-      const address = await Address.findById(shippingAddress).lean();
+      const addressId = typeof shippingAddress === 'string' ? shippingAddress : shippingAddress.toString();
+      const address = await Address.findById(addressId).lean();
       if (address) {
         shippingAddress = address;
+      } else {
+        logger.warn('[getOrderByTrackingNumber] Address not found for ID:', addressId);
+        shippingAddress = null; // Set to null if address not found
       }
     } catch (error) {
       logger.error('[getOrderByTrackingNumber] Error populating address:', error);
-      // Keep the ID if population fails
+      // Keep the ID if population fails, but log the issue
+      shippingAddress = typeof shippingAddress === 'string' ? shippingAddress : shippingAddress.toString();
     }
   }
 

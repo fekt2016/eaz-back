@@ -14,6 +14,7 @@ const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const speakeasy = require('speakeasy');
 const NodeCache = require('node-cache');
+const logger = require('../../utils/logger');
 // Shared helpers for standardized auth
 const { normalizeEmail, normalizePhone, handleSuccessfulLogin, clearAuthCookie } = require('../../utils/helpers/authHelpers');
 const { OTP_TYPES, generateOtp, verifyOtp, clearOtp } = require('../../utils/helpers/otpHelpers');
@@ -725,6 +726,11 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   seller.verification = seller.verification || {};
   seller.verification.emailVerified = true;
   
+  // If seller status is pending (or not set), activate the account on email verification
+  if (!seller.status || seller.status === 'pending') {
+    seller.status = 'active';
+  }
+  
   // Clear OTP fields using shared helper
   clearOtp(seller);
   await seller.save({ validateBeforeSave: false });
@@ -1041,7 +1047,6 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
   // SECURITY: Invalidate all active sessions
   const DeviceSession = require('../../models/user/deviceSessionModel');
   const TokenBlacklist = require('../../models/user/tokenBlackListModal');
-const logger = require('../../utils/logger');
   await DeviceSession.deactivateAll(seller._id);
   await TokenBlacklist.invalidateAllSessions(seller._id);
 
@@ -1827,8 +1832,16 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
   const { findUserByToken } = require('../../utils/helpers/routeUtils');
   const currentUser = await findUserByToken(decoded);
   if (!currentUser) {
+    // Clear invalid seller_jwt cookie so frontend stops sending a broken session
+    try {
+      const { clearAuthCookie } = require('../../utils/helpers/authHelpers');
+      clearAuthCookie(res, 'seller');
+    } catch (e) {
+      console.error('[protectSeller] Error clearing invalid seller cookie:', e.message);
+    }
+
     return next(
-      new AppError('The user belonging to this token no longer exists', 401),
+      new AppError('Your session is no longer valid. Please log in again.', 401),
     );
   }
   

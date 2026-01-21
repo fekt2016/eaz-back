@@ -1337,6 +1337,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     fullPath.startsWith('/api/v1/paymentrequest') ||
     fullPath.includes('/order/get-seller-orders') ||
     fullPath.includes('/order/seller-order/') ||
+    fullPath.startsWith('/api/v1/analytics/seller') || // Seller analytics endpoints
     (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
     (fullPath === '/api/v1/product' && method === 'POST') ||
     (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))

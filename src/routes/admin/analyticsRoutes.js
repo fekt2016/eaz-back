@@ -1,6 +1,7 @@
 const express = require('express');
 const analyticsController = require('../../controllers/admin/analyticsController');
 const authController = require('../../controllers/buyer/authController');
+const authSellerController = require('../../controllers/seller/authSellerController');
 const router = express.Router();
 
 router.post(
@@ -13,7 +14,8 @@ router.post(
 // Seller analytics - allow sellers to view their own analytics
 router.get(
   '/seller/:sellerId/views',
-  authController.protect,
+  // IMPORTANT: Use seller-specific auth so we look at seller_jwt, not main_jwt
+  authSellerController.protectSeller,
   authController.restrictTo('seller', 'admin'),
   analyticsController.getSellerProductViews,
 );

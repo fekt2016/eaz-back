@@ -34,6 +34,10 @@ const publicRoutes = [
   { path: '/api/v1/seller/signup', methods: ['POST'] },
   { path: '/api/v1/seller/send-otp', methods: ['POST'] },
   { path: '/api/v1/seller/verify-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/verify-account', methods: ['POST'] },
+  { path: '/api/v1/seller/resend-otp', methods: ['POST'] },
+  { path: '/api/v1/seller/forgot-password', methods: ['POST'] },
+  { path: '/api/v1/seller/reset-password', methods: ['POST'] },
   { path: '/api/v1/seller/forgotPassword', methods: ['POST'] },
   { path: '/api/v1/shipping/quote', methods: ['POST'] }, // Public shipping quote calculation
   { path: '/api/v1/shipping/shipping-options', methods: ['POST'] }, // Public shipping options for checkout

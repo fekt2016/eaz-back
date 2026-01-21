@@ -63,14 +63,12 @@ router
   .get(
     authController.protect,
     authController.restrictTo('seller'),
-    requireVerifiedSeller,
     getSellerOrders,
   );
 router.get(
   '/seller-order/:id',
   authController.protect,
   authController.restrictTo('seller'),
-  requireVerifiedSeller,
   validateObjectId('id'), // SECURITY FIX #6
   getOrderBySeller,
 );

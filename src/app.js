@@ -275,6 +275,23 @@ const corsOptions = {
       return callback(null, true);
     }
 
+    // Allow localhost origins for local development against production API (optional)
+    if (process.env.ALLOW_LOCALHOST === 'true') {
+      const localhostOrigins = [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'http://127.0.0.1:5175',
+      ].map(o => o.toLowerCase());
+      
+      if (localhostOrigins.includes(normalizedOrigin)) {
+        logger.info(`[CORS] Allowing localhost origin in production: ${origin}`);
+        return callback(null, true);
+      }
+    }
+
     // Allow AWS Amplify domains (*.amplifyapp.com)
     if (origin && origin.endsWith('.amplifyapp.com')) {
       if (isDevelopment) {
