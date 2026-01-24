@@ -19761,3 +19761,534 @@
 {"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-24 16:44:41"}
 {"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-24 16:44:41"}
 {"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-24 16:44:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:04"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 829.409 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 768.824 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 16:51:06","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 819.624 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 808.283 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 750.906 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1068.848 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 797.154 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 801.489 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1133.698 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1865.734 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1053.675 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 16:51:08","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 16:51:08"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 16:51:09"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 16:51:09"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 16:51:09"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1249.163 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:09"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 16:51:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1771.327 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 16:51:10"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 17:41:30"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 17:41:30"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 18:35:38"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 18:35:39"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 19:29:35"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 19:29:35"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 20:21:59"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:21:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 760.248 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:48"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 755.770 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 776.513 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:49"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 756.227 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1006.354 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:50"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1276.735 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:51"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:23:52","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1273.324 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 2671.557 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:52"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 3505.045 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 3017.341 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 995.077 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:23:53"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:23:53","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1340.926 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:23:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1852.167 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:23:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 775.993 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 750.437 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:30:28","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 749.031 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 763.497 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1004.817 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1011.616 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 968.188 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 751.240 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 947.962 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1768.244 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1005.358 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:29"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:30:30","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1391.185 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:30:30"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:30:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1757.090 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:30:31"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 20:32:01"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:32:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 748.178 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 998.353 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1240.393 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:33:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1482.103 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1774.223 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:33:55","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1723.622 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 3028.672 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:33:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 3547.481 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 3787.122 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1001.105 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 2553.606 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:33:56"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:33:56","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:33:57"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:33:57"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1254.191 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:57"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:33:57"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:33:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1748.436 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:33:58"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:37:38"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 20:37:48"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:37:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 755.265 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 749.111 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1214.484 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1456.305 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1298.046 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:55"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:38:56","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1585.793 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1074.862 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:38:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 2802.422 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 3764.002 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:38:57"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1443.010 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 2389.031 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1174.885 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:38:58","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:38:58"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:38:59"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:38:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1744.996 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:38:59"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:48:09"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 20:48:19"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 20:48:19"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 749.537 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 755.250 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:06"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1247.329 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 20:51:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1490.369 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1726.455 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1990.847 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:51:08","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:08"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1154.453 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 2738.810 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 20:51:09"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1398.558 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:10"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1151.234 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 2692.730 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:10"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:51:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 5218.121 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 20:51:11"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 20:51:11"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 20:51:12"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 20:51:12"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 20:51:12","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 20:51:12"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 20:51:12"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 20:51:13"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 20:51:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1835.800 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 20:51:13"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 21:18:54"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 21:32:08"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 21:32:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 756.765 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 21:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 996.780 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:33:58"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1259.267 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1501.251 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 2021.587 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1636.927 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 21:34:00","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1253.991 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 3014.913 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1523.503 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 2657.575 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1005.527 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:02"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 21:34:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 5206.148 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:34:03"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 21:34:03"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:34:03"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 21:34:03"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 21:34:03","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 21:34:04"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 21:34:04"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 21:34:04"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 21:34:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1872.909 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:34:05"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 21:35:06"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 21:35:16"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 21:35:16"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 768.039 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 848.467 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1012.473 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 802.948 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1047.966 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:41"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1271.102 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1700.930 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 2012.988 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"admin_jwt":"missing","cookieKeys":["seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"missing","message":"[Auth] 🔍 Payment/OTP route detected:","method":"PATCH","seller_jwt":"present","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:43"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/paymentmethod/set-Default/6974c8b326ec9127e3c0722c \u001b[33m400\u001b[0m 1406.197 ms - 614\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:44"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 21:36:45","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 5549.572 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:45"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 6344.000 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1014.910 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:46"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-24 21:36:47"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-24 21:36:47"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-24 21:36:47","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-24 21:36:47"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-24 21:36:47"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-24 21:36:47"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-24 21:36:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1740.715 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 21:36:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-24 22:35:45"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-24 22:35:46"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-24 22:35:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-24 22:35:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 3249.422 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-24 22:35:48"}
