@@ -1082,6 +1082,15 @@ exports.getSeller = catchAsync(async (req, res, next) => {
   // ✅ BACKEND-DRIVEN: Add isSetupComplete from backend computation
   sellerData.isSetupComplete = seller.computeIsSetupComplete();
 
+  // Log response for debugging (production)
+  if (process.env.NODE_ENV === 'production') {
+    logger.info('[getSeller] Sending seller data response', {
+      sellerId: sellerData._id || sellerData.id,
+      hasData: !!sellerData,
+      isSetupComplete: sellerData.isSetupComplete,
+    });
+  }
+
   res.status(200).json({ 
     status: 'success', 
     data: { 

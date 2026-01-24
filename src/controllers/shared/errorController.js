@@ -39,7 +39,11 @@ const sendErrorProd = (err, res) => {
     }
     // Authentication and authorization errors
     else if (err.statusCode === 401 || err.statusCode === 403) {
-      if (messageLower.includes('user') || messageLower.includes('password') || 
+      // Preserve verification-related messages (important for user flow)
+      if (messageLower.includes('not verified') || messageLower.includes('verify') || 
+          messageLower.includes('verification') || messageLower.includes('unverified')) {
+        genericMessage = err.message; // Keep original message for verification errors
+      } else if (messageLower.includes('user') || messageLower.includes('password') || 
           messageLower.includes('email') || messageLower.includes('login') ||
           messageLower.includes('credential') || messageLower.includes('token') ||
           messageLower.includes('otp') || messageLower.includes('invalid') ||
