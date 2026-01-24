@@ -5,8 +5,10 @@ const { getAllPaymentMethods,
   updatePaymentMethod,
   deletePaymentMethod,
   setDefaultPaymentMethod,
-  getMyPaymentMethods, } = require('../../controllers/shared/paymentMethodController');
+  getMyPaymentMethods,
+  submitForVerification, } = require('../../controllers/shared/paymentMethodController');
 const authController = require('../../controllers/buyer/authController');
+const { paymentMethodCreationLimiter, verificationRequestLimiter, paymentMethodUpdateLimiter } = require('../../middleware/rateLimiting/paymentMethodLimiter');
 const router = express.Router();
 
 router
@@ -15,6 +17,7 @@ router
   .post(
     authController.protect,
     authController.restrictTo('user', 'admin', 'seller'),
+    paymentMethodCreationLimiter,
     createPaymentMethod,
   );
 
@@ -30,12 +33,23 @@ router.patch(
   authController.restrictTo('user', 'admin', 'seller'),
   setDefaultPaymentMethod,
 );
+
+// Submit payment method for verification
+router.patch(
+  '/:id/submit',
+  authController.protect,
+  authController.restrictTo('user', 'admin', 'seller'),
+  verificationRequestLimiter,
+  submitForVerification,
+);
+
 router
   .route('/:id')
   .get(getPaymentMethod)
   .patch(
     authController.protect,
     authController.restrictTo('user', 'admin', 'seller'),
+    paymentMethodUpdateLimiter,
     updatePaymentMethod,
   )
   .delete(

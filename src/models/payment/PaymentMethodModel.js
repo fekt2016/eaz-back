@@ -69,12 +69,30 @@ const paymentMethodSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    // Verification status for payment method
+    // Enhanced status lifecycle: draft → pending → verified → active → rejected → suspended
+    status: {
+      type: String,
+      enum: ['draft', 'pending', 'verified', 'active', 'rejected', 'suspended'],
+      default: 'draft',
+      comment: 'Payment method status lifecycle',
+    },
+    // Legacy field for backward compatibility (maps to status)
     verificationStatus: {
       type: String,
       enum: ['pending', 'verified', 'rejected'],
       default: 'pending',
-      comment: 'Payment method verification status - must be verified before use',
+      comment: 'Legacy: Payment method verification status - maps to status field',
+    },
+    // Ownership verification (provider-initiated)
+    ownershipVerified: {
+      type: Boolean,
+      default: false,
+      comment: 'Whether ownership has been verified via provider (USSD/STK)',
+    },
+    ownershipVerifiedAt: {
+      type: Date,
+      default: null,
+      comment: 'Timestamp when ownership was verified',
     },
     verifiedAt: {
       type: Date,
@@ -92,11 +110,39 @@ const paymentMethodSchema = new mongoose.Schema(
       default: null,
       comment: 'Reason for payment method verification rejection',
     },
+    // Tracking and security
+    lastEditedAt: {
+      type: Date,
+      default: null,
+      comment: 'Last time payment method was edited',
+    },
+    editCount: {
+      type: Number,
+      default: 0,
+      comment: 'Number of times payment method has been edited',
+    },
+    fraudScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      comment: 'Fraud risk score (0-100)',
+    },
+    lockReason: {
+      type: String,
+      default: null,
+      comment: 'Reason why payment method is locked (e.g., active payout)',
+    },
+    lockExpiresAt: {
+      type: Date,
+      default: null,
+      comment: 'When the lock expires',
+    },
     verificationHistory: [
       {
         status: { 
           type: String, 
-          enum: ['pending', 'verified', 'rejected'], 
+          enum: ['draft', 'pending', 'verified', 'active', 'rejected', 'suspended'], 
           required: true 
         },
         reason: { type: String },
@@ -107,6 +153,10 @@ const paymentMethodSchema = new mongoose.Schema(
         timestamp: { 
           type: Date, 
           default: Date.now 
+        },
+        paymentDetails: {
+          type: mongoose.Schema.Types.Mixed,
+          comment: 'Snapshot of payment details at time of status change',
         },
       },
     ],
@@ -120,6 +170,28 @@ const paymentMethodSchema = new mongoose.Schema(
 
 
 
+
+// Middleware to sync verificationStatus with status for backward compatibility
+paymentMethodSchema.pre('save', function (next) {
+  // Map status to verificationStatus for backward compatibility
+  if (this.status === 'verified' || this.status === 'active') {
+    this.verificationStatus = 'verified';
+  } else if (this.status === 'rejected') {
+    this.verificationStatus = 'rejected';
+  } else {
+    this.verificationStatus = 'pending';
+  }
+  
+  // Update lastEditedAt if fields changed
+  if (this.isModified('accountNumber') || this.isModified('mobileNumber') || 
+      this.isModified('bankName') || this.isModified('provider') || 
+      this.isModified('accountName')) {
+    this.lastEditedAt = new Date();
+    this.editCount = (this.editCount || 0) + 1;
+  }
+  
+  next();
+});
 
 // Middleware to ensure only one default payment method per user
 paymentMethodSchema.pre('save', async function (next) {

@@ -1335,6 +1335,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
     fullPath.startsWith('/api/v1/paymentrequest') ||
+    fullPath.startsWith('/api/v1/paymentmethod') || // Payment method routes (sellers need to add payment methods)
     fullPath.includes('/order/get-seller-orders') ||
     fullPath.includes('/order/seller-order/') ||
     fullPath.startsWith('/api/v1/analytics/seller') || // Seller analytics endpoints
@@ -1378,14 +1379,17 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
   // Check for support ticket creation - can be used by any authenticated user
   const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
+  
+  // Notification routes are shared - can be accessed by buyers, sellers, and admins
+  const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
   const cookieName = isSellerRoute ? 'seller_jwt' :
     (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) ? 'admin_jwt' :
       'main_jwt'; // Default to buyer/eazmain
 
-  // Enhanced debug logging for verify-otp and payout routes
-  if (fullPath.includes('/verify-otp') || fullPath.includes('/payout')) {
-    logger.info(`[Auth] 🔍 Payout/OTP route detected:`, {
+  // Enhanced debug logging for verify-otp, payout, and payment method routes
+  if (fullPath.includes('/verify-otp') || fullPath.includes('/payout') || fullPath.includes('/paymentmethod')) {
+    logger.info(`[Auth] 🔍 Payment/OTP route detected:`, {
       fullPath,
       method,
       isSellerRoute,
@@ -1393,7 +1397,8 @@ exports.protect = catchAsync(async (req, res, next) => {
       hasAuthHeader: !!req.headers.authorization,
       cookieKeys: req.cookies ? Object.keys(req.cookies) : 'none',
       seller_jwt: req.cookies?.seller_jwt ? 'present' : 'missing',
-      main_jwt: req.cookies?.main_jwt ? 'present' : 'missing'
+      main_jwt: req.cookies?.main_jwt ? 'present' : 'missing',
+      admin_jwt: req.cookies?.admin_jwt ? 'present' : 'missing'
     });
   }
 
@@ -1430,11 +1435,43 @@ exports.protect = catchAsync(async (req, res, next) => {
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
       }
     }
+    
+    // For shared notification routes, check multiple cookies (seller, buyer, admin)
+    if (isSharedNotificationRoute && req.cookies && !token) {
+      // Try seller_jwt first (sellers accessing notifications)
+      if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+        logger.info(`[Auth] ✅ Token found in seller_jwt cookie for notification route: ${method} ${fullPath}`);
+      }
+      // Then try admin_jwt (admins accessing notifications)
+      else if (req.cookies.admin_jwt) {
+        token = req.cookies.admin_jwt;
+        logger.info(`[Auth] ✅ Token found in admin_jwt cookie for notification route: ${method} ${fullPath}`);
+      }
+      // Finally try main_jwt (buyers accessing notifications)
+      else if (req.cookies.main_jwt) {
+        token = req.cookies.main_jwt;
+        logger.info(`[Auth] ✅ Token found in main_jwt cookie for notification route: ${method} ${fullPath}`);
+      }
+    }
 
     // For specific routes, use the determined cookie name
     if (!token && req.cookies && req.cookies[cookieName]) {
       token = req.cookies[cookieName];
-      logger.info(`[Auth] ✅ Token found in cookie (${cookieName}); for ${method} ${fullPath}`);
+      logger.info(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
+    }
+    
+    // Enhanced logging for payment method routes
+    if (fullPath.includes('/paymentmethod') && !token) {
+      logger.warn(`[Auth] ⚠️ Payment method route - no token found:`, {
+        fullPath,
+        method,
+        isSellerRoute,
+        cookieName,
+        availableCookies: req.cookies ? Object.keys(req.cookies) : 'none',
+        expectedCookie: cookieName,
+        hasExpectedCookie: req.cookies?.[cookieName] ? 'YES' : 'NO'
+      });
     }
     
     // For admin-only shared routes, also try admin_jwt if main_jwt was defaulted
@@ -1514,7 +1551,7 @@ exports.protect = catchAsync(async (req, res, next) => {
         logger.info(`[Auth] Cookies object:`, req.cookies ? Object.keys(req.cookies) : 'undefined');
       }
 
-      if (isSharedSupportRoute) {
+      if (isSharedSupportRoute || isSharedNotificationRoute) {
         logger.info(`[Auth] Shared route - checked seller_jwt: ${req.cookies?.seller_jwt ? 'present' : 'missing'}, admin_jwt: ${req.cookies?.admin_jwt ? 'present' : 'missing'}, main_jwt: ${req.cookies?.main_jwt ? 'present' : 'missing'}`);
       } else {
         logger.info(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
