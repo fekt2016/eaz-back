@@ -16,11 +16,25 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
   const isAdminRoute = fullPath.startsWith('/api/v1/admin');
   const isSellerRoute = fullPath.startsWith('/api/v1/seller');
   
-  const cookieName = isAdminRoute ? 'admin_jwt' :
-                    isSellerRoute ? 'seller_jwt' :
-                    'main_jwt';
+  // For shared routes (like /product), check all possible cookies
+  // This allows admins to access shared routes using admin_jwt cookie
+  let token = null;
+  let cookieName = null;
   
-  const token = req.cookies?.[cookieName];
+  if (isAdminRoute) {
+    cookieName = 'admin_jwt';
+    token = req.cookies?.[cookieName];
+  } else if (isSellerRoute) {
+    cookieName = 'seller_jwt';
+    token = req.cookies?.[cookieName];
+  } else {
+    // For shared routes, try all cookies in priority order: admin_jwt, seller_jwt, main_jwt
+    // This ensures admins can access shared routes (like /product) with their admin_jwt cookie
+    token = req.cookies?.['admin_jwt'] || req.cookies?.['seller_jwt'] || req.cookies?.['main_jwt'];
+    cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' :
+                 req.cookies?.['seller_jwt'] ? 'seller_jwt' :
+                 'main_jwt';
+  }
   
   // If no token found, continue without authentication (public access)
   if (!token) {

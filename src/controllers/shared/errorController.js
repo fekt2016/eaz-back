@@ -40,7 +40,7 @@ const sendErrorProd = (err, res) => {
     // Authentication and authorization errors
     else if (err.statusCode === 401 || err.statusCode === 403) {
       // Log original error message for debugging (production-safe)
-      const logger = require('../utils/logger');
+      const logger = require('../../utils/logger');
       logger.warn('[Error Controller] 401/403 error', {
         statusCode: err.statusCode,
         originalMessage: err.message,

@@ -381,22 +381,37 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   console.time('getAllProduct');
   console.log('🔍 [getAllProduct] Products request hit');
   
-  // Set default limit to 20 if not provided (performance optimization)
+  // Check if user is admin - handle both admin and superadmin roles
+  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'moderator');
+  
+  // Set default limit based on user role
+  // Admins can see more products at once for better management
   if (!req.query.limit) {
-    req.query.limit = '20';
+    req.query.limit = isAdmin ? '200' : '20'; // Higher default for admins
   }
-  // Cap limit at 100 to prevent performance issues
-  const requestedLimit = parseInt(req.query.limit) || 20;
-  if (requestedLimit > 100) {
-    req.query.limit = '100';
+  
+  // Cap limit based on user role
+  // Admins can fetch more products (up to 1000) for management purposes
+  // Regular users are capped at 100 for performance
+  const requestedLimit = parseInt(req.query.limit) || (isAdmin ? 200 : 20);
+  if (isAdmin) {
+    // Admins can fetch up to 1000 products at once
+    if (requestedLimit > 1000) {
+      req.query.limit = '1000';
+    }
+  } else {
+    // Regular users capped at 100
+    if (requestedLimit > 100) {
+      req.query.limit = '100';
+    }
   }
   
   // Build base filter
   let filter = {};
-
+  
   // For non-admin users (public/buyer access), use buyer-safe query
   // This excludes products from unverified sellers
-  if (!req.user || req.user.role !== 'admin') {
+  if (!isAdmin) {
     const isSeller = req.user?.role === 'seller';
     filter = buildBuyerSafeQuery(filter, {
       user: req.user,
@@ -404,8 +419,13 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       isSeller: isSeller,
     });
   }
-  // Admins can see all products (including pending/rejected and unverified sellers)
+  // Admins can see all products (including pending/rejected, unverified sellers, and buyer-created products)
   // Sellers can see their own products regardless of verification (handled in getSellerProducts)
+  
+  // Debug logging for admin access
+  if (isAdmin && process.env.NODE_ENV === 'development') {
+    console.log('[getAllProduct] Admin access - showing ALL products (including buyer-created, pending, rejected)');
+  }
 
   // Build query with filter
   let query = Product.find(filter);
@@ -422,9 +442,37 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     { path: 'seller', select: 'name email phone shopName' },
     { path: 'parentCategory', select: 'name slug' },
     { path: 'subCategory', select: 'name slug' },
-  ]).lean(); // Use lean() for better performance (returns plain JS objects)
+  ]).lean({ virtuals: true }); // Use lean() with virtuals to include totalStock
 
   const products = await features.query;
+  
+  // Calculate totalStock for each product if not already present (fallback)
+  // Note: totalStock is a virtual field, but lean() may not include it
+  products.forEach(product => {
+    // If totalStock virtual wasn't included, calculate it manually
+    if ((product.totalStock === undefined || product.totalStock === null) && Array.isArray(product.variants)) {
+      product.totalStock = product.variants.reduce((sum, variant) => {
+        return sum + (variant.stock || 0);
+      }, 0);
+    }
+    // Also ensure variants are included for frontend calculation
+    if (!product.variants || !Array.isArray(product.variants)) {
+      product.variants = [];
+    }
+  });
+  
+  // Debug logging for stock calculation (development only)
+  if (process.env.NODE_ENV === 'development' && products.length > 0) {
+    const sampleProduct = products[0];
+    console.log('[getAllProduct] Sample product stock calculation:', {
+      productId: sampleProduct._id,
+      productName: sampleProduct.name,
+      totalStock: sampleProduct.totalStock,
+      variantsCount: sampleProduct.variants?.length || 0,
+      variantsStock: sampleProduct.variants?.map(v => v.stock) || [],
+      calculatedTotal: sampleProduct.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
+    });
+  }
 
   // Get total count for pagination (apply same filter)
   // Use estimatedDocumentCount for better performance if exact count not critical
@@ -433,7 +481,19 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   const total = await countFeatures.query.countDocuments();
 
   console.timeEnd('getAllProduct');
-  console.log(`✅ [getAllProduct] Returned ${products.length} products in ${req.query.limit || 20} limit`);
+  
+  // Enhanced logging for admin access
+  if (isAdmin) {
+    console.log(`✅ [getAllProduct] Admin access - Returned ${products.length} products out of ${total} total (limit: ${req.query.limit || 200})`);
+    console.log(`📊 [getAllProduct] Admin filter:`, {
+      isAdmin,
+      filterApplied: Object.keys(filter).length > 0 ? filter : 'none (showing all)',
+      userRole: req.user?.role,
+      userId: req.user?.id,
+    });
+  } else {
+    console.log(`✅ [getAllProduct] Returned ${products.length} products in ${req.query.limit || 20} limit`);
+  }
 
   res.status(200).json({
     status: 'success',

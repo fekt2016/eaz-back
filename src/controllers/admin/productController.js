@@ -2,6 +2,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Product = require('../../models/product/productModel');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const logger = require('../../utils/logger');
 
 /**
  * Approve a product
@@ -10,14 +11,32 @@ const { logActivityAsync } = require('../../modules/activityLog/activityLog.serv
 exports.approveProduct = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const { notes } = req.body;
-  const adminId = req.user.id;
+  
+  // Check if user is authenticated
+  if (!req.user) {
+    logger.error('[Approve Product] No user found in request');
+    return next(new AppError('Authentication required', 401));
+  }
+  
+  const adminId = req.user.id || req.user._id;
+  const adminRole = req.user.role;
+  
+  // Verify user is admin
+  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+    logger.error('[Approve Product] User is not admin:', { role: adminRole, userId: adminId });
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  logger.info(`[Approve Product] Admin ${adminId} (${adminRole}) attempting to approve product ${id}`);
 
   const product = await Product.findById(id);
   if (!product) {
+    logger.error(`[Approve Product] Product not found: ${id}`);
     return next(new AppError('Product not found', 404));
   }
 
   if (product.moderationStatus === 'approved') {
+    logger.warn(`[Approve Product] Product ${id} is already approved`);
     return next(new AppError('Product is already approved', 400));
   }
 
@@ -26,7 +45,14 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
   product.moderationNotes = notes || product.moderationNotes;
   product.moderatedBy = adminId;
   product.moderatedAt = new Date();
-  await product.save();
+  
+  try {
+    await product.save();
+    logger.info(`[Approve Product] ✅ Product ${id} approved successfully by admin ${adminId}`);
+  } catch (saveError) {
+    logger.error(`[Approve Product] ❌ Error saving product ${id}:`, saveError);
+    return next(new AppError('Failed to approve product', 500));
+  }
 
   // Notify seller about product approval
   try {
