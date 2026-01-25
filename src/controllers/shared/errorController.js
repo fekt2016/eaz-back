@@ -39,10 +39,25 @@ const sendErrorProd = (err, res) => {
     }
     // Authentication and authorization errors
     else if (err.statusCode === 401 || err.statusCode === 403) {
+      // Log original error message for debugging (production-safe)
+      const logger = require('../utils/logger');
+      logger.warn('[Error Controller] 401/403 error', {
+        statusCode: err.statusCode,
+        originalMessage: err.message,
+        messageLower: messageLower,
+        isOperational: err.isOperational,
+        timestamp: new Date().toISOString(),
+      });
+      
       // Preserve verification-related messages (important for user flow)
       if (messageLower.includes('not verified') || messageLower.includes('verify') || 
-          messageLower.includes('verification') || messageLower.includes('unverified')) {
+          messageLower.includes('verification') || messageLower.includes('unverified') ||
+          messageLower.includes('email address first')) {
         genericMessage = err.message; // Keep original message for verification errors
+        logger.info('[Error Controller] Preserving verification error message', {
+          originalMessage: err.message,
+          genericMessage: genericMessage,
+        });
       } else if (messageLower.includes('user') || messageLower.includes('password') || 
           messageLower.includes('email') || messageLower.includes('login') ||
           messageLower.includes('credential') || messageLower.includes('token') ||
@@ -53,6 +68,10 @@ const sendErrorProd = (err, res) => {
         genericMessage = 'You do not have permission to perform this action.';
       } else {
         genericMessage = 'Authentication failed. Please try again.';
+        logger.warn('[Error Controller] Using generic 403 message', {
+          originalMessage: err.message,
+          reason: 'No matching pattern found',
+        });
       }
     }
     // Not found errors (404)

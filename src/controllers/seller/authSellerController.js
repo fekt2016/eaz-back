@@ -252,6 +252,13 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   const seller = await Seller.findOne({ email: normalizedEmail }).select('+password +twoFactorEnabled');
 
   if (!seller) {
+    // Production-safe logging
+    logger.warn('[Seller Login] 401 - Seller not found', {
+      email: normalizedEmail,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
+    
     // Debug logging (only in development)
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Seller not found for email:', normalizedEmail);
@@ -264,6 +271,18 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     // SECURITY: Generic error message to prevent user enumeration
     return next(new AppError('Invalid email or password', 401));
   }
+
+  // Production-safe logging for seller found
+  logger.info('[Seller Login] Seller found - checking authorization', {
+    sellerId: seller._id.toString(),
+    email: seller.email,
+    emailVerified: seller.verification?.emailVerified || false,
+    status: seller.status,
+    active: seller.active,
+    hasPassword: !!seller.password,
+    timestamp: new Date().toISOString(),
+    ip: req.ip,
+  });
 
   // Debug logging (only in development)
   if (process.env.NODE_ENV !== 'production') {
@@ -279,6 +298,15 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
 
   // SECURITY: Check if account is suspended
   if (seller.status === 'suspended' || seller.active === false) {
+    logger.warn('[Seller Login] 401 - Account suspended', {
+      sellerId: seller._id.toString(),
+      email: seller.email,
+      status: seller.status,
+      active: seller.active,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
+    
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Account suspended:', { status: seller.status, active: seller.active });
     }
