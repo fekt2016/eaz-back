@@ -425,15 +425,23 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     
     res.status(200).json(response);
   } catch (deviceError) {
-    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+    if (process.env.NODE_ENV === 'production' && 
+        (deviceError.message?.includes('Too many devices') || 
+         deviceError.message?.includes('Device limit exceeded'))) {
       // Production-safe logging for device limit
-      logger.warn('[Seller Login] 403 - Too many devices', {
+      logger.warn('[Seller Login] 403 - Device limit exceeded', {
         sellerId: seller._id.toString(),
         email: seller.email,
+        deviceLimit: deviceError.deviceLimit,
         timestamp: new Date().toISOString(),
         ip: req.ip,
       });
-      return next(new AppError(deviceError.message, 403));
+      
+      // Return user-friendly error with device limit details
+      const errorMessage = deviceError.message || 
+        `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
+      
+      return next(new AppError(errorMessage, 403));
     }
     // In dev, continue without device session
     logger.warn('[Seller Login] ⚠️ Device session creation failed, continuing without it', {
@@ -512,10 +520,27 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
     const response = await handleSuccessfulLogin(req, res, seller, 'seller');
     res.status(200).json(response);
   } catch (deviceError) {
-    if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
-      return next(new AppError(deviceError.message, 403));
+    if (process.env.NODE_ENV === 'production' && 
+        (deviceError.message?.includes('Too many devices') || 
+         deviceError.message?.includes('Device limit exceeded'))) {
+      logger.warn('[Seller 2FA Login] 403 - Device limit exceeded', {
+        sellerId: seller._id.toString(),
+        email: seller.email,
+        deviceLimit: deviceError.deviceLimit,
+        timestamp: new Date().toISOString(),
+        ip: req.ip,
+      });
+      
+      const errorMessage = deviceError.message || 
+        `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
+      
+      return next(new AppError(errorMessage, 403));
     }
     // In dev, continue without device session
+    logger.warn('[Seller 2FA Login] ⚠️ Device session creation failed, continuing without it', {
+      sellerId: seller._id.toString(),
+      error: deviceError.message,
+    });
     const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
     res.status(200).json(response);
   }
@@ -688,10 +713,27 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       response.redirectTo = redirectTo || '/';
       res.status(200).json(response);
     } catch (deviceError) {
-      if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
-        return next(new AppError(deviceError.message, 403));
+      if (process.env.NODE_ENV === 'production' && 
+          (deviceError.message?.includes('Too many devices') || 
+           deviceError.message?.includes('Device limit exceeded'))) {
+        logger.warn('[Seller OTP Login] 403 - Device limit exceeded', {
+          sellerId: seller._id.toString(),
+          email: seller.email,
+          deviceLimit: deviceError.deviceLimit,
+          timestamp: new Date().toISOString(),
+          ip: req.ip,
+        });
+        
+        const errorMessage = deviceError.message || 
+          `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
+        
+        return next(new AppError(errorMessage, 403));
       }
       // In dev, continue without device session
+      logger.warn('[Seller OTP Login] ⚠️ Device session creation failed, continuing without it', {
+        sellerId: seller._id.toString(),
+        error: deviceError.message,
+      });
       const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
       response.redirectTo = redirectTo || '/';
       res.status(200).json(response);

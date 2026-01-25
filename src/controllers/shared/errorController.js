@@ -58,6 +58,15 @@ const sendErrorProd = (err, res) => {
           originalMessage: err.message,
           genericMessage: genericMessage,
         });
+      } 
+      // Preserve device limit messages (important for user action)
+      else if (messageLower.includes('device limit') || messageLower.includes('too many devices') ||
+               messageLower.includes('maximum number of devices') || messageLower.includes('log out from another device')) {
+        genericMessage = err.message; // Keep original message for device limit errors
+        logger.info('[Error Controller] Preserving device limit error message', {
+          originalMessage: err.message,
+          genericMessage: genericMessage,
+        });
       } else if (messageLower.includes('user') || messageLower.includes('password') || 
           messageLower.includes('email') || messageLower.includes('login') ||
           messageLower.includes('credential') || messageLower.includes('token') ||

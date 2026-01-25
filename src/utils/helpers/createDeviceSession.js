@@ -62,9 +62,19 @@ exports.createDeviceSession = async (req, user, platform = null) => {
     }
 
     if (!deviceLimit.withinLimit) {
-      throw new Error(
-        `Too many devices. Please logout another device first. Maximum allowed: ${deviceLimit.limit}`,
+      // Create a more informative error with device limit details
+      const error = new Error(
+        `Device limit exceeded. You have reached the maximum number of devices (${deviceLimit.limit}). Please log out from another device or contact support to increase your device limit.`
       );
+      // Attach device limit info to error for better error handling
+      error.deviceLimit = {
+        current: deviceLimit.currentCount,
+        limit: deviceLimit.limit,
+        platform: detectedPlatform,
+      };
+      error.statusCode = 403;
+      error.isOperational = true;
+      throw error;
     }
   } else {
     // In development, skip device limit check
