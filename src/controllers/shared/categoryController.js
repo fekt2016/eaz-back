@@ -7,6 +7,7 @@ const stream = require('stream');
 const cloudinary = require('cloudinary');
 const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const APIFeature = require('../../utils/helpers/apiFeatures');
 
 const multerStorage = multer.memoryStorage();
 
@@ -99,7 +100,55 @@ exports.getParentCategories = catchAsync(async (req, res, next) => {
     });
   }
 });
-exports.getAllCategories = handleFactory.getAll(Category);
+// Custom getAllCategories to ensure parentCategory is populated and allow fetching all categories
+exports.getAllCategories = catchAsync(async (req, res, next) => {
+  let filter = {};
+  if (req.params.productId) filter = { product: req.params.productId };
+  if (req.query.search) {
+    const search = req.query.search;
+    filter = {
+      ...filter,
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ],
+    };
+  }
+  
+  let query = Category.find(filter).populate('parentCategory', 'name slug _id');
+  
+  // Handle pagination - allow higher limits for categories to fetch all
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 100;
+  // For categories, allow up to 1000 per page to fetch all categories
+  const effectiveLimit = limit > 1000 ? 1000 : limit;
+  const skip = (page - 1) * effectiveLimit;
+  
+  // Apply sorting
+  const sortBy = req.query.sort || '-createdAt';
+  query = query.sort(sortBy);
+  
+  // Apply pagination
+  query = query.skip(skip).limit(effectiveLimit);
+  
+  // Get total count for meta
+  const total = await Category.countDocuments(filter);
+  
+  const results = await query;
+
+  const meta = {
+    total,
+    totalPages: Math.ceil(total / effectiveLimit),
+    currentPage: page,
+    itemsPerPage: effectiveLimit,
+  };
+
+  res.status(200).json({
+    status: 'success',
+    results: results || [],
+    meta,
+  });
+});
 exports.getCategory = handleFactory.getOne(Category, { path: 'subcategories' });
 // Wrapper functions with activity logging
 exports.createCategory = catchAsync(async (req, res, next) => {
