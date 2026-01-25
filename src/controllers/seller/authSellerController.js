@@ -287,6 +287,16 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
 
   // SECURITY: Check if account is verified (REQUIRED before login)
   if (!seller.verification?.emailVerified) {
+    // Production-safe logging (no sensitive data)
+    logger.warn('[Seller Login] 403 - Account not verified', {
+      sellerId: seller._id.toString(),
+      email: seller.email,
+      emailVerified: seller.verification?.emailVerified || false,
+      status: seller.status,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
+    
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Account not verified:', { emailVerified: seller.verification?.emailVerified });
     }
@@ -375,12 +385,33 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   // Use standardized login helper
   try {
     const response = await handleSuccessfulLogin(req, res, seller, 'seller');
+    
+    // Production-safe logging for successful login
+    logger.info('[Seller Login] ✅ Login successful', {
+      sellerId: seller._id.toString(),
+      email: seller.email,
+      status: seller.status,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
+    
     res.status(200).json(response);
   } catch (deviceError) {
     if (process.env.NODE_ENV === 'production' && deviceError.message?.includes('Too many devices')) {
+      // Production-safe logging for device limit
+      logger.warn('[Seller Login] 403 - Too many devices', {
+        sellerId: seller._id.toString(),
+        email: seller.email,
+        timestamp: new Date().toISOString(),
+        ip: req.ip,
+      });
       return next(new AppError(deviceError.message, 403));
     }
     // In dev, continue without device session
+    logger.warn('[Seller Login] ⚠️ Device session creation failed, continuing without it', {
+      sellerId: seller._id.toString(),
+      error: deviceError.message,
+    });
     const response = await handleSuccessfulLogin(req, res, seller, 'seller', { skipDeviceSession: true });
     res.status(200).json(response);
   }
