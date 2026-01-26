@@ -46,6 +46,19 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
   product.moderatedBy = adminId;
   product.moderatedAt = new Date();
   
+  // CRITICAL: Update visibility when product is approved
+  // Visibility depends on: seller verification + product status + moderation status
+  const Seller = require('../../models/user/sellerModel');
+  const seller = await Seller.findById(product.seller);
+  if (seller) {
+    const shouldBeVisible = 
+      seller.verificationStatus === 'verified' &&
+      product.status === 'active' &&
+      product.moderationStatus === 'approved';
+    product.isVisible = shouldBeVisible;
+    logger.info(`[Approve Product] Updated visibility: ${shouldBeVisible} (seller verified: ${seller.verificationStatus === 'verified'}, product status: ${product.status})`);
+  }
+  
   try {
     await product.save();
     logger.info(`[Approve Product] ✅ Product ${id} approved successfully by admin ${adminId}`);
@@ -121,6 +134,8 @@ exports.rejectProduct = catchAsync(async (req, res, next) => {
   product.moderatedAt = new Date();
   // Set status to inactive when rejected
   product.status = 'inactive';
+  // Set visibility to false when rejected
+  product.isVisible = false;
   await product.save();
 
   // Notify seller about product rejection
@@ -189,6 +204,78 @@ exports.getPendingProducts = catchAsync(async (req, res, next) => {
     limit: parseInt(limit),
     data: {
       products,
+    },
+  });
+});
+
+/**
+ * Update visibility for all products (admin only)
+ * POST /api/v1/admin/products/update-visibility
+ * Useful for fixing visibility issues in production
+ */
+exports.updateAllProductsVisibility = catchAsync(async (req, res, next) => {
+  const adminId = req.user.id || req.user._id;
+  const adminRole = req.user.role;
+  
+  // Verify user is admin
+  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  logger.info(`[Update Visibility] Admin ${adminId} updating visibility for all products`);
+  
+  const { updateSellerProductsVisibility } = require('../../utils/helpers/productVisibility');
+  const Seller = require('../../models/user/sellerModel');
+  
+  // Get all sellers
+  const sellers = await Seller.find({}).select('_id verificationStatus');
+  logger.info(`[Update Visibility] Found ${sellers.length} sellers`);
+  
+  let totalUpdated = 0;
+  const results = [];
+  
+  // Update products for each seller
+  for (const seller of sellers) {
+    try {
+      const result = await updateSellerProductsVisibility(
+        seller._id,
+        seller.verificationStatus
+      );
+      totalUpdated += result.updated;
+      results.push({
+        sellerId: seller._id,
+        verificationStatus: seller.verificationStatus,
+        updated: result.updated,
+        total: result.total,
+      });
+    } catch (error) {
+      logger.error(`[Update Visibility] Error updating products for seller ${seller._id}:`, error);
+      results.push({
+        sellerId: seller._id,
+        error: error.message,
+      });
+    }
+  }
+  
+  logger.info(`[Update Visibility] ✅ Updated ${totalUpdated} products`);
+  
+  // Log activity
+  logActivityAsync({
+    userId: adminId,
+    role: 'admin',
+    action: 'UPDATE_PRODUCT_VISIBILITY',
+    description: `Updated visibility for ${totalUpdated} products`,
+    req,
+    metadata: { totalUpdated, sellersProcessed: sellers.length },
+  });
+  
+  res.status(200).json({
+    status: 'success',
+    message: `Updated visibility for ${totalUpdated} products`,
+    data: {
+      totalUpdated,
+      sellersProcessed: sellers.length,
+      results,
     },
   });
 });

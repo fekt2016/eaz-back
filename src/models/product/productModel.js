@@ -504,8 +504,66 @@ productSchema.pre('save', function (next) {
   next();
 });
 
+// Pre-save middleware: Update isVisible BEFORE save
+// This ensures visibility is set correctly even if post-save fails
+productSchema.pre('save', async function (next) {
+  // Only update if seller exists
+  if (this.seller) {
+    try {
+      const Seller = mongoose.model('Seller');
+      // Handle both populated and unpopulated seller
+      let seller;
+      if (this.seller._id || this.seller.verificationStatus) {
+        // Seller is already populated
+        seller = this.seller;
+      } else {
+        // Seller is just an ObjectId, fetch it
+        seller = await Seller.findById(this.seller);
+      }
+      
+      if (seller) {
+        // Product is visible if: seller is verified AND product is active AND moderation is approved
+        const shouldBeVisible = 
+          seller.verificationStatus === 'verified' &&
+          this.status === 'active' &&
+          this.moderationStatus === 'approved';
+        
+        // Set visibility directly on the document before save
+        this.isVisible = shouldBeVisible;
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Product Pre-Save] Visibility updated:', {
+            productId: this._id,
+            productName: this.name,
+            sellerVerified: seller.verificationStatus === 'verified',
+            productStatus: this.status,
+            moderationStatus: this.moderationStatus,
+            isVisible: shouldBeVisible,
+          });
+        }
+      } else {
+        // Seller not found, set visibility to false for safety
+        this.isVisible = false;
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[Product Pre-Save] Seller not found, setting isVisible to false');
+        }
+      }
+    } catch (error) {
+      // Log error but don't fail save - visibility will be false by default
+      console.error('[Product Pre-Save] Error updating visibility:', error);
+      this.isVisible = false; // Safe default
+    }
+  } else {
+    // No seller, set visibility to false
+    this.isVisible = false;
+  }
+  
+  next();
+});
+
 // Post-save middleware: Update isVisible based on seller verification status
 // This ensures products automatically become visible when seller gets verified
+// This is a backup in case pre-save didn't work (e.g., for findByIdAndUpdate)
 productSchema.post('save', async function (doc) {
   // Only update if seller is populated or we can fetch it
   if (doc.seller) {
@@ -527,11 +585,19 @@ productSchema.post('save', async function (doc) {
             { isVisible: shouldBeVisible },
             { runValidators: false } // Skip validators to avoid triggering save again
           );
+          
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Product Post-Save] Visibility corrected:', {
+              productId: doc._id,
+              wasVisible: doc.isVisible,
+              shouldBeVisible,
+            });
+          }
         }
       }
     } catch (error) {
       // Don't fail product save if visibility update fails
-      console.error('[Product] Error updating visibility:', error);
+      console.error('[Product Post-Save] Error updating visibility:', error);
     }
   }
 });

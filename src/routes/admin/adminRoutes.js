@@ -457,6 +457,14 @@ router
   );
 
 router
+  .route('/products/update-visibility')
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    productController.updateAllProductsVisibility
+  );
+
+router
   .route('/products/:id/approve')
   .patch(
     authController.protect,
