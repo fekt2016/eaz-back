@@ -155,13 +155,50 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
       return next(new AppError('Variants must be an array', 400));
     }
 
+    // Convert main product price to number if it's a string
+    if (body.price !== undefined) {
+      body.price = parseFloat(body.price) || 0;
+    }
+    
     // Transform variants data types
-    if (body.variants) {
+    if (body.variants && Array.isArray(body.variants) && body.variants.length > 0) {
       body.variants = body.variants.map((variant) => ({
         ...variant,
         price: parseFloat(variant.price) || 0,
         stock: parseInt(variant.stock) || 0,
       }));
+      
+      // Validate variant prices
+      const invalidVariants = body.variants.filter(v => !v.price || v.price <= 0);
+      if (invalidVariants.length > 0) {
+        return next(new AppError('All variants must have a price greater than 0', 400));
+      }
+      
+      // Calculate min and max prices from variants
+      const variantPrices = body.variants
+        .map(v => parseFloat(v.price) || 0)
+        .filter(p => p > 0);
+      
+      if (variantPrices.length > 0) {
+        body.minPrice = Math.min(...variantPrices);
+        body.maxPrice = Math.max(...variantPrices);
+        
+        // CRITICAL: Set main product price from variants if not provided or invalid
+        // This ensures price requirement is met before validation
+        if (!body.price || body.price <= 0) {
+          body.price = Math.min(...variantPrices);
+          logger.info('[createOne] Set main product price from variants:', body.price);
+        }
+      }
+    }
+    
+    // Final validation: ensure main product price is set and > 0
+    if (!body.price || body.price <= 0) {
+      if (!body.variants || body.variants.length === 0) {
+        return next(new AppError('Product price is required and must be greater than 0', 400));
+      } else {
+        return next(new AppError('Product price is required. Please set a price greater than 0 for at least one variant.', 400));
+      }
     }
 
     // Handle parentCategory
@@ -177,9 +214,33 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
     if (body.subCategory && !mongoose.isValidObjectId(body.subCategory)) {
       return next(new AppError('Invalid subCategory ID format', 400));
     }
-    logger.info();
+    
     // 3. Create document
-    const doc = await Model.create(body);
+    let doc;
+    try {
+      doc = await Model.create(body);
+    } catch (createError) {
+      logger.error('[createOne] Error creating document:', {
+        error: createError.message,
+        stack: createError.stack,
+        modelName: Model.modelName,
+        bodyKeys: Object.keys(body),
+      });
+      
+      // If it's a validation error, return more details
+      if (createError.name === 'ValidationError') {
+        const validationErrors = Object.values(createError.errors).map(err => ({
+          path: err.path,
+          message: err.message,
+          value: err.value,
+        }));
+        logger.error('[createOne] Validation errors:', validationErrors);
+        return next(new AppError(`Validation error: ${validationErrors.map(e => `${e.path}: ${e.message}`).join(', ')}`, 400));
+      }
+      
+      // Re-throw to be caught by outer catchAsync
+      throw createError;
+    }
 
     // 4. Send response
     res.status(201).json({

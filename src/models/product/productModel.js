@@ -715,6 +715,16 @@ productSchema.methods.removeDiscounts = function () {
 
 // Middleware
 productSchema.pre('validate', function (next) {
+  // CRITICAL: Set main product price from first variant BEFORE validation
+  // This ensures the required price field is satisfied
+  if ((!this.price || this.price === 0) && this.variants && this.variants.length > 0) {
+    const firstVariantPrice = this.variants[0]?.price;
+    if (firstVariantPrice && firstVariantPrice > 0) {
+      this.price = firstVariantPrice;
+    }
+  }
+  
+  // Validate variants exist
   if (this.variants.length === 0) {
     this.invalidate('variants', 'Product must have at least one variant');
   }
@@ -725,6 +735,14 @@ productSchema.pre('validate', function (next) {
       this.invalidate(
         `variants.${index}`,
         'Variant must have at least one attribute',
+      );
+    }
+    
+    // Validate variant price is set
+    if (!variant.price || variant.price === 0) {
+      this.invalidate(
+        `variants.${index}.price`,
+        'Variant price is required and must be greater than 0',
       );
     }
   });

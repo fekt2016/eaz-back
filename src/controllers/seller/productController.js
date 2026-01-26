@@ -89,6 +89,13 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
+    
+    // Check if Cloudinary is configured
+    if (!cloudinary) {
+      logger.error('[resizeProductImages] Cloudinary is not configured');
+      return next(new AppError('Image upload service is not configured. Please contact support.', 500));
+    }
+    
     // console.log('cloudinary', cloudinary);
     if (req.files && Object.keys(req.files).length > 0) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -221,7 +228,19 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       logger.info('All images:', req.body);
     }
   } catch (err) {
-    logger.info(err.message);
+    logger.error('[resizeProductImages] Error processing images:', {
+      error: err.message,
+      stack: err.stack,
+      filesCount: req.files ? Object.keys(req.files).length : 0,
+    });
+    
+    // If it's a critical error (like Cloudinary config), return error
+    if (err.message && err.message.includes('not configured')) {
+      return next(err);
+    }
+    
+    // For other image processing errors, log but continue (product can be created without images)
+    logger.warn('[resizeProductImages] Continuing without images due to processing error');
   }
 
   next();
@@ -838,6 +857,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
   const originalJson = res.json.bind(res);
   let productCreated = false;
   let createdProduct = null;
+  let handlerError = null;
 
   // Override res.json to intercept response
   res.json = function (data) {
@@ -846,12 +866,27 @@ exports.createProduct = catchAsync(async (req, res, next) => {
       createdProduct = data.data.data;
     } else if (data?.data) {
       createdProduct = data.data;
+    } else if (data?.doc) {
+      createdProduct = data.doc;
     }
     originalJson(data);
   };
 
-  // Call the factory handler
-  await createOneHandler(req, res, next);
+  // Wrap handler call in try-catch to catch any errors
+  try {
+    // Call the factory handler
+    await createOneHandler(req, res, next);
+  } catch (error) {
+    handlerError = error;
+    logger.error('[createProduct] Error in createOneHandler:', {
+      error: error.message,
+      stack: error.stack,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+      hasFiles: !!req.files,
+    });
+    // Re-throw to be caught by outer catchAsync
+    throw error;
+  }
 
   // Log activity and update onboarding (async, don't block response)
   if (productCreated && req.user && req.user.role === 'seller') {
