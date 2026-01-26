@@ -2114,3 +2114,15 @@
 {"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 09:59:11"}
 {"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 09:59:11"}
 {"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 758.887 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 09:59:12"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 09:59:42"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 09:59:42"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 09:59:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 757.818 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 09:59:42"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:00:12"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:00:12"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:00:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 882.045 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:00:13"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:00:43"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:00:43"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:00:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.607 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:00:44"}
