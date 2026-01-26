@@ -2126,3 +2126,222 @@
 {"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:00:43"}
 {"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:00:44"}
 {"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.607 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:00:44"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 752.667 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 512.767 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 769.718 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-seller-orders \u001b[36m304\u001b[0m 769.135 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1024.792 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products \u001b[36m304\u001b[0m 1280.609 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/6970b22eaba06cadfd4b8035/views \u001b[36m304\u001b[0m 1018.877 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 511.458 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:13"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:14"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:01:14"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:01:14"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 755.362 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"buffer":{"data":[105,117,250,19,6,191,176,121,253,34,132,113],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 523.771 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants \u001b[36m304\u001b[0m 817.862 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:16"}
+{"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6975fa1306bfb079fd228471","sellerId":"6970b22eaba06cadfd4b8035","sellerIsObject":true,"sellerIsString":false,"sellerType":"object","service":"backend-api","timestamp":"2026-01-26 10:01:16"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-01-26 10:01:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471 \u001b[36m304\u001b[0m 1670.187 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 6623.962 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:18"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:01:45"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:01:45"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:01:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 792.566 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:01:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:02:16"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:02:25"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:02:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:02:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:02:32"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/product/6975fa1306bfb079fd228471 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:02:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:02:47"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:02:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:03:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:03:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:03:04"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/product/6975fa1306bfb079fd228471 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:03:16"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:03:33"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:03:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:03:49"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:03:49"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:03:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[32m200\u001b[0m 750.724 ms - 45\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:03:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:20"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:04:20"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:04:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 773.549 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:21"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 620.734 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1456.507 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1980.957 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 542.826 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:47"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:04:51"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:04:51"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:04:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 831.736 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:04:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:05:22"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:05:22"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:05:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 841.494 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:05:23"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:05:53"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:05:53"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:05:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 816.755 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:05:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:23"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:06:23"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 837.914 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:24"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:25"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:25"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/product/6975fa1306bfb079fd228471","service":"backend-api","timestamp":"2026-01-26 10:06:25"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:25"}
+{"brand":"apple","condition":"used","description":"apple product iphone","imageCover":"https://res.cloudinary.com/eazworld/image/upload/v1769339407/products/1769339405849-115957104-cover.jpg","images":["https://res.cloudinary.com/eazworld/image/upload/v1769339409/products/1769339405849-115957104-image-0.jpg","https://res.cloudinary.com/eazworld/image/upload/v1769339410/products/1769339405849-115957104-image-1.jpg","https://res.cloudinary.com/eazworld/image/upload/v1769339410/products/1769339405849-115957104-image-2.jpg","https://res.cloudinary.com/eazworld/image/upload/v1769339410/products/1769339405849-115957104-image-3.jpg"],"level":"info","manufacturer":"","message":"All images:","name":"iphone 14 pro max","parentCategory":"68bc7bebcb754e89b11dcb6e","price":"18000","service":"backend-api","subCategory":"68bcbb90076567b9b13c3a01","timestamp":"2026-01-26 10:06:28","variants":[{"_id":"6975fa1306bfb079fd228472","attributes":[{"key":"Screen Size","value":"16''"},{"key":"Operating System","value":"IOS"},{"key":"Battery Capacity","value":"7800AMH"},{"key":"Color","value":"gold"},{"key":"RAM","value":"16"},{"key":"Storage Capacity","value":"256"}],"images":["https://res.cloudinary.com/eazworld/image/upload/v1769421047/products/1769421046150-769633026-image-0.jpg"],"price":"18000","sku":"035-68B-16'-6089","status":"active","stock":"20"},{"attributes":[{"key":"Storage Capacity","value":"512"},{"key":"RAM","value":"16"},{"key":"Color","value":"silver"},{"key":"Battery Capacity","value":"7800amh"},{"key":"Operating System","value":"ios"},{"key":"Screen Size","value":"16''"}],"images":["https://res.cloudinary.com/eazworld/image/upload/v1769421987/products/variants/1769421985880-621300838-variant-1-image-0.jpg"],"price":"17000","sku":"035-68B-512-7322","status":"active","stock":"20"}]}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/product/6975fa1306bfb079fd228471 \u001b[32m200\u001b[0m 4759.402 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[ActivityLog] Logged: UPDATE_PRODUCT (OTHER); by seller (6970b22eaba06cadfd4b8035) - Risk: low - Platform: eazmain","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-26 10:06:30","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 765.346 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 770.776 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants \u001b[32m200\u001b[0m 778.360 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1013.960 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 515.417 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"buffer":{"data":[105,117,250,19,6,191,176,121,253,34,132,113],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1780.776 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6975fa1306bfb079fd228471","sellerId":"6970b22eaba06cadfd4b8035","sellerIsObject":true,"sellerIsString":false,"sellerType":"object","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-01-26 10:06:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 507.594 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:32"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[32m200\u001b[0m 1277.834 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471 \u001b[32m200\u001b[0m 1525.163 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[32m200\u001b[0m 1776.434 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products \u001b[32m200\u001b[0m 1336.939 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:33"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 3374.152 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:33"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 559.449 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:45"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5","service":"backend-api","timestamp":"2026-01-26 10:06:45"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5 \u001b[32m200\u001b[0m 818.988 ms - 701\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 527.229 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:57"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for PATCH /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5","service":"backend-api","timestamp":"2026-01-26 10:06:57"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:06:58"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:06:58"}
+{"level":"info","message":"\u001b[0mPATCH /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5 \u001b[32m200\u001b[0m 2097.928 ms - 724\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:06:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:59"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5","service":"backend-api","timestamp":"2026-01-26 10:06:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:06:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"buffer":{"data":[105,117,250,19,6,191,176,121,253,34,132,113],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 511.896 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5 \u001b[32m200\u001b[0m 787.088 ms - 724\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants \u001b[32m200\u001b[0m 776.437 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6975fa1306bfb079fd228471","sellerId":"6970b22eaba06cadfd4b8035","sellerIsObject":true,"sellerIsString":false,"sellerType":"object","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-01-26 10:07:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471 \u001b[32m200\u001b[0m 1528.162 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471/variants/69773ca41246f854bf77d8b5 \u001b[36m304\u001b[0m 753.008 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 783.335 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:01"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:07:02"}
+{"buffer":{"data":[105,117,250,19,6,191,176,121,253,34,132,113],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-01-26 10:07:02"}
+{"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6975fa1306bfb079fd228471","sellerId":"6970b22eaba06cadfd4b8035","sellerIsObject":true,"sellerIsString":false,"sellerType":"object","service":"backend-api","timestamp":"2026-01-26 10:07:02"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-01-26 10:07:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 3039.798 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:03"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6975fa1306bfb079fd228471 \u001b[36m304\u001b[0m 1806.013 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:14"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:14"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:07:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 509.501 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products \u001b[32m200\u001b[0m 1254.261 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:16"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 543.049 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:17"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 507.465 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:22"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 621.911 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:24"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:07:31"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:07:31"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:07:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 765.179 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:07:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:08:02"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:08:02"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:08:03"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1043.704 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:08:03"}
