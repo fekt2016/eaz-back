@@ -97,11 +97,28 @@ const sendErrorProd = (err, res) => {
       if (messageLower.includes('already exists') || messageLower.includes('already registered') ||
           messageLower.includes('duplicate') || messageLower.includes('taken')) {
         genericMessage = 'Unable to process request';
-      } else if (messageLower.includes('validation') || messageLower.includes('required') ||
-                 messageLower.includes('missing')) {
-        genericMessage = 'Invalid input. Please check your request and try again.';
+      } else if (messageLower.includes('validation error:') || messageLower.includes('validation:')) {
+        // Preserve validation error details for better user feedback
+        // Extract the actual validation message after "Validation error:" or "Validation:"
+        const validationMatch = err.message.match(/(?:validation\s*(?:error)?:?\s*)(.+)/i);
+        if (validationMatch && validationMatch[1]) {
+          genericMessage = validationMatch[1].trim();
+        } else {
+          genericMessage = err.message || 'Invalid input. Please check your request and try again.';
+        }
+      } else if (messageLower.includes('required') || messageLower.includes('missing')) {
+        // Preserve required field messages
+        genericMessage = err.message || 'Invalid input. Please check your request and try again.';
+      } else if (messageLower.includes('invalid') && messageLower.includes('format')) {
+        // Preserve format error messages
+        genericMessage = err.message || 'Invalid input. Please check your request and try again.';
       } else {
-        genericMessage = 'Unable to process request';
+        // For other 400 errors, try to preserve the message if it's user-friendly
+        if (err.message && err.message.length < 200 && !err.message.includes('stack')) {
+          genericMessage = err.message;
+        } else {
+          genericMessage = 'Unable to process request';
+        }
       }
     }
     // Expired or invalid token errors

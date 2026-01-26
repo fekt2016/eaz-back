@@ -513,12 +513,19 @@ productSchema.pre('save', async function (next) {
       const Seller = mongoose.model('Seller');
       // Handle both populated and unpopulated seller
       let seller;
-      if (this.seller._id || this.seller.verificationStatus) {
+      
+      // Check if seller is populated (has _id or verificationStatus property)
+      const isPopulated = this.seller && 
+                         typeof this.seller === 'object' && 
+                         (this.seller._id || this.seller.verificationStatus !== undefined);
+      
+      if (isPopulated) {
         // Seller is already populated
         seller = this.seller;
       } else {
-        // Seller is just an ObjectId, fetch it
-        seller = await Seller.findById(this.seller);
+        // Seller is just an ObjectId (string or ObjectId instance), fetch it
+        const sellerId = this.seller.toString ? this.seller.toString() : this.seller;
+        seller = await Seller.findById(sellerId).select('verificationStatus').lean();
       }
       
       if (seller) {
@@ -551,6 +558,18 @@ productSchema.pre('save', async function (next) {
     } catch (error) {
       // Log error but don't fail save - visibility will be false by default
       console.error('[Product Pre-Save] Error updating visibility:', error);
+      try {
+        const logger = require('../../utils/logger');
+        logger.error('[Product Pre-Save] Error details:', {
+          error: error.message,
+          stack: error.stack,
+          seller: this.seller,
+          sellerType: typeof this.seller,
+        });
+      } catch (loggerError) {
+        // If logger fails, just use console
+        console.error('[Product Pre-Save] Logger error:', loggerError);
+      }
       this.isVisible = false; // Safe default
     }
   } else {
@@ -781,37 +800,67 @@ productSchema.methods.removeDiscounts = function () {
 
 // Middleware
 productSchema.pre('validate', function (next) {
-  // CRITICAL: Set main product price from first variant BEFORE validation
-  // This ensures the required price field is satisfied
-  if ((!this.price || this.price === 0) && this.variants && this.variants.length > 0) {
-    const firstVariantPrice = this.variants[0]?.price;
-    if (firstVariantPrice && firstVariantPrice > 0) {
-      this.price = firstVariantPrice;
-    }
-  }
-  
-  // Validate variants exist
-  if (this.variants.length === 0) {
-    this.invalidate('variants', 'Product must have at least one variant');
-  }
-
-  // Validate that each variant has at least one attribute
-  this.variants.forEach((variant, index) => {
-    if (!variant.attributes || variant.attributes.length === 0) {
-      this.invalidate(
-        `variants.${index}`,
-        'Variant must have at least one attribute',
-      );
+  try {
+    // Ensure variants is an array (handle undefined/null)
+    const variants = Array.isArray(this.variants) ? this.variants : [];
+    
+    // CRITICAL: Set main product price from first variant BEFORE validation
+    // This ensures the required price field is satisfied
+    if ((!this.price || this.price === 0) && variants.length > 0) {
+      const firstVariantPrice = parseFloat(variants[0]?.price) || 0;
+      if (firstVariantPrice > 0) {
+        this.price = firstVariantPrice;
+      }
     }
     
-    // Validate variant price is set
-    if (!variant.price || variant.price === 0) {
-      this.invalidate(
-        `variants.${index}.price`,
-        'Variant price is required and must be greater than 0',
-      );
+    // Validate variants exist (only validate if variants is explicitly provided)
+    // For new documents, variants should be provided
+    // For updates, only validate if variants field is being modified
+    const isNewDocument = this.isNew;
+    const isVariantsModified = this.isModified('variants');
+    
+    // Only validate variants if:
+    // 1. It's a new document (variants should be provided)
+    // 2. OR variants field is being modified (explicitly set)
+    if ((isNewDocument || isVariantsModified) && variants.length === 0) {
+      this.invalidate('variants', 'Product must have at least one variant');
+      return next(); // Stop validation early
     }
-  });
+
+    // Validate that each variant has at least one attribute
+    // Only validate if variants array exists and has items
+    if (variants.length > 0) {
+      variants.forEach((variant, index) => {
+        if (!variant || typeof variant !== 'object') {
+          this.invalidate(
+            `variants.${index}`,
+            'Variant must be a valid object',
+          );
+          return;
+        }
+        
+        if (!variant.attributes || !Array.isArray(variant.attributes) || variant.attributes.length === 0) {
+          this.invalidate(
+            `variants.${index}`,
+            'Variant must have at least one attribute',
+          );
+        }
+        
+        // Validate variant price is set
+        const variantPrice = parseFloat(variant.price) || 0;
+        if (!variant.price || variantPrice <= 0) {
+          this.invalidate(
+            `variants.${index}.price`,
+            'Variant price is required and must be greater than 0',
+          );
+        }
+      });
+    }
+  } catch (error) {
+    // Log error but don't fail validation - let Mongoose handle it
+    console.error('[Product Pre-Validate] Error in validation:', error);
+    // Don't call next(error) - let validation continue
+  }
 
   next();
 });

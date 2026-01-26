@@ -2646,3 +2646,138 @@
 {"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:45:41"}
 {"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:45:41"}
 {"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 862.603 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:45:42"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:46:12"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:46:12"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:46:12"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 891.431 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:46:13"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:53:48"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 10:53:49"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 10:53:49"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 10:53:49"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 10:53:49"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 10:53:49"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 10:53:53"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:25"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 10:56:26"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 10:56:26"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 10:56:26"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 10:56:26"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 10:56:26"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 10:56:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:56:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 831.047 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 10:56:37"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"userModel\":\"Seller\",\"role\":\"seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-01-26 10:56:38","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 529.549 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 760.131 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with strict filter","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1011.590 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 (any role/model);:","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products \u001b[36m304\u001b[0m 1286.384 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:38"}
+{"level":"info","message":"[getNotifications] 🔍 Debug: Found 0 notifications with user 6970b22eaba06cadfd4b8035 and role seller (any userModel);:","service":"backend-api","timestamp":"2026-01-26 10:56:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1796.396 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2821.844 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 10:56:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 11:29:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 11:29:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-01-26 11:29:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[31m500\u001b[0m 5031.965 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 11:29:13"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 11:39:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 11:39:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 11:39:32"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-01-26 11:39:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[31m500\u001b[0m 5009.504 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 11:39:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[31m500\u001b[0m 5010.336 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 11:39:37"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-26 12:16:07"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-26 12:16:07"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-26 12:17:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 12:19:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-01-26 12:19:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-01-26 12:19:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-26 12:19:10"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-26 12:31:05"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 12:33:11"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 12:33:13"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 12:33:13"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 12:33:13"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 12:33:13"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 12:33:13"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 12:33:16"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 12:33:57"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 12:33:58"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 12:33:58"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 12:33:58"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 12:33:58"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 12:33:58"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 12:34:01"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 12:34:56"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 12:34:57"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 12:34:57"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 12:34:57"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 12:34:57"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 12:34:57"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 12:34:59"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 12:34:59"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 12:35:00"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 12:35:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 12:35:00"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 12:35:00"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 12:35:38"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 12:35:39"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 12:35:39"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 12:35:39"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 12:35:39"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 12:35:39"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 12:35:42"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-26 12:35:56"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-26 12:35:57"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-26 12:35:57"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-26 12:35:57"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-26 12:35:57"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-26 12:35:57"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-26 12:36:00"}
