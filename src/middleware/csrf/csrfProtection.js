@@ -66,12 +66,14 @@ exports.csrfProtection = (req, res, next) => {
   // Allow logout endpoints without CSRF token.
   // CSRF risk here is limited to forced logout, which is acceptable, and
   // avoids blocking users from logging out if the CSRF token is missing.
-  if (fullPath === '/api/v1/users/logout') {
+  if (fullPath === '/api/v1/users/logout' || 
+      fullPath === '/api/v1/admin/logout' || 
+      fullPath === '/api/v1/seller/logout') {
     return next();
   }
 
-  // Get token from header
-  const tokenFromHeader = req.headers['x-csrf-token'];
+  // Get token from header (case-insensitive)
+  const tokenFromHeader = req.headers['x-csrf-token'] || req.headers['X-CSRF-Token'] || req.headers['X-Csrf-Token'];
   
   // Get token from cookie
   const tokenFromCookie = req.cookies['csrf-token'];
@@ -90,9 +92,16 @@ exports.csrfProtection = (req, res, next) => {
       referer: req.headers['referer'],
     });
     
+    // If cookie is missing, suggest re-authentication
+    // If header is missing, suggest page refresh
+    const errorMessage = !tokenFromCookie 
+      ? 'Session expired. Please log in again.'
+      : 'Invalid security token. Please refresh the page and try again.';
+    
     return res.status(403).json({
       status: 'error',
-      message: 'Invalid security token. Please refresh the page and try again.',
+      message: errorMessage,
+      code: !tokenFromCookie ? 'SESSION_EXPIRED' : 'CSRF_TOKEN_MISSING',
     });
   }
 
@@ -111,6 +120,7 @@ exports.csrfProtection = (req, res, next) => {
     return res.status(403).json({
       status: 'error',
       message: 'Invalid security token. Please refresh the page and try again.',
+      code: 'CSRF_TOKEN_MISMATCH',
     });
   }
 
@@ -126,15 +136,13 @@ exports.csrfProtection = (req, res, next) => {
 exports.getCsrfToken = (req, res) => {
   try {
     // Get token from cookie (frontend can also read it directly)
-    const token = req.cookies['csrf-token'];
+    let token = req.cookies['csrf-token'];
     
+    // If token not found in cookie, generate a new one
+    // This handles cases where cookie expired or wasn't set properly
     if (!token) {
-      // Token not found - user may need to re-authenticate
-      console.warn('[CSRF] Token not available in cookie');
-      return res.status(404).json({
-        status: 'error',
-        message: 'CSRF token not found. Please log in again.',
-      });
+      token = exports.generateCSRFToken(res);
+      // Token is now set in cookie via generateCSRFToken, return it in response too
     }
     
     res.status(200).json({

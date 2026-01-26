@@ -86,8 +86,13 @@ exports.getWishlist = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Filter out products that were deleted (null products)
-  wishlist.products = wishlist.products.filter(item => item && item.product);
+  // Filter out products that were deleted (null products or soft-deleted)
+  wishlist.products = wishlist.products.filter(item => {
+    if (!item || !item.product) return false;
+    // Exclude soft-deleted products (isDeleted: true or status: 'archived')
+    const product = item.product;
+    return !product.isDeleted && product.status !== 'archived';
+  });
 
   // Return empty if all products were deleted
   if (wishlist.products.length === 0) {
@@ -156,12 +161,20 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
     strictPopulate: false, // Don't fail if product is deleted
   });
 
-  // Filter out null products before checking
-  wishlist.products = wishlist.products.filter(item => item && item.product);
+  // Filter out null products and soft-deleted products before checking
+  wishlist.products = wishlist.products.filter(item => {
+    if (!item || !item.product) return false;
+    const product = item.product;
+    return !product.isDeleted && product.status !== 'archived';
+  });
 
   // Check if product was actually added (might already exist)
-  // Filter out null products first
-  const validProducts = wishlist.products.filter(item => item && item.product);
+  // Filter out null products and soft-deleted products first
+  const validProducts = wishlist.products.filter(item => {
+    if (!item || !item.product) return false;
+    const product = item.product;
+    return !product.isDeleted && product.status !== 'archived';
+  });
   const productExists = validProducts.some(
     (item) => {
       try {
@@ -221,9 +234,16 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
     strictPopulate: false, // Don't fail if product is deleted
   });
 
-  // Filter out null products
+  // Filter out null products and soft-deleted products
   if (wishlist && wishlist.products) {
-    wishlist.products = wishlist.products.filter(item => item && item.product);
+    wishlist.products = wishlist.products.filter(item => {
+      if (!item || !item.product) return false;
+      const product = item.product;
+      return !product.isDeleted && 
+             !product.isDeletedByAdmin && 
+             !product.isDeletedBySeller && 
+             product.status !== 'archived';
+    });
   }
 
   if (!wishlist) {
@@ -298,9 +318,16 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
       select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
       strictPopulate: false, // Don't fail if product is deleted
     });
-    // Filter out null products
+    // Filter out null products and soft-deleted products
     if (wishlist && wishlist.products) {
-      wishlist.products = wishlist.products.filter(item => item && item.product);
+      wishlist.products = wishlist.products.filter(item => {
+        if (!item || !item.product) return false;
+        const product = item.product;
+        return !product.isDeleted && 
+             !product.isDeletedByAdmin && 
+             !product.isDeletedBySeller && 
+             product.status !== 'archived';
+      });
     }
     action = 'removed';
   } else {
@@ -325,9 +352,16 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
       select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
       strictPopulate: false, // Don't fail if product is deleted
     });
-    // Filter out null products
+    // Filter out null products and soft-deleted products
     if (wishlist && wishlist.products) {
-      wishlist.products = wishlist.products.filter(item => item && item.product);
+      wishlist.products = wishlist.products.filter(item => {
+        if (!item || !item.product) return false;
+        const product = item.product;
+        return !product.isDeleted && 
+             !product.isDeletedByAdmin && 
+             !product.isDeletedBySeller && 
+             product.status !== 'archived';
+      });
     }
     action = 'added';
   }
@@ -410,9 +444,16 @@ exports.getOrCreateGuestWishlist = catchAsync(async (req, res, next) => {
     strictPopulate: false, // Don't fail if product is deleted
   });
 
-  // Filter out null products
+  // Filter out null products and soft-deleted products
   if (wishlist && wishlist.products) {
-    wishlist.products = wishlist.products.filter(item => item && item.product);
+    wishlist.products = wishlist.products.filter(item => {
+      if (!item || !item.product) return false;
+      const product = item.product;
+      return !product.isDeleted && 
+             !product.isDeletedByAdmin && 
+             !product.isDeletedBySeller && 
+             product.status !== 'archived';
+    });
   }
 
   // Calculate totalStock
@@ -620,9 +661,16 @@ exports.mergeWishlists = catchAsync(async (req, res, next) => {
     strictPopulate: false, // Don't fail if product is deleted
   });
 
-  // Filter out null products
+  // Filter out null products and soft-deleted products
   if (userWishlist && userWishlist.products) {
-    userWishlist.products = userWishlist.products.filter(item => item && item.product);
+    userWishlist.products = userWishlist.products.filter(item => {
+      if (!item || !item.product) return false;
+      const product = item.product;
+      return !product.isDeleted && 
+             !product.isDeletedByAdmin && 
+             !product.isDeletedBySeller && 
+             product.status !== 'archived';
+    });
   }
 
   // Calculate totalStock

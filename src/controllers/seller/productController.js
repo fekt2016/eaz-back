@@ -260,7 +260,16 @@ exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
   
   // PERFORMANCE FIX: Add allowDiskUse(true) for large aggregations
   // This allows MongoDB to use disk for temporary files when memory is insufficient
+  // CRITICAL: Exclude deleted products from category counts
   const productCounts = await Product.aggregate([
+    {
+      $match: {
+        isDeleted: { $ne: true }, // Exclude deleted products
+        isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+        isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
+        status: { $ne: 'archived' }, // Exclude archived products
+      },
+    },
     {
       $group: {
         _id: {
@@ -353,9 +362,13 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
     logger.info('⚠️ [getAllPublicProductsBySeller] Seller has products but none are approved/pending. Showing all active products instead.');
     // If seller has products but none are approved/pending, show all active products
     // This includes rejected products so seller can see them on their page
+    // CRITICAL: Exclude deleted products from public view
     const activeProducts = await Product.find({
       seller: sellerId,
-      status: { $in: ['active', 'out_of_stock'] }
+      status: { $in: ['active', 'out_of_stock'] },
+      isDeleted: { $ne: true }, // Exclude deleted products
+      isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+      isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
     }).populate('parentCategory', 'name slug').populate('subCategory', 'name slug');
 
     logger.info('🔍 [getAllPublicProductsBySeller] Active products (including rejected);:', activeProducts.length);
@@ -410,13 +423,15 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   }
   
   // Cap limit based on user role
-  // Admins can fetch more products (up to 1000) for management purposes
+  // CRITICAL: Enforce strict limits to prevent server lockup
+  // Admins can fetch more products (up to 200) for management purposes
   // Regular users are capped at 100 for performance
   const requestedLimit = parseInt(req.query.limit) || (isAdmin ? 200 : 20);
   if (isAdmin) {
-    // Admins can fetch up to 1000 products at once
-    if (requestedLimit > 1000) {
-      req.query.limit = '1000';
+    // Admins capped at 200 to prevent timeout and server lockup
+    // Frontend should use pagination instead of fetching all products
+    if (requestedLimit > 200) {
+      req.query.limit = '200';
     }
   } else {
     // Regular users capped at 100
@@ -456,62 +471,64 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     .limitFields()
     .paginate();
 
+  // CRITICAL: Add MongoDB query timeout to prevent hanging queries
+  // maxTimeMS: 20000 = 20 seconds max query time
+  features.query = features.query.maxTimeMS(20000);
+
   // Populate related fields (limit to essential fields for performance)
-  features.query = features.query.populate([
-    { path: 'seller', select: 'name email phone shopName' },
-    { path: 'parentCategory', select: 'name slug' },
-    { path: 'subCategory', select: 'name slug' },
-  ]).lean({ virtuals: true }); // Use lean() with virtuals to include totalStock
+  // CRITICAL: Use lean() without virtuals for better performance
+  // Calculate totalStock in application code instead
+  features.query = features.query
+    .populate([
+      { path: 'seller', select: 'name email phone shopName' },
+      { path: 'parentCategory', select: 'name slug' },
+      { path: 'subCategory', select: 'name slug' },
+    ])
+    .lean(); // Use lean() for better performance, calculate virtuals manually
 
   const products = await features.query;
   
-  // Calculate totalStock for each product if not already present (fallback)
-  // Note: totalStock is a virtual field, but lean() may not include it
-  products.forEach(product => {
-    // If totalStock virtual wasn't included, calculate it manually
-    if ((product.totalStock === undefined || product.totalStock === null) && Array.isArray(product.variants)) {
-      product.totalStock = product.variants.reduce((sum, variant) => {
-        return sum + (variant.stock || 0);
-      }, 0);
+  // Calculate totalStock for each product (lean() doesn't include virtuals)
+  // CRITICAL: Keep this synchronous and fast - only calculate what's needed
+  if (Array.isArray(products) && products.length > 0) {
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      // Calculate totalStock from variants
+      if (Array.isArray(product.variants) && product.variants.length > 0) {
+        product.totalStock = product.variants.reduce((sum, variant) => {
+          return sum + (variant.stock || 0);
+        }, 0);
+      } else {
+        product.totalStock = 0;
+        product.variants = [];
+      }
     }
-    // Also ensure variants are included for frontend calculation
-    if (!product.variants || !Array.isArray(product.variants)) {
-      product.variants = [];
-    }
-  });
+  }
   
-  // Debug logging for stock calculation (development only)
+  // CRITICAL: Limit debug logging to prevent log accumulation
+  // Only log in development and limit to first product only
   if (process.env.NODE_ENV === 'development' && products.length > 0) {
     const sampleProduct = products[0];
-    console.log('[getAllProduct] Sample product stock calculation:', {
+    console.log('[getAllProduct] Sample product:', {
       productId: sampleProduct._id,
-      productName: sampleProduct.name,
       totalStock: sampleProduct.totalStock,
       variantsCount: sampleProduct.variants?.length || 0,
-      variantsStock: sampleProduct.variants?.map(v => v.stock) || [],
-      calculatedTotal: sampleProduct.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0,
     });
   }
 
   // Get total count for pagination (apply same filter)
-  // Use estimatedDocumentCount for better performance if exact count not critical
+  // CRITICAL: Add timeout to count query to prevent hanging
   const countQuery = Product.find(filter);
   const countFeatures = new APIFeature(countQuery, req.query).filter();
+  countFeatures.query = countFeatures.query.maxTimeMS(10000); // 10 seconds for count
   const total = await countFeatures.query.countDocuments();
 
   console.timeEnd('getAllProduct');
   
-  // Enhanced logging for admin access
-  if (isAdmin) {
-    console.log(`✅ [getAllProduct] Admin access - Returned ${products.length} products out of ${total} total (limit: ${req.query.limit || 200})`);
-    console.log(`📊 [getAllProduct] Admin filter:`, {
-      isAdmin,
-      filterApplied: Object.keys(filter).length > 0 ? filter : 'none (showing all)',
-      userRole: req.user?.role,
-      userId: req.user?.id,
-    });
-  } else {
-    console.log(`✅ [getAllProduct] Returned ${products.length} products in ${req.query.limit || 20} limit`);
+  // CRITICAL: Limit logging to prevent log accumulation
+  // Only log essential info, not full objects
+  if (isAdmin && process.env.NODE_ENV === 'development') {
+    console.log(`✅ [getAllProduct] Admin: ${products.length}/${total} products (limit: ${req.query.limit || 200})`);
   }
 
   res.status(200).json({
@@ -644,8 +661,6 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   }
 
   // Get seller ID from product - handle both populated and unpopulated cases
-  // If populated, seller will be an object with _id
-  // If not populated, seller will be an ObjectId or string
   let productSellerId = null;
   if (product.seller) {
     if (product.seller._id) {
@@ -657,72 +672,77 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Check if current user is admin or seller who owns this product
+  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'moderator');
+  let isSellerOwnProduct = false;
+  if (req.user && productSellerId) {
+    const userIdStr = req.user.id?.toString() || req.user._id?.toString();
+    isSellerOwnProduct = productSellerId === userIdStr;
+  }
+
   logger.info('[getProductById] Product found:', {
     productId: product._id,
     moderationStatus: product.moderationStatus,
+    isDeleted: product.isDeleted,
+    isDeletedByAdmin: product.isDeletedByAdmin,
+    isDeletedBySeller: product.isDeletedBySeller,
+    status: product.status,
+    deletedBy: product.deletedBy,
+    deletedByRole: product.deletedByRole,
     sellerId: productSellerId,
-    sellerType: typeof product.seller,
-    sellerIsObject: typeof product.seller === 'object',
-    sellerIsString: typeof product.seller === 'string'
+    isAdmin,
+    isSellerOwnProduct,
   });
 
-  // Access control logic:
+  // CRITICAL: Hide deleted/archived products from buyers
+  // Rules:
+  // 1. Admins can see all products (including deleted/archived)
+  // 2. Sellers can see their own products UNLESS deleted by admin
+  // 3. Buyers/public cannot see deleted/archived products
+  if (!isAdmin) {
+    // If product is deleted or archived
+    if (product.isDeleted === true || 
+        product.isDeletedByAdmin === true || 
+        product.isDeletedBySeller === true || 
+        product.status === 'archived') {
+      // If seller owns it but admin deleted it, hide it
+      if (isSellerOwnProduct && product.isDeletedByAdmin) {
+        logger.info('[getProductById] ❌ Product deleted by admin - hiding from seller:', {
+          productId: product._id,
+          deletedBy: product.deletedBy,
+          deletedByRole: product.deletedByRole,
+        });
+        return next(new AppError('Product not found or not available', 404));
+      }
+      // If not seller's product, hide it
+      if (!isSellerOwnProduct) {
+        logger.info('[getProductById] ❌ Product is deleted/archived - hiding from buyer:', {
+          productId: product._id,
+          isDeleted: product.isDeleted,
+          isDeletedByAdmin: product.isDeletedByAdmin,
+          isDeletedBySeller: product.isDeletedBySeller,
+          status: product.status,
+        });
+        return next(new AppError('Product not found or not available', 404));
+      }
+    }
+  }
+
+  // Access control logic for moderation status:
   // 1. Admins can see all products
   // 2. Sellers can see their own products regardless of moderation status
   // 3. Everyone else (including unauthenticated) can only see approved products
 
-  const isAdmin = req.user && req.user.role === 'admin';
-
   // Normalize moderationStatus - handle undefined/null
-  // If undefined, treat as potentially visible (might be legacy product without moderation)
   const moderationStatus = product.moderationStatus;
   const isApproved = moderationStatus === 'approved';
   const isRejected = moderationStatus === 'rejected';
-  const isPending = moderationStatus === 'pending';
   const isUndefined = moderationStatus === undefined || moderationStatus === null;
 
   // Allow access if: approved OR (undefined and not rejected) - undefined might be legacy products
   const canAccess = isApproved || (isUndefined && !isRejected);
 
   if (!isAdmin) {
-    // Check if seller owns this product
-    // Also check if user might be a seller (even if role shows as 'user')
-    let isSellerOwnProduct = false;
-
-    if (req.user && productSellerId) {
-      // Get user ID - handle both req.user.id and req.user._id
-      let userIdStr = null;
-      if (req.user.id) {
-        userIdStr = req.user.id.toString();
-      } else if (req.user._id) {
-        userIdStr = req.user._id.toString();
-      }
-
-      // Check if user ID matches seller ID (regardless of role - in case role detection is wrong)
-      const isOwner = productSellerId === userIdStr;
-      const isSellerRole = req.user.role === 'seller';
-
-      // Seller owns product if IDs match (role check is secondary)
-      isSellerOwnProduct = isOwner;
-
-      logger.info('[getProductById] Seller ownership check:', {
-        productSellerId: productSellerId,
-        userIdStr: userIdStr,
-        userRole: req.user.role,
-        isSellerRole: isSellerRole,
-        isOwner: isOwner,
-        isSellerOwnProduct: isSellerOwnProduct,
-        productModerationStatus: moderationStatus,
-        isApproved: isApproved,
-        isUndefined: isUndefined,
-        canAccess: canAccess,
-        comparison: `${productSellerId} === ${userIdStr}`
-      });
-    }
-
-    // NOTE: Products from unverified sellers can be viewed, but orders are blocked
-    // Order validation happens in createOrder controller
-    
     // If not seller's own product and cannot access (not approved and not undefined), deny access
     if (!isSellerOwnProduct && !canAccess) {
       logger.info('[getProductById] ❌ Access denied:', {
@@ -1005,6 +1025,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         stock: parseInt(variant.stock) || 0,
         sku: variant.sku || '',
         status: variant.status || 'active',
+        condition: variant.condition || 'new', // Default to 'new' if not provided
       };
     });
   }
@@ -1227,8 +1248,122 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
 exports.deleteProduct = catchAsync(async (req, res, next) => {
   const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
+  // Validate product ID
+  if (!req.params.id) {
+    return next(new AppError('Product ID is required', 400));
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return next(new AppError('Invalid product ID format', 400));
+  }
+
   // Get product before deletion
   const productToDelete = await Product.findById(req.params.id);
+  
+  if (!productToDelete) {
+    return next(new AppError('Product not found', 404));
+  }
+console.log(req.user);
+  // Log user and product info for debugging
+  const userRole = req.user?.role || req.user?.userRole || null;
+  const userId = req.user?.id || req.user?._id || null;
+  
+  logger.info(`[Delete Product] Delete request:`, {
+    productId: req.params.id,
+    userRole: userRole,
+    userId: userId,
+    user_id: req.user?._id,
+    userObjectKeys: req.user ? Object.keys(req.user) : [],
+    userObject: req.user ? {
+      id: req.user.id,
+      _id: req.user._id,
+      role: req.user.role,
+      userRole: req.user.userRole,
+      email: req.user.email,
+      name: req.user.name,
+    } : null,
+    productSeller: productToDelete.seller?.toString(),
+    productSellerType: typeof productToDelete.seller,
+  });
+
+  // Verify ownership (unless admin/superadmin/moderator)
+  // CRITICAL: If user passed restrictTo('admin', 'superadmin', 'moderator', 'seller') middleware,
+  // they are authorized. We just need to check if they're an admin (not a seller) to bypass ownership check.
+  
+  // Get role from multiple possible locations
+  const userRoleValue = userRole || req.user?.role || null;
+  
+  // More robust Admin model detection - check multiple ways to identify Admin model
+  const isAdminModel = req.user && (
+    req.user.constructor?.modelName === 'Admin' ||
+    req.user.constructor?.name === 'Admin' ||
+    req.user.modelName === 'Admin' ||
+    // Check if user has admin-specific fields (Admin model has these, Seller doesn't)
+    (req.user.email && !req.user.shopName && !req.user.businessName) ||
+    // Check if the collection name is 'admins'
+    (req.user.collection?.name === 'admins')
+  );
+  
+  // Check if role matches admin roles
+  const hasAdminRole = userRoleValue === 'admin' || 
+                       userRoleValue === 'superadmin' || 
+                       userRoleValue === 'moderator';
+  
+  // Final admin check: user is admin if they have admin role OR are from Admin model
+  // Since they passed the restrictTo middleware, they're authorized - we just need to know if they're admin vs seller
+  const finalIsAdmin = hasAdminRole || isAdminModel;
+  
+  const userOwnsProduct = productToDelete.seller && userId && 
+                          (productToDelete.seller.toString() === userId.toString());
+  
+  logger.info(`[Delete Product] Permission check:`, {
+    finalIsAdmin: finalIsAdmin,
+    hasAdminRole: hasAdminRole,
+    isAdminModel: isAdminModel,
+    userOwnsProduct: userOwnsProduct,
+    userRole: userRole,
+    userRoleValue: userRoleValue,
+    reqUserRole: req.user?.role,
+    userId: userId,
+    productSeller: productToDelete.seller?.toString(),
+    userModelInfo: req.user ? {
+      constructorName: req.user.constructor?.name,
+      modelName: req.user.constructor?.modelName,
+      collectionName: req.user.collection?.name,
+      hasShopName: !!req.user.shopName,
+      hasBusinessName: !!req.user.businessName,
+    } : null,
+    comparison: {
+      sellerId: productToDelete.seller?.toString(),
+      userId: userId?.toString(),
+    },
+  });
+  
+  if (!finalIsAdmin && !userOwnsProduct) {
+    logger.warn(`[Delete Product] Permission denied:`, {
+      userRole: userRole,
+      reqUserRole: req.user?.role,
+      userId: userId,
+      productSeller: productToDelete.seller?.toString(),
+      finalIsAdmin: finalIsAdmin,
+      hasAdminRole: hasAdminRole,
+      isAdminModel: isAdminModel,
+      userOwnsProduct: userOwnsProduct,
+      comparison: {
+        sellerId: productToDelete.seller?.toString(),
+        userId: userId?.toString(),
+      },
+      fullUserObject: req.user,
+    });
+    return next(new AppError('You do not have permission to delete this product', 403));
+  }
+
+  logger.info(`[Delete Product] Permission granted:`, {
+    isAdmin: finalIsAdmin,
+    userOwnsProduct: userOwnsProduct,
+    userRole: req.user.role,
+    isAdminModel: isAdminModel,
+  });
 
   const deleteHandler = handleFactory.deleteOne(Product);
 
@@ -1247,13 +1382,14 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
   // Call the factory handler
   await deleteHandler(req, res, next);
 
-  // Log activity after deletion
-  if (deleted && productToDelete && req.user && req.user.role === 'seller') {
+  // Log activity after deletion (for both seller and admin)
+  if (deleted && productToDelete && req.user) {
+    const userRole = req.user.role === 'admin' ? 'admin' : 'seller';
     logActivityAsync({
       userId: req.user.id,
-      role: 'seller',
+      role: userRole,
       action: 'DELETE_PRODUCT',
-      description: `Seller deleted product: ${productToDelete.name || 'Unknown'}`,
+      description: `${userRole === 'admin' ? 'Admin' : 'Seller'} deleted product: ${productToDelete.name || 'Unknown'}`,
       req,
       metadata: { productId: productToDelete._id },
     });
@@ -1273,14 +1409,48 @@ exports.getProductVariants = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid product ID format', 400));
   }
 
-  const product = await Product.findById(productId).select('variants seller');
+  // Ensure req.user exists
+  if (!req.user || !req.user.id) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  // Fetch product with seller field (may be ObjectId or populated)
+  const product = await Product.findById(productId)
+    .select('variants seller')
+    .populate('seller', '_id'); // Populate seller to get _id for comparison
 
   if (!product) {
     return next(new AppError('Product not found', 404));
   }
 
   // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  // Handle both ObjectId and string formats
+  const productSellerId = product.seller?._id 
+    ? product.seller._id.toString() 
+    : (product.seller?.toString ? product.seller.toString() : String(product.seller));
+  const userId = req.user.id?.toString ? req.user.id.toString() : String(req.user.id);
+  
+  // Log for debugging
+  logger.info('[getProductVariants] Permission check:', {
+    productId,
+    productSellerId,
+    userId,
+    userRole: req.user.role,
+    sellerMatch: productSellerId === userId,
+    isAdmin: req.user.role === 'admin',
+    productSellerType: typeof product.seller,
+    userIdType: typeof req.user.id,
+  });
+
+  if (req.user.role !== 'admin' && productSellerId !== userId) {
+    logger.warn('[getProductVariants] Permission denied:', {
+      productId,
+      productSellerId,
+      userId,
+      userRole: req.user.role,
+      sellerType: typeof product.seller,
+      userIdType: typeof req.user.id,
+    });
     return next(new AppError('You do not have permission to access this product', 403));
   }
 
@@ -1362,6 +1532,7 @@ exports.createProductVariant = catchAsync(async (req, res, next) => {
     stock: parseInt(req.body.stock) || 0,
     sku: req.body.sku || '',
     status: req.body.status || 'active',
+    condition: req.body.condition || 'new', // Default to 'new' if not provided
   };
 
   // Handle attributes
@@ -1529,6 +1700,7 @@ exports.updateProductVariant = catchAsync(async (req, res, next) => {
   if (req.body.stock !== undefined) variant.stock = parseInt(req.body.stock);
   if (req.body.sku !== undefined) variant.sku = req.body.sku;
   if (req.body.status !== undefined) variant.status = req.body.status;
+  if (req.body.condition !== undefined) variant.condition = req.body.condition; // Update condition field
   if (req.body.originalPrice !== undefined) variant.originalPrice = parseFloat(req.body.originalPrice);
   if (req.body.discount !== undefined) variant.discount = parseFloat(req.body.discount);
 

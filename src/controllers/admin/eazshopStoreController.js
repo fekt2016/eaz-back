@@ -15,14 +15,50 @@ const EAZSHOP_SELLER_ID = '000000000000000000000001';
  * Only returns active products
  */
 exports.getPublicEazShopProducts = catchAsync(async (req, res, next) => {
-  const products = await Product.find({
-    $or: [
-      { isEazShopProduct: true },
-      { seller: EAZSHOP_SELLER_ID },
+  // CRITICAL: Use $and to ensure all conditions must be met
+  // This explicitly excludes deleted products in multiple ways
+  const query = {
+    $and: [
+      {
+        $or: [
+          { isEazShopProduct: true },
+          { seller: EAZSHOP_SELLER_ID },
+        ],
+      },
+      {
+        // Only active products (excludes archived, inactive, draft)
+        // This already excludes 'archived' status
+        status: { $in: ['active', 'out_of_stock'] },
+      },
+      {
+        moderationStatus: 'approved', // Only approved products
+      },
+      {
+        // Exclude deleted products - check all possible deletion states
+        $or: [
+          { isDeleted: { $exists: false } },
+          { isDeleted: false },
+          { isDeleted: null },
+        ],
+      },
+      {
+        $or: [
+          { isDeletedByAdmin: { $exists: false } },
+          { isDeletedByAdmin: false },
+          { isDeletedByAdmin: null },
+        ],
+      },
+      {
+        $or: [
+          { isDeletedBySeller: { $exists: false } },
+          { isDeletedBySeller: false },
+          { isDeletedBySeller: null },
+        ],
+      },
     ],
-    status: 'active', // Only active products for public display
-    moderationStatus: 'approved', // Only approved products
-  })
+  };
+
+  const products = await Product.find(query)
     .populate('seller', 'shopName name')
     .populate('parentCategory', 'name slug')
     .populate('subCategory', 'name slug')
@@ -30,10 +66,48 @@ exports.getPublicEazShopProducts = catchAsync(async (req, res, next) => {
     .sort({ createdAt: -1 })
     .limit(50); // Limit for performance
 
+  // CRITICAL: Additional server-side filter as final safety check
+  // This catches any products that might have slipped through the query
+  const filteredProducts = products.filter(product => {
+    // Convert to plain object if it's a Mongoose document
+    const productObj = product.toObject ? product.toObject() : product;
+    
+    // Double-check: exclude any products that are marked as deleted
+    const isDeleted = productObj.isDeleted === true || 
+                      productObj.isDeletedByAdmin === true || 
+                      productObj.isDeletedBySeller === true ||
+                      productObj.status === 'archived' ||
+                      productObj.status === 'inactive';
+    
+    if (isDeleted) {
+      console.warn(`[getPublicEazShopProducts] ⚠️ Filtered out deleted product: ${productObj._id} - ${productObj.name}`, {
+        isDeleted: productObj.isDeleted,
+        isDeletedByAdmin: productObj.isDeletedByAdmin,
+        isDeletedBySeller: productObj.isDeletedBySeller,
+        status: productObj.status,
+      });
+      return false;
+    }
+    return true;
+  });
+
+  // Log for debugging
+  console.log(`[getPublicEazShopProducts] Query returned ${products.length} products, filtered to ${filteredProducts.length}`);
+  if (filteredProducts.length > 0) {
+    console.log('[getPublicEazShopProducts] Sample product:', {
+      id: filteredProducts[0]._id,
+      name: filteredProducts[0].name,
+      status: filteredProducts[0].status,
+      isDeleted: filteredProducts[0].isDeleted,
+      isDeletedByAdmin: filteredProducts[0].isDeletedByAdmin,
+      isDeletedBySeller: filteredProducts[0].isDeletedBySeller,
+    });
+  }
+
   res.status(200).json({
     status: 'success',
-    results: products.length,
-    data: { products },
+    results: filteredProducts.length,
+    data: { products: filteredProducts },
   });
 });
 

@@ -34,7 +34,7 @@ router
   .get(optionalAuth, getAllProduct)
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     setProductIds,
     uploadProductImage,
     resizeProductImages,
@@ -48,12 +48,12 @@ router
   .route('/:id/variants')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     getProductVariants
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     conditionalUpload,
     resizeProductImages,
     createProductVariant
@@ -63,19 +63,19 @@ router
   .route('/:id/variants/:variantId')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     getProductVariant
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     conditionalUpload,
     resizeProductImages,
     updateProductVariant
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     deleteProductVariant
   );
 
@@ -87,14 +87,14 @@ router
   .get(optionalAuth, getProductById)
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     conditionalUpload,
     resizeProductImages,
     updateProduct,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     deleteProduct,
   );
 

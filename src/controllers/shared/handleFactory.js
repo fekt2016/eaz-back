@@ -8,15 +8,30 @@ const logger = require('../../utils/logger');
 
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
-    logger.info('req.params', req.params.id);
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const productId = req.params.id;
+    
+    // Validate product ID exists
+    if (!productId) {
+      logger.error('[deleteOne] Product ID is missing from request params');
+      return next(new AppError('Product ID is required', 400));
+    }
+    
+    logger.info('[deleteOne] Deleting document:', { id: productId, model: Model.modelName });
+    
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      logger.error('[deleteOne] Invalid product ID format:', productId);
       return next(new AppError('Invalid product ID format', 400));
     }
 
-    const doc = await Model.findByIdAndDelete(req.params.id);
+    const doc = await Model.findByIdAndDelete(productId);
     if (!doc) {
-      return next(new AppError('No documnet found with that ID', 404));
+      logger.warn('[deleteOne] Document not found:', { id: productId, model: Model.modelName });
+      return next(new AppError('No document found with that ID', 404));
     }
+    
+    logger.info('[deleteOne] Document deleted successfully:', { id: productId, model: Model.modelName });
+    
     res.status(200).json({
       status: 'success',
       data: null,
@@ -177,7 +192,7 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
       // Calculate min and max prices from variants
       const variantPrices = body.variants
         .map(v => parseFloat(v.price) || 0)
-        .filter(p => p > 0);
+        .filter(p => p > 0 && isFinite(p));
       
       if (variantPrices.length > 0) {
         body.minPrice = Math.min(...variantPrices);

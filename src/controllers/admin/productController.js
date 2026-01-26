@@ -1,8 +1,10 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Product = require('../../models/product/productModel');
+const OrderItem = require('../../models/order/OrderItemModel');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 const logger = require('../../utils/logger');
+const mongoose = require('mongoose');
 
 /**
  * Approve a product
@@ -21,10 +23,22 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
   const adminId = req.user.id || req.user._id;
   const adminRole = req.user.role;
   
+  // Verify adminId exists
+  if (!adminId) {
+    logger.error('[Approve Product] Admin ID is missing');
+    return next(new AppError('Invalid admin credentials', 401));
+  }
+  
   // Verify user is admin
   if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
     logger.error('[Approve Product] User is not admin:', { role: adminRole, userId: adminId });
     return next(new AppError('Admin access required', 403));
+  }
+  
+  // Validate product ID format
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    logger.error(`[Approve Product] Invalid product ID format: ${id}`);
+    return next(new AppError('Invalid product ID format', 400));
   }
   
   logger.info(`[Approve Product] Admin ${adminId} (${adminRole}) attempting to approve product ${id}`);
@@ -35,74 +49,113 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
     return next(new AppError('Product not found', 404));
   }
 
+  // Check if product is already approved
   if (product.moderationStatus === 'approved') {
-    logger.warn(`[Approve Product] Product ${id} is already approved`);
-    return next(new AppError('Product is already approved', 400));
+    logger.info(`[Approve Product] Product ${id} is already approved`);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Product is already approved',
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          moderationStatus: product.moderationStatus,
+        },
+      },
+    });
   }
 
-  // Update product
+  // Update product moderation status
   product.moderationStatus = 'approved';
-  product.moderationNotes = notes || product.moderationNotes;
   product.moderatedBy = adminId;
   product.moderatedAt = new Date();
-  
-  // CRITICAL: Update visibility when product is approved
-  // Visibility depends on: seller verification + product status + moderation status
+  if (notes) {
+    product.moderationNotes = notes;
+  }
+
+  // Ensure product is visible if seller is verified
   const Seller = require('../../models/user/sellerModel');
-  const seller = await Seller.findById(product.seller);
-  if (seller) {
-    const shouldBeVisible = 
-      seller.verificationStatus === 'verified' &&
-      product.status === 'active' &&
-      product.moderationStatus === 'approved';
-    product.isVisible = shouldBeVisible;
-    logger.info(`[Approve Product] Updated visibility: ${shouldBeVisible} (seller verified: ${seller.verificationStatus === 'verified'}, product status: ${product.status})`);
-  }
+  const seller = await Seller.findById(product.seller).select('verificationStatus');
   
+  if (seller && seller.verificationStatus === 'verified') {
+    product.isVisible = true;
+  } else {
+    product.isVisible = false;
+  }
+
+  // Pre-save validation: Ensure prices are valid before saving
+  const variantPrices = product.variants
+    .map(v => parseFloat(v.price) || 0)
+    .filter(p => p > 0 && isFinite(p));
+  
+  if (variantPrices.length === 0) {
+    logger.error(`[Approve Product] Product ${id} has no valid variant prices`);
+    return next(new AppError('Product must have at least one variant with a valid price greater than 0', 400));
+  }
+
+  // Set main product price from first valid variant if missing
+  if (!product.price || isNaN(product.price) || product.price <= 0) {
+    product.price = Math.min(...variantPrices);
+    logger.info(`[Approve Product] Auto-set product price to ${product.price} from variants`);
+  }
+
+  // Final validation: Ensure main price is valid
+  const mainPrice = parseFloat(product.price);
+  if (!mainPrice || isNaN(mainPrice) || mainPrice <= 0) {
+    logger.error(`[Approve Product] Product ${id} has invalid main price: ${product.price}`);
+    return next(new AppError('Product price is required and must be greater than 0', 400));
+  }
+
   try {
-    await product.save();
+    await product.save({ validateBeforeSave: true });
     logger.info(`[Approve Product] ✅ Product ${id} approved successfully by admin ${adminId}`);
-  } catch (saveError) {
-    logger.error(`[Approve Product] ❌ Error saving product ${id}:`, saveError);
-    return next(new AppError('Failed to approve product', 500));
-  }
 
-  // Notify seller about product approval
-  try {
-    const notificationService = require('../../services/notification/notificationService');
-    await notificationService.createProductNotification(
-      product.seller,
-      product._id,
-      'approved',
-      product.name
-    );
-    logger.info(`[Approve Product] Notification created for seller ${product.seller}`);
-  } catch (notificationError) {
-    logger.error('[Approve Product] Error creating notification:', notificationError);
-    // Don't fail approval if notification fails
-  }
-
-  // Log activity
-  logActivityAsync({
-    userId: adminId,
-    role: 'admin',
-    action: 'APPROVE_PRODUCT',
-    description: `Approved product: ${product.name}`,
-    req,
-    metadata: { productId: product._id, sellerId: product.seller },
-  });
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Product approved successfully',
-    data: {
-      product: {
-        id: product._id,
-        name: product.name,
-        moderationStatus: product.moderationStatus,
+    // Log activity
+    logActivityAsync({
+      userId: adminId,
+      role: 'admin',
+      action: 'APPROVE_PRODUCT',
+      description: `Admin approved product: ${product.name}`,
+      metadata: {
+        productId: product._id,
+        productName: product.name,
+        sellerId: product.seller,
+        notes: notes || null,
       },
-    },
-  });
+      req,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Product approved successfully',
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          moderationStatus: product.moderationStatus,
+          isVisible: product.isVisible,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error(`[Approve Product] Error saving product ${id}:`, error);
+    
+    // Handle validation errors specifically
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        path: err.path,
+        message: err.message,
+        value: err.value,
+      }));
+      
+      logger.error(`[Approve Product] Validation errors:`, validationErrors);
+      
+      const errorMessages = validationErrors.map(err => `${err.path}: ${err.message}`).join(', ');
+      return next(new AppError(`Validation error: ${errorMessages}`, 400));
+    }
+    
+    return next(new AppError(error.message || 'Failed to approve product', 500));
+  }
 });
 
 /**
@@ -111,75 +164,109 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
  */
 exports.rejectProduct = catchAsync(async (req, res, next) => {
   const { id } = req.params;
-  const { notes, reason } = req.body;
-  const adminId = req.user.id;
-
-  if (!notes && !reason) {
-    return next(new AppError('Rejection reason or notes are required', 400));
+  const { notes } = req.body;
+  
+  // Check if user is authenticated
+  if (!req.user) {
+    logger.error('[Reject Product] No user found in request');
+    return next(new AppError('Authentication required', 401));
   }
+  
+  const adminId = req.user.id || req.user._id;
+  const adminRole = req.user.role;
+  
+  // Verify adminId exists
+  if (!adminId) {
+    logger.error('[Reject Product] Admin ID is missing');
+    return next(new AppError('Invalid admin credentials', 401));
+  }
+  
+  // Verify user is admin
+  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+    logger.error('[Reject Product] User is not admin:', { role: adminRole, userId: adminId });
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  // Validate product ID format
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    logger.error(`[Reject Product] Invalid product ID format: ${id}`);
+    return next(new AppError('Invalid product ID format', 400));
+  }
+  
+  logger.info(`[Reject Product] Admin ${adminId} (${adminRole}) attempting to reject product ${id}`);
 
   const product = await Product.findById(id);
   if (!product) {
+    logger.error(`[Reject Product] Product not found: ${id}`);
     return next(new AppError('Product not found', 404));
   }
 
+  // Check if product is already rejected
   if (product.moderationStatus === 'rejected') {
-    return next(new AppError('Product is already rejected', 400));
+    logger.info(`[Reject Product] Product ${id} is already rejected`);
+    return res.status(200).json({
+      status: 'success',
+      message: 'Product is already rejected',
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          moderationStatus: product.moderationStatus,
+        },
+      },
+    });
   }
 
-  // Update product
+  // Update product moderation status
   product.moderationStatus = 'rejected';
-  product.moderationNotes = notes || reason || product.moderationNotes;
   product.moderatedBy = adminId;
   product.moderatedAt = new Date();
-  // Set status to inactive when rejected
-  product.status = 'inactive';
-  // Set visibility to false when rejected
-  product.isVisible = false;
-  await product.save();
-
-  // Notify seller about product rejection
-  try {
-    const notificationService = require('../../services/notification/notificationService');
-const logger = require('../../utils/logger');
-    await notificationService.createProductNotification(
-      product.seller,
-      product._id,
-      'rejected',
-      product.name
-    );
-    logger.info(`[Reject Product] Notification created for seller ${product.seller}`);
-  } catch (notificationError) {
-    logger.error('[Reject Product] Error creating notification:', notificationError);
-    // Don't fail rejection if notification fails
+  product.isVisible = false; // Rejected products are never visible
+  if (notes) {
+    product.moderationNotes = notes;
   }
 
-  // Log activity
-  logActivityAsync({
-    userId: adminId,
-    role: 'admin',
-    action: 'REJECT_PRODUCT',
-    description: `Rejected product: ${product.name}. Reason: ${notes || reason}`,
-    req,
-    metadata: { productId: product._id, sellerId: product.seller },
-  });
+  try {
+    await product.save({ validateBeforeSave: true });
+    logger.info(`[Reject Product] ✅ Product ${id} rejected successfully by admin ${adminId}`);
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Product rejected successfully',
-    data: {
-      product: {
-        id: product._id,
-        name: product.name,
-        moderationStatus: product.moderationStatus,
-        moderationNotes: product.moderationNotes,
+    // Log activity
+    if (product.seller && mongoose.Types.ObjectId.isValid(product.seller)) {
+      logActivityAsync({
+        userId: adminId,
+        role: 'admin',
+        action: 'REJECT_PRODUCT',
+        description: `Admin rejected product: ${product.name}`,
+        metadata: {
+          productId: product._id,
+          productName: product.name,
+          sellerId: product.seller,
+          notes: notes || null,
+        },
+        req,
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Product rejected successfully',
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          moderationStatus: product.moderationStatus,
+          isVisible: product.isVisible,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    logger.error(`[Reject Product] Error saving product ${id}:`, error);
+    return next(new AppError(error.message || 'Failed to reject product', 500));
+  }
 });
 
 /**
- * Get products pending approval
+ * Get pending products for moderation
  * GET /api/v1/admin/products/pending
  */
 exports.getPendingProducts = catchAsync(async (req, res, next) => {
@@ -231,54 +318,230 @@ exports.updateAllProductsVisibility = catchAsync(async (req, res, next) => {
   const sellers = await Seller.find({}).select('_id verificationStatus');
   logger.info(`[Update Visibility] Found ${sellers.length} sellers`);
   
-  let totalUpdated = 0;
-  const results = [];
-  
-  // Update products for each seller
+  let updatedCount = 0;
   for (const seller of sellers) {
     try {
-      const result = await updateSellerProductsVisibility(
-        seller._id,
-        seller.verificationStatus
-      );
-      totalUpdated += result.updated;
-      results.push({
-        sellerId: seller._id,
-        verificationStatus: seller.verificationStatus,
-        updated: result.updated,
-        total: result.total,
-      });
+      const count = await updateSellerProductsVisibility(seller._id);
+      updatedCount += count;
+      logger.info(`[Update Visibility] Updated ${count} products for seller ${seller._id}`);
     } catch (error) {
       logger.error(`[Update Visibility] Error updating products for seller ${seller._id}:`, error);
-      results.push({
-        sellerId: seller._id,
-        error: error.message,
-      });
+      // Continue with other sellers
     }
   }
   
-  logger.info(`[Update Visibility] ✅ Updated ${totalUpdated} products`);
-  
-  // Log activity
-  logActivityAsync({
-    userId: adminId,
-    role: 'admin',
-    action: 'UPDATE_PRODUCT_VISIBILITY',
-    description: `Updated visibility for ${totalUpdated} products`,
-    req,
-    metadata: { totalUpdated, sellersProcessed: sellers.length },
-  });
+  logger.info(`[Update Visibility] ✅ Updated visibility for ${updatedCount} products across ${sellers.length} sellers`);
   
   res.status(200).json({
     status: 'success',
-    message: `Updated visibility for ${totalUpdated} products`,
+    message: `Updated visibility for ${updatedCount} products`,
     data: {
-      totalUpdated,
       sellersProcessed: sellers.length,
-      results,
+      productsUpdated: updatedCount,
     },
   });
 });
 
-module.exports = exports;
-
+/**
+ * Admin-only product removal (soft delete/archive)
+ * DELETE /api/v1/admin/products/:productId
+ * 
+ * SAFETY RULES:
+ * - Soft delete by default (status = 'archived', isDeleted = true)
+ * - Hard delete ONLY if product has zero orders AND is already archived
+ * - Preserve order history and payment records
+ * - Log all actions for audit trail
+ */
+exports.removeProduct = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+  const { reason, forceDelete } = req.body; // forceDelete requires explicit request
+  
+  // Verify admin authentication
+  if (!req.user) {
+    logger.error('[Remove Product] No user found in request');
+    return next(new AppError('Authentication required', 401));
+  }
+  
+  const adminId = req.user.id || req.user._id;
+  const adminRole = req.user.role;
+  
+  // Verify admin credentials
+  if (!adminId) {
+    logger.error('[Remove Product] Admin ID is missing');
+    return next(new AppError('Invalid admin credentials', 401));
+  }
+  
+  // Verify user is admin
+  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+    logger.error('[Remove Product] User is not admin:', { role: adminRole, userId: adminId });
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  // Validate product ID format
+  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+    logger.error(`[Remove Product] Invalid product ID format: ${productId}`);
+    return next(new AppError('Invalid product ID format', 400));
+  }
+  
+  logger.info(`[Remove Product] Admin ${adminId} (${adminRole}) attempting to remove product ${productId}`, {
+    forceDelete: forceDelete || false,
+    reason: reason || 'Not provided',
+  });
+  
+  // Find product
+  const product = await Product.findById(productId).populate('seller', '_id shopName email');
+  
+  if (!product) {
+    logger.error(`[Remove Product] Product not found: ${productId}`);
+    return next(new AppError('Product not found', 404));
+  }
+  
+  // Check if product is already archived
+  if (product.isDeleted && product.status === 'archived') {
+    logger.info(`[Remove Product] Product ${productId} is already archived`);
+    
+    // Check if hard delete is requested and allowed
+    if (forceDelete === true) {
+      // Check if product has any orders
+      const orderCount = await OrderItem.countDocuments({ product: productId });
+      
+      if (orderCount > 0) {
+        logger.warn(`[Remove Product] Hard delete blocked: Product ${productId} has ${orderCount} order(s)`);
+        return next(new AppError(
+          'This product cannot be permanently deleted because it has order history. Only soft delete (archive) is allowed.',
+          400
+        ));
+      }
+      
+      // Hard delete allowed: product is archived AND has zero orders
+      logger.info(`[Remove Product] Performing hard delete on product ${productId} (archived, zero orders)`);
+      
+      try {
+        await Product.findByIdAndDelete(productId);
+        
+        // Log hard delete action
+        logActivityAsync({
+          userId: adminId,
+          role: 'admin',
+          action: 'ADMIN_PRODUCT_HARD_DELETE',
+          description: `Admin permanently deleted product: ${product.name}`,
+          metadata: {
+            productId: product._id,
+            productName: product.name,
+            sellerId: product.seller?._id || product.seller,
+            reason: reason || 'Not provided',
+            hadOrders: false,
+          },
+          req,
+        });
+        
+        logger.info(`[Remove Product] ✅ Product ${productId} permanently deleted by admin ${adminId}`);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Product permanently deleted',
+          data: {
+            productId: product._id,
+            action: 'hard_delete',
+          },
+        });
+      } catch (error) {
+        logger.error(`[Remove Product] Error during hard delete:`, error);
+        return next(new AppError('Failed to delete product', 500));
+      }
+    } else {
+      // Already archived, no action needed
+      return res.status(200).json({
+        success: true,
+        message: 'Product is already archived',
+        data: {
+          productId: product._id,
+          action: 'already_archived',
+        },
+      });
+    }
+  }
+  
+  // Check if product has orders (for soft delete safety check)
+  // CRITICAL: Add timeout to prevent hanging on large order collections
+  const orderCount = await OrderItem.countDocuments({ product: productId })
+    .maxTimeMS(10000); // 10 seconds max for order count
+  
+  if (orderCount > 0) {
+    logger.info(`[Remove Product] Product ${productId} has ${orderCount} order(s) - soft delete only`);
+    
+    // If force delete was requested but product has orders, reject it
+    if (forceDelete === true) {
+      logger.warn(`[Remove Product] Hard delete blocked: Product ${productId} has ${orderCount} order(s)`);
+      return next(new AppError(
+        'This product cannot be permanently deleted because it has order history. Only soft delete (archive) is allowed.',
+        400
+      ));
+    }
+  }
+  
+  // Perform soft delete (archive)
+  product.status = 'archived';
+  product.isDeleted = true;
+  product.isDeletedByAdmin = true;
+  product.isDeletedBySeller = false; // Ensure seller flag is false
+  product.deletedAt = new Date();
+  product.deletedBy = adminId;
+  product.deletedByRole = 'admin';
+  product.deletionReason = reason || null;
+  product.isVisible = false; // Ensure archived products are hidden
+  
+  try {
+    await product.save({ validateBeforeSave: true });
+    
+    logger.info(`[Remove Product] ✅ Product ${productId} archived successfully by admin ${adminId}`, {
+      orderCount,
+      hasOrders: orderCount > 0,
+    });
+    
+    // Log activity
+    logActivityAsync({
+      userId: adminId,
+      role: 'admin',
+      action: 'ADMIN_PRODUCT_ARCHIVE',
+      description: `Admin archived product: ${product.name}`,
+      metadata: {
+        productId: product._id,
+        productName: product.name,
+        sellerId: product.seller?._id || product.seller,
+        reason: reason || 'Not provided',
+        orderCount,
+        hasOrders: orderCount > 0,
+      },
+      req,
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Product removed from marketplace',
+      data: {
+        productId: product._id,
+        action: 'archived',
+        hasOrders: orderCount > 0,
+        orderCount,
+        note: orderCount > 0 
+          ? 'Product archived but preserved due to order history' 
+          : 'Product archived successfully',
+      },
+    });
+  } catch (error) {
+    logger.error(`[Remove Product] Error archiving product ${productId}:`, error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        path: err.path,
+        message: err.message,
+      }));
+      logger.error(`[Remove Product] Validation errors:`, validationErrors);
+      return next(new AppError(`Validation error: ${validationErrors.map(e => e.message).join(', ')}`, 400));
+    }
+    
+    return next(new AppError(error.message || 'Failed to archive product', 500));
+  }
+});

@@ -149,6 +149,13 @@ const productSchema = new mongoose.Schema(
           default: 5,
           min: 0,
         },
+        condition: {
+          type: String,
+          enum: ['new', 'used', 'open_box', 'refurbished', 'like_new', 'fair', 'poor'],
+          default: 'new',
+          required: [true, 'Variant condition is required'],
+          comment: 'Product condition: new, used, open_box, refurbished, like_new, fair, poor',
+        },
         createdAt: {
           type: Date,
           default: Date.now,
@@ -192,7 +199,7 @@ const productSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'draft', 'out_of_stock'],
+      enum: ['active', 'inactive', 'draft', 'out_of_stock', 'archived'],
       default: 'active',
     },
     moderationStatus: {
@@ -210,6 +217,48 @@ const productSchema = new mongoose.Schema(
     },
     moderatedAt: {
       type: Date,
+    },
+    // Soft delete fields - track deletion by admin or seller separately
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+      comment: 'General soft delete flag - true if deleted by admin or seller',
+    },
+    isDeletedByAdmin: {
+      type: Boolean,
+      default: false,
+      index: true,
+      comment: 'Set to true when product is deleted/archived by admin',
+    },
+    isDeletedBySeller: {
+      type: Boolean,
+      default: false,
+      index: true,
+      comment: 'Set to true when product is deleted/archived by seller',
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+      comment: 'Timestamp when product was archived/deleted',
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'deletedByRole', // Can reference Admin or Seller based on deletedByRole
+      default: null,
+      comment: 'ID of admin or seller who deleted the product',
+    },
+    deletedByRole: {
+      type: String,
+      enum: ['admin', 'seller', null],
+      default: null,
+      comment: 'Role of user who deleted the product (admin or seller)',
+    },
+    deletionReason: {
+      type: String,
+      trim: true,
+      default: null,
+      comment: 'Reason for product removal (admin/seller notes)',
     },
     // Visibility control: Products are only visible to buyers if seller is verified
     // This field is automatically managed based on seller.verificationStatus
@@ -474,9 +523,13 @@ productSchema.pre('save', function (next) {
 
   // Calculate min and max prices from variants
   if (this.variants && this.variants.length > 0) {
-    const prices = this.variants.map((v) => v.price);
-    this.minPrice = Math.min(...prices);
-    this.maxPrice = Math.max(...prices);
+    const prices = this.variants
+      .map((v) => v.price)
+      .filter((p) => p != null && !isNaN(p) && isFinite(p));
+    if (prices.length > 0) {
+      this.minPrice = Math.min(...prices);
+      this.maxPrice = Math.max(...prices);
+    }
 
     // Update status based on stock
     const totalStock = this.variants.reduce(
@@ -585,7 +638,7 @@ productSchema.pre('save', async function (next) {
 // This is a backup in case pre-save didn't work (e.g., for findByIdAndUpdate)
 productSchema.post('save', async function (doc) {
   // Only update if seller is populated or we can fetch it
-  if (doc.seller) {
+  if (doc.seller && mongoose.Types.ObjectId.isValid(doc.seller)) {
     try {
       const Seller = mongoose.model('Seller');
       const seller = await Seller.findById(doc.seller);
@@ -630,7 +683,7 @@ productSchema.virtual('reviews', {
 
 // Virtuals
 productSchema.virtual('id').get(function () {
-  return this._id.toHexString();
+  return this._id ? this._id.toHexString() : null;
 });
 
 productSchema.virtual('totalStock').get(function () {
@@ -771,9 +824,13 @@ productSchema.methods.applyDiscounts = async function () {
   }
 
   // Update min and max prices
-  const prices = this.variants.map((v) => v.price);
-  this.minPrice = Math.min(...prices);
-  this.maxPrice = Math.max(...prices);
+  const prices = this.variants
+    .map((v) => v.price)
+    .filter((p) => p != null && !isNaN(p) && isFinite(p));
+  if (prices.length > 0) {
+    this.minPrice = Math.min(...prices);
+    this.maxPrice = Math.max(...prices);
+  }
   logger.info('discountApplied', discountApplied);
   return discountApplied;
 };
@@ -790,9 +847,13 @@ productSchema.methods.removeDiscounts = function () {
   }
 
   if (changesMade) {
-    const prices = this.variants.map((v) => v.price);
-    this.minPrice = Math.min(...prices);
-    this.maxPrice = Math.max(...prices);
+    const prices = this.variants
+      .map((v) => v.price)
+      .filter((p) => p != null && !isNaN(p) && isFinite(p));
+    if (prices.length > 0) {
+      this.minPrice = Math.min(...prices);
+      this.maxPrice = Math.max(...prices);
+    }
   }
 
   return changesMade;
@@ -905,7 +966,7 @@ productSchema.post('save', async function (doc) {
 // Pre-save middleware to handle category changes
 productSchema.pre('save', async function (next) {
   // Only run if category fields are being modified and product already exists
-  if (!this.isNew && (this.isModified('parentCategory') || this.isModified('subCategory'))) {
+  if (!this.isNew && this._id && (this.isModified('parentCategory') || this.isModified('subCategory'))) {
     const Category = mongoose.model('Category');
     
     try {

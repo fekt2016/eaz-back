@@ -39,10 +39,36 @@ router.route('/public/best-sellers').get(sellerControllor.getBestSellers);
 router.route('/public/:id').get(sellerControllor.getPublicSeller);
 router.route('/profile/:id').get(sellerControllor.getSeller);
 
+// 🔒 CRITICAL: Admin-only routes must be defined BEFORE protectSeller middleware
+// Admin routes use admin_jwt/main_jwt, not seller_jwt
+// These routes allow admins to view all sellers
+router
+  .route('/')
+  .get(
+    authController.protect, // Use standard protect (accepts admin_jwt/main_jwt)
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    sellerControllor.getAllSeller
+  );
+
 // 🔒 CRITICAL: Use protectSeller for seller-specific routes
 // This ensures seller routes use seller_jwt cookie, not main_jwt
 router.use(authSellerController.protectSeller);
-router.use(authController.restrictTo('seller', 'admin')); // restrictTo is safe to use (just checks role)
+router.use(authController.restrictTo('seller', 'admin', 'superadmin', 'moderator')); // restrictTo is safe to use (just checks role)
+
+// ✅ CRITICAL: Specific routes must be defined BEFORE /:id route to prevent route matching conflict
+// /:id would match any path segment and apply admin-only restrictions
+
+// Onboarding routes (protected, but don't require verification)
+router.get(
+  '/status',
+  onboardingController.getOnboardingStatus
+);
+
+router.get(
+  '/me',
+  sellerControllor.getMe,
+  sellerControllor.getSeller,
+);
 
 router
   .route('/me/products')
@@ -52,11 +78,19 @@ router
   .get(sellerControllor.getSellerProductById)
   .delete(sellerControllor.SellerDeleteProduct);
 
-// Onboarding routes (protected, but don't require verification)
-router.get(
-  '/status',
-  onboardingController.getOnboardingStatus
-);
+// Admin-only routes - must come AFTER specific routes
+router
+  .route('/:id')
+  .get(
+    authController.protect, // Use standard protect for admin access
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    sellerControllor.getSeller
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    sellerControllor.updateSeller
+  );
 router.patch(
   '/update-onboarding',
   onboardingController.updateOnboarding
@@ -158,11 +192,6 @@ router.get(
   }
 );
 
-router.get(
-  '/me',
-  sellerControllor.getMe,
-  sellerControllor.getSeller,
-);
 
 // Seller balance and transactions routes
 router.get(
@@ -403,19 +432,6 @@ router.patch(
 );
 // NOTE: Payout verification routes have been moved to /api/v1/admin/sellers/:id/payout/*
 // This separation ensures payout verification is completely independent from document verification
-router
-  .route('/')
-  .get(authController.restrictTo('admin'), sellerControllor.getAllSeller);
-router
-  .route('/:id')
-  .get(
-    authController.protect,
-    authController.restrictTo('admin'),
-    sellerControllor.getSeller,
-  )
-  .patch(
-    authController.restrictTo('admin', 'seller'),
-    sellerControllor.updateSeller,
-  );
+// Admin-only routes are now defined BEFORE protectSeller middleware (see above around line 42)
 
 module.exports = router;;

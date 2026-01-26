@@ -480,6 +480,14 @@ router
     productController.rejectProduct
   );
 
+router
+  .route('/products/:productId')
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    productController.removeProduct
+  );
+
 // Generic /:id route - MUST be last to avoid matching specific routes like /wallet-history
 // This route handles GET, PATCH, DELETE for individual admin records
 router

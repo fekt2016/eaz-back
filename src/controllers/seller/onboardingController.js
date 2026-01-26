@@ -11,6 +11,26 @@ const mongoose = require('mongoose');
  * Returns the current onboarding status, including verification status
  */
 exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
+  // Ensure req.user exists (should be set by protectSeller middleware)
+  if (!req.user || !req.user.id) {
+    console.error('[getOnboardingStatus] ❌ req.user is missing:', {
+      hasUser: !!req.user,
+      userId: req.user?.id,
+      path: req.path,
+      method: req.method,
+    });
+    return next(new AppError('Authentication required. Please log in to access this resource.', 401));
+  }
+
+  // Validate that req.user.id is a valid MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+    console.error('[getOnboardingStatus] ❌ Invalid seller ID format:', {
+      userId: req.user.id,
+      type: typeof req.user.id,
+    });
+    return next(new AppError('Invalid seller ID format', 400));
+  }
+
   // Fetch fresh seller data to ensure we get the latest status
   // Include verificationDocuments to check document verification status
   const seller = await Seller.findById(req.user.id).select(
@@ -75,10 +95,15 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
   // This ensures consistency even if middleware didn't run
   if (isEmailVerified && allDocumentsVerified && allDocumentsUploaded) {
     if (seller.onboardingStage !== 'verified' || seller.verificationStatus !== 'verified') {
-      seller.onboardingStage = 'verified';
-      seller.verificationStatus = 'verified';
-      seller.verification.businessVerified = true;
-      await seller.save({ validateBeforeSave: false });
+      try {
+        seller.onboardingStage = 'verified';
+        seller.verificationStatus = 'verified';
+        seller.verification.businessVerified = true;
+        await seller.save({ validateBeforeSave: false });
+      } catch (saveError) {
+        console.error('[getOnboardingStatus] Error saving seller:', saveError);
+        // Don't fail the request if save fails - just log and continue
+      }
     }
   }
 

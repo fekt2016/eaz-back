@@ -103,12 +103,21 @@ const findUserByToken = async (decoded) => {
 
   const user = await models[decoded.role]?.findById(decoded.id);
   
-  // If user doesn't have a role set, default to the role from token
-  // This ensures the role is always available for restrictTo middleware
-  if (user && !user.role) {
+  // CRITICAL: For admins, ALWAYS use the role from the token
+  // The Admin model enum only allows 'admin', but tokens can have 'superadmin' or 'moderator'
+  // This ensures admin roles from the token are preserved and available for restrictTo middleware
+  if (user && decoded.role && (decoded.role === 'admin' || decoded.role === 'superadmin' || decoded.role === 'moderator')) {
+    // Override the role from database with the role from token
+    // This handles cases where Admin model has role='admin' but token has role='superadmin'
+    user.role = decoded.role;
+  } else if (user && !user.role) {
+    // If user doesn't have a role set, default to the role from token
+    // This ensures the role is always available for restrictTo middleware
     user.role = decoded.role || 'user';
-    // Save the role to the database if it was missing
-    await user.save({ validateBeforeSave: false });
+    // Save the role to the database if it was missing (but not for admins, as we set it above)
+    if (decoded.role !== 'admin' && decoded.role !== 'superadmin' && decoded.role !== 'moderator') {
+      await user.save({ validateBeforeSave: false });
+    }
   }
   
   return user;

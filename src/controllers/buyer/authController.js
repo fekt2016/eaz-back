@@ -1331,6 +1331,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
     // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews');
+  // Check if this is a seller route (but allow admins to access shared product routes with admin_jwt)
   const isSellerRoute = !isAdminOnlySellerRoute && (
     fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
@@ -1341,7 +1342,17 @@ exports.protect = catchAsync(async (req, res, next) => {
     fullPath.startsWith('/api/v1/analytics/seller') || // Seller analytics endpoints
     (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
     (fullPath === '/api/v1/product' && method === 'POST') ||
+    // Product PATCH/DELETE: Allow both seller_jwt and admin_jwt (shared route)
     (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
+  );
+  
+  // Shared product routes that can be accessed by both sellers and admins
+  // These routes should check both seller_jwt and admin_jwt cookies
+  // IMPORTANT: These routes are NOT seller-only - they allow admins too
+  const isSharedProductRoute = (
+    (fullPath === '/api/v1/product' && method === 'POST') ||
+    (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE')) ||
+    (fullPath.includes('/product/') && fullPath.includes('/variants'))
   );
   
   // CRITICAL: Ensure /api/v1/seller/coupon is detected as seller route
@@ -1383,9 +1394,19 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
   const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
-  const cookieName = isSellerRoute ? 'seller_jwt' :
-    (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) ? 'admin_jwt' :
-      'main_jwt'; // Default to buyer/eazmain
+  // For shared product routes, check admin_jwt first (admins can manage products)
+  // Then fall back to seller_jwt (sellers can manage their own products)
+  let cookieName;
+  if (isSharedProductRoute) {
+    // Shared product routes: try admin_jwt first, then seller_jwt
+    cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';
+  } else if (isSellerRoute) {
+    cookieName = 'seller_jwt';
+  } else if (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) {
+    cookieName = 'admin_jwt';
+  } else {
+    cookieName = 'main_jwt'; // Default to buyer/eazmain
+  }
 
   // Enhanced debug logging for verify-otp, payout, and payment method routes
   if (fullPath.includes('/verify-otp') || fullPath.includes('/payout') || fullPath.includes('/paymentmethod')) {
@@ -1661,15 +1682,15 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET'); // GET /seller/:id is admin-only
-  const isSellerRouteCheck = !isAdminOnlySellerRouteCheck && (
+  
+  // Use isSharedProductRoute that was already declared earlier (line 1352)
+  // Shared product routes should NOT be restricted to sellers only - they allow admins too
+  const isSellerRouteCheck = !isAdminOnlySellerRouteCheck && !isSharedProductRoute && (
     fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
     fullPath.startsWith('/api/v1/paymentrequest') ||
     fullPath.includes('/order/get-seller-orders') ||
-    fullPath.includes('/order/seller-order/') ||
-    (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
-    (fullPath === '/api/v1/product' && method === 'POST') ||
-    (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
+    fullPath.includes('/order/seller-order/')
   );
 
   if (isSellerRouteCheck) {

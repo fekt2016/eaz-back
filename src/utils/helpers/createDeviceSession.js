@@ -25,16 +25,23 @@ exports.createDeviceSession = async (req, user, platform = null) => {
   const deviceType = detectDeviceType(userAgent);
   const detectedPlatform = platform || getPlatform(req);
   
-  // Get location from IP address
+  // Get location from IP address (non-blocking - don't wait for it)
+  // This prevents login timeouts if the IP geolocation service is slow
+  // We'll update the location asynchronously after the device session is created
   let location = 'Unknown';
-  try {
-    const { getIpLocation } = require('../../services/securityMonitor');
-    location = await getIpLocation(ipAddress);
-    logger.info('[createDeviceSession] Location detected:', location);
-  } catch (locationError) {
-    logger.error('[createDeviceSession] Error detecting location:', locationError.message);
-    location = 'Location Unavailable';
-  }
+  const { getIpLocation } = require('../../services/securityMonitor');
+  
+  // Start location lookup in background (non-blocking)
+  // This promise will resolve after login completes
+  const locationPromise = getIpLocation(ipAddress)
+    .then((detectedLocation) => {
+      logger.info('[createDeviceSession] Location detected (async):', detectedLocation);
+      return detectedLocation;
+    })
+    .catch((locationError) => {
+      logger.error('[createDeviceSession] Error detecting location:', locationError.message);
+      return 'Location Unavailable';
+    });
 
   // Determine user model type
   let userModel = 'User';
@@ -139,7 +146,7 @@ exports.createDeviceSession = async (req, user, platform = null) => {
       ipAddress,
       userAgent,
       deviceType,
-      location, // Set detected location
+      location, // Set initial location (will be updated async if lookup succeeds)
       loginTime: new Date(),
       lastActivity: new Date(),
       refreshToken, // Will be hashed by pre-save hook
@@ -148,6 +155,17 @@ exports.createDeviceSession = async (req, user, platform = null) => {
       platform: detectedPlatform,
     });
     logger.info('[createDeviceSession] ✅ Device session created successfully:', deviceSession._id);
+    
+    // Update location asynchronously after session is created (non-blocking)
+    locationPromise.then((detectedLocation) => {
+      DeviceSession.findByIdAndUpdate(
+        deviceSession._id,
+        { location: detectedLocation },
+        { new: true }
+      ).catch((updateError) => {
+        logger.error('[createDeviceSession] Error updating location:', updateError.message);
+      });
+    });
   } catch (createError) {
     logger.error('[createDeviceSession] ❌ Error creating DeviceSession document:', createError.message);
     logger.error('[createDeviceSession] Error details:', {

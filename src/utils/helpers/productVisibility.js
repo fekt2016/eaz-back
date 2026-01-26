@@ -50,10 +50,16 @@ exports.buildBuyerSafeQuery = (baseFilter = {}, options = {}) => {
   // - seller.verificationStatus === 'verified'
   // - product.status === 'active'
   // - product.moderationStatus === 'approved'
+  // - product.isDeleted === false (exclude archived products)
+  // - product.isDeletedByAdmin === false (exclude admin-deleted products)
+  // - product.isDeletedBySeller === false (exclude seller-deleted products)
   return {
     ...baseFilter,
     isVisible: true,
-    status: { $in: ['active', 'out_of_stock'] }, // Also exclude inactive/draft
+    isDeleted: false, // Exclude archived/deleted products
+    isDeletedByAdmin: false, // Exclude admin-deleted products
+    isDeletedBySeller: false, // Exclude seller-deleted products
+    status: { $in: ['active', 'out_of_stock'] }, // Also exclude inactive/draft/archived
     moderationStatus: 'approved', // Only approved products
   };
 };
@@ -133,7 +139,10 @@ exports.isProductVisibleToBuyers = async (product, seller = null) => {
     return (
       seller.verificationStatus === 'verified' &&
       product.status === 'active' &&
-      product.moderationStatus === 'approved'
+      product.moderationStatus === 'approved' &&
+      !product.isDeleted &&
+      !product.isDeletedByAdmin &&
+      !product.isDeletedBySeller
     );
   } catch (error) {
     console.error('[Product Visibility] Error checking visibility:', error);

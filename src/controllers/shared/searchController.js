@@ -82,6 +82,9 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
         Product.find({
           name: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
+          isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+          isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         })
           .select('name slug imageCover price')
           .limit(5)
@@ -98,12 +101,16 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
         Product.distinct('brand', {
           brand: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
         }),
 
         // Tags (using $in for exact matches)
         Product.distinct('tags', {
           tags: { $in: tokens },
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
+          isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+          isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         }),
 
         // Trending searches (optional)
@@ -235,6 +242,9 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         Product.find({
           name: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
+          isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+          isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         })
           .select('name slug')
           .limit(5)
@@ -250,11 +260,15 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         Product.distinct('brand', {
           brand: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
         }),
 
         Product.distinct('tags', {
           tags: { $in: tokens },
           status: 'active',
+          isDeleted: { $ne: true }, // Exclude deleted products
+          isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
+          isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         }),
       ]);
 

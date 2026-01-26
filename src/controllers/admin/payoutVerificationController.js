@@ -33,7 +33,8 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid payment method', 400));
   }
 
-  const seller = await Seller.findById(id);
+  // Fetch seller with required fields for payout verification
+  const seller = await Seller.findById(id).select('name shopName email paymentMethods payoutStatus');
   if (!seller) {
     return next(new AppError('Seller not found', 404));
   }
@@ -75,8 +76,26 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
   }
 
   // SECURITY: Name matching validation
+  // Check if seller has a name first
   const sellerName = seller.name || seller.shopName;
+  if (!sellerName || sellerName.trim() === '') {
+    return next(new AppError(
+      'Seller name is required for payout verification. Please ensure the seller has a name or shop name set in their profile.',
+      400
+    ));
+  }
+
+  // Check if payment details have account name
   const accountName = paymentDetails.accountName;
+  if (!accountName || accountName.trim() === '') {
+    const paymentMethodType = paymentMethod === 'bank' ? 'bank account' : 'mobile money';
+    return next(new AppError(
+      `Account name is required for ${paymentMethodType} verification. Please ensure the seller has provided an account name in their payment details.`,
+      400
+    ));
+  }
+
+  // Validate name match
   const nameValidation = validateNameMatch(sellerName, accountName);
   
   if (!nameValidation.isValid) {
