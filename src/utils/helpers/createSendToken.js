@@ -50,16 +50,31 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction, // true in production, false in development
+    // CRITICAL: For cross-origin requests (seller.saiisai.com -> api.saiisai.com)
+    // sameSite must be 'none' when secure is true
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
     path: '/', // Available on all paths
-      expires: new Date(
-        Date.now() +
-          (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
-      ),
+    expires: new Date(
+      Date.now() +
+        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
+    ),
     // Set domain for production to allow cookie sharing across subdomains
+    // IMPORTANT: Use .saiisai.com (with leading dot) to share cookies across all subdomains
     // Only set in production, leave undefined in development (localhost)
     ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
   };
+  
+  // Debug logging for cookie configuration (production only, non-sensitive)
+  if (isProduction) {
+    logger.info('[createSendToken] Cookie configuration', {
+      cookieName,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      domain: cookieOptions.domain || 'not set',
+      hasCookieDomainEnv: !!process.env.COOKIE_DOMAIN,
+      cookieDomainEnv: process.env.COOKIE_DOMAIN || 'not set',
+    });
+  }
 
   res.cookie(cookieName, token, cookieOptions);
 

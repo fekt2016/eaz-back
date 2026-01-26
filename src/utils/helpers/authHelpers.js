@@ -82,17 +82,33 @@ const setAuthCookie = (res, role, token) => {
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction, // true in production, false in development
+    // CRITICAL: For cross-origin requests (seller.saiisai.com -> api.saiisai.com)
+    // sameSite must be 'none' when secure is true
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
     path: '/',
     expires: new Date(
       Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000
     ), // 90 days default (DEV ONLY)
     // Set domain for production to allow cookie sharing across subdomains
+    // IMPORTANT: Use .saiisai.com (with leading dot) to share cookies across all subdomains
     // Only set in production, leave undefined in development (localhost)
     ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
   };
 
   res.cookie(cookieName, token, cookieOptions);
+  
+  // Debug logging for cookie configuration (production only, non-sensitive)
+  if (isProduction) {
+    const logger = require('../logger');
+    logger.info('[setAuthCookie] Cookie set', {
+      cookieName,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      domain: cookieOptions.domain || 'not set',
+      hasCookieDomainEnv: !!process.env.COOKIE_DOMAIN,
+      cookieDomainEnv: process.env.COOKIE_DOMAIN || 'not set',
+    });
+  }
 };
 
 /**

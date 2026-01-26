@@ -255,9 +255,25 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     // Production-safe logging
     logger.warn('[Seller Login] 401 - Seller not found', {
       email: normalizedEmail,
+      originalEmail: email,
       timestamp: new Date().toISOString(),
       ip: req.ip,
+      origin: req.headers.origin,
     });
+    
+    // In production, also check if seller exists with different casing (for debugging)
+    if (process.env.NODE_ENV === 'production') {
+      const anySeller = await Seller.findOne({ email: new RegExp(`^${email}$`, 'i') });
+      if (anySeller) {
+        logger.warn('[Seller Login] ⚠️ Seller exists but email case mismatch', {
+          requestedEmail: email,
+          normalizedEmail: normalizedEmail,
+          foundEmail: anySeller.email,
+          timestamp: new Date().toISOString(),
+          ip: req.ip,
+        });
+      }
+    }
     
     // Debug logging (only in development)
     if (process.env.NODE_ENV !== 'production') {
@@ -338,14 +354,46 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
 
   // SECURITY: Verify password
   if (!seller.password) {
+    logger.warn('[Seller Login] 401 - No password set for seller', {
+      sellerId: seller._id.toString(),
+      email: seller.email,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ No password set for seller');
     }
     return next(new AppError('Invalid email or password', 401));
   }
 
+  // Production-safe logging before password check
+  logger.info('[Seller Login] Verifying password', {
+    sellerId: seller._id.toString(),
+    email: seller.email,
+    hasPassword: !!seller.password,
+    passwordLength: seller.password?.length || 0,
+    timestamp: new Date().toISOString(),
+    ip: req.ip,
+  });
+
   const passwordValid = await seller.correctPassword(password, seller.password);
+  
+  // Production-safe logging after password check
+  logger.info('[Seller Login] Password verification result', {
+    sellerId: seller._id.toString(),
+    email: seller.email,
+    passwordValid: passwordValid,
+    timestamp: new Date().toISOString(),
+    ip: req.ip,
+  });
+  
   if (!passwordValid) {
+    logger.warn('[Seller Login] 401 - Password mismatch', {
+      sellerId: seller._id.toString(),
+      email: seller.email,
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+    });
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Password mismatch for seller:', seller.email);
     }
@@ -421,7 +469,21 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       status: seller.status,
       timestamp: new Date().toISOString(),
       ip: req.ip,
+      origin: req.headers.origin,
+      cookieDomain: process.env.COOKIE_DOMAIN || 'not set',
+      nodeEnv: process.env.NODE_ENV,
     });
+    
+    // Log cookie setting in production for debugging
+    if (process.env.NODE_ENV === 'production') {
+      logger.info('[Seller Login] Cookie configuration', {
+        cookieName: 'seller_jwt',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        domain: process.env.COOKIE_DOMAIN || 'not set',
+        hasSetCookieHeader: !!res.getHeader('Set-Cookie'),
+      });
+    }
     
     res.status(200).json(response);
   } catch (deviceError) {

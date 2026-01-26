@@ -1077,7 +1077,12 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     delete updateFields.variants; // Remove variants, handle separately
 
     // Update non-variant fields
+    // Exclude warranty if not provided (to preserve existing warranty)
     Object.keys(updateFields).forEach((key) => {
+      // Skip warranty if not provided in update (preserve existing value)
+      if (key === 'warranty' && updateFields[key] === undefined) {
+        return;
+      }
       if (updateFields[key] !== undefined && updateFields[key] !== null) {
         product[key] = updateFields[key];
       }
@@ -1113,7 +1118,35 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     }
 
     // Save the product (this will trigger all pre-save hooks and validations)
-    const updatedProduct = await product.save();
+    let updatedProduct;
+    try {
+      updatedProduct = await product.save();
+    } catch (saveError) {
+      console.error('[updateProduct] Error saving product:', saveError);
+      console.error('[updateProduct] Product data before save:', {
+        name: product.name,
+        price: product.price,
+        warranty: product.warranty,
+        warrantyType: typeof product.warranty,
+        variantsCount: product.variants?.length,
+        parentCategory: product.parentCategory,
+        subCategory: product.subCategory,
+      });
+      
+      // If it's a validation error, return more details
+      if (saveError.name === 'ValidationError') {
+        const validationErrors = Object.values(saveError.errors).map(err => ({
+          path: err.path,
+          message: err.message,
+          value: err.value,
+        }));
+        console.error('[updateProduct] Validation errors:', validationErrors);
+        return next(new AppError(`Validation error: ${validationErrors.map(e => `${e.path}: ${e.message}`).join(', ')}`, 400));
+      }
+      
+      // Re-throw if not a validation error to be caught by outer catch
+      throw saveError;
+    }
 
     // Log activity
     if (req.user && req.user.role === 'seller') {
@@ -1152,26 +1185,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     return next(new AppError(`Failed to update product: ${error.message}`, 500));
   }
 
-  // Log activity after update
-  if (productUpdated && req.user && req.user.role === 'seller') {
-    const changes = [];
-    if (oldProduct && productUpdated.name !== oldProduct.name) {
-      changes.push(`name from "${oldProduct.name}" to "${productUpdated.name}"`);
-    }
-    if (oldProduct && productUpdated.price !== oldProduct.price) {
-      changes.push(`price from GH₵${oldProduct.price} to GH₵${productUpdated.price}`);
-    }
-    const changeDesc = changes.length > 0 ? ` (${changes.join(', ')})` : '';
-
-    logActivityAsync({
-      userId: req.user.id,
-      role: 'seller',
-      action: 'UPDATE_PRODUCT',
-      description: `Seller updated product: ${productUpdated.name || 'Unknown'}${changeDesc}`,
-      req,
-      metadata: { productId: productUpdated._id },
-    });
-  }
+  // Note: Activity logging is already handled above (inside the try block) after saving.
 });
 
 // Wrapper for deleteProduct with activity logging

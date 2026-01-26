@@ -143,6 +143,12 @@ const globalErrorHandler = (err, req, res, next) => {
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
+  // If headers are already sent, delegate to the default Express error handler
+  // to avoid "Cannot set headers after they are sent to the client"
+  if (res.headersSent) {
+    return next(err);
+  }
+
   if (process.env.NODE_ENV === 'development') {
     sendErrorDev(err, res);
   } else {
