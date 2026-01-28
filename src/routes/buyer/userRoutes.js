@@ -72,7 +72,8 @@ router.patch(
 router.patch(
   '/avatar',
   authController.protect,
-  authController.restrictTo('user', 'admin'),
+  // Avatar upload is a buyer-only route (role: 'user')
+  authController.restrictTo('user'),
   uploadUserPhoto,
   resizeUserPhoto,
   upLoadUserAvatar,

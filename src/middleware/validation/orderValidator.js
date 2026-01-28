@@ -48,8 +48,6 @@ exports.validateOrder = [
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('SKU must be between 1 and 100 characters')
-    .matches(/^[A-Z0-9\-_]+$/)
-    .withMessage('SKU must contain only uppercase letters, numbers, hyphens, and underscores')
     .customSanitizer((value) => {
       // Ensure SKU is uppercase if provided
       return value && typeof value === 'string' ? value.toUpperCase().trim() : value;

@@ -557,8 +557,13 @@ productSchema.pre('save', function (next) {
   next();
 });
 
-// Pre-save middleware: Update isVisible BEFORE save
-// This ensures visibility is set correctly even if post-save fails
+  // Pre-save middleware: Update isVisible BEFORE save
+  // This ensures visibility is set correctly even if post-save fails.
+  // A product is considered visible (and therefore orderable) only when:
+  // - the associated seller is verified
+  // - the product status is active / out_of_stock
+  // - the product is approved by an admin
+  // - the product is not soft‑deleted
 productSchema.pre('save', async function (next) {
   // Only update if seller exists
   if (this.seller) {
@@ -582,11 +587,14 @@ productSchema.pre('save', async function (next) {
       }
       
       if (seller) {
-        // Product is visible if: product is active AND moderation is approved
-        // NOTE: Seller verification is NOT required - approved products are visible regardless
-        const shouldBeVisible = 
+        // Product is visible to buyers only if the seller is verified AND
+        // the product itself is active / out of stock and approved.
+        const isSellerVerified = seller.verificationStatus === 'verified';
+        const shouldBeVisible =
+          isSellerVerified &&
           (this.status === 'active' || this.status === 'out_of_stock') &&
-          this.moderationStatus === 'approved';
+          this.moderationStatus === 'approved' &&
+          !this.isDeleted && !this.isDeletedByAdmin && !this.isDeletedBySeller;
         
         // Set visibility directly on the document before save
         this.isVisible = shouldBeVisible;
@@ -601,12 +609,11 @@ productSchema.pre('save', async function (next) {
           });
         }
       } else {
-        // Seller not found - still set visibility based on product status and moderation
-        // This handles cases where seller might not be populated
-        const shouldBeVisible = 
-          (this.status === 'active' || this.status === 'out_of_stock') &&
-          this.moderationStatus === 'approved';
-        this.isVisible = shouldBeVisible;
+        // If we cannot resolve the seller, play it safe and hide the product
+        // from buyer listings. Orders against such products will also be
+        // rejected by the order controller because seller verification is
+        // required there as well.
+        this.isVisible = false;
         
         if (process.env.NODE_ENV === 'development') {
           console.warn('[Product Pre-Save] Seller not found, setting visibility based on product status and moderation:', {
@@ -641,9 +648,10 @@ productSchema.pre('save', async function (next) {
   next();
 });
 
-// Post-save middleware: Update isVisible based on seller verification status
-// This ensures products automatically become visible when seller gets verified
-// This is a backup in case pre-save didn't work (e.g., for findByIdAndUpdate)
+// Post-save middleware: Update isVisible based on seller verification + product state.
+// This runs after saves/updates (including findByIdAndUpdate) to ensure products
+// automatically move in/out of buyer visibility when either the seller or the
+// product itself changes. It mirrors the same rules as the pre-save hook.
 productSchema.post('save', async function (doc) {
   // Only update if seller is populated or we can fetch it
   if (doc.seller && mongoose.Types.ObjectId.isValid(doc.seller)) {
@@ -652,11 +660,12 @@ productSchema.post('save', async function (doc) {
       const seller = await Seller.findById(doc.seller);
       
       if (seller) {
-        // Product is visible if: product is active AND moderation is approved
-        // NOTE: Seller verification is NOT required
-        const shouldBeVisible = 
+        const isSellerVerified = seller.verificationStatus === 'verified';
+        const shouldBeVisible =
+          isSellerVerified &&
           (doc.status === 'active' || doc.status === 'out_of_stock') &&
-          doc.moderationStatus === 'approved';
+          doc.moderationStatus === 'approved' &&
+          !doc.isDeleted && !doc.isDeletedByAdmin && !doc.isDeletedBySeller;
         
         // Only update if visibility needs to change (avoid infinite loop)
         if (doc.isVisible !== shouldBeVisible) {

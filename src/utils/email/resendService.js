@@ -479,7 +479,7 @@ const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer') => 
           <p>Thank you for your order! We've received it and are processing it now.</p>
           <div class="order-info">
             <p><strong>Order Number:</strong> ${order.orderNumber || order._id || 'N/A'}</p>
-            <p><strong>Total Amount:</strong> GH₵${(order.totalAmount || order.total || 0).toFixed(2)}</p>
+            <p><strong>Total Amount:</strong> GH₵${(order.totalAmount || order.totalPrice || order.total || 0).toFixed(2)}</p>
             <p><strong>Order Date:</strong> ${new Date(order.createdAt || Date.now()).toLocaleDateString()}</p>
           </div>
           <p style="text-align: center;">
@@ -499,7 +499,7 @@ const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer') => 
   return sendEmail({
     to: toEmail,
     subject: `Order Confirmation - Order #${order.orderNumber || order._id || 'N/A'}`,
-    text: `Thank you for your order! Order Number: ${order.orderNumber || order._id || 'N/A'}, Total: GH₵${(order.totalAmount || order.total || 0).toFixed(2)}. View your order: ${orderUrl}`,
+    text: `Thank you for your order! Order Number: ${order.orderNumber || order._id || 'N/A'}, Total: GH₵${(order.totalAmount || order.totalPrice || order.total || 0).toFixed(2)}. View your order: ${orderUrl}`,
     html: htmlContent,
   });
 };

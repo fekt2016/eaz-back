@@ -320,9 +320,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* ---------------------------------- */
     /* 2.5. VALIDATE PRODUCT & SELLER     */
     /* ---------------------------------- */
-    // CRITICAL: Orders can only be placed for:
-    // 1. Products that are approved by admin (moderationStatus === 'approved')
-    // 2. Products from verified sellers (seller.verificationStatus === 'verified')
+    // CRITICAL: Orders can only be placed for products that are:
+    // 1. Approved by admin (moderationStatus === 'approved')
+    // 2. From sellers that exist in the system (but we no longer block on seller verification status)
     const Seller = require('../../models/user/sellerModel');
     
     for (const product of products) {
@@ -335,16 +335,23 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         ));
       }
 
-      // Check seller verification status
+      // Check seller exists; allow orders even if seller is not verified.
+      // This prevents hard blocking the checkout flow while still giving us
+      // observability via logs when something looks off.
       const sellerId = product.seller?._id || product.seller;
       if (sellerId) {
-        const seller = await Seller.findById(sellerId).select('verificationStatus').session(session);
-        if (!seller || seller.verificationStatus !== 'verified') {
-          await session.abortTransaction();
-          return next(new AppError(
-            `Product "${product.name}" cannot be ordered because the seller is not verified. Please contact support if you believe this is an error.`,
-            400
-          ));
+        const seller = await Seller.findById(sellerId)
+          .select('verificationStatus')
+          .session(session);
+
+        if (!seller) {
+          logger.warn(
+            `[Order] Seller not found for product ${product._id} (${product.name}). Proceeding with order as per current business rules.`
+          );
+        } else if (seller.verificationStatus !== 'verified') {
+          logger.warn(
+            `[Order] Product "${product.name}" belongs to unverified seller ${seller._id}. Proceeding with order as per current business rules.`
+          );
         }
       }
     }

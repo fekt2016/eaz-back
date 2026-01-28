@@ -383,12 +383,20 @@ exports.fixApprovedProductsVisibility = catchAsync(async (req, res, next) => {
       const isVerified = seller.verificationStatus === 'verified';
       const products = productsBySeller[sellerId];
       
-      // Update each product's visibility
-      // NOTE: Seller verification is NOT required - approved products are visible regardless
+      // Update each product's visibility.
+      // Product is visible to buyers only if:
+      // - the seller is verified
+      // - the product is active / out_of_stock
+      // - the product is approved
+      // - the product is not soft‑deleted
       for (const product of products) {
-        const shouldBeVisible = 
+        const shouldBeVisible =
+          isVerified &&
           (product.status === 'active' || product.status === 'out_of_stock') &&
-          product.moderationStatus === 'approved';
+          product.moderationStatus === 'approved' &&
+          !product.isDeleted &&
+          !product.isDeletedByAdmin &&
+          !product.isDeletedBySeller;
         
         if (product.isVisible !== shouldBeVisible) {
           await Product.findByIdAndUpdate(
