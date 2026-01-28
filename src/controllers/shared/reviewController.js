@@ -528,3 +528,42 @@ exports.getSellerReviews = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+/**
+ * Get all reviews by the current user
+ * @route GET /api/v1/review/my-reviews
+ */
+exports.getMyReviews = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+
+  // Pagination
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  // Find all reviews by this user
+  const reviews = await Review.find({ user: userId })
+    .populate({ path: 'product', select: 'name imageCover slug price seller' })
+    .populate({ path: 'user', select: 'name photo' })
+    .populate({ path: 'order', select: 'orderNumber' })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Review.countDocuments({ user: userId });
+
+  res.status(200).json({
+    status: 'success',
+    results: reviews.length,
+    data: {
+      reviews,
+    },
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+});
