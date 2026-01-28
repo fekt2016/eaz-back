@@ -452,6 +452,9 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       isAdmin: false,
       isSeller: isSeller,
     });
+    
+    // DEBUG: Log the filter being used for buyer queries
+    logger.info('[getAllProduct] Buyer query filter:', JSON.stringify(filter, null, 2));
   }
   // Admins can see all products (including pending/rejected, unverified sellers, and buyer-created products)
   // Sellers can see their own products regardless of verification (handled in getSellerProducts)
@@ -478,15 +481,64 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   // Populate related fields (limit to essential fields for performance)
   // CRITICAL: Use lean() without virtuals for better performance
   // Calculate totalStock in application code instead
+  // IMPORTANT: Populate seller with verificationStatus to filter by seller verification
   features.query = features.query
     .populate([
-      { path: 'seller', select: 'name email phone shopName' },
+      { path: 'seller', select: 'name email phone shopName verificationStatus' },
       { path: 'parentCategory', select: 'name slug' },
       { path: 'subCategory', select: 'name slug' },
     ])
     .lean(); // Use lean() for better performance, calculate virtuals manually
 
-  const products = await features.query;
+  let products = await features.query;
+  
+  // NOTE: We no longer filter by seller verification status
+  // Approved products are visible regardless of seller verification status
+  
+  // DEBUG: Log query results for buyer queries
+  if (!isAdmin) {
+    logger.info(`[getAllProduct] Query returned ${products.length} products for buyer`);
+    if (products.length === 0) {
+      // Check what products exist that might match
+      const debugQuery = await Product.find({
+        moderationStatus: 'approved',
+        status: { $in: ['active', 'out_of_stock'] },
+        isDeleted: { $ne: true },
+        isDeletedByAdmin: { $ne: true },
+        isDeletedBySeller: { $ne: true },
+      }).select('_id name moderationStatus status isVisible isDeleted isDeletedByAdmin isDeletedBySeller seller').limit(10).lean();
+      logger.warn('[getAllProduct] No products returned. Sample approved products in DB:', debugQuery.map(p => ({
+        id: p._id,
+        name: p.name,
+        moderationStatus: p.moderationStatus,
+        status: p.status,
+        isVisible: p.isVisible,
+        isDeleted: p.isDeleted,
+        isDeletedByAdmin: p.isDeletedByAdmin,
+        isDeletedBySeller: p.isDeletedBySeller,
+        seller: p.seller,
+      })));
+      
+      // Also check total count
+      const totalApproved = await Product.countDocuments({
+        moderationStatus: 'approved',
+        status: { $in: ['active', 'out_of_stock'] },
+        isDeleted: { $ne: true },
+        isDeletedByAdmin: { $ne: true },
+        isDeletedBySeller: { $ne: true },
+      });
+      logger.warn(`[getAllProduct] Total approved products in DB: ${totalApproved}`);
+    } else {
+      // Log sample of returned products
+      logger.info('[getAllProduct] Sample returned products:', products.slice(0, 3).map(p => ({
+        id: p._id,
+        name: p.name,
+        moderationStatus: p.moderationStatus,
+        status: p.status,
+        isVisible: p.isVisible,
+      })));
+    }
+  }
   
   // Calculate totalStock for each product (lean() doesn't include virtuals)
   // CRITICAL: Keep this synchronous and fast - only calculate what's needed
@@ -1131,6 +1183,20 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     const updateFields = { ...req.body };
     const variantsToUpdate = updateFields.variants;
     delete updateFields.variants; // Remove variants, handle separately
+
+    // CRITICAL: Prevent sellers from modifying moderationStatus, moderatedBy, moderatedAt
+    // Only admins can change these fields - preserve existing values for sellers
+    if (req.user.role === 'seller') {
+      delete updateFields.moderationStatus;
+      delete updateFields.moderatedBy;
+      delete updateFields.moderatedAt;
+      delete updateFields.moderationNotes;
+      // Preserve existing moderation status
+      if (product.moderationStatus) {
+        // Keep the existing moderationStatus - don't allow sellers to change it
+        logger.info(`[updateProduct] Preserving moderationStatus for seller update: ${product.moderationStatus}`);
+      }
+    }
 
     // Update non-variant fields
     // Exclude warranty if not provided (to preserve existing warranty)

@@ -1,17 +1,19 @@
 /**
  * Product Visibility Helper
  * 
- * Ensures products from unverified sellers are NOT visible to buyers.
- * This is enforced at the backend level for security.
+ * Ensures only approved and active products are visible to buyers.
  * 
  * Rules:
- * - Products are visible to buyers ONLY if:
- *   1. seller.verificationStatus === "verified"
- *   2. product.status === "active"
- *   3. product.moderationStatus === "approved"
- *   4. product.isVisible === true (automatically set based on above)
+ * - Products are visible to buyers if:
+ *   1. product.status === "active" or "out_of_stock"
+ *   2. product.moderationStatus === "approved"
+ *   3. product.isVisible === true (automatically set when approved)
+ *   4. product is not deleted
  * 
- * - Sellers can ALWAYS see their own products (regardless of verification)
+ * Note: Seller verification is NOT required for products to be visible.
+ * Once a product is approved by admin, it will be visible to buyers.
+ * 
+ * - Sellers can ALWAYS see their own products (regardless of moderation status)
  * - Admins can ALWAYS see all products
  */
 
@@ -53,14 +55,25 @@ exports.buildBuyerSafeQuery = (baseFilter = {}, options = {}) => {
   // - product.isDeleted === false (exclude archived products)
   // - product.isDeletedByAdmin === false (exclude admin-deleted products)
   // - product.isDeletedBySeller === false (exclude seller-deleted products)
+  
+  // CRITICAL: For buyer queries, we need to ensure products are:
+  // 1. Approved by admin (moderationStatus: 'approved')
+  // 2. Active (status: 'active' or 'out_of_stock')
+  // 3. Not deleted
+  // 
+  // NOTE: Seller verification is NOT required - approved products from any seller are visible
+  // NOTE: We don't check isVisible anymore since existing products might have it set to false
+  //       from when seller verification was required. We'll rely on moderationStatus and status.
+  
   return {
     ...baseFilter,
-    isVisible: true,
-    isDeleted: false, // Exclude archived/deleted products
-    isDeletedByAdmin: false, // Exclude admin-deleted products
-    isDeletedBySeller: false, // Exclude seller-deleted products
-    status: { $in: ['active', 'out_of_stock'] }, // Also exclude inactive/draft/archived
+    // Core requirements - these are the only checks we need
     moderationStatus: 'approved', // Only approved products
+    status: { $in: ['active', 'out_of_stock'] }, // Only active products
+    // Deletion filters
+    isDeleted: { $ne: true },
+    isDeletedByAdmin: { $ne: true },
+    isDeletedBySeller: { $ne: true },
   };
 };
 
@@ -84,10 +97,10 @@ exports.updateSellerProductsVisibility = async (sellerId, verificationStatus) =>
     }
     
     // Update visibility for each product
-    // Product is visible if: seller verified AND product active AND moderation approved
+    // Product is visible if: product active AND moderation approved
+    // NOTE: Seller verification is NOT required
     const updatePromises = products.map(async (product) => {
       const shouldBeVisible = 
-        isVerified &&
         product.status === 'active' &&
         product.moderationStatus === 'approved';
       
@@ -136,8 +149,8 @@ exports.isProductVisibleToBuyers = async (product, seller = null) => {
     }
     
     // Product is visible if all conditions are met:
+    // NOTE: Seller verification is NOT required - only product approval and status matter
     return (
-      seller.verificationStatus === 'verified' &&
       product.status === 'active' &&
       product.moderationStatus === 'approved' &&
       !product.isDeleted &&

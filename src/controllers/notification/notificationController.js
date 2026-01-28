@@ -12,39 +12,29 @@ const { isMobileApp, isFromScreen } = require('../../middleware/mobileAppGuard')
 exports.getNotifications = catchAsync(async (req, res, next) => {
   const userId = req.user.id;
   let role = req.user.role;
-  
+
   logger.info(`[getNotifications] 🔍 Initial request - userId: ${userId}, role from req.user: ${role}`);
-  
-  // IMPORTANT: Check if user is actually an admin, seller, or buyer by checking the respective models
-  // Sometimes req.user.role might not be set correctly
+
+  // IMPORTANT: Only hit Admin/Seller collections if role is missing or 'user'.
+  // This avoids extra DB round-trips for every request and reduces load under traffic.
   if (!role || role === 'user') {
-    // First check if user is an admin
     const Admin = require('../../models/user/adminModel');
     const admin = await Admin.findById(userId).select('role').lean();
     if (admin) {
       role = 'admin';
       logger.info(`[getNotifications] ✅ User ${userId} is an admin, correcting role from "${req.user.role}" to "admin"`);
     } else {
-      // Then check if user is a seller
       const Seller = require('../../models/user/sellerModel');
       const seller = await Seller.findById(userId).select('role').lean();
       if (seller) {
         role = 'seller';
-        logger.info(`[getNotifications] ✅ User ${userId} is a seller, correcting role from "${req.user.role}" to "seller"`);
+        logger.info(
+          `[getNotifications] ✅ User ${userId} is a seller, correcting role from "${req.user.role}" to "seller"`
+        );
       } else {
         role = role || 'buyer';
         logger.info(`[getNotifications] ℹ️ User ${userId} is a buyer (default);`);
       }
-    }
-  } else if (role === 'admin') {
-    // Double-check admin exists even if role is set
-    const Admin = require('../../models/user/adminModel');
-    const admin = await Admin.findById(userId).select('role').lean();
-    if (!admin) {
-      logger.warn(`[getNotifications] ⚠️ User ${userId} has admin role but not found in Admin model, defaulting to buyer`);
-      role = 'buyer';
-    } else {
-      logger.info(`[getNotifications] ✅ Admin ${userId} confirmed in Admin model`);
     }
   }
 
@@ -56,11 +46,11 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
     userModel = 'Admin';
   }
 
-  // Query filters - try both the specific role and also check if there are any notifications
+  // Query filters - use indexed fields only (user, role, read, type, createdAt)
   const filter = {
     user: userId,
-    userModel: userModel,
     role: role,
+    userModel,
   };
 
   logger.info(`[getNotifications] 📋 Query filter for ${role}:`, {
@@ -69,7 +59,7 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
     role,
     userIdType: typeof userId,
     originalRole: req.user.role,
-    filter: JSON.stringify(filter)
+    filter: JSON.stringify(filter),
   });
 
   // Optional query parameters
@@ -97,118 +87,37 @@ exports.getNotifications = catchAsync(async (req, res, next) => {
   }
 
   // Pagination
-  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-  // Get notifications with strict filter
-  let notifications = await Notification.find(filter)
-    .sort(sortObj)
-    .skip(skip)
-    .limit(parseInt(limit))
-    .lean();
-
-  logger.info(`[getNotifications] 📊 Found ${notifications.length} notifications for ${role} user ${userId} with strict filter`);
-  
-  // Debug: Log sample notifications if any found
-  if (notifications.length > 0) {
-    logger.info(`[getNotifications] 📝 Sample notifications:`, notifications.slice(0, 3).map(n => ({
-      id: n._id,
-      title: n.title,
-      type: n.type,
-      read: n.read,
-      role: n.role,
-      userModel: n.userModel,
-      user: n.user?.toString()
-    })));
-  }
-  
-  // If no notifications found with strict filter, try a fallback query by user ID only
-  // This helps identify data inconsistencies and ensures we don't miss notifications
-  if (notifications.length === 0) {
-    logger.info(`[getNotifications] ⚠️ No notifications found with strict filter, trying fallback query...`);
-    const fallbackFilter = { user: userId };
-    if (type) fallbackFilter.type = type;
-    if (read !== undefined) {
-      // Handle both string and boolean values
-      if (typeof read === 'string') {
-        fallbackFilter.read = read === 'true' || read === '1';
-      } else {
-        fallbackFilter.read = Boolean(read);
-      }
-    }
-    
-    const fallbackNotifications = await Notification.find(fallbackFilter)
-      .sort({ createdAt: -1 })
+  try {
+    const notifications = await Notification.find(filter)
+      .sort(sortObj)
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(parseInt(limit, 10))
       .lean();
-    
-    if (fallbackNotifications.length > 0) {
-      logger.info(`[getNotifications] ⚠️ Found ${fallbackNotifications.length} notifications with fallback query (user ID only);. Data inconsistency detected.`);
-      logger.info(`[getNotifications] 🔍 Sample notification:`, {
-        user: fallbackNotifications[0].user?.toString(),
-        userModel: fallbackNotifications[0].userModel,
-        role: fallbackNotifications[0].role,
-        expectedUserModel: userModel,
-        expectedRole: role
-      });
-      // Use fallback results
-      notifications = fallbackNotifications;
-    } else {
-      // Debug: Check if there are any notifications with this user ID at all
-      const debugNotifications = await Notification.find({ user: userId }).limit(10).lean();
-      logger.info(`[getNotifications] 🔍 Debug: Found ${debugNotifications.length} notifications with user ${userId} (any role/model);:`, 
-        debugNotifications.map(n => ({
-          id: n._id,
-          user: n.user?.toString(),
-          userModel: n.userModel,
-          role: n.role,
-          type: n.type,
-          title: n.title,
-          read: n.read
-        }))
-      );
-      
-      // Also check if there are notifications with the correct role but wrong userModel
-      const roleNotifications = await Notification.find({ user: userId, role: role }).limit(5).lean();
-      logger.info(`[getNotifications] 🔍 Debug: Found ${roleNotifications.length} notifications with user ${userId} and role ${role} (any userModel);:`, 
-        roleNotifications.map(n => ({
-          id: n._id,
-          user: n.user?.toString(),
-          userModel: n.userModel,
-          role: n.role,
-          type: n.type,
-          title: n.title
-        }))
-      );
-    }
-  }
 
-  // Get total count for pagination (use the filter that found results)
-  const countFilter = notifications.length > 0 && notifications[0].userModel !== userModel 
-    ? { user: userId } 
-    : filter;
-  if (type) countFilter.type = type;
-  if (read !== undefined) {
-    // Handle both string and boolean values
-    if (typeof read === 'string') {
-      countFilter.read = read === 'true' || read === '1';
-    } else {
-      countFilter.read = Boolean(read);
-    }
-  }
-  
-  const total = await Notification.countDocuments(countFilter);
+    logger.info(
+      `[getNotifications] 📊 Found ${notifications.length} notifications for ${role} user ${userId} with filter`
+    );
 
-  res.status(200).json({
-    status: 'success',
-    results: notifications.length,
-    total,
-    page: parseInt(page),
-    limit: parseInt(limit),
-    data: {
-      notifications,
-    },
-  });
+    // Get total count for pagination using the same (indexed) filter
+    const total = await Notification.countDocuments(filter);
+
+    return res.status(200).json({
+      status: 'success',
+      results: notifications.length,
+      total,
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      data: {
+        notifications,
+      },
+    });
+  } catch (error) {
+    // Defensive: never let this endpoint hang; log and fail fast instead of timing out.
+    logger.error('[getNotifications] ❌ Error fetching notifications:', error);
+    return next(new AppError('Failed to fetch notifications', 500));
+  }
 });
 
 /**

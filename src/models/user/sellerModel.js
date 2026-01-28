@@ -536,7 +536,8 @@ sellerSchema.methods.computeIsSetupComplete = function() {
 
   // 3. Check contact: Email verified OR phone exists
   const isEmailVerified = this.verification?.emailVerified === true;
-  const isPhoneVerified = this.phone && this.phone.trim() !== '';
+  // Safely check phone - handle cases where phone might not be a string
+  const isPhoneVerified = this.phone && typeof this.phone === 'string' && this.phone.trim() !== '';
   const contactComplete = isEmailVerified || isPhoneVerified;
 
   // All three must be complete
@@ -591,14 +592,23 @@ sellerSchema.pre('save', function (next) {
   next();
 });
 
-// Middleware to auto-verify seller when email is verified and all three documents are verified
+// Middleware to auto-verify seller when ALL requirements are met:
+// 1. All 3 documents are verified
+// 2. Email is verified (verified when seller first registers and receives PIN)
+// 3. Phone is verified (phone exists and is not empty)
+// 4. Payment method is verified (at least one payment method is verified)
 sellerSchema.pre('save', async function (next) {
-  // Check if verificationDocuments or verification.emailVerified have been modified
+  // Check if verificationDocuments, verification fields, paymentMethods, or phone have been modified
   const documentsModified = this.isModified('verificationDocuments');
   const emailVerifiedModified = this.isModified('verification.emailVerified') || 
                                (this.isModified('verification') && this.verification?.emailVerified);
+  const paymentMethodsModified = this.isModified('paymentMethods');
+  const phoneModified = this.isModified('phone');
   
-  if (!documentsModified && !emailVerifiedModified) return next();
+  // Only run if relevant fields have been modified
+  if (!documentsModified && !emailVerifiedModified && !paymentMethodsModified && !phoneModified) {
+    return next();
+  }
 
   // Helper function to get document status (handles both old string format and new object format)
   const getDocumentStatus = (document) => {
@@ -607,10 +617,13 @@ sellerSchema.pre('save', async function (next) {
     return document.status || null;
   };
 
-  // Check if email is verified
+  // 1. Check if email is verified (email is verified when seller first registers and receives PIN)
   const isEmailVerified = this.verification?.emailVerified === true;
 
-  // Check if all three documents exist and are verified
+  // 2. Check if phone is verified (phone exists and is not empty)
+  const isPhoneVerified = this.phone && this.phone.trim() !== '';
+
+  // 3. Check if all three documents exist and are verified
   const businessCertStatus = getDocumentStatus(this.verificationDocuments?.businessCert);
   const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
   const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
@@ -633,12 +646,31 @@ sellerSchema.pre('save', async function (next) {
      (typeof this.verificationDocuments.addresProof === 'string' || 
       this.verificationDocuments.addresProof.url));
 
-  // If email is verified AND all documents are verified and uploaded, auto-verify the seller
-  if (isEmailVerified && allDocumentsVerified && allDocumentsUploaded) {
+  // 4. Check if payment method is verified (at least one payment method is verified)
+  // Use the shared helper to check payment method verification status
+  const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
+  const payoutCheck = hasVerifiedPayoutMethod(this);
+  const hasPaymentMethodVerified = payoutCheck.hasVerified;
+
+  // CRITICAL: All requirements must be met to auto-verify seller
+  // - All 3 documents verified and uploaded
+  // - Email verified (verified during registration)
+  // - Phone verified (phone exists)
+  // - Payment method verified (at least one payment method is verified)
+  const allRequirementsMet = 
+    allDocumentsVerified && 
+    allDocumentsUploaded &&
+    isEmailVerified &&
+    isPhoneVerified &&
+    hasPaymentMethodVerified;
+
+  if (allRequirementsMet) {
+    // All requirements met - auto-verify the seller
     // Only update if not already verified to avoid unnecessary updates
     if (this.verificationStatus !== 'verified' || this.onboardingStage !== 'verified') {
       this.verificationStatus = 'verified';
       this.onboardingStage = 'verified';
+      this.verification = this.verification || {};
       this.verification.businessVerified = true;
       
       // Set verifiedBy and verifiedAt if not already set
@@ -677,17 +709,34 @@ sellerSchema.pre('save', async function (next) {
           this.verifiedAt = new Date();
         }
       }
+
+      console.log('[Seller Pre-Save Hook] ✅ All requirements met - auto-verifying seller:', {
+        sellerId: this._id,
+        emailVerified: isEmailVerified,
+        phoneVerified: isPhoneVerified,
+        documentsVerified: allDocumentsVerified,
+        paymentMethodVerified: hasPaymentMethodVerified,
+      });
     }
   } else {
     // If requirements are not met, revert to pending_verification if currently verified
-    // This handles cases where email verification is removed or documents are rejected
+    // This handles cases where verification is removed or requirements are no longer met
     if (this.verificationStatus === 'verified' || this.onboardingStage === 'verified') {
-      // Only revert if we're missing email or documents
-      if (!isEmailVerified || !allDocumentsVerified || !allDocumentsUploaded) {
+      // Only revert if we're missing any requirement
+      if (!allDocumentsVerified || !allDocumentsUploaded || !isEmailVerified || !isPhoneVerified || !hasPaymentMethodVerified) {
         this.verificationStatus = 'pending';
         this.onboardingStage = 'pending_verification';
+        this.verification = this.verification || {};
         this.verification.businessVerified = false;
         // Don't clear verifiedBy and verifiedAt - keep history
+        
+        console.log('[Seller Pre-Save Hook] ⚠️ Requirements not met - reverting to pending_verification:', {
+          sellerId: this._id,
+          emailVerified: isEmailVerified,
+          phoneVerified: isPhoneVerified,
+          documentsVerified: allDocumentsVerified,
+          paymentMethodVerified: hasPaymentMethodVerified,
+        });
       }
     }
   }

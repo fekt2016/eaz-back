@@ -625,12 +625,26 @@ exports.deletePaymentMethod = catchAsync(async (req, res, next) => {
       400
     ));
   }
-  
+
+  // If this is the default active method, we no longer block deletion outright.
+  // Instead, we try to promote another verified/active method to be the new default.
   if (paymentMethod.status === 'active' && paymentMethod.isDefault) {
-    return next(new AppError(
-      'Cannot delete default payment method. Please set another payment method as default first.',
-      400
-    ));
+    const fallbackDefault = await PaymentMethod.findOne({
+      user: userId,
+      _id: { $ne: paymentMethod._id },
+      status: { $in: ['verified', 'active'] },
+    })
+      .sort({ isDefault: -1, createdAt: -1 });
+
+    if (fallbackDefault) {
+      // Promote another verified/active method as the new default.
+      // We do not change its status to avoid altering existing business rules;
+      // this mirrors setDefaultPaymentMethod behavior without blocking deletion.
+      fallbackDefault.isDefault = true;
+      await fallbackDefault.save({ validateBeforeSave: false });
+    }
+    // If no fallback exists, we simply allow deletion; the user will temporarily
+    // have no default payment method until they set one explicitly.
   }
   
   // SECURITY: Prevent deletion if locked (active payout)

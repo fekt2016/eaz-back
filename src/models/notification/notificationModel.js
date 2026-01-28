@@ -101,7 +101,16 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-
+// PERFORMANCE: Indexes to keep notification queries fast under load.
+// - Most queries filter by user and read status, often sorted by createdAt.
+// - These indexes prevent full collection scans and reduce query timeouts.
+notificationSchema.index({ user: 1 });
+notificationSchema.index({ read: 1 });
+notificationSchema.index({ createdAt: -1 });
+// Common pattern for unread-count and unread-list queries.
+notificationSchema.index({ user: 1, read: 1 });
+// Common pattern for paginated timelines per user.
+notificationSchema.index({ user: 1, createdAt: -1 });
 
 // Virtual for checking if notification is expired
 notificationSchema.virtual('isExpired').get(function () {

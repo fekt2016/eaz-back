@@ -50,24 +50,75 @@ router
     sellerControllor.getAllSeller
   );
 
+// Admin-only route to get or update a specific seller by ID
+// IMPORTANT: This must be defined BEFORE protectSeller AND before /me route
+// This route allows admins to view any seller by ID (not by /me)
+// CRITICAL: Must exclude 'me' and 'status' from matching to prevent route conflicts
+router
+  .route('/:id')
+  .get(
+    (req, res, next) => {
+      // Exclude 'me' and 'status' from matching this route
+      if (req.params.id === 'me' || req.params.id === 'status') {
+        return next('route'); // Skip to next route handler
+      }
+      next();
+    },
+    authController.protect, // Use standard protect for admin access
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    sellerControllor.getSeller
+  )
+  .patch(
+    (req, res, next) => {
+      // Exclude 'me' and 'status' from matching this route
+      if (req.params.id === 'me' || req.params.id === 'status') {
+        return next('route'); // Skip to next route handler
+      }
+      next();
+    },
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    sellerControllor.updateSeller
+  );
+
+// Admin: Approve/Reject seller verification and update individual document status.
+// IMPORTANT: These MUST be defined BEFORE protectSeller so they work with admin_jwt/main_jwt.
+router.patch(
+  '/:id/approve-verification',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  onboardingController.approveSellerVerification
+);
+router.patch(
+  '/:id/reject-verification',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  onboardingController.rejectSellerVerification
+);
+router.patch(
+  '/:id/document-status',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  onboardingController.updateDocumentStatus
+);
+
 // 🔒 CRITICAL: Use protectSeller for seller-specific routes
 // This ensures seller routes use seller_jwt cookie, not main_jwt
 router.use(authSellerController.protectSeller);
 router.use(authController.restrictTo('seller', 'admin', 'superadmin', 'moderator')); // restrictTo is safe to use (just checks role)
 
-// ✅ CRITICAL: Specific routes must be defined BEFORE /:id route to prevent route matching conflict
-// /:id would match any path segment and apply admin-only restrictions
+// ✅ CRITICAL: /me route MUST be defined here (after protectSeller)
+// This ensures sellers can access their own profile using seller_jwt cookie
+router.get(
+  '/me',
+  sellerControllor.getMe,
+  sellerControllor.getSeller,
+);
 
 // Onboarding routes (protected, but don't require verification)
 router.get(
   '/status',
   onboardingController.getOnboardingStatus
-);
-
-router.get(
-  '/me',
-  sellerControllor.getMe,
-  sellerControllor.getSeller,
 );
 
 router
@@ -79,18 +130,6 @@ router
   .delete(sellerControllor.SellerDeleteProduct);
 
 // Admin-only routes - must come AFTER specific routes
-router
-  .route('/:id')
-  .get(
-    authController.protect, // Use standard protect for admin access
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
-    sellerControllor.getSeller
-  )
-  .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
-    sellerControllor.updateSeller
-  );
 router.patch(
   '/update-onboarding',
   onboardingController.updateOnboarding

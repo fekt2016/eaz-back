@@ -465,6 +465,14 @@ router
   );
 
 router
+  .route('/products/fix-approved-visibility')
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    productController.fixApprovedProductsVisibility
+  );
+
+router
   .route('/products/:id/approve')
   .patch(
     authController.protect,

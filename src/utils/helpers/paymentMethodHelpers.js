@@ -96,16 +96,21 @@ const updatePaymentMethodVerification = async (paymentMethods, status, adminId, 
 
   for (const pm of paymentMethods) {
     if (status === 'verified') {
+      // CRITICAL: Set status first, then verificationStatus will be synced by pre-save hook
+      // The model has a pre-save hook that syncs verificationStatus from status
+      pm.status = 'verified';
       pm.verificationStatus = 'verified';
       pm.verifiedAt = new Date();
       pm.verifiedBy = adminId;
       pm.rejectionReason = null;
     } else if (status === 'rejected') {
+      pm.status = 'rejected';
       pm.verificationStatus = 'rejected';
       pm.verifiedAt = null;
       pm.verifiedBy = null;
       pm.rejectionReason = reason;
     } else if (status === 'pending') {
+      pm.status = 'pending';
       pm.verificationStatus = 'pending';
       pm.verifiedAt = null;
       pm.verifiedBy = null;

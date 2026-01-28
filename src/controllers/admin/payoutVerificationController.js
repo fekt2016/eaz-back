@@ -64,11 +64,143 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
   }
 
   // Get payment details based on payment method
+  // First try seller.paymentMethods, then check PaymentMethod records
   let paymentDetails = null;
+  let paymentMethodRecord = null;
+  
+  // Check seller.paymentMethods, but only use it if it has actual data
   if (paymentMethod === 'bank' && seller.paymentMethods?.bankAccount) {
-    paymentDetails = seller.paymentMethods.bankAccount;
+    const bankAccount = seller.paymentMethods.bankAccount;
+    // Only use if it has account name or account number (actual data)
+    if (bankAccount.accountName?.trim() || bankAccount.accountNumber?.trim()) {
+      paymentDetails = bankAccount;
+      console.log('[Approve Payout Verification] Using seller.paymentMethods.bankAccount:', {
+        accountName: bankAccount.accountName,
+        accountNumber: bankAccount.accountNumber,
+      });
+    } else {
+      console.log('[Approve Payout Verification] seller.paymentMethods.bankAccount exists but is empty, will check PaymentMethod records');
+    }
   } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod) && seller.paymentMethods?.mobileMoney) {
-    paymentDetails = seller.paymentMethods.mobileMoney;
+    const mobileMoney = seller.paymentMethods.mobileMoney;
+    // Only use if it has account name or phone (actual data)
+    if (mobileMoney.accountName?.trim() || mobileMoney.phone?.trim()) {
+      paymentDetails = mobileMoney;
+      console.log('[Approve Payout Verification] Using seller.paymentMethods.mobileMoney:', {
+        accountName: mobileMoney.accountName,
+        phone: mobileMoney.phone,
+        network: mobileMoney.network,
+      });
+    } else {
+      console.log('[Approve Payout Verification] seller.paymentMethods.mobileMoney exists but is empty, will check PaymentMethod records');
+    }
+  }
+
+  // If no payment details in seller.paymentMethods (or they're empty), check PaymentMethod records
+  if (!paymentDetails) {
+    try {
+      const PaymentMethod = require('../../models/payment/PaymentMethodModel');
+      const User = require('../../models/user/userModel');
+      
+      const userAccount = await User.findOne({ email: seller.email });
+      console.log('[Approve Payout Verification] Looking for PaymentMethod record:', {
+        sellerEmail: seller.email,
+        userAccountFound: !!userAccount,
+        userId: userAccount?._id,
+        paymentMethod,
+      });
+      
+      if (userAccount) {
+        // Find matching PaymentMethod record
+        let query = { user: userAccount._id };
+        
+        if (paymentMethod === 'bank') {
+          query.type = 'bank_transfer';
+        } else if (paymentMethod === 'mtn_momo') {
+          query.type = 'mobile_money';
+          query.provider = 'MTN';
+        } else if (paymentMethod === 'vodafone_cash') {
+          query.type = 'mobile_money';
+          query.provider = { $in: ['Vodafone', 'vodafone'] };
+        } else if (paymentMethod === 'airtel_tigo_money') {
+          query.type = 'mobile_money';
+          query.provider = { $in: ['AirtelTigo', 'airtel_tigo'] };
+        }
+        
+        console.log('[Approve Payout Verification] Query for PaymentMethod:', JSON.stringify(query, null, 2));
+        
+        // First try with provider match
+        paymentMethodRecord = await PaymentMethod.findOne(query)
+          .sort({ isDefault: -1, createdAt: -1 })
+          .lean();
+        
+        // If not found and it's mobile money, try without provider (in case provider doesn't match exactly)
+        if (!paymentMethodRecord && ['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
+          console.log('[Approve Payout Verification] Not found with provider, trying without provider match');
+          const fallbackQuery = { user: userAccount._id, type: 'mobile_money' };
+          const allMobileMoney = await PaymentMethod.find(fallbackQuery)
+            .sort({ isDefault: -1, createdAt: -1 })
+            .lean();
+          console.log('[Approve Payout Verification] Found mobile money records:', allMobileMoney.length);
+          if (allMobileMoney.length > 0) {
+            // Use the first one (most recent or default)
+            paymentMethodRecord = allMobileMoney[0];
+            console.log('[Approve Payout Verification] Using first mobile money record:', paymentMethodRecord._id);
+          }
+        }
+        
+        if (paymentMethodRecord) {
+          console.log('[Approve Payout Verification] Found PaymentMethod record:', {
+            _id: paymentMethodRecord._id,
+            type: paymentMethodRecord.type,
+            name: paymentMethodRecord.name,
+            accountName: paymentMethodRecord.accountName,
+            mobileNumber: paymentMethodRecord.mobileNumber,
+            provider: paymentMethodRecord.provider,
+            accountNumber: paymentMethodRecord.accountNumber,
+            bankName: paymentMethodRecord.bankName,
+          });
+          
+          // Convert PaymentMethod record to paymentDetails format
+          if (paymentMethodRecord.type === 'bank_transfer') {
+            paymentDetails = {
+              accountName: paymentMethodRecord.accountName || paymentMethodRecord.name || '',
+              accountNumber: paymentMethodRecord.accountNumber || '',
+              bankName: paymentMethodRecord.bankName || '',
+              branch: paymentMethodRecord.branch || '',
+              bankCode: paymentMethodRecord.bankCode || '',
+              payoutStatus: paymentMethodRecord.verificationStatus || 'pending',
+            };
+          } else if (paymentMethodRecord.type === 'mobile_money') {
+            paymentDetails = {
+              accountName: paymentMethodRecord.accountName || paymentMethodRecord.name || '',
+              phone: paymentMethodRecord.mobileNumber || '',
+              network: paymentMethodRecord.provider || '',
+              payoutStatus: paymentMethodRecord.verificationStatus || 'pending',
+            };
+          }
+          
+          console.log('[Approve Payout Verification] Converted paymentDetails:', paymentDetails);
+          console.log('[Approve Payout Verification] Account name extracted:', paymentDetails.accountName);
+        } else {
+          console.log('[Approve Payout Verification] No PaymentMethod record found for paymentMethod:', paymentMethod);
+          // Log all available PaymentMethod records for debugging
+          const allRecords = await PaymentMethod.find({ user: userAccount._id }).lean();
+          console.log('[Approve Payout Verification] All PaymentMethod records for user:', allRecords.map(r => ({
+            _id: r._id,
+            type: r.type,
+            provider: r.provider,
+            name: r.name,
+            accountName: r.accountName,
+          })));
+        }
+      } else {
+        console.log('[Approve Payout Verification] No User account found for seller:', seller.email);
+      }
+    } catch (error) {
+      console.error('[Approve Payout Verification] Error fetching PaymentMethod record:', error);
+      // Continue with existing logic if PaymentMethod fetch fails
+    }
   }
 
   if (!paymentDetails) {
@@ -87,8 +219,25 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
 
   // Check if payment details have account name
   const accountName = paymentDetails.accountName;
+  console.log('[Approve Payout Verification] Checking account name:', {
+    accountName,
+    paymentDetails,
+    paymentMethod,
+    hasAccountName: !!accountName,
+    accountNameTrimmed: accountName?.trim(),
+  });
+  
   if (!accountName || accountName.trim() === '') {
     const paymentMethodType = paymentMethod === 'bank' ? 'bank account' : 'mobile money';
+    console.error('[Approve Payout Verification] Account name missing:', {
+      paymentMethod,
+      paymentDetails,
+      paymentMethodRecord: paymentMethodRecord ? {
+        _id: paymentMethodRecord._id,
+        name: paymentMethodRecord.name,
+        accountName: paymentMethodRecord.accountName,
+      } : null,
+    });
     return next(new AppError(
       `Account name is required for ${paymentMethodType} verification. Please ensure the seller has provided an account name in their payment details.`,
       400
@@ -124,12 +273,37 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
     // Update verification status for the SPECIFIC payment method (not global)
     const oldStatus = currentPaymentMethodStatus;
     
-    if (paymentMethod === 'bank' && seller.paymentMethods?.bankAccount) {
+    // Ensure embedded paymentMethods exist so onboarding status can see verified payout.
+    if (!seller.paymentMethods) {
+      seller.paymentMethods = {};
+    }
+
+    if (paymentMethod === 'bank') {
+      // If bankAccount section is missing or empty, seed it from the verified paymentDetails.
+      if (!seller.paymentMethods.bankAccount || Object.keys(seller.paymentMethods.bankAccount).length === 0) {
+        seller.paymentMethods.bankAccount = {
+          accountName: paymentDetails.accountName || '',
+          accountNumber: paymentDetails.accountNumber || '',
+          bankName: paymentDetails.bankName || '',
+          branch: paymentDetails.branch || '',
+          bankCode: paymentDetails.bankCode || '',
+        };
+      }
+
       seller.paymentMethods.bankAccount.payoutStatus = 'verified';
       seller.paymentMethods.bankAccount.payoutVerifiedAt = new Date();
       seller.paymentMethods.bankAccount.payoutVerifiedBy = adminId;
       seller.paymentMethods.bankAccount.payoutRejectionReason = null;
-    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod) && seller.paymentMethods?.mobileMoney) {
+    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
+      // If mobileMoney section is missing or empty, seed it from the verified paymentDetails.
+      if (!seller.paymentMethods.mobileMoney || Object.keys(seller.paymentMethods.mobileMoney).length === 0) {
+        seller.paymentMethods.mobileMoney = {
+          accountName: paymentDetails.accountName || '',
+          phone: paymentDetails.phone || '',
+          network: paymentDetails.network || '',
+        };
+      }
+
       seller.paymentMethods.mobileMoney.payoutStatus = 'verified';
       seller.paymentMethods.mobileMoney.payoutVerifiedAt = new Date();
       seller.paymentMethods.mobileMoney.payoutVerifiedBy = adminId;
@@ -163,19 +337,53 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
 
     // Update PaymentMethod records if they match the verified payment details
     try {
-      const matchingPaymentMethods = await findMatchingPaymentMethods(seller, paymentMethod);
-      if (matchingPaymentMethods.length > 0) {
-        await updatePaymentMethodVerification(matchingPaymentMethods, 'verified', adminId, null, session);
-        console.log(`[Approve Payout Verification] Updated ${matchingPaymentMethods.length} PaymentMethod record(s) for seller ${seller._id}`);
+      // If we found a paymentMethodRecord earlier, update it directly
+      if (paymentMethodRecord && paymentMethodRecord._id) {
+        const PaymentMethod = require('../../models/payment/PaymentMethodModel');
+        const pmDoc = await PaymentMethod.findById(paymentMethodRecord._id).session(session);
+        if (pmDoc) {
+          // CRITICAL: Set status first, then verificationStatus will be synced by middleware
+          // The model has a pre-save hook that syncs verificationStatus from status
+          pmDoc.status = 'verified';
+          pmDoc.verificationStatus = 'verified'; // Also set directly for immediate effect
+          pmDoc.verifiedAt = new Date();
+          pmDoc.verifiedBy = adminId;
+          pmDoc.rejectionReason = null;
+          
+          if (!pmDoc.verificationHistory) {
+            pmDoc.verificationHistory = [];
+          }
+          pmDoc.verificationHistory.push({
+            status: 'verified',
+            adminId: adminId,
+            timestamp: new Date(),
+          });
+          
+          await pmDoc.save({ validateBeforeSave: false, session });
+          console.log(`[Approve Payout Verification] Updated PaymentMethod record ${pmDoc._id} for seller ${seller._id}`, {
+            verificationStatus: pmDoc.verificationStatus,
+            status: pmDoc.status,
+            verifiedBy: pmDoc.verifiedBy,
+          });
+        }
       } else {
-        console.log(`[Approve Payout Verification] No matching PaymentMethod records found for seller ${seller._id} (this is OK if seller doesn't have a User account)`);
+        // Fallback: try to find matching PaymentMethod records
+        const matchingPaymentMethods = await findMatchingPaymentMethods(seller, paymentMethod);
+        if (matchingPaymentMethods.length > 0) {
+          await updatePaymentMethodVerification(matchingPaymentMethods, 'verified', adminId, null, session);
+          console.log(`[Approve Payout Verification] Updated ${matchingPaymentMethods.length} PaymentMethod record(s) for seller ${seller._id}`);
+        } else {
+          console.log(`[Approve Payout Verification] No matching PaymentMethod records found for seller ${seller._id} (this is OK if seller doesn't have a User account)`);
+        }
       }
     } catch (paymentMethodError) {
       console.error('[Approve Payout Verification] Error updating PaymentMethod records:', paymentMethodError);
       // Don't fail verification approval if PaymentMethod update fails
     }
 
-    // Log to AdminActionLog
+    // Log to AdminActionLog (outside of the transaction session).
+    // Logging is non-critical; we avoid using the session here so that
+    // a transient transaction error cannot cause the whole approval to fail.
     try {
       const AdminActionLog = require('../../models/admin/adminActionLogModel');
       await AdminActionLog.create([{
@@ -198,7 +406,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
             phone: paymentMethod !== 'bank' ? paymentDetails.phone : undefined,
           },
         },
-      }], { session });
+      }]);
     } catch (logError) {
       console.error('[Approve Payout Verification] Error logging to AdminActionLog:', logError);
       // Don't fail verification if logging fails
@@ -237,8 +445,15 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Rollback transaction on error
-    await session.abortTransaction();
+    // Rollback transaction on error, but only if it's still active.
+    // This avoids secondary errors like "Cannot call abortTransaction after calling commitTransaction".
+    try {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortError) {
+      console.error('[Approve Payout Verification] Error aborting transaction:', abortError);
+    }
     throw error;
   } finally {
     session.endSession();
@@ -354,7 +569,9 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
       // Don't fail verification rejection if PaymentMethod update fails
     }
 
-    // Log to AdminActionLog
+    // Log to AdminActionLog (outside of the transaction session).
+    // Logging is non-critical; we avoid using the session here so that
+    // a transient transaction error cannot cause the whole rejection flow to fail.
     try {
       const AdminActionLog = require('../../models/admin/adminActionLogModel');
       await AdminActionLog.create([{
@@ -378,7 +595,7 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
             phone: paymentMethod !== 'bank' ? paymentDetails.phone : undefined,
           },
         },
-      }], { session });
+      }]);
     } catch (logError) {
       console.error('[Reject Payout Verification] Error logging to AdminActionLog:', logError);
       // Don't fail verification if logging fails
@@ -418,8 +635,15 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Rollback transaction on error
-    await session.abortTransaction();
+    // Rollback transaction on error, but only if it's still active.
+    // This avoids secondary errors like "Cannot call abortTransaction after calling commitTransaction".
+    try {
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortError) {
+      console.error('[Reject Payout Verification] Error aborting transaction:', abortError);
+    }
     throw error;
   } finally {
     session.endSession();
@@ -436,9 +660,15 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
 exports.getPayoutVerificationDetails = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
+  // CRITICAL: Include paymentMethods in the select to ensure they're returned
+  // This is essential for admin to see payment methods added by seller for approval
+  // Note: bankAccount and mobileMoney are nested inside paymentMethods, so we only need to select paymentMethods
   const seller = await Seller.findById(id).select(
     'name shopName email payoutVerificationHistory paymentMethods'
   );
+  
+  // Debug: Log payment methods to verify they're being fetched
+  console.log('[Get Payout Verification Details] Seller paymentMethods:', JSON.stringify(seller?.paymentMethods, null, 2));
 
   if (!seller) {
     return next(new AppError('Seller not found', 404));
@@ -451,10 +681,18 @@ exports.getPayoutVerificationDetails = catchAsync(async (req, res, next) => {
     const User = require('../../models/user/userModel');
     
     const userAccount = await User.findOne({ email: seller.email });
+    console.log('[Get Payout Verification Details] User account found:', userAccount ? { id: userAccount._id, email: userAccount.email } : 'NOT FOUND');
+    
     if (userAccount) {
       paymentMethodRecords = await PaymentMethod.find({ user: userAccount._id })
         .sort({ isDefault: -1, createdAt: -1 })
-        .select('type isDefault name provider mobileNumber bankName accountNumber accountName branch verificationStatus verifiedAt verifiedBy rejectionReason verificationHistory');
+        .select('type isDefault name provider mobileNumber bankName accountNumber accountName branch verificationStatus verifiedAt verifiedBy rejectionReason verificationHistory')
+        .lean(); // Use lean() for better performance and to get plain objects
+      
+      console.log('[Get Payout Verification Details] PaymentMethod records found:', paymentMethodRecords.length);
+      console.log('[Get Payout Verification Details] PaymentMethod records data:', JSON.stringify(paymentMethodRecords, null, 2));
+    } else {
+      console.log('[Get Payout Verification Details] No User account found for seller email:', seller.email);
     }
   } catch (error) {
     console.error('[Get Payout Verification Details] Error fetching PaymentMethod records:', error);

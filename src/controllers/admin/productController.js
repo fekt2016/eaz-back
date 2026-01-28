@@ -73,15 +73,26 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
     product.moderationNotes = notes;
   }
 
-  // Ensure product is visible if seller is verified
-  const Seller = require('../../models/user/sellerModel');
-  const seller = await Seller.findById(product.seller).select('verificationStatus');
-  
-  if (seller && seller.verificationStatus === 'verified') {
-    product.isVisible = true;
-  } else {
-    product.isVisible = false;
+  // CRITICAL: Ensure product status is 'active' when approved
+  // Products must be active to be visible to buyers
+  if (product.status !== 'active' && product.status !== 'out_of_stock') {
+    product.status = 'active';
+    logger.info(`[Approve Product] Set product status to 'active' (was: ${product.status})`);
   }
+
+  // CRITICAL: Set product as visible when approved
+  // NOTE: Seller verification is NOT required - approved products are visible regardless of seller verification
+  // Product is visible if: status is active/out_of_stock AND moderation is approved
+  const shouldBeVisible = 
+    (product.status === 'active' || product.status === 'out_of_stock') &&
+    product.moderationStatus === 'approved';
+  
+  product.isVisible = shouldBeVisible;
+  
+  logger.info(`[Approve Product] Visibility set: ${shouldBeVisible}`, {
+    productStatus: product.status,
+    moderationStatus: product.moderationStatus,
+  });
 
   // Pre-save validation: Ensure prices are valid before saving
   const variantPrices = product.variants
@@ -108,7 +119,28 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
 
   try {
     await product.save({ validateBeforeSave: true });
-    logger.info(`[Approve Product] ✅ Product ${id} approved successfully by admin ${adminId}`);
+    
+    // CRITICAL: Verify the moderationStatus was actually saved
+    // Re-fetch the product to ensure the update persisted
+    const updatedProduct = await Product.findById(id).select('moderationStatus isVisible moderatedBy moderatedAt');
+    
+    if (!updatedProduct) {
+      logger.error(`[Approve Product] Product ${id} not found after save`);
+      return next(new AppError('Failed to verify product approval', 500));
+    }
+    
+    if (updatedProduct.moderationStatus !== 'approved') {
+      logger.error(`[Approve Product] ❌ moderationStatus not updated correctly. Expected: 'approved', Got: '${updatedProduct.moderationStatus}'`);
+      return next(new AppError('Failed to update product moderation status', 500));
+    }
+    
+    logger.info(`[Approve Product] ✅ Product ${id} approved successfully by admin ${adminId}`, {
+      productId: product._id,
+      moderationStatus: updatedProduct.moderationStatus,
+      isVisible: updatedProduct.isVisible,
+      moderatedBy: updatedProduct.moderatedBy,
+      moderatedAt: updatedProduct.moderatedAt,
+    });
 
     // Log activity
     logActivityAsync({
@@ -121,6 +153,8 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
         productName: product.name,
         sellerId: product.seller,
         notes: notes || null,
+        moderationStatus: updatedProduct.moderationStatus,
+        isVisible: updatedProduct.isVisible,
       },
       req,
     });
@@ -132,8 +166,10 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
         product: {
           id: product._id,
           name: product.name,
-          moderationStatus: product.moderationStatus,
-          isVisible: product.isVisible,
+          moderationStatus: updatedProduct.moderationStatus,
+          isVisible: updatedProduct.isVisible,
+          moderatedBy: updatedProduct.moderatedBy,
+          moderatedAt: updatedProduct.moderatedAt,
         },
       },
     });
@@ -291,6 +327,97 @@ exports.getPendingProducts = catchAsync(async (req, res, next) => {
     limit: parseInt(limit),
     data: {
       products,
+    },
+  });
+});
+
+/**
+ * Fix visibility for approved products (admin only)
+ * POST /api/v1/admin/products/fix-approved-visibility
+ * Updates isVisible for all approved products based on seller verification status
+ */
+exports.fixApprovedProductsVisibility = catchAsync(async (req, res, next) => {
+  const adminId = req.user.id || req.user._id;
+  const adminRole = req.user.role;
+  
+  // Verify user is admin
+  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  logger.info(`[Fix Approved Products Visibility] Admin ${adminId} fixing visibility for approved products`);
+  
+  const Seller = require('../../models/user/sellerModel');
+  const { updateSellerProductsVisibility } = require('../../utils/helpers/productVisibility');
+  
+  // Get all approved products
+  const approvedProducts = await Product.find({ 
+    moderationStatus: 'approved',
+    status: { $in: ['active', 'out_of_stock'] }
+  }).select('_id seller status moderationStatus isVisible');
+  
+  logger.info(`[Fix Approved Products Visibility] Found ${approvedProducts.length} approved products`);
+  
+  // Group products by seller
+  const productsBySeller = {};
+  for (const product of approvedProducts) {
+    const sellerId = product.seller.toString();
+    if (!productsBySeller[sellerId]) {
+      productsBySeller[sellerId] = [];
+    }
+    productsBySeller[sellerId].push(product);
+  }
+  
+  let totalUpdated = 0;
+  const sellerIds = Object.keys(productsBySeller);
+  
+  // Update visibility for each seller's products
+  for (const sellerId of sellerIds) {
+    try {
+      const seller = await Seller.findById(sellerId).select('verificationStatus');
+      if (!seller) {
+        logger.warn(`[Fix Approved Products Visibility] Seller ${sellerId} not found, skipping products`);
+        continue;
+      }
+      
+      const isVerified = seller.verificationStatus === 'verified';
+      const products = productsBySeller[sellerId];
+      
+      // Update each product's visibility
+      // NOTE: Seller verification is NOT required - approved products are visible regardless
+      for (const product of products) {
+        const shouldBeVisible = 
+          (product.status === 'active' || product.status === 'out_of_stock') &&
+          product.moderationStatus === 'approved';
+        
+        if (product.isVisible !== shouldBeVisible) {
+          await Product.findByIdAndUpdate(
+            product._id,
+            { isVisible: shouldBeVisible },
+            { runValidators: false }
+          );
+          totalUpdated++;
+          logger.info(`[Fix Approved Products Visibility] Updated product ${product._id}: isVisible=${shouldBeVisible}`, {
+            productStatus: product.status,
+            moderationStatus: product.moderationStatus,
+          });
+        }
+      }
+    } catch (error) {
+      logger.error(`[Fix Approved Products Visibility] Error updating products for seller ${sellerId}:`, error);
+      // Continue with other sellers
+    }
+  }
+  
+  logger.info(`[Fix Approved Products Visibility] ✅ Updated visibility for ${totalUpdated} products across ${sellerIds.length} sellers`);
+  
+  res.status(200).json({
+    status: 'success',
+    message: `Updated visibility for ${totalUpdated} approved products`,
+    data: {
+      sellersProcessed: sellerIds.length,
+      productsUpdated: totalUpdated,
+      totalApprovedProducts: approvedProducts.length,
     },
   });
 });

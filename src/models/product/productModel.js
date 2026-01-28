@@ -582,10 +582,10 @@ productSchema.pre('save', async function (next) {
       }
       
       if (seller) {
-        // Product is visible if: seller is verified AND product is active AND moderation is approved
+        // Product is visible if: product is active AND moderation is approved
+        // NOTE: Seller verification is NOT required - approved products are visible regardless
         const shouldBeVisible = 
-          seller.verificationStatus === 'verified' &&
-          this.status === 'active' &&
+          (this.status === 'active' || this.status === 'out_of_stock') &&
           this.moderationStatus === 'approved';
         
         // Set visibility directly on the document before save
@@ -595,17 +595,25 @@ productSchema.pre('save', async function (next) {
           console.log('[Product Pre-Save] Visibility updated:', {
             productId: this._id,
             productName: this.name,
-            sellerVerified: seller.verificationStatus === 'verified',
             productStatus: this.status,
             moderationStatus: this.moderationStatus,
             isVisible: shouldBeVisible,
           });
         }
       } else {
-        // Seller not found, set visibility to false for safety
-        this.isVisible = false;
+        // Seller not found - still set visibility based on product status and moderation
+        // This handles cases where seller might not be populated
+        const shouldBeVisible = 
+          (this.status === 'active' || this.status === 'out_of_stock') &&
+          this.moderationStatus === 'approved';
+        this.isVisible = shouldBeVisible;
+        
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[Product Pre-Save] Seller not found, setting isVisible to false');
+          console.warn('[Product Pre-Save] Seller not found, setting visibility based on product status and moderation:', {
+            productStatus: this.status,
+            moderationStatus: this.moderationStatus,
+            isVisible: shouldBeVisible,
+          });
         }
       }
     } catch (error) {
@@ -644,10 +652,10 @@ productSchema.post('save', async function (doc) {
       const seller = await Seller.findById(doc.seller);
       
       if (seller) {
-        // Product is visible if: seller is verified AND product is active AND moderation is approved
+        // Product is visible if: product is active AND moderation is approved
+        // NOTE: Seller verification is NOT required
         const shouldBeVisible = 
-          seller.verificationStatus === 'verified' &&
-          doc.status === 'active' &&
+          (doc.status === 'active' || doc.status === 'out_of_stock') &&
           doc.moderationStatus === 'approved';
         
         // Only update if visibility needs to change (avoid infinite loop)
