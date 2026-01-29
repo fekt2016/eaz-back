@@ -1379,7 +1379,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   // DELETE /api/v1/users/:id - admin only (deleteUser)
   const isAdminOnlySharedRoute = (
     (fullPath === '/api/v1/order' && method === 'GET') ||
-    (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/')) ||
+    (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.endsWith('/tracking')) ||
     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status')) ||
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
     (fullPath.startsWith('/api/v1/users/') && method === 'GET' && !fullPath.includes('/profile') && !fullPath.includes('/me') && !fullPath.includes('/get/count') && !fullPath.includes('/reset-password') && !fullPath.includes('/personalized') && !fullPath.includes('/recently-viewed')) || // GET /users/:id is admin-only
