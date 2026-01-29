@@ -166,73 +166,64 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // IMPORTANT: Paystack behavior with callback_url:
   // - If callback_url has NO query params: Paystack appends ?reference=xxx&trxref=xxx
   // - If callback_url HAS query params: Paystack appends &reference=xxx&trxref=xxx
-  // 
-  // CRITICAL: Paystack callback MUST ALWAYS point to eazmain (customer app), NEVER to eazadmin
-  // FORCE use of eazmain port (5173) - this is the customer-facing app
-  // NEVER use admin port (5174) for Paystack callbacks
-  // We check environment variables but ALWAYS validate and force eazmain
+  //
+  // Paystack callback MUST point to the customer-facing app (e.g. saiisai.com), NEVER to admin.
+  // Production: Set FRONTEND_URL=https://saiisai.com (or PAYSTACK_CALLBACK_BASE_URL) so
+  // Paystack redirects to your live site after payment. Default in prod: https://saiisai.com.
 
-  // Check environment variables for logging purposes
-  const envMainAppUrl = process.env.MAIN_APP_URL;
-  const envEazmainUrl = process.env.EAZMAIN_URL;
-  const envFrontendUrl = process.env.FRONTEND_URL;
+  const isDev = process.env.NODE_ENV !== 'production';
+  const productionDefault = 'https://saiisai.com';
+  const devDefault = 'http://localhost:5173';
+
+  const rejectAdmin = (u) => {
+    if (!u || typeof u !== 'string') return true;
+    const s = u.toLowerCase();
+    return s.includes('admin') || s.includes('eazadmin') || s.includes(':5174');
+  };
+
+  const envCallback = process.env.PAYSTACK_CALLBACK_BASE_URL;
+  const envFrontend = process.env.FRONTEND_URL;
+  const envMain = process.env.MAIN_APP_URL;
+  const envEazmain = process.env.EAZMAIN_URL;
 
   logger.info('[Paystack Initialize] 🔍 Environment Variables:', {
-    MAIN_APP_URL: envMainAppUrl || 'NOT SET',
-    EAZMAIN_URL: envEazmainUrl || 'NOT SET',
-    FRONTEND_URL: envFrontendUrl || 'NOT SET',
+    PAYSTACK_CALLBACK_BASE_URL: envCallback ? '[SET]' : 'NOT SET',
+    FRONTEND_URL: envFrontend || 'NOT SET',
+    MAIN_APP_URL: envMain || 'NOT SET',
+    EAZMAIN_URL: envEazmain || 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'undefined',
   });
 
-  // Try to use MAIN_APP_URL or EAZMAIN_URL if they're set and valid (point to eazmain)
   let baseUrl = null;
-  if (envMainAppUrl &&
-    !envMainAppUrl.includes('admin') &&
-    !envMainAppUrl.includes('eazadmin') &&
-    !envMainAppUrl.includes(':5174') &&
-    (envMainAppUrl.includes(':5173') || envMainAppUrl.includes('eazmain'))) {
-    baseUrl = envMainAppUrl;
-    logger.info('[Paystack Initialize] ✅ Using MAIN_APP_URL:', baseUrl);
-  } else if (envEazmainUrl &&
-    !envEazmainUrl.includes('admin') &&
-    !envEazmainUrl.includes('eazadmin') &&
-    !envEazmainUrl.includes(':5174')) {
-    baseUrl = envEazmainUrl;
-    logger.info('[Paystack Initialize] ✅ Using EAZMAIN_URL:', baseUrl);
-  } else if (envFrontendUrl &&
-    !envFrontendUrl.includes('admin') &&
-    !envFrontendUrl.includes('eazadmin') &&
-    !envFrontendUrl.includes(':5174') &&
-    (envFrontendUrl.includes(':5173') || envFrontendUrl.includes('eazmain'))) {
-    baseUrl = envFrontendUrl;
-    logger.info('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain);:', baseUrl);
+  for (const candidate of [envCallback, envFrontend, envMain, envEazmain]) {
+    if (!candidate || typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim().replace(/\/$/, '');
+    if (!trimmed) continue;
+    if (rejectAdmin(trimmed)) {
+      logger.warn('[Paystack Initialize] Skipping admin-like URL:', trimmed);
+      continue;
+    }
+    if (!/^https?:\/\//i.test(trimmed)) continue;
+    baseUrl = trimmed;
+    logger.info('[Paystack Initialize] ✅ Using base URL from env:', baseUrl);
+    break;
   }
 
-  // ALWAYS default to eazmain port (5173) if no valid URL found
-  // This is the customer app - NEVER use admin port (5174)
   if (!baseUrl) {
-    baseUrl = 'http://localhost:5173';
-    logger.info('[Paystack Initialize] ✅ Using default eazmain URL (port 5173);:', baseUrl);
+    baseUrl = isDev ? devDefault : productionDefault;
+    logger.info('[Paystack Initialize] ✅ Using default base URL:', baseUrl, `(${isDev ? 'dev' : 'production'})`);
   }
 
-  // FINAL VALIDATION: Force to eazmain if URL points to admin
-  if (baseUrl.includes('/admin') ||
-    baseUrl.includes('eazadmin') ||
-    baseUrl.includes(':5174') ||
-    baseUrl.toLowerCase().includes('admin')) {
-    logger.error('[Paystack Initialize] ❌ CRITICAL: Base URL points to admin! Forcing to eazmain.');
-    baseUrl = 'http://localhost:5173';
-    logger.info('[Paystack Initialize] ✅ FORCED to eazmain (port 5173);:', baseUrl);
+  if (rejectAdmin(baseUrl)) {
+    logger.error('[Paystack Initialize] ❌ Base URL points to admin; overriding.');
+    baseUrl = isDev ? devDefault : productionDefault;
+    logger.info('[Paystack Initialize] ✅ Override base URL:', baseUrl);
   }
 
-  // Remove trailing slash and ensure clean URL
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-
-  // Final sanity check - ensure we're using port 5173 (eazmain), not 5174 (admin)
   if (cleanBaseUrl.includes(':5174')) {
-    logger.error('[Paystack Initialize] ❌ CRITICAL: URL still contains admin port 5174!');
-    const safeBaseUrl = cleanBaseUrl.replace(/:5174/g, ':5173');
-    logger.info('[Paystack Initialize] ✅ Replaced admin port with eazmain port:', safeBaseUrl);
-    baseUrl = safeBaseUrl;
+    baseUrl = cleanBaseUrl.replace(/:5174/g, ':5173');
+    logger.info('[Paystack Initialize] ✅ Replaced :5174 with :5173:', baseUrl);
   } else {
     baseUrl = cleanBaseUrl;
   }
@@ -243,27 +234,26 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // baseUrl is already cleaned above, so use it directly
   const callbackUrl = `${baseUrl}/order-confirmation?orderId=${order._id}`;
 
-  // CRITICAL: Log all environment variables for debugging BEFORE validation
   logger.info('[Paystack Initialize] 🔍 Environment Variables Check:', {
+    PAYSTACK_CALLBACK_BASE_URL: process.env.PAYSTACK_CALLBACK_BASE_URL ? '[SET]' : 'NOT SET',
+    FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
     MAIN_APP_URL: process.env.MAIN_APP_URL || 'NOT SET',
     EAZMAIN_URL: process.env.EAZMAIN_URL || 'NOT SET',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
-    ADMIN_URL: process.env.ADMIN_URL || 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'undefined',
     selectedBaseUrl: baseUrl,
     finalCallbackUrl: callbackUrl,
   });
 
   // Final validation of the complete callback URL
-  // CRITICAL: If callback URL points to admin, FORCE it to eazmain instead of throwing error
+  // CRITICAL: If callback URL points to admin, FORCE it to customer app instead of throwing error
   if (callbackUrl.includes('/admin') ||
     callbackUrl.includes('eazadmin') ||
     callbackUrl.includes(':5174') ||
     callbackUrl.toLowerCase().includes('admin')) {
     logger.error('[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!', callbackUrl);
-    logger.error('[Paystack Initialize] ⚠️ FORCING redirect to eazmain (port 5173); instead');
+    logger.error('[Paystack Initialize] ⚠️ FORCING redirect to customer app');
 
-    // FORCE use of eazmain port (5173) - NEVER use admin port (5174)
-    const forcedBaseUrl = 'http://localhost:5173';
+    const forcedBaseUrl = isDev ? devDefault : productionDefault;
     const forcedCallbackUrl = `${forcedBaseUrl}/order-confirmation?orderId=${order._id}`;
     logger.info('[Paystack Initialize] ✅ Using FORCED safe callback URL:', forcedCallbackUrl);
 
@@ -330,7 +320,6 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
   logger.info('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
   logger.info('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
-  logger.info('[Paystack Initialize] ⚠️ VERIFY: This URL MUST point to eazmain (port 5173);, NOT eazadmin (port 5174)');
 
   const payload = {
     email,
