@@ -1,53 +1,6 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
-// One-time safety migration:
-// Fix legacy unique index on Creditbalance.admin that causes E11000 when admin is null.
-// - Old index: { admin: 1 } unique → breaks when many user wallets have admin: null
-// - New index: unique only when admin is an ObjectId (partial index)
-const ensureCreditbalanceAdminIndex = async () => {
-  try {
-    const Creditbalance = require('../models/user/creditbalanceModel');
-
-    // If any documents stored admin explicitly as null, unset it so it doesn't get indexed.
-    // (partial index also excludes null, but the legacy unique index does not)
-    await Creditbalance.collection.updateMany(
-      { admin: null },
-      { $unset: { admin: '' } },
-    );
-
-    // Drop legacy unique index if it exists (usually named "admin_1")
-    const indexes = await Creditbalance.collection.indexes();
-    const legacy = indexes.find(
-      (idx) =>
-        idx?.name === 'admin_1' &&
-        idx?.unique === true &&
-        idx?.key?.admin === 1 &&
-        !idx?.partialFilterExpression,
-    );
-
-    if (legacy) {
-      logger.warn('[DB] Dropping legacy Creditbalance admin_1 unique index');
-      await Creditbalance.collection.dropIndex('admin_1');
-    }
-
-    // Ensure correct partial unique index exists
-    await Creditbalance.collection.createIndex(
-      { admin: 1 },
-      {
-        unique: true,
-        partialFilterExpression: { admin: { $type: 'objectId' } },
-        name: 'admin_1',
-      },
-    );
-  } catch (error) {
-    // Non-fatal: app can still run; this only impacts wallet creation in rare cases
-    logger.warn('[DB] Creditbalance admin index check failed', {
-      message: error?.message,
-    });
-  }
-};
-
 const connectDatabase = async () => {
   try {
     const mongodb = process.env.MONGO_URL.replace(
@@ -83,9 +36,6 @@ const connectDatabase = async () => {
     mongoose.connection.on('reconnected', () => {
       logger.info('MongoDB reconnected');
     });
-
-    // Run small migrations after connection is established
-    await ensureCreditbalanceAdminIndex();
 
     return true;
   } catch (error) {
