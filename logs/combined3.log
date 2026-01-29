@@ -1,0 +1,1010 @@
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:28:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 851.868 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:28:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[32m200\u001b[0m 753.756 ms - 753\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:28:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1965.351 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:28:42"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:28:51"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:28:52"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:28:52"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:28:52"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:28:52"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:28:52"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:28:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:29:11"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:29:11"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:29:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 774.147 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:29:12"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:29:22"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:29:23"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:29:23"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:29:23"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:29:23"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:29:23"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:29:26"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:29:42"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:29:42"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:29:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 779.739 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:29:42"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:30:07"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:30:08"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:30:08"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:30:08"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:30:08"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:30:08"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:30:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:30:12"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:30:12"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:30:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 5963.750 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:30:18"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:30:40"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:30:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:30:41"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:30:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1844.368 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:30:42"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:30:48"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:30:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 773.003 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 754.539 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:30:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:31:19"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:31:19"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:31:20"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 746.758 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:31:20"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:31:50"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:31:50"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:31:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 774.629 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:31:51"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:32:21"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:32:21"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:32:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 759.665 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:32:21"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:32:26"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:32:27"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:32:27"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:32:27"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:32:27"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:32:27"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:32:29"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:32:30"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:32:30"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:32:30"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:32:30"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:32:30"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:32:34"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:32:35"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:32:35"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:32:35"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:32:35"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:32:35"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:32:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:32:51"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:32:52"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:32:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 806.284 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:32:52"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:05"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:33:06"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:33:06"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:33:06"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:33:06"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:33:06"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:33:09"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:16"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:33:17"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:33:17"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:33:17"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:33:17"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:33:17"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:33:20"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:22"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:33:22"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 4001.384 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:26"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:33:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 906.290 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:43"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1315.616 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:47"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:47"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/topup","service":"backend-api","timestamp":"2026-01-29 16:33:47"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:47"}
+{"amount":200000,"callbackUrl":"http://localhost:5173/wallet/topup-success?reference=WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769704427845","email":"benzflex00@gmail.com","level":"info","message":"[Wallet] Initializing Paystack payment:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769704427845","service":"backend-api","timestamp":"2026-01-29 16:33:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/topup \u001b[32m200\u001b[0m 1315.355 ms - 241\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:48"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:33:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:48"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:57"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/verify","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 884.751 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 818.545 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1413.878 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1905.499 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1002.179 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1019.613 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:33:59"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:00"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:34:00"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:00"}
+{"amount":2000,"level":"info","message":"[Wallet] Verifying transaction:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769704427845","service":"backend-api","timestamp":"2026-01-29 16:34:00","transactionStatus":"success","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 755.945 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:00"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:34:00"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:34:00","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:34:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1500.928 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:01"}
+{"level":"info","message":"[ResendClient] ✅ Resend client configured","service":"backend-api","timestamp":"2026-01-29 16:34:02"}
+{"from":"no-reply@saiisai.com","level":"info","message":"[Resend] 📤 Attempting to send email","service":"backend-api","subject":"Wallet Credit - GH₵2000.00 - Saiisai","timestamp":"2026-01-29 16:34:02","to":"benzflex00@gmail.com"}
+{"level":"info","message":"[HistoryLogger] Wallet history logged: PAYSTACK_TOPUP for user 696ebf88f32a5928b76eaa36, amount: 2000, balance: 3000 → 5000","service":"backend-api","timestamp":"2026-01-29 16:34:02"}
+{"from":"no-reply@saiisai.com","id":"1a113645-da8b-4f96-b103-c61a968ec936","level":"info","message":"[Resend] ✅ Email sent successfully","service":"backend-api","timestamp":"2026-01-29 16:34:03","to":"benzflex00@gmail.com"}
+{"amount":2000,"error":"logger is not defined","level":"error","message":"[Wallet] Failed to credit wallet after successful Paystack verification","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769704427845","service":"backend-api","timestamp":"2026-01-29 16:34:03","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"[Wallet] Paystack refund successful after verification failure","reason":"Verification failed: could not credit wallet","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769704427845","service":"backend-api","timestamp":"2026-01-29 16:34:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/verify \u001b[31m500\u001b[0m 5739.869 ms - 520\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 775.924 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[32m200\u001b[0m 756.522 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1788.682 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:09"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:34:27"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:34:28"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:34:28"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:34:28"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:34:29"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:34:29"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:34:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:34:38"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:34:38"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:34:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1344.002 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:34:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:35:09"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:35:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:35:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 759.285 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:35:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:35:40"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:35:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:35:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 754.272 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:35:40"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:35:51"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:35:52"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:35:52"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:35:52"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:35:52"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:35:52"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:35:55"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:36:08"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:36:09"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:36:09"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:36:09"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:36:09"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:36:09"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:36:11"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:36:17"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:36:18"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:36:18"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:36:18"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:36:18"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:36:18"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:36:21"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:36:40"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:36:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:36:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 882.189 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:36:41"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:36:51"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:36:52"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:36:52"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:36:52"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:36:52"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:36:52"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:36:55"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:37:08"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:37:09"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:37:09"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:37:09"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:37:09"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:37:09"}
+{"error":"connect ECONNREFUSED 89.194.104.35:27017","level":"error","message":"Error connecting to MongoDB","service":"backend-api","stack":"MongooseServerSelectionError: connect ECONNREFUSED 89.194.104.35:27017\n    at _handleConnectionErrors (/Users/mac/Desktop/eazshop/backend/node_modules/mongoose/lib/connection.js:1169:11)\n    at NativeConnection.openUri (/Users/mac/Desktop/eazshop/backend/node_modules/mongoose/lib/connection.js:1100:11)\n    at async connectDatabase (/Users/mac/Desktop/eazshop/backend/src/config/database.js:20:5)\n    at async Server.initialize (/Users/mac/Desktop/eazshop/backend/src/server.js:157:7)","timestamp":"2026-01-29 16:37:14"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:47:51"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:47:53"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:47:53"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:47:53"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:47:53"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:47:53"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:47:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:47:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:47:57"}
+{"0":"1","1":"2","2":"3","3":"4","4":"5","5":"6","6":"7","7":"8","level":"info","message":"candidatePassword","service":"backend-api","timestamp":"2026-01-29 16:48:01"}
+{"0":"$","1":"2","10":"8","11":"8","12":"7","13":"l","14":"I","15":"P","16":"c","17":"J","18":"8","19":"b","2":"a","20":"w","21":"9","22":"K","23":"l","24":"n","25":"5","26":"9","27":"S","28":".","29":"S","3":"$","30":"i","31":"M","32":"i","33":"J","34":"5","35":"z","36":"4","37":"M","38":"c","39":"c","4":"1","40":"p","41":"o","42":"1","43":"Q","44":"K","45":"l","46":"R","47":"6","48":"A","49":"Q","5":"2","50":"z","51":"D","52":"T","53":"m","54":".","55":"j","56":"O","57":"N","58":"T","59":"m","6":"$","7":"c","8":"4","9":"G","level":"info","message":"userPassword","service":"backend-api","timestamp":"2026-01-29 16:48:01"}
+{"level":"info","message":"[createDeviceSession] Development mode - skipping device limit check","service":"backend-api","timestamp":"2026-01-29 16:48:01"}
+{"0":"L","1":"o","10":"o","11":"r","12":"k","2":"c","3":"a","4":"l","5":" ","6":"N","7":"e","8":"t","9":"w","level":"info","message":"[createDeviceSession] Location detected (async):","service":"backend-api","timestamp":"2026-01-29 16:48:01"}
+{"level":"info","message":"[createDeviceSession] Suspicious device check:","service":"backend-api","timestamp":"2026-01-29 16:48:02"}
+{"deviceId":"0aee8851-e261-452b-b8ab-8813d2b307ab","deviceType":"desktop","ipAddress":"127.0.0.1","level":"info","message":"[createDeviceSession] Creating device session with data:","platform":"eazmain","service":"backend-api","timestamp":"2026-01-29 16:48:02","userId":"696ebf88f32a5928b76eaa36","userModel":"User"}
+{"buffer":{"data":[105,123,143,66,42,67,138,103,77,231,63,51],"type":"Buffer"},"level":"info","message":"[createDeviceSession] ✅ Device session created successfully:","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/users/login \u001b[32m200\u001b[0m 6360.264 ms - 316\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:48:03"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[ActivityLog] Logged: LOGIN (OTHER); by buyer (696ebf88f32a5928b76eaa36) - Risk: low - Platform: eazmain","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[32m200\u001b[0m 876.203 ms - 999\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[32m200\u001b[0m 1110.905 ms - 908\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1006.336 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 766.231 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 767.085 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:05"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:48:06","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"0":{"id":"6856a2e8e1d7480b7e0493b5","joinedDate":"2025-06-21T11:11:53.671Z","productCount":12,"products":[{"id":"692d7b209eda0c652fd43524","images":["https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller"],"name":"Under Armour Foam Roller","price":48.45,"rating":0},{"id":"692d7b209eda0c652fd43533","images":["https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand"],"name":"Xiaomi Laptop Stand","price":281.52,"rating":0},{"id":"692d7bee2ecf623f4471fd0e","images":["https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977"],"name":"Xiaomi Xiaomi HD Webcam (Used) - 0493b526977 (Used)","price":63.14,"rating":0},{"id":"692d7bee2ecf623f4471fd11","images":["https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724"],"name":"Belkin Belkin Laptop Stand - 0493b526724","price":133.6,"rating":0}],"rating":5,"reviewCount":20,"shopName":"PetCare Ghana"},"1":{"id":"6856a25ae1d7480b7e04938b","joinedDate":"2025-06-21T11:11:53.671Z","productCount":18,"products":[{"id":"692d7b1f9eda0c652fd434d2","images":["https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers"],"name":"Zara Canvas Sneakers (Used)","price":253.96,"rating":0},{"id":"692d7b1f9eda0c652fd434d7","images":["https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector","https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector","https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector"],"name":"Samsung Phone Screen Protector","price":396.12,"rating":0},{"id":"692d7b1f9eda0c652fd434d9","images":["https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand","https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand","https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand"],"name":"Logitech Smartphone Case with Stand","price":105.55,"rating":0},{"id":"692d7b1f9eda0c652fd434df","images":["https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand"],"name":"Sony Laptop Stand","price":85.62,"rating":0}],"rating":5,"reviewCount":2,"shopName":"HomeStyle Ghana"},"2":{"id":"6856a199e1d7480b7e049359","joinedDate":"2025-06-21T11:11:53.671Z","productCount":16,"products":[{"id":"692d7b1e9eda0c652fd4348e","images":["https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive"],"name":"Xiaomi USB Flash Drive (Used)","price":325.92,"rating":0},{"id":"692d7b1e9eda0c652fd4349a","images":["https://via.placeholder.com/600x600?text=Picture%20Frame","https://via.placeholder.com/600x600?text=Picture%20Frame","https://via.placeholder.com/600x600?text=Picture%20Frame"],"name":"Walmart Picture Frame","price":167.1,"rating":0},{"id":"692d7b1e9eda0c652fd4349d","images":["https://via.placeholder.com/600x600?text=Nail%20Polish","https://via.placeholder.com/600x600?text=Nail%20Polish","https://via.placeholder.com/600x600?text=Nail%20Polish"],"name":"L'Oreal Nail Polish (Used)","price":17.52,"rating":0},{"id":"692d7b1e9eda0c652fd434a4","images":["https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug"],"name":"HomeGoods Ceramic Coffee Mug","price":465.66,"rating":0}],"rating":5,"reviewCount":2,"shopName":"Kente Kings"},"3":{"id":"6856a4cb127dcac5d8a28e64","joinedDate":"2025-06-21T12:23:53.065Z","productCount":11,"products":[{"id":"692d7b249eda0c652fd435e6","images":["https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt"],"name":"Puma Classic Cotton T-Shirt","price":131.26,"rating":0},{"id":"692d7bef2ecf623f4471fdc5","images":["https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370","https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370","https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370"],"name":"Adidas Adidas Gym Bag - a28e6428370","price":354.39,"rating":0,"slug":"adidas-adidas-gym-bag-a28e6428370"},{"id":"692d7bef2ecf623f4471fdc7","images":["https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784","https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784","https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784"],"name":"Under Armour Under Armour Resistance Bands (Used) - a28e6427784 (Used)","price":35.09,"rating":0,"slug":"under-armour-under-armour-resistance-bands-used-a28e6427784-used"},{"id":"692d7bef2ecf623f4471fdca","images":["https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712"],"name":"JBL JBL Phone Screen Protector (Used) - a28e6428712 (Used)","price":161.45,"rating":0,"slug":"jbl-jbl-phone-screen-protector-used-a28e6428712-used"}],"rating":5,"reviewCount":2,"shopName":"Lens Masters"},"4":{"id":"6856a5d1127dcac5d8a28ebc","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":5,"reviewCount":1,"shopName":"Office Solutions Ghana"},"5":{"id":"6856a336e1d7480b7e0493ce","joinedDate":"2025-06-21T11:11:53.671Z","productCount":16,"products":[{"id":"692d7b219eda0c652fd4353e","images":["https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle"],"name":"Puma Water Bottle (Used)","price":20.25,"rating":0},{"id":"692d7b219eda0c652fd43546","images":["https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable"],"name":"Belkin USB-C Charging Cable (Used)","price":103.7,"rating":0},{"id":"692d7b219eda0c652fd4354d","images":["https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive"],"name":"Belkin USB Flash Drive","price":263.64,"rating":0},{"id":"692d7b219eda0c652fd43554","images":["https://via.placeholder.com/600x600?text=Lipstick%20Set","https://via.placeholder.com/600x600?text=Lipstick%20Set","https://via.placeholder.com/600x600?text=Lipstick%20Set"],"name":"Nivea Lipstick Set (Used)","price":224.01,"rating":0}],"rating":4.5,"reviewCount":20,"shopName":"Taste of Ghana"},"6":{"id":"6856a6af127dcac5d8a28f14","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":4.5,"reviewCount":4,"shopName":"Chef's Choice"},"7":{"id":"6856a679127dcac5d8a28eff","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":4.5,"reviewCount":2,"shopName":" Mobile Zone "},"level":"info","message":"transformedSellers","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/public/featured?limit=8&minRating=4 \u001b[36m304\u001b[0m 283.485 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"[OptionalAuth] Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"0":"{","1":"\n","10":"i","11":"b","12":"l","13":"e","14":"\"","15":":","16":" ","17":"t","18":"r","19":"u","2":" ","20":"e","21":"\n","22":"}","3":" ","4":"\"","5":"i","6":"s","7":"V","8":"i","9":"s","level":"info","message":"[getAllProduct] Buyer query filter:","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 589.082 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1522.986 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:06"}
+{"level":"info","message":"[getAllProduct] Query returned 2 products for buyer","service":"backend-api","timestamp":"2026-01-29 16:48:07"}
+{"0":{"id":"697937b75a774b18128b7a48","isVisible":true,"moderationStatus":"approved","name":"Melin hat","status":"active"},"1":{"id":"68be0d1e67aebd65e49f82cc","isVisible":true,"moderationStatus":"approved","name":"MALM Bed Frame (Queen)","status":"active"},"level":"info","message":"[getAllProduct] Sample returned products:","service":"backend-api","timestamp":"2026-01-29 16:48:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/eazshop \u001b[32m200\u001b[0m 1380.695 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2615.512 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 792.723 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 815.408 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[36m304\u001b[0m 802.610 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1856.472 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:12"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:25"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:25"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/topup","service":"backend-api","timestamp":"2026-01-29 16:48:25"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:26"}
+{"amount":50000,"callbackUrl":"http://localhost:5173/wallet/topup-success?reference=WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705306382","email":"benzflex00@gmail.com","level":"info","message":"[Wallet] Initializing Paystack payment:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705306382","service":"backend-api","timestamp":"2026-01-29 16:48:26"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/topup \u001b[32m200\u001b[0m 1233.327 ms - 240\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:48:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/verify","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:39"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 776.076 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 753.910 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1327.403 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:40"}
+{"amount":500,"level":"info","message":"[Wallet] Verifying transaction:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705306382","service":"backend-api","timestamp":"2026-01-29 16:48:40","transactionStatus":"success","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1863.191 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1015.196 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1013.898 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.741 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:42"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:48:42"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:48:42","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"[ResendClient] ✅ Resend client configured","service":"backend-api","timestamp":"2026-01-29 16:48:42"}
+{"from":"no-reply@saiisai.com","level":"info","message":"[Resend] 📤 Attempting to send email","service":"backend-api","subject":"Wallet Credit - GH₵500.00 - Saiisai","timestamp":"2026-01-29 16:48:42","to":"benzflex00@gmail.com"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:48:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1495.064 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:42"}
+{"level":"info","message":"[HistoryLogger] Wallet history logged: PAYSTACK_TOPUP for user 696ebf88f32a5928b76eaa36, amount: 500, balance: 3500 → 4000","service":"backend-api","timestamp":"2026-01-29 16:48:43"}
+{"from":"no-reply@saiisai.com","id":"ef5b0260-6e28-477a-a604-569cdd39327c","level":"info","message":"[Resend] ✅ Email sent successfully","service":"backend-api","timestamp":"2026-01-29 16:48:45","to":"benzflex00@gmail.com"}
+{"amount":500,"errorMessage":"logger is not defined","errorName":"ReferenceError","level":"error","message":"[Wallet] Failed to credit wallet after successful Paystack verification","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705306382","service":"backend-api","stack":"ReferenceError: logger is not defined\n    at Object.creditWallet (/Users/mac/Desktop/eazshop/backend/src/services/walletService.js:174:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/mac/Desktop/eazshop/backend/src/controllers/buyer/walletController.js:368:16","timestamp":"2026-01-29 16:48:45","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"[Wallet] Paystack refund successful after verification failure","reason":"Verification failed: could not credit wallet","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705306382","service":"backend-api","timestamp":"2026-01-29 16:48:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/verify \u001b[31m500\u001b[0m 5960.707 ms - 520\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:45"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 763.796 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[32m200\u001b[0m 757.254 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1783.338 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:48:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:49:19"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:49:19"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:49:20"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 753.600 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:49:20"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:49:50"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:49:50"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:49:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 751.421 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:49:51"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:50:18"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:50:19"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:50:19"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:50:19"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:50:19"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:50:19"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:50:22"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:50:51"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:50:51"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:50:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 976.298 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:50:52"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:51:22"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:51:22"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:51:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 768.313 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:51:23"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:51:34"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:51:35"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:51:35"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:51:35"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:51:36"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:51:36"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"database":"test","host":"cluster0-shard-00-00.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:51:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:51:53"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:51:53"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:51:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 795.737 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:51:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:52:24"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:52:24"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:52:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 768.702 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:52:24"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:52:54"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:52:54"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:52:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 914.649 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:52:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:53:25"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:53:25"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:53:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 799.560 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:53:26"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:53:56"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:53:56"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:53:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 842.760 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:53:57"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:54:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 777.096 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 764.657 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:54:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1314.439 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1837.504 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1843.766 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1025.382 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1028.930 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:54:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 772.606 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:54:10","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[36m304\u001b[0m 780.859 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:10"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:54:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1539.476 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:54:40"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:54:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:54:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.182 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:54:41"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:55:11"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:55:11"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:55:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 746.839 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:55:12"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:55:42"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:55:42"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:55:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 793.490 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:55:42"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:55:54"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:55:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:55:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:55:54"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:55:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:55:55"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:55:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 765.233 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:55:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1769.548 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:55:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:56:25"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:56:25"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:56:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 997.644 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:56:26"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:56:36"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 752.588 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[36m304\u001b[0m 764.355 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:56:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1794.304 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:56:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:07"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:57:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 746.641 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:08"}
+{"level":"info","message":"SIGINT received. Shutting down gracefully...","service":"backend-api","timestamp":"2026-01-29 16:57:20"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:26"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 16:57:27"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 16:57:27"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 16:57:27"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 16:57:27"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 16:57:27"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:57:30"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:57:36"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:57:36"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 6343.712 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[36m304\u001b[0m 6585.675 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 7000.439 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 7285.665 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 7795.622 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1358.499 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1482.550 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:38"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 890.216 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:39"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:57:40"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:57:40","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[36m304\u001b[0m 880.469 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:40"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:57:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1633.757 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:40"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/topup","service":"backend-api","timestamp":"2026-01-29 16:57:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:49"}
+{"amount":100000,"callbackUrl":"http://localhost:5173/wallet/topup-success?reference=WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705869955","email":"benzflex00@gmail.com","level":"info","message":"[Wallet] Initializing Paystack payment:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705869955","service":"backend-api","timestamp":"2026-01-29 16:57:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/topup \u001b[32m200\u001b[0m 1470.882 ms - 241\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:57:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:57:50"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:57:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:57:51"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:00"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 16:58:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/verify","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 809.288 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 752.193 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 16:58:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1406.469 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"amount":1000,"level":"info","message":"[Wallet] Verifying transaction:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769705869955","service":"backend-api","timestamp":"2026-01-29 16:58:02","transactionStatus":"success","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1805.424 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1022.714 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1025.167 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:58:02"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:03"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 16:58:03"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:03"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 877.830 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:03"}
+{"level":"info","message":"[ResendClient] ✅ Resend client configured","service":"backend-api","timestamp":"2026-01-29 16:58:03"}
+{"from":"no-reply@saiisai.com","level":"info","message":"[Resend] 📤 Attempting to send email","service":"backend-api","subject":"Wallet Credit - GH₵1000.00 - Saiisai","timestamp":"2026-01-29 16:58:03","to":"benzflex00@gmail.com"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 16:58:04","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"[HistoryLogger] Wallet history logged: PAYSTACK_TOPUP for user 696ebf88f32a5928b76eaa36, amount: 1000, balance: 4500 → 5500","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1619.974 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"from":"no-reply@saiisai.com","id":"5f740d7a-6835-4c5b-84ae-b3664fc590b9","level":"info","message":"[Resend] ✅ Email sent successfully","service":"backend-api","timestamp":"2026-01-29 16:58:04","to":"benzflex00@gmail.com"}
+{"level":"info","message":"[WalletService] ✅ Wallet credit email sent to benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/verify \u001b[32m200\u001b[0m 3902.213 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:58:04"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 808.099 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:05"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:05"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 16:58:05"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[36m304\u001b[0m 906.509 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:06"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 16:58:07"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 753.020 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[32m200\u001b[0m 783.689 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1862.316 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:58:38"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:58:38"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:58:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 829.241 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:58:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:59:09"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:59:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:59:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 827.904 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:59:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 16:59:40"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 16:59:40"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 16:59:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 755.605 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 16:59:40"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🕐 Running scheduled cleanup...","service":"backend-api","timestamp":"2026-01-29 17:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...","service":"backend-api","timestamp":"2026-01-29 17:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] Found 0 stuck withdrawals","service":"backend-api","timestamp":"2026-01-29 17:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup complete: 0 refunded, 0 errors","service":"backend-api","timestamp":"2026-01-29 17:00:00"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:00:10"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:00:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:00:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 749.560 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:00:11"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:00:41"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:00:41"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:00:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1267.768 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:00:43"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:01:13"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:01:13"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:01:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 743.430 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:01:13"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:01:43"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:01:43"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:01:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 763.675 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:01:44"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:02:14"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:02:14"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:02:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 803.144 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:02:15"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:02:45"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:02:45"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:02:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 891.923 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:02:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:03:16"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:03:16"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:03:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 866.419 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:03:17"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:03:47"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:03:47"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:03:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 880.668 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:03:48"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:04:18"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:04:18"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:04:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 859.001 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:04:19"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:04:49"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:04:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:04:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 764.443 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:04:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:05:20"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:05:20"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:05:20"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 769.278 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:05:20"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:05:50"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:05:50"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:05:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 747.837 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:05:51"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:06:21"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:06:21"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.012 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:06:22"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:06:52"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:06:52"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:06:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.198 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:06:53"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:07:23"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:07:23"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:07:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 747.484 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:07:23"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:07:53"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:07:53"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:07:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 749.881 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:07:54"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 17:08:24"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 17:08:24"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 17:08:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 883.273 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 17:08:25"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-29 18:08:55"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-29 18:08:55"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-01-29 18:32:58"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-01-29 18:32:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:33:23"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:33:23"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:33:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 815.017 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:33:24"}
+{"level":"info","message":"SIGINT received. Shutting down gracefully...","service":"backend-api","timestamp":"2026-01-29 18:33:31"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:33:35"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-01-29 18:33:36"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-01-29 18:33:36"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-01-29 18:33:36"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/eazshop/backend/.env","service":"backend-api","timestamp":"2026-01-29 18:33:36"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-01-29 18:33:36"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-01-29 18:33:39"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:33:54"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:33:54"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:33:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 855.579 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:33:55"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:34:25"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:34:25"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:34:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 803.148 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:34:25"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:34:55"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:34:55"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:34:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 824.696 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:34:56"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:35:26"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:35:26"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:35:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 844.307 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:35:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:35:57"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:35:57"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:35:58"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 874.658 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:35:58"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 18:36:09"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 18:36:09"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 763.277 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1010.109 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:10"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:14"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:14"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/topup","service":"backend-api","timestamp":"2026-01-29 18:36:14"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:14"}
+{"amount":200000,"callbackUrl":"http://localhost:5173/wallet/topup-success?reference=WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769711774665","email":"benzflex00@gmail.com","level":"info","message":"[Wallet] Initializing Paystack payment:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769711774665","service":"backend-api","timestamp":"2026-01-29 18:36:14"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/topup \u001b[32m200\u001b[0m 1408.426 ms - 241\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:15"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:15"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 18:36:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:16"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:16"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for POST /api/v1/wallet/verify","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 869.817 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 847.481 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1386.719 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:28"}
+{"amount":2000,"level":"info","message":"[Wallet] Verifying transaction:","reference":"WALLET-TOPUP-696ebf88f32a5928b76eaa36-1769711774665","service":"backend-api","timestamp":"2026-01-29 18:36:28","transactionStatus":"success","userId":"696ebf88f32a5928b76eaa36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1916.544 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1007.781 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 1698.925 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 18:36:29"}
+{"level":"info","message":"[ResendClient] ✅ Resend client configured","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"from":"no-reply@saiisai.com","level":"info","message":"[Resend] 📤 Attempting to send email","service":"backend-api","subject":"Wallet Credit - GH₵2000.00 - Saiisai","timestamp":"2026-01-29 18:36:30","to":"benzflex00@gmail.com"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 751.541 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"level":"info","message":"[HistoryLogger] Wallet history logged: PAYSTACK_TOPUP for user 696ebf88f32a5928b76eaa36, amount: 2000, balance: 6500 → 8500","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 18:36:30"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 18:36:30","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"from":"no-reply@saiisai.com","id":"3bff738a-3743-43a8-ae11-f32a944ee327","level":"info","message":"[Resend] ✅ Email sent successfully","service":"backend-api","timestamp":"2026-01-29 18:36:31","to":"benzflex00@gmail.com"}
+{"level":"info","message":"[WalletService] ✅ Wallet credit email sent to benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/wallet/verify \u001b[32m200\u001b[0m 3735.685 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1509.683 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[32m200\u001b[0m 783.827 ms - 152\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:32"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/balance","service":"backend-api","timestamp":"2026-01-29 18:36:32"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/balance \u001b[36m304\u001b[0m 759.131 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:32"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:33"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:33"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:36:33"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/order/get-user-orders","service":"backend-api","timestamp":"2026-01-29 18:36:33"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/wallet/transactions","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 772.464 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/wallet/transactions?page=1&limit=10&sortBy=createdAt&sortOrder=desc \u001b[32m200\u001b[0m 806.922 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1839.205 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:35"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:45"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/users/logout \u001b[32m200\u001b[0m 1.810 ms - 56\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:45"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 18:36:46"}
+{"0":"j","1":"w","10":"m","11":"e","12":"d","2":"t","3":" ","4":"m","5":"a","6":"l","7":"f","8":"o","9":"r","level":"error","message":"Token verification failed:","service":"backend-api","timestamp":"2026-01-29 18:36:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[33m401\u001b[0m 252.708 ms - 369\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:46"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:47"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:47"}
+{"0":"1","1":"2","2":"3","3":"4","4":"5","5":"6","6":"7","7":"8","level":"info","message":"candidatePassword","service":"backend-api","timestamp":"2026-01-29 18:36:48"}
+{"0":"$","1":"2","10":"8","11":"8","12":"7","13":"l","14":"I","15":"P","16":"c","17":"J","18":"8","19":"b","2":"a","20":"w","21":"9","22":"K","23":"l","24":"n","25":"5","26":"9","27":"S","28":".","29":"S","3":"$","30":"i","31":"M","32":"i","33":"J","34":"5","35":"z","36":"4","37":"M","38":"c","39":"c","4":"1","40":"p","41":"o","42":"1","43":"Q","44":"K","45":"l","46":"R","47":"6","48":"A","49":"Q","5":"2","50":"z","51":"D","52":"T","53":"m","54":".","55":"j","56":"O","57":"N","58":"T","59":"m","6":"$","7":"c","8":"4","9":"G","level":"info","message":"userPassword","service":"backend-api","timestamp":"2026-01-29 18:36:48"}
+{"level":"info","message":"[createDeviceSession] Development mode - skipping device limit check","service":"backend-api","timestamp":"2026-01-29 18:36:48"}
+{"0":"L","1":"o","10":"o","11":"r","12":"k","2":"c","3":"a","4":"l","5":" ","6":"N","7":"e","8":"t","9":"w","level":"info","message":"[createDeviceSession] Location detected (async):","service":"backend-api","timestamp":"2026-01-29 18:36:48"}
+{"level":"info","message":"[createDeviceSession] Suspicious device check:","service":"backend-api","timestamp":"2026-01-29 18:36:48"}
+{"deviceId":"6b86325c-f353-4da0-af58-02bc57468232","deviceType":"desktop","ipAddress":"127.0.0.1","level":"info","message":"[createDeviceSession] Creating device session with data:","platform":"eazmain","service":"backend-api","timestamp":"2026-01-29 18:36:48","userId":"696ebf88f32a5928b76eaa36","userModel":"User"}
+{"buffer":{"data":[105,123,168,192,40,143,199,147,53,231,254,67],"type":"Buffer"},"level":"info","message":"[createDeviceSession] ✅ Device session created successfully:","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/users/login \u001b[32m200\u001b[0m 1443.314 ms - 316\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[ActivityLog] Logged: LOGIN (OTHER); by buyer (696ebf88f32a5928b76eaa36) - Risk: low - Platform: eazmain","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:49"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[32m200\u001b[0m 770.497 ms - 999\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[32m200\u001b[0m 1018.386 ms - 908\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1028.603 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1277.738 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 797.576 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[OptionalAuth] Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"0":"{","1":"\n","10":"i","11":"b","12":"l","13":"e","14":"\"","15":":","16":" ","17":"t","18":"r","19":"u","2":" ","20":"e","21":"\n","22":"}","3":" ","4":"\"","5":"i","6":"s","7":"V","8":"i","9":"s","level":"info","message":"[getAllProduct] Buyer query filter:","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-01-29 18:36:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 606.172 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"[Auth] ✅ Token found in main_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1834.803 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 696ebf88f32a5928b76eaa36, role from req.user: user","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/eazshop \u001b[32m200\u001b[0m 1058.833 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"0":{"id":"6856a2e8e1d7480b7e0493b5","joinedDate":"2025-06-21T11:11:53.671Z","productCount":12,"products":[{"id":"692d7b209eda0c652fd43524","images":["https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller","https://via.placeholder.com/600x600?text=Foam%20Roller"],"name":"Under Armour Foam Roller","price":48.45,"rating":0},{"id":"692d7b209eda0c652fd43533","images":["https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand"],"name":"Xiaomi Laptop Stand","price":281.52,"rating":0},{"id":"692d7bee2ecf623f4471fd0e","images":["https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977","https://via.placeholder.com/600x600?text=Xiaomi%20HD%20Webcam%20(Used)%20-%200493b526977"],"name":"Xiaomi Xiaomi HD Webcam (Used) - 0493b526977 (Used)","price":63.14,"rating":0},{"id":"692d7bee2ecf623f4471fd11","images":["https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724","https://via.placeholder.com/600x600?text=Belkin%20Laptop%20Stand%20-%200493b526724"],"name":"Belkin Belkin Laptop Stand - 0493b526724","price":133.6,"rating":0}],"rating":5,"reviewCount":20,"shopName":"PetCare Ghana"},"1":{"id":"6856a25ae1d7480b7e04938b","joinedDate":"2025-06-21T11:11:53.671Z","productCount":18,"products":[{"id":"692d7b1f9eda0c652fd434d2","images":["https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers","https://via.placeholder.com/600x600?text=Canvas%20Sneakers"],"name":"Zara Canvas Sneakers (Used)","price":253.96,"rating":0},{"id":"692d7b1f9eda0c652fd434d7","images":["https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector","https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector","https://via.placeholder.com/600x600?text=Phone%20Screen%20Protector"],"name":"Samsung Phone Screen Protector","price":396.12,"rating":0},{"id":"692d7b1f9eda0c652fd434d9","images":["https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand","https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand","https://via.placeholder.com/600x600?text=Smartphone%20Case%20with%20Stand"],"name":"Logitech Smartphone Case with Stand","price":105.55,"rating":0},{"id":"692d7b1f9eda0c652fd434df","images":["https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand","https://via.placeholder.com/600x600?text=Laptop%20Stand"],"name":"Sony Laptop Stand","price":85.62,"rating":0}],"rating":5,"reviewCount":2,"shopName":"HomeStyle Ghana"},"2":{"id":"6856a199e1d7480b7e049359","joinedDate":"2025-06-21T11:11:53.671Z","productCount":16,"products":[{"id":"692d7b1e9eda0c652fd4348e","images":["https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive"],"name":"Xiaomi USB Flash Drive (Used)","price":325.92,"rating":0},{"id":"692d7b1e9eda0c652fd4349a","images":["https://via.placeholder.com/600x600?text=Picture%20Frame","https://via.placeholder.com/600x600?text=Picture%20Frame","https://via.placeholder.com/600x600?text=Picture%20Frame"],"name":"Walmart Picture Frame","price":167.1,"rating":0},{"id":"692d7b1e9eda0c652fd4349d","images":["https://via.placeholder.com/600x600?text=Nail%20Polish","https://via.placeholder.com/600x600?text=Nail%20Polish","https://via.placeholder.com/600x600?text=Nail%20Polish"],"name":"L'Oreal Nail Polish (Used)","price":17.52,"rating":0},{"id":"692d7b1e9eda0c652fd434a4","images":["https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug","https://via.placeholder.com/600x600?text=Ceramic%20Coffee%20Mug"],"name":"HomeGoods Ceramic Coffee Mug","price":465.66,"rating":0}],"rating":5,"reviewCount":2,"shopName":"Kente Kings"},"3":{"id":"6856a4cb127dcac5d8a28e64","joinedDate":"2025-06-21T12:23:53.065Z","productCount":11,"products":[{"id":"692d7b249eda0c652fd435e6","images":["https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt","https://via.placeholder.com/600x600?text=Classic%20Cotton%20T-Shirt"],"name":"Puma Classic Cotton T-Shirt","price":131.26,"rating":0},{"id":"692d7bef2ecf623f4471fdc5","images":["https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370","https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370","https://via.placeholder.com/600x600?text=Adidas%20Gym%20Bag%20-%20a28e6428370"],"name":"Adidas Adidas Gym Bag - a28e6428370","price":354.39,"rating":0,"slug":"adidas-adidas-gym-bag-a28e6428370"},{"id":"692d7bef2ecf623f4471fdc7","images":["https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784","https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784","https://via.placeholder.com/600x600?text=Under%20Armour%20Resistance%20Bands%20(Used)%20-%20a28e6427784"],"name":"Under Armour Under Armour Resistance Bands (Used) - a28e6427784 (Used)","price":35.09,"rating":0,"slug":"under-armour-under-armour-resistance-bands-used-a28e6427784-used"},{"id":"692d7bef2ecf623f4471fdca","images":["https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712","https://via.placeholder.com/600x600?text=JBL%20Phone%20Screen%20Protector%20(Used)%20-%20a28e6428712"],"name":"JBL JBL Phone Screen Protector (Used) - a28e6428712 (Used)","price":161.45,"rating":0,"slug":"jbl-jbl-phone-screen-protector-used-a28e6428712-used"}],"rating":5,"reviewCount":2,"shopName":"Lens Masters"},"4":{"id":"6856a5d1127dcac5d8a28ebc","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":5,"reviewCount":1,"shopName":"Office Solutions Ghana"},"5":{"id":"6856a336e1d7480b7e0493ce","joinedDate":"2025-06-21T11:11:53.671Z","productCount":16,"products":[{"id":"692d7b219eda0c652fd4353e","images":["https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle","https://via.placeholder.com/600x600?text=Water%20Bottle"],"name":"Puma Water Bottle (Used)","price":20.25,"rating":0},{"id":"692d7b219eda0c652fd43546","images":["https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable","https://via.placeholder.com/600x600?text=USB-C%20Charging%20Cable"],"name":"Belkin USB-C Charging Cable (Used)","price":103.7,"rating":0},{"id":"692d7b219eda0c652fd4354d","images":["https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive","https://via.placeholder.com/600x600?text=USB%20Flash%20Drive"],"name":"Belkin USB Flash Drive","price":263.64,"rating":0},{"id":"692d7b219eda0c652fd43554","images":["https://via.placeholder.com/600x600?text=Lipstick%20Set","https://via.placeholder.com/600x600?text=Lipstick%20Set","https://via.placeholder.com/600x600?text=Lipstick%20Set"],"name":"Nivea Lipstick Set (Used)","price":224.01,"rating":0}],"rating":4.5,"reviewCount":20,"shopName":"Taste of Ghana"},"6":{"id":"6856a6af127dcac5d8a28f14","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":4.5,"reviewCount":4,"shopName":"Chef's Choice"},"7":{"id":"6856a679127dcac5d8a28eff","joinedDate":"2025-06-21T12:23:53.065Z","productCount":10,"products":[],"rating":4.5,"reviewCount":2,"shopName":" Mobile Zone "},"level":"info","message":"transformedSellers","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/public/featured?limit=8&minRating=4 \u001b[36m304\u001b[0m 728.655 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:51"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"level":"info","message":"[getAllProduct] Query returned 2 products for buyer","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"0":{"id":"697937b75a774b18128b7a48","isVisible":true,"moderationStatus":"approved","name":"Melin hat","status":"active"},"1":{"id":"68be0d1e67aebd65e49f82cc","isVisible":true,"moderationStatus":"approved","name":"MALM Bed Frame (Queen)","status":"active"},"level":"info","message":"[getAllProduct] Sample returned products:","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1777.569 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2534.264 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"level":"info","message":"[getNotifications] ℹ️ User 696ebf88f32a5928b76eaa36 is a buyer (default);","service":"backend-api","timestamp":"2026-01-29 18:36:52"}
+{"filter":"{\"user\":\"696ebf88f32a5928b76eaa36\",\"role\":\"user\",\"userModel\":\"User\"}","level":"info","message":"[getNotifications] 📋 Query filter for user:","originalRole":"user","role":"user","service":"backend-api","timestamp":"2026-01-29 18:36:52","userId":"696ebf88f32a5928b76eaa36","userIdType":"string","userModel":"User"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for user user 696ebf88f32a5928b76eaa36 with filter","service":"backend-api","timestamp":"2026-01-29 18:36:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 2576.980 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-01-29 18:36:53"}

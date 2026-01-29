@@ -182,8 +182,8 @@ exports.createDeviceSession = async (req, user, platform = null) => {
     try {
       await sendEmail({
         email: user.email,
-        subject: 'New Device Login Detected - EazShop',
-        message: `A new device has logged into your EazShop account.\n\nDevice: ${deviceType}\nIP Address: ${ipAddress}\nTime: ${new Date().toLocaleString()}\n\nIf this wasn't you, please change your password immediately.`,
+        subject: 'New Device Login Detected - Saiisai',
+        message: `A new device has logged into your Saiisai account.\n\nDevice: ${deviceType}\nIP Address: ${ipAddress}\nTime: ${new Date().toLocaleString()}\n\nIf this wasn't you, please change your password immediately.`,
       });
     } catch (emailError) {
       logger.error('Failed to send suspicious device email:', emailError);

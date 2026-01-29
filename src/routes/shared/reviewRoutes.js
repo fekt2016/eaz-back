@@ -10,9 +10,19 @@ const { getAllReview,
   updateReview,
   deleteReview,
   createUserReview,
-  replyToReview, } = require('../../controllers/shared/reviewController');
+  replyToReview,
+  getMyReviews,
+} = require('../../controllers/shared/reviewController');
 
 const router = express.Router({ mergeParams: true });
+
+// Get current user's reviews (must be before /:id)
+router.get(
+  '/my-reviews',
+  authController.protect,
+  authController.restrictTo('user'),
+  getMyReviews
+);
 
 router
   .route('/')

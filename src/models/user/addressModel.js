@@ -43,7 +43,7 @@ const addressSchema = new mongoose.Schema(
         validator: function(v) {
           return ['accra', 'tema'].includes(v.toLowerCase());
         },
-        message: 'EazShop currently delivers only in Accra and Tema.',
+        message: 'Saiisai currently delivers only in Accra and Tema.',
       },
     },
     region: {

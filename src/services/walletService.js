@@ -3,6 +3,7 @@ const WalletTransaction = require('../models/user/walletTransactionModel');
 const AppError = require('../utils/errors/appError');
 const mongoose = require('mongoose');
 const { logBuyerWallet } = require('./historyLogger');
+const logger = require('../utils/logger');
 
 /**
  * Get or create wallet for user
@@ -200,7 +201,9 @@ async function creditWallet(userId, amount, type, description, reference = null,
       isDuplicate: false,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
@@ -330,7 +333,6 @@ async function debitWallet(userId, amount, type, description, reference = null, 
       try {
         const emailDispatcher = require('../emails/emailDispatcher');
         const User = require('../models/user/userModel');
-const logger = require('../utils/logger');
         const user = await User.findById(userId).select('name email').lean();
         
         if (user && user.email) {
@@ -349,7 +351,9 @@ const logger = require('../utils/logger');
       isDuplicate: false,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();

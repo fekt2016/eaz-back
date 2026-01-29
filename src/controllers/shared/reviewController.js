@@ -18,6 +18,41 @@ exports.getReview = handleFactory.getOne(Review, [
   { path: 'product', select: 'name' },
   { path: 'user', select: 'name photo' },
 ]);
+
+/**
+ * Get current user's reviews (for "My Reviews" page)
+ * GET /api/v1/review/my-reviews
+ */
+exports.getMyReviews = catchAsync(async (req, res, next) => {
+  const userId = req.user.id;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const reviews = await Review.find({ user: userId })
+    .populate({ path: 'product', select: 'name imageCover slug price seller' })
+    .populate({ path: 'user', select: 'name photo' })
+    .populate({ path: 'order', select: 'orderNumber' })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Review.countDocuments({ user: userId });
+
+  res.status(200).json({
+    status: 'success',
+    results: reviews.length,
+    data: { reviews },
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+});
+
 exports.createUserReview = catchAsync(async (req, res, next) => {
   // Allow nested routes
   if (!req.body.product) req.body.product = req.params.productId;

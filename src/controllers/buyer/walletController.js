@@ -1,7 +1,37 @@
+const mongoose = require('mongoose');
 const walletService = require('../../services/walletService');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const WalletHistory = require('../../models/history/walletHistoryModel');
+const logger = require('../../utils/logger');
+const { paystackApi } = require('../../config/paystack');
+
+/**
+ * Refund a Paystack transaction when verification fails after payment was successful.
+ * Ensures "when verification fails, the payment also fails" (customer is refunded).
+ */
+async function refundPaystackTransaction(reference, reason = 'Verification failed') {
+  try {
+    const response = await paystackApi.post('/refund', {
+      transaction: reference,
+      merchant_note: reason,
+    });
+    if (response.data && response.data.status === true) {
+      logger.info('[Wallet] Paystack refund successful after verification failure', { reference, reason });
+      return true;
+    }
+    logger.warn('[Wallet] Paystack refund response not successful', { reference, response: response.data });
+    return false;
+  } catch (err) {
+    logger.error('[Wallet] Paystack refund failed after verification failure', {
+      reference,
+      reason,
+      message: err.message,
+      response: err.response?.data,
+    });
+    return false;
+  }
+}
 
 /**
  * GET /api/v1/wallet/balance
@@ -251,7 +281,6 @@ exports.verifyTopup = catchAsync(async (req, res, next) => {
 
   // Check if transaction already processed (idempotency)
   const WalletTransaction = require('../../models/user/walletTransactionModel');
-const logger = require('../../utils/logger');
   const existingTransaction = await WalletTransaction.findOne({ reference });
 
   if (existingTransaction) {
@@ -264,9 +293,6 @@ const logger = require('../../utils/logger');
       },
     });
   }
-
-  // Verify with Paystack
-  const { paystackApi } = require('../../config/paystack');
 
   try {
     const response = await paystackApi.get(`/transaction/verify/${reference}`);
@@ -297,45 +323,75 @@ const logger = require('../../utils/logger');
       return next(new AppError(`Payment verification failed: ${statusMessage}`, 400));
     }
 
+    // From here on: Paystack payment was successful. If we fail to complete verification
+    // (e.g. credit wallet), we refund so the payment "fails" and the customer is not charged.
+
     // Get amount and convert from kobo to GHS
     const amount = transaction.amount ? transaction.amount / 100 : 0;
 
-    // Get userId from metadata
-    const userId = transaction.metadata?.userId || req.user?.id;
+    // Get userId from metadata (Paystack returns string) or req.user
+    const rawUserId = transaction.metadata?.userId || req.user?.id;
 
-    if (!userId) {
+    if (!rawUserId) {
       logger.error('[Wallet] User ID not found in transaction metadata:', transaction.metadata);
-      return next(new AppError('User ID not found in transaction metadata', 400));
+      await refundPaystackTransaction(reference, 'Verification failed: user not found in metadata');
+      return next(new AppError('User ID not found in transaction metadata. Your payment has been refunded.', 400));
+    }
+
+    // Ensure userId is a valid ObjectId (Paystack metadata returns string)
+    let userId;
+    try {
+      userId = rawUserId instanceof mongoose.Types.ObjectId
+        ? rawUserId
+        : new mongoose.Types.ObjectId(String(rawUserId));
+    } catch (castErr) {
+      logger.error('[Wallet] Invalid user ID in transaction metadata:', { rawUserId, error: castErr.message });
+      await refundPaystackTransaction(reference, 'Verification failed: invalid user ID');
+      return next(new AppError('Invalid user ID in transaction. Your payment has been refunded.', 400));
     }
 
     if (amount <= 0) {
       logger.error('[Wallet] Invalid amount in transaction:', amount);
-      return next(new AppError('Invalid transaction amount', 400));
+      await refundPaystackTransaction(reference, 'Verification failed: invalid amount');
+      return next(new AppError('Invalid transaction amount. Your payment has been refunded.', 400));
     }
 
     logger.info('[Wallet] Verifying transaction:', {
       reference,
       amount,
-      userId,
+      userId: userId.toString(),
       transactionStatus: transaction.status,
     });
 
-    // Credit wallet
-    const result = await walletService.creditWallet(
-      userId,
-      amount,
-      'CREDIT_TOPUP',
-      `Wallet top-up via Paystack - ${reference}`,
-      reference,
-      {
-        paystackReference: reference,
-        paystackTransactionId: transaction.id?.toString(),
-        email: transaction.customer?.email,
-        paidAt: transaction.paid_at,
-        channel: transaction.channel,
-        currency: transaction.currency,
-      }
-    );
+    let result;
+    try {
+      result = await walletService.creditWallet(
+        userId,
+        amount,
+        'CREDIT_TOPUP',
+        `Wallet top-up via Paystack - ${reference}`,
+        reference,
+        {
+          paystackReference: reference,
+          paystackTransactionId: transaction.id?.toString(),
+          email: transaction.customer?.email,
+          paidAt: transaction.paid_at,
+          channel: transaction.channel,
+          currency: transaction.currency,
+        }
+      );
+    } catch (creditError) {
+      logger.error('[Wallet] Failed to credit wallet after successful Paystack verification', {
+        reference,
+        userId: userId?.toString?.() ?? userId,
+        amount,
+        errorName: creditError.name,
+        errorMessage: creditError.message,
+        stack: creditError.stack,
+      });
+      await refundPaystackTransaction(reference, 'Verification failed: could not credit wallet');
+      return next(new AppError('Verification failed. Your payment has been refunded. Please try again or contact support.', 500));
+    }
 
     res.status(200).json({
       status: 'success',
@@ -346,7 +402,7 @@ const logger = require('../../utils/logger');
       },
     });
   } catch (error) {
-    // Enhanced error logging
+    // Errors here are from Paystack verify (e.g. network, 404). No refund - we never confirmed payment.
     logger.error('[Wallet] Paystack verification error:', {
       message: error.message,
       response: error.response?.data,
@@ -355,7 +411,6 @@ const logger = require('../../utils/logger');
       stack: error.stack,
     });
 
-    // Extract error message from Paystack response
     let errorMessage = 'Failed to verify payment';
     if (error.response?.data?.message) {
       errorMessage = error.response.data.message;
@@ -363,7 +418,6 @@ const logger = require('../../utils/logger');
       errorMessage = error.message;
     }
 
-    // Check for specific error types
     if (error.response?.status === 401) {
       return next(new AppError('Payment service authentication failed. Please contact support.', 500));
     } else if (error.response?.status === 404) {

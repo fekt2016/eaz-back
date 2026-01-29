@@ -164,7 +164,7 @@ exports.updateEazShopProduct = catchAsync(async (req, res, next) => {
     product.seller?.toString() === EAZSHOP_SELLER_ID;
 
   if (!isEazShopProduct) {
-    return next(new AppError('This product is not an EazShop product', 403));
+    return next(new AppError('This product is not a Saiisai product', 403));
   }
 
   // Ensure seller remains EazShop seller
@@ -198,7 +198,7 @@ exports.toggleEazShopProduct = catchAsync(async (req, res, next) => {
     product.seller?.toString() === EAZSHOP_SELLER_ID;
 
   if (!isEazShopProduct) {
-    return next(new AppError('This product is not an EazShop product', 403));
+    return next(new AppError('This product is not a Saiisai product', 403));
   }
 
   // Toggle status
@@ -246,7 +246,7 @@ exports.unmarkProductAsEazShop = catchAsync(async (req, res, next) => {
 
   // Only allow if product was marked as EazShop (not if seller is EazShop)
   if (!product.isEazShopProduct) {
-    return next(new AppError('This product is not marked as EazShop product', 400));
+    return next(new AppError('This product is not marked as Saiisai product', 400));
   }
 
   // Unmark as EazShop product (but keep original seller if it was changed)
@@ -256,7 +256,7 @@ exports.unmarkProductAsEazShop = catchAsync(async (req, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    message: 'Product unmarked as EazShop product',
+    message: 'Product unmarked as Saiisai product',
     data: { product },
   });
 });

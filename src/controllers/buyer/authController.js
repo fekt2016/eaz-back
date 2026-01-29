@@ -193,7 +193,7 @@ exports.signup = catchAsync(async (req, res, next) => {
         const { sendSMS } = require('../../utils/email/emailService');
         await sendSMS({
           to: newUser.phone,
-          message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
+          message: `Your Saiisai verification code is: ${otp}. Valid for 10 minutes.`,
         });
         logger.info(`[Buyer Signup] OTP sent to phone ${newUser.phone}`);
       } catch (smsError) {
@@ -2396,7 +2396,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       const { sendSMS } = require('../../utils/email/emailService');
       await sendSMS({
         to: user.phone,
-        message: `Your EazShop verification code is: ${otp}. Valid for 10 minutes.`,
+        message: `Your Saiisai verification code is: ${otp}. Valid for 10 minutes.`,
       });
       logger.info(`[Resend OTP] OTP sent to phone ${user.phone}`);
     } catch (error) {
@@ -2591,8 +2591,8 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
 
   // Generate a secret using speakeasy (properly base32 encoded)
   const secretData = speakeasy.generateSecret({
-    name: `EazShop (${user.email || user.phone?.toString() || 'User'})`,
-    issuer: 'EazShop',
+    name: `Saiisai (${user.email || user.phone?.toString() || 'User'})`,
+    issuer: 'Saiisai',
     length: 32,
   });
 
@@ -2664,7 +2664,7 @@ exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
   }
 
   // Generate otpauth URL from the stored base32 secret
-  const serviceName = 'EazShop';
+  const serviceName = 'Saiisai';
   const accountName = user.email || user.phone?.toString() || 'User';
   const otpAuthUrl = speakeasy.otpauthURL({
     secret: user.twoFactorTempSecret,

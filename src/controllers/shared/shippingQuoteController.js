@@ -50,7 +50,7 @@ exports.calculateShippingQuote = catchAsync(async (req, res, next) => {
   const validCities = ['ACCRA', 'TEMA'];
   if (!validCities.includes(buyerCity.toUpperCase())) {
     return next(
-      new AppError('EazShop currently delivers only in Accra and Tema.', 400)
+      new AppError('Saiisai currently delivers only in Accra and Tema.', 400)
     );
   }
 

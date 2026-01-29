@@ -551,7 +551,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Validate buyer city
     if (!['ACCRA', 'TEMA'].includes(buyerCity)) {
-      return next(new AppError('EazShop currently delivers only in Accra and Tema.', 400));
+      return next(new AppError('Saiisai currently delivers only in Accra and Tema.', 400));
     }
 
     // Calculate shipping using the shipping quote service

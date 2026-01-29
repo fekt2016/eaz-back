@@ -46,7 +46,7 @@ exports.validateTopupVerification = [
     .withMessage('Payment reference is required')
     .isLength({ min: 10, max: 100 })
     .withMessage('Payment reference must be between 10 and 100 characters')
-    .matches(/^[A-Z0-9\-_]+$/)
+    .matches(/^[A-Za-z0-9\-_.]+$/)
     .withMessage('Payment reference contains invalid characters'),
 
   // Reject unknown fields

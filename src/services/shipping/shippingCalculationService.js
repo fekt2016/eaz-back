@@ -252,7 +252,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
   // Validate buyer city
   const validCities = ['ACCRA', 'TEMA'];
   if (!buyerCity || !validCities.includes(buyerCity.toUpperCase())) {
-    throw new Error('EazShop currently delivers only in Accra and Tema.');
+    throw new Error('Saiisai currently delivers only in Accra and Tema.');
   }
 
   // Validate method
@@ -291,7 +291,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
   
   // For EazShop products, only allow pickup_center and dispatch
   if (hasEazShopProducts && method === 'seller_delivery') {
-    throw new Error('EazShop products only support pickup center or EazShop dispatch delivery. Seller delivery is not available.');
+    throw new Error('Saiisai products only support pickup center or Saiisai dispatch delivery. Seller delivery is not available.');
   }
   
   items.forEach(item => {
@@ -444,7 +444,7 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
 
       // For EazShop store, seller delivery is NOT allowed
       if (isEazShopStore) {
-        throw new Error('EazShop Official Store does not offer seller delivery. Please use pickup center or EazShop dispatch.');
+        throw new Error('Saiisai Official Store does not offer seller delivery. Please use pickup center or Saiisai dispatch.');
       }
 
       // Check if seller has delivery available

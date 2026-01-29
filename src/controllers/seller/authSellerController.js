@@ -1372,8 +1372,8 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
 
   // Generate a secret using speakeasy (properly base32 encoded)
   const secretData = speakeasy.generateSecret({
-    name: `EazShop Seller (${seller.email || seller.phone?.toString() || 'Seller'})`,
-    issuer: 'EazShop',
+    name: `Saiisai Seller (${seller.email || seller.phone?.toString() || 'Seller'})`,
+    issuer: 'Saiisai',
     length: 32,
   });
 
@@ -1443,7 +1443,7 @@ exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
   }
 
   // Generate otpauth URL from the stored base32 secret
-  const serviceName = 'EazShop';
+  const serviceName = 'Saiisai';
   const accountName = seller.email || seller.phone?.toString() || 'Seller';
   const otpAuthUrl = speakeasy.otpauthURL({
     secret: seller.twoFactorTempSecret,
