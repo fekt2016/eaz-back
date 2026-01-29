@@ -166,50 +166,53 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // IMPORTANT: Paystack behavior with callback_url:
   // - If callback_url has NO query params: Paystack appends ?reference=xxx&trxref=xxx
   // - If callback_url HAS query params: Paystack appends &reference=xxx&trxref=xxx
-  // 
-  // CRITICAL: Paystack callback MUST ALWAYS point to eazmain (customer app), NEVER to eazadmin
-  // FORCE use of eazmain port (5173) - this is the customer-facing app
-  // NEVER use admin port (5174) for Paystack callbacks
-  // We check environment variables but ALWAYS validate and force eazmain
+  //
+  // Callback must point to the customer app (e.g. https://saiisai.com), never to admin.
+  // We accept any valid http(s) URL that is not admin-like. No hardcoded localhost.
 
-  // Check environment variables for logging purposes
-  const envMainAppUrl = process.env.MAIN_APP_URL;
-  const envEazmainUrl = process.env.EAZMAIN_URL;
-  const envFrontendUrl = process.env.FRONTEND_URL;
+  const rejectAdmin = (u) => {
+    if (!u || typeof u !== 'string') return true;
+    const s = u.toLowerCase();
+    return s.includes('admin') || s.includes('eazadmin') || s.includes(':5174');
+  };
+
+  const envCallback = process.env.PAYSTACK_CALLBACK_BASE_URL;
+  const envFrontend = process.env.FRONTEND_URL;
+  const envMain = process.env.MAIN_APP_URL;
+  const envEazmain = process.env.EAZMAIN_URL;
 
   logger.info('[Paystack Initialize] 🔍 Environment Variables:', {
-    MAIN_APP_URL: envMainAppUrl || 'NOT SET',
-    EAZMAIN_URL: envEazmainUrl || 'NOT SET',
-    FRONTEND_URL: envFrontendUrl || 'NOT SET',
+    PAYSTACK_CALLBACK_BASE_URL: envCallback ? '[SET]' : 'NOT SET',
+    FRONTEND_URL: envFrontend || 'NOT SET',
+    MAIN_APP_URL: envMain || 'NOT SET',
+    EAZMAIN_URL: envEazmain || 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'undefined',
   });
 
-  // Try to use MAIN_APP_URL or EAZMAIN_URL if they're set and valid (point to eazmain)
+  // Priority: PAYSTACK_CALLBACK_BASE_URL > FRONTEND_URL > MAIN_APP_URL > EAZMAIN_URL
+  // Accept any valid http(s) URL that is not admin-like (e.g. https://saiisai.com works).
   let baseUrl = null;
-  if (envMainAppUrl &&
-    !envMainAppUrl.includes('admin') &&
-    !envMainAppUrl.includes('eazadmin') &&
-    !envMainAppUrl.includes(':5174') &&
-    (envMainAppUrl.includes(':5173') || envMainAppUrl.includes('eazmain'))) {
-    baseUrl = envMainAppUrl;
-    logger.info('[Paystack Initialize] ✅ Using MAIN_APP_URL:', baseUrl);
-  } else if (envEazmainUrl &&
-    !envEazmainUrl.includes('admin') &&
-    !envEazmainUrl.includes('eazadmin') &&
-    !envEazmainUrl.includes(':5174')) {
-    baseUrl = envEazmainUrl;
-    logger.info('[Paystack Initialize] ✅ Using EAZMAIN_URL:', baseUrl);
-  } else if (envFrontendUrl &&
-    !envFrontendUrl.includes('admin') &&
-    !envFrontendUrl.includes('eazadmin') &&
-    !envFrontendUrl.includes(':5174') &&
-    (envFrontendUrl.includes(':5173') || envFrontendUrl.includes('eazmain'))) {
-    baseUrl = envFrontendUrl;
-    logger.info('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain);:', baseUrl);
+  for (const candidate of [envCallback, envFrontend, envMain, envEazmain]) {
+    if (!candidate || typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim().replace(/\/$/, '');
+    if (!trimmed) continue;
+    if (rejectAdmin(trimmed)) {
+      logger.warn('[Paystack Initialize] Skipping admin-like URL:', trimmed);
+      continue;
+    }
+    if (!/^https?:\/\//i.test(trimmed)) continue;
+    baseUrl = trimmed;
+    logger.info('[Paystack Initialize] ✅ Using base URL from env:', baseUrl);
+    break;
   }
 
-  // If we still don't have a usable baseUrl at this point, the environment
-  // configuration is invalid. Do NOT fall back to localhost here – that would
-  // leak development URLs into production. Instead, fail fast with a clear error.
+  // Production-only fallback: if no env is set, use customer domain so payments don't break.
+  // Still no localhost – only when NODE_ENV=production.
+  if (!baseUrl && process.env.NODE_ENV === 'production') {
+    baseUrl = process.env.PAYSTACK_CALLBACK_DEFAULT || 'https://saiisai.com';
+    logger.info('[Paystack Initialize] ✅ Using production default base URL:', baseUrl);
+  }
+
   if (!baseUrl) {
     logger.error(
       '[Paystack Initialize] ❌ No valid frontend URL configured. ' +
