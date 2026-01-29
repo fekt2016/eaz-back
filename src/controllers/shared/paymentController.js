@@ -207,21 +207,41 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     logger.info('[Paystack Initialize] ✅ Using FRONTEND_URL (validated as eazmain);:', baseUrl);
   }
 
-  // ALWAYS default to eazmain port (5173) if no valid URL found
-  // This is the customer app - NEVER use admin port (5174)
+  // If we still don't have a usable baseUrl at this point, the environment
+  // configuration is invalid. Do NOT fall back to localhost here – that would
+  // leak development URLs into production. Instead, fail fast with a clear error.
   if (!baseUrl) {
-    baseUrl = 'http://localhost:5173';
-    logger.info('[Paystack Initialize] ✅ Using default eazmain URL (port 5173);:', baseUrl);
+    logger.error(
+      '[Paystack Initialize] ❌ No valid frontend URL configured. ' +
+      'Set PAYSTACK_CALLBACK_BASE_URL or FRONTEND_URL (and ensure it is not an admin URL).'
+    );
+    return next(
+      new AppError(
+        'Payment configuration error. Please contact support.',
+        500
+      )
+    );
   }
 
-  // FINAL VALIDATION: Force to eazmain if URL points to admin
-  if (baseUrl.includes('/admin') ||
+  // FINAL VALIDATION: if baseUrl looks like an admin URL, treat it as a
+  // misconfiguration and fail instead of silently forcing localhost.
+  if (
+    baseUrl.includes('/admin') ||
     baseUrl.includes('eazadmin') ||
     baseUrl.includes(':5174') ||
-    baseUrl.toLowerCase().includes('admin')) {
-    logger.error('[Paystack Initialize] ❌ CRITICAL: Base URL points to admin! Forcing to eazmain.');
-    baseUrl = 'http://localhost:5173';
-    logger.info('[Paystack Initialize] ✅ FORCED to eazmain (port 5173);:', baseUrl);
+    baseUrl.toLowerCase().includes('admin')
+  ) {
+    logger.error(
+      '[Paystack Initialize] ❌ Base URL points to an admin host. ' +
+      'Please set PAYSTACK_CALLBACK_BASE_URL/FRONTEND_URL to the customer domain (e.g. https://saiisai.com).',
+      baseUrl
+    );
+    return next(
+      new AppError(
+        'Payment configuration error. Please contact support.',
+        500
+      )
+    );
   }
 
   // Remove trailing slash and ensure clean URL
@@ -237,10 +257,9 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     baseUrl = cleanBaseUrl;
   }
 
-  // Construct callback URL with orderId parameter
+  // Construct callback URL with orderId parameter.
   // Paystack will append: &reference=xxx&trxref=xxx (since we already have ?orderId=)
-  // Final URL: http://localhost:5173/order-confirmation?orderId=XXX&reference=YYY&trxref=YYY
-  // baseUrl is already cleaned above, so use it directly
+  // baseUrl is already validated and cleaned above, so use it directly.
   const callbackUrl = `${baseUrl}/order-confirmation?orderId=${order._id}`;
 
   // CRITICAL: Log all environment variables for debugging BEFORE validation
@@ -253,84 +272,28 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     finalCallbackUrl: callbackUrl,
   });
 
-  // Final validation of the complete callback URL
-  // CRITICAL: If callback URL points to admin, FORCE it to eazmain instead of throwing error
-  if (callbackUrl.includes('/admin') ||
+  // Final validation of the complete callback URL – if it looks like an admin
+  // URL, fail fast instead of silently changing it.
+  if (
+    callbackUrl.includes('/admin') ||
     callbackUrl.includes('eazadmin') ||
     callbackUrl.includes(':5174') ||
-    callbackUrl.toLowerCase().includes('admin')) {
-    logger.error('[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!', callbackUrl);
-    logger.error('[Paystack Initialize] ⚠️ FORCING redirect to eazmain (port 5173); instead');
-
-    // FORCE use of eazmain port (5173) - NEVER use admin port (5174)
-    const forcedBaseUrl = 'http://localhost:5173';
-    const forcedCallbackUrl = `${forcedBaseUrl}/order-confirmation?orderId=${order._id}`;
-    logger.info('[Paystack Initialize] ✅ Using FORCED safe callback URL:', forcedCallbackUrl);
-
-    // Update callbackUrl to use the forced safe URL
-    const safePayload = {
-      email,
-      amount: paystackAmount, // Use server-calculated amount in kobo/pesewas
-      metadata: {
-        orderId: order._id.toString(),
-        custom_fields: [
-          {
-            display_name: 'Order ID',
-            variable_name: 'order_id',
-            value: order._id.toString(),
-          },
-        ],
-      },
-      callback_url: forcedCallbackUrl, // Use forced safe URL
-    };
-
-    logger.info('[Paystack Initialize] Paystack Payload (with forced URL);:', safePayload.callback_url);
-
-    try {
-      const response = await axios.post(
-        'https://api.paystack.co/transaction/initialize',
-        safePayload,
-        {
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.data.status === true && response.data.data) {
-        order.paymentReference = response.data.data.reference;
-        await order.save({ validateBeforeSave: false });
-
-        res.status(200).json({
-          status: 'success',
-          data: {
-            authorization_url: response.data.data.authorization_url,
-          },
-        });
-        return; // Exit early
-      } else {
-        return next(
-          new AppError(
-            response.data.message || 'Failed to initialize payment',
-            400
-          )
-        );
-      }
-    } catch (error) {
-      logger.error('Paystack API error:', error.response?.data || error.message);
-      return next(
-        new AppError(
-          error.response?.data?.message || 'Payment initialization failed',
-          500
-        )
-      );
-    }
+    callbackUrl.toLowerCase().includes('admin')
+  ) {
+    logger.error(
+      '[Paystack Initialize] ❌ CRITICAL ERROR: Callback URL points to admin app!',
+      callbackUrl
+    );
+    return next(
+      new AppError(
+        'Payment configuration error. Please contact support.',
+        500
+      )
+    );
   }
 
   logger.info('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
   logger.info('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
-  logger.info('[Paystack Initialize] ⚠️ VERIFY: This URL MUST point to eazmain (port 5173);, NOT eazadmin (port 5174)');
 
   const payload = {
     email,
