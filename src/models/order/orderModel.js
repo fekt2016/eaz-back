@@ -116,12 +116,12 @@ const orderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      enum: ['pending', 'shipped', 'delievered', 'cancelled'],
+      enum: ['pending', 'confirmed', 'shipped', 'delievered', 'cancelled'],
       default: 'pending',
     },
     FulfillmentStatus: {
       type: String,
-      enum: ['pending', 'shipped', 'delievered', 'cancelled'],
+      enum: ['pending', 'confirmed', 'shipped', 'delievered', 'cancelled'],
       default: 'pending',
     },
     totalQty: {

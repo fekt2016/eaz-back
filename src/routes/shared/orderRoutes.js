@@ -88,6 +88,14 @@ router
     getUserOrder
   );
 
+// Admin backfill: credit sellers for delivered orders that were never credited (must be before /:id)
+router.post(
+  '/backfill-seller-credits',
+  authController.protect,
+  authController.restrictTo('admin'),
+  require('../../controllers/admin/orderController').backfillSellerCredits
+);
+
 // Update order shipping address (user only, within 24 hours)
 // Must be before /:id route to avoid route conflicts
 router.patch(
@@ -155,11 +163,11 @@ router.get(
   getOrderByTrackingNumber
 );
 
-// Add tracking update (admin/seller only)
+// Add tracking update (admin/superadmin/moderator/seller only)
 router.post(
   '/:id/tracking',
   authController.protect,
-  authController.restrictTo('admin', 'seller'),
+  authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
   addTrackingUpdate
 );
 

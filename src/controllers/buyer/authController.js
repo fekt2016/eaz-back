@@ -1377,8 +1377,11 @@ exports.protect = catchAsync(async (req, res, next) => {
   // GET /api/v1/users/:id - admin only (getUser)
   // PATCH /api/v1/users/:id - admin only (updateUser)
   // DELETE /api/v1/users/:id - admin only (deleteUser)
+  // GET /api/v1/review (list) - admin only (getAllReview on shared review route)
   const isAdminOnlySharedRoute = (
+    (method === 'GET' && (fullPath === '/api/v1/review' || fullPath.startsWith('/api/v1/review?'))) ||
     (fullPath === '/api/v1/order' && method === 'GET') ||
+    (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
     (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status')) ||
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
@@ -1399,11 +1402,20 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
   const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
+  // Order tracking update route (POST /api/v1/order/:id/tracking) is shared between admin and seller
+  // Both admins (superadmin, moderator, admin) and sellers can add tracking updates
+  const isSharedOrderTrackingRoute = (
+    /^\/api\/v1\/order\/[^/]+\/tracking\/?$/.test(fullPath) && method === 'POST'
+  );
+
   // For shared product routes, check admin_jwt first (admins can manage products)
   // Then fall back to seller_jwt (sellers can manage their own products)
   let cookieName;
   if (isSharedProductRoute) {
     // Shared product routes: try admin_jwt first, then seller_jwt
+    cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';
+  } else if (isSharedOrderTrackingRoute) {
+    // Order tracking routes: try admin_jwt first, then seller_jwt
     cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';
   } else if (isSellerRoute) {
     cookieName = 'seller_jwt';
@@ -1412,6 +1424,13 @@ exports.protect = catchAsync(async (req, res, next) => {
   } else {
     cookieName = 'main_jwt'; // Default to buyer/eazmain
   }
+
+  // #region agent log
+  if (fullPath.includes('/review') && !fullPath.includes('/admin/')) {
+    const hasToken = !!(req.cookies && req.cookies[cookieName]);
+    fetch('http://127.0.0.1:7242/ingest/8853a92f-8faa-4d51-b197-e8e74c838dc7', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'authController.js:protect:review', message: 'protect review route cookie', data: { fullPath, method, cookieName, hasToken, hasAdminJwt: !!(req.cookies && req.cookies.admin_jwt), hasMainJwt: !!(req.cookies && req.cookies.main_jwt) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => {});
+  }
+  // #endregion
 
   // Enhanced debug logging for verify-otp, payout, and payment method routes
   if (fullPath.includes('/verify-otp') || fullPath.includes('/payout') || fullPath.includes('/paymentmethod')) {
@@ -1430,7 +1449,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // Debug logging for route detection
   if (fullPath.includes('/order') || fullPath.includes('/logs')) {
-    console.log(`[Auth] Route detected: ${fullPath}, method: ${method}, isSellerRoute: ${isSellerRoute}, isAdminRoute: ${isAdminRoute}, isAdminOnlySharedRoute: ${isAdminOnlySharedRoute}, cookieName: ${cookieName}`);
+    console.log(`[Auth] Route detected: ${fullPath}, method: ${method}, isSharedOrderTrackingRoute: ${isSharedOrderTrackingRoute}, isSellerRoute: ${isSellerRoute}, isAdminRoute: ${isAdminRoute}, isAdminOnlySharedRoute: ${isAdminOnlySharedRoute}, cookieName: ${cookieName}`);
   }
 
   // Security: For seller routes, ONLY accept seller_jwt, never main_jwt
@@ -1478,6 +1497,17 @@ exports.protect = catchAsync(async (req, res, next) => {
       else if (req.cookies.main_jwt) {
         token = req.cookies.main_jwt;
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for notification route: ${method} ${fullPath}`);
+      }
+    }
+
+    // For POST order tracking, ONLY admin_jwt or seller_jwt – never main_jwt
+    if (isSharedOrderTrackingRoute && req.cookies && !token) {
+      if (req.cookies.admin_jwt) {
+        token = req.cookies.admin_jwt;
+        logger.info(`[Auth] ✅ Token found in admin_jwt cookie for tracking route: ${method} ${fullPath}`);
+      } else if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+        logger.info(`[Auth] ✅ Token found in seller_jwt cookie for tracking route: ${method} ${fullPath}`);
       }
     }
 
@@ -1723,6 +1753,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews') || // GET /seller/:id is admin-only
     ((fullPath === '/api/v1/order' && method === 'GET') ||
+     (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
      (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
      (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status'))) ||
     // Admin-only user routes: GET /api/v1/users (getAllUsers), GET/PATCH/DELETE /api/v1/users/:id
@@ -1743,7 +1774,15 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe'));
 
   if (isAdminRouteCheck) {
-    if (currentUser.role !== 'admin') {
+    // Allow admin, superadmin, and moderator roles
+    const adminRoles = ['admin', 'superadmin', 'moderator'];
+    if (!adminRoles.includes(currentUser.role)) {
+      // User/buyer token was used on an admin route (e.g. wrong cookie sent) – treat as "not authenticated for this context"
+      if (currentUser.role === 'user') {
+        return next(
+          new AppError('Admin session required. Please log in at the admin panel.', 401)
+        );
+      }
       console.error(`[Auth] ❌ SECURITY: Admin route accessed by ${currentUser.role} (${currentUser.email || currentUser.phone})`);
       console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
       console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);

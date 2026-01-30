@@ -98,6 +98,8 @@ const findUserByToken = async (decoded) => {
   const models = {
     user: User,
     admin: Admin,
+    superadmin: Admin,  // superadmin users are stored in Admin model
+    moderator: Admin,   // moderator users are stored in Admin model
     seller: Seller,
   };
 

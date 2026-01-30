@@ -5,6 +5,7 @@
 
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const Seller = require('../../models/user/sellerModel');
 const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel'); // Existing payment request model

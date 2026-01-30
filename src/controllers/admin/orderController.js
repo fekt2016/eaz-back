@@ -6,6 +6,8 @@ const Seller = require('../../models/user/sellerModel');
 const PlatformStats = require('../../models/platform/platformStatsModel');
 const mongoose = require('mongoose');
 const notificationService = require('../../services/notification/notificationService');
+const orderService = require('../../services/order/orderService');
+const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
 /**
@@ -318,5 +320,22 @@ const logger = require('../../utils/logger');
   } finally {
     session.endSession();
   }
+});
+
+/**
+ * Backfill seller credits for delivered orders that were never credited
+ * POST /api/v1/order/backfill-seller-credits
+ * Body: { limit?: number } (optional, default 100, max 500)
+ */
+exports.backfillSellerCredits = catchAsync(async (req, res, next) => {
+  const adminId = req.user.id;
+  const limit = req.body?.limit;
+  const result = await orderService.backfillSellerCreditsForDeliveredOrders(adminId, { limit });
+  logger.info(`[backfillSellerCredits] Processed: ${result.processed}, credited: ${result.credited}, skipped: ${result.skipped}`);
+  res.status(200).json({
+    status: 'success',
+    message: `Backfill complete. Credited ${result.credited} order(s), skipped ${result.skipped}.`,
+    data: result,
+  });
 });
 

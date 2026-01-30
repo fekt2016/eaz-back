@@ -478,14 +478,14 @@ exports.updateAllProductsVisibility = catchAsync(async (req, res, next) => {
 });
 
 /**
- * Admin-only product removal (soft delete/archive)
+ * Admin-only product removal (soft delete/archive or hard delete)
  * DELETE /api/v1/admin/products/:productId
- * 
- * SAFETY RULES:
- * - Soft delete by default (status = 'archived', isDeleted = true)
- * - Hard delete ONLY if product has zero orders AND is already archived
- * - Preserve order history and payment records
- * - Log all actions for audit trail
+ *
+ * RULES:
+ * - Products with orders cannot be deleted – order history must be preserved.
+ * - Not approved + no orders → hard delete from database completely.
+ * - Approved (or already archived) + no orders → soft delete (archive) or hard delete if already archived + forceDelete.
+ * - Price and variant validation do not block delete – archive is saved with validateBeforeSave: false.
  */
 exports.removeProduct = catchAsync(async (req, res, next) => {
   const { productId } = req.params;
@@ -494,6 +494,7 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
   // Verify admin authentication
   if (!req.user) {
     logger.error('[Remove Product] No user found in request');
+    console.error('[Remove Product] No user found in request');
     return next(new AppError('Authentication required', 401));
   }
   
@@ -503,18 +504,21 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
   // Verify admin credentials
   if (!adminId) {
     logger.error('[Remove Product] Admin ID is missing');
+    console.error('[Remove Product] Admin ID is missing');
     return next(new AppError('Invalid admin credentials', 401));
   }
   
   // Verify user is admin
   if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
     logger.error('[Remove Product] User is not admin:', { role: adminRole, userId: adminId });
+    console.error('[Remove Product] User is not admin:', { role: adminRole, userId: adminId });
     return next(new AppError('Admin access required', 403));
   }
   
   // Validate product ID format
   if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
     logger.error(`[Remove Product] Invalid product ID format: ${productId}`);
+    console.error('[Remove Product] Invalid product ID format:', productId);
     return next(new AppError('Invalid product ID format', 400));
   }
   
@@ -528,33 +532,68 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
   
   if (!product) {
     logger.error(`[Remove Product] Product not found: ${productId}`);
+    console.error('[Remove Product] Product not found:', productId);
     return next(new AppError('Product not found', 404));
+  }
+  
+  // Block delete when product has orders – neither soft nor hard delete allowed
+  const orderCount = await OrderItem.countDocuments({ product: productId }).maxTimeMS(10000);
+  if (orderCount > 0) {
+    logger.warn(`[Remove Product] Delete blocked: product ${productId} has ${orderCount} order(s)`);
+    console.error('[Remove Product] Delete blocked: product has orders', { productId, orderCount });
+    return next(new AppError(
+      'This product cannot be deleted because it has order history. Products with orders must be preserved.',
+      400
+    ));
+  }
+  
+  // Not approved + no orders → hard delete from database completely
+  const isApproved = product.moderationStatus === 'approved';
+  if (!isApproved) {
+    logger.info(`[Remove Product] Product ${productId} not approved (moderationStatus: ${product.moderationStatus}), zero orders – hard delete from DB`);
+    try {
+      await Product.findByIdAndDelete(productId);
+      logActivityAsync({
+        userId: adminId,
+        role: 'admin',
+        action: 'ADMIN_PRODUCT_HARD_DELETE',
+        description: `Admin permanently deleted unapproved product: ${product.name}`,
+        metadata: {
+          productId: product._id,
+          productName: product.name,
+          sellerId: product.seller?._id || product.seller,
+          reason: reason || 'Not provided',
+          moderationStatus: product.moderationStatus,
+        },
+        req,
+      });
+      logger.info(`[Remove Product] ✅ Product ${productId} hard deleted by admin ${adminId} (unapproved, no orders)`);
+      return res.status(200).json({
+        success: true,
+        message: 'Product permanently deleted',
+        data: {
+          productId: product._id,
+          action: 'hard_delete',
+          note: 'Unapproved product with no orders removed from database',
+        },
+      });
+    } catch (error) {
+      logger.error(`[Remove Product] Error during hard delete (unapproved):`, error);
+      console.error('[Remove Product] Error during hard delete (unapproved):', error?.message || error, error);
+      return next(new AppError('Failed to delete product', 500));
+    }
   }
   
   // Check if product is already archived
   if (product.isDeleted && product.status === 'archived') {
     logger.info(`[Remove Product] Product ${productId} is already archived`);
     
-    // Check if hard delete is requested and allowed
     if (forceDelete === true) {
-      // Check if product has any orders
-      const orderCount = await OrderItem.countDocuments({ product: productId });
-      
-      if (orderCount > 0) {
-        logger.warn(`[Remove Product] Hard delete blocked: Product ${productId} has ${orderCount} order(s)`);
-        return next(new AppError(
-          'This product cannot be permanently deleted because it has order history. Only soft delete (archive) is allowed.',
-          400
-        ));
-      }
-      
-      // Hard delete allowed: product is archived AND has zero orders
-      logger.info(`[Remove Product] Performing hard delete on product ${productId} (archived, zero orders)`);
+      logger.info(`[Remove Product] Performing hard delete on product ${productId} (admin request, zero orders)`);
       
       try {
         await Product.findByIdAndDelete(productId);
         
-        // Log hard delete action
         logActivityAsync({
           userId: adminId,
           role: 'admin',
@@ -565,7 +604,6 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
             productName: product.name,
             sellerId: product.seller?._id || product.seller,
             reason: reason || 'Not provided',
-            hadOrders: false,
           },
           req,
         });
@@ -582,52 +620,34 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
         });
       } catch (error) {
         logger.error(`[Remove Product] Error during hard delete:`, error);
+        console.error('[Remove Product] Error during hard delete (archived):', error?.message || error, error);
         return next(new AppError('Failed to delete product', 500));
       }
-    } else {
-      // Already archived, no action needed
-      return res.status(200).json({
-        success: true,
-        message: 'Product is already archived',
-        data: {
-          productId: product._id,
-          action: 'already_archived',
-        },
-      });
     }
-  }
-  
-  // Check if product has orders (for soft delete safety check)
-  // CRITICAL: Add timeout to prevent hanging on large order collections
-  const orderCount = await OrderItem.countDocuments({ product: productId })
-    .maxTimeMS(10000); // 10 seconds max for order count
-  
-  if (orderCount > 0) {
-    logger.info(`[Remove Product] Product ${productId} has ${orderCount} order(s) - soft delete only`);
     
-    // If force delete was requested but product has orders, reject it
-    if (forceDelete === true) {
-      logger.warn(`[Remove Product] Hard delete blocked: Product ${productId} has ${orderCount} order(s)`);
-      return next(new AppError(
-        'This product cannot be permanently deleted because it has order history. Only soft delete (archive) is allowed.',
-        400
-      ));
-    }
+    return res.status(200).json({
+      success: true,
+      message: 'Product is already archived',
+      data: {
+        productId: product._id,
+        action: 'already_archived',
+      },
+    });
   }
   
-  // Perform soft delete (archive)
+  // Perform soft delete (archive) – do not let price/variant validation block delete
   product.status = 'archived';
   product.isDeleted = true;
   product.isDeletedByAdmin = true;
-  product.isDeletedBySeller = false; // Ensure seller flag is false
+  product.isDeletedBySeller = false;
   product.deletedAt = new Date();
   product.deletedBy = adminId;
   product.deletedByRole = 'admin';
   product.deletionReason = reason || null;
-  product.isVisible = false; // Ensure archived products are hidden
+  product.isVisible = false;
   
   try {
-    await product.save({ validateBeforeSave: true });
+    await product.save({ validateBeforeSave: false });
     
     logger.info(`[Remove Product] ✅ Product ${productId} archived successfully by admin ${adminId}`, {
       orderCount,
@@ -666,6 +686,7 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     logger.error(`[Remove Product] Error archiving product ${productId}:`, error);
+    console.error('[Remove Product] Error archiving product:', productId, error?.message || error, error);
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
@@ -674,9 +695,11 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
         message: err.message,
       }));
       logger.error(`[Remove Product] Validation errors:`, validationErrors);
+      console.error('[Remove Product] Validation errors:', validationErrors);
       return next(new AppError(`Validation error: ${validationErrors.map(e => e.message).join(', ')}`, 400));
     }
     
+    console.error('[Remove Product] Unexpected error:', error?.message || error);
     return next(new AppError(error.message || 'Failed to archive product', 500));
   }
 });

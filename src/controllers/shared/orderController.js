@@ -264,15 +264,15 @@ exports.validateCart = catchAsync(async (req, res, next) => {
 exports.getAllOrder = handleFactory.getAll(Order, [
   {
     path: 'orderItems',
-    select: 'quantity product',
+    select: 'quantity product price productName',
     populate: {
       path: 'product',
-      select: 'name price', // Add any other product fields you need
+      select: 'name price',
     },
   },
   {
     path: 'user',
-    select: 'name email',
+    select: 'name email phone',
   },
 ]);
 // creating orders
@@ -962,6 +962,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Save order
     await newOrder.save({ session });
 
+    // Link SellerOrders back to this Order (required for getSellerOrders and syncSellerOrderStatus)
+    await SellerOrder.updateMany(
+      { _id: { $in: sellerOrders } },
+      { $set: { order: newOrder._id } },
+      { session }
+    );
+
     /* ---------------------------------- */
     /* 7.1. PAYMENT HANDLING (LEGACY)      */
     /* ---------------------------------- */
@@ -1258,7 +1265,7 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
     })
     .populate({
       path: 'order',
-      select: 'orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType',
+      select: 'orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status',
       populate: [
         {
           path: 'user',
@@ -1272,6 +1279,17 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
       ],
     })
     .sort('-createdAt');
+
+  // Fallback: SellerOrders created before we set order may have order=null. Find parent Order by sellerOrder array.
+  for (const so of sellerOrders) {
+    if (!so.order) {
+      const parentOrder = await Order.findOne({ sellerOrder: so._id })
+        .select('orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status')
+        .populate([{ path: 'user', select: 'name email phone' }, { path: 'pickupCenterId', model: 'PickupCenter', select: 'pickupName address city area openingHours googleMapLink' }])
+        .lean();
+      if (parentOrder) so.order = parentOrder;
+    }
+  }
 
   const validSellerOrders = sellerOrders.filter((so) => so.order);
   
@@ -1299,6 +1317,9 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
     paymentStatus: so.order.paymentStatus,
     paidAt: so.order.paidAt,
     shippingAddress: so.order.shippingAddress,
+    // Parent order status (source of truth for "completed" / delivered)
+    currentStatus: so.order.currentStatus,
+    orderStatus: so.order.status,
 
     // Parent order ID
     parentOrderId: so.order._id || null,
@@ -1610,10 +1631,10 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
 exports.getOrder = handleFactory.getOne(Order, [
   {
     path: 'orderItems',
-    select: 'quantity product',
+    select: 'quantity product price productName productImage sku variantAttributes variantName',
     populate: {
       path: 'product',
-      select: 'name price', // Add any other product fields you need
+      select: 'name price imageCover description slug defaultSku',
     },
   },
   // Second population: User information
@@ -1621,12 +1642,13 @@ exports.getOrder = handleFactory.getOne(Order, [
     path: 'user',
     select: 'name email phone',
   },
-  // Third population: Seller orders with additional details
+  // Third population: Seller orders with seller details (for admin order detail "Sellers" section)
   {
     path: 'sellerOrder',
+    select: 'seller subtotal total shippingCost totalBasePrice status payoutStatus',
     populate: {
       path: 'seller',
-      select: 'name email businessName',
+      select: 'name email shopName',
     },
   },
 ]);

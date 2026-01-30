@@ -817,7 +817,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     logger.info('[getProductById] ✅ Admin access - granted');
   }
 
-  // Fetch product again as mongoose document for proper response (with all populated fields)
+  // Fetch product as plain object so populated seller is guaranteed in JSON response (buyer PDP seller card)
   const productResponse = await Product.findById(productId)
     .populate({
       path: 'parentCategory',
@@ -825,8 +825,9 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     })
     .populate({
       path: 'seller',
-      select: '_id',
-    });
+      select: '_id name shopName avatar role ratings shopLocation',
+    })
+    .lean();
 
   res.status(200).json({
     status: 'success',

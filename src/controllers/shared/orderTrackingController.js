@@ -116,6 +116,8 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     // Confirmed status means payment is complete - set status to confirmed
     order.status = 'confirmed';
     order.paymentStatus = 'completed';
+    order.orderStatus = 'confirmed';
+    order.FulfillmentStatus = 'confirmed';
   } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
     order.status = 'processing';
   }
@@ -588,8 +590,8 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid status', 400));
   }
 
-  // Check authorization: admin or seller
-  const isAdmin = user.role === 'admin';
+  // Check authorization: admin (admin, superadmin, moderator) or seller
+  const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
   const isSeller = user.role === 'seller';
 
   if (!isAdmin && !isSeller) {
@@ -630,12 +632,15 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     updatedByModel = 'Seller';
   }
 
+  // Ensure updatedBy is ObjectId (schema expects ObjectId; user may be Admin/Seller doc)
+  const updatedById = user._id || (mongoose.Types.ObjectId.isValid(user.id) ? new mongoose.Types.ObjectId(user.id) : user.id);
+
   // Add to tracking history
   const trackingEntry = {
     status,
     message: message.trim(),
     location: '',
-    updatedBy: user.id,
+    updatedBy: updatedById,
     updatedByModel,
     timestamp: new Date(),
   };
@@ -646,6 +651,9 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
 
   // Update order - currentStatus is the single source of truth
   order.currentStatus = status;
+  if (!Array.isArray(order.trackingHistory)) {
+    order.trackingHistory = [];
+  }
   order.trackingHistory.push(trackingEntry);
 
   // Sync legacy status fields for backward compatibility (but currentStatus is primary)
@@ -669,6 +677,8 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     // Confirmed status means payment is complete - set status to confirmed
     order.status = 'confirmed';
     order.paymentStatus = 'completed';
+    order.orderStatus = 'confirmed';
+    order.FulfillmentStatus = 'confirmed';
   } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
     order.status = 'processing';
   }
@@ -713,10 +723,9 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       logger.info('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
 
       // Refund buyer wallet if order was paid with wallet
-      if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
+      if (order.paymentMethod === 'credit_balance' && (order.paymentStatus === 'paid' || order.paymentStatus === 'completed')) {
         try {
           const walletService = require('../../services/walletService');
-const logger = require('../../utils/logger');
           const refundAmount = order.totalPrice || 0;
           const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
 

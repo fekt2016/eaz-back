@@ -6,6 +6,7 @@ const Product = require('../../models/product/productModel');
 const OrderItem = require('../../models/order/OrderItemModel');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const { logSellerRevenue } = require('../historyLogger');
 
 /**
@@ -86,10 +87,17 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       };
     }
 
+    // Load platform settings once (used in Transaction metadata and logSellerRevenue)
+    const PlatformSettings = require('../../models/platform/platformSettingsModel');
+    const settings = await PlatformSettings.getSettings();
+
     const balanceUpdates = [];
 
-    // Process each seller order
-    for (const sellerOrderId of order.sellerOrder) {
+    // Process each seller order (sellerOrder may be populated docs or IDs)
+    const sellerOrderRefs = Array.isArray(order.sellerOrder) ? order.sellerOrder : [];
+    for (const ref of sellerOrderRefs) {
+      const sellerOrderId = ref && (ref._id || ref);
+      if (!sellerOrderId) continue;
       const sellerOrder = await SellerOrder.findById(sellerOrderId)
         .populate('seller')
         .session(session);
@@ -688,6 +696,9 @@ exports.getSellerEarningsForOrder = async (orderId) => {
     throw new AppError('Order not found', 404);
   }
 
+  const PlatformSettings = require('../../models/platform/platformSettingsModel');
+  const settings = await PlatformSettings.getSettings();
+
   const earnings = [];
 
   for (const sellerOrderId of order.sellerOrder) {
@@ -698,7 +709,10 @@ exports.getSellerEarningsForOrder = async (orderId) => {
     const basePrice = sellerOrder.totalBasePrice || 0; // VAT-exclusive
     const shipping = sellerOrder.shippingCost || 0;
     const total = basePrice + shipping; // Seller revenue (VAT exclusive)
-    const platformFee = total * (sellerOrder.commissionRate || 0);
+    const commissionRate = sellerOrder.commissionRate !== undefined
+      ? sellerOrder.commissionRate
+      : (settings.platformCommissionRate || 0);
+    const platformFee = total * commissionRate;
 
     earnings.push({
       sellerId: sellerOrder.seller._id || sellerOrder.seller,
@@ -726,6 +740,53 @@ exports.getSellerEarningsForOrder = async (orderId) => {
 // Keep old function name for backward compatibility, but it now only credits on delivered
 exports.updateSellerBalancesOnOrderCompletion = exports.creditSellerForOrder;
 
+/**
+ * Backfill seller credits for orders that were marked delivered but never credited
+ * (e.g. due to the "logger is not defined" bug). Finds orders with currentStatus
+ * 'delivered' and sellerCredited !== true, then calls creditSellerForOrder for each.
+ * @param {String} adminId - Admin user ID performing the backfill
+ * @param {Object} options - { limit: number } max orders to process (default 100)
+ * @returns {Promise<Object>} - { processed, credited, skipped, errors }
+ */
+exports.backfillSellerCreditsForDeliveredOrders = async (adminId, options = {}) => {
+  const limit = Math.min(Math.max(Number(options.limit) || 100, 1), 500);
+  const query = {
+    currentStatus: 'delivered',
+    $or: [{ sellerCredited: { $ne: true } }, { sellerCredited: { $exists: false } }],
+  };
+  const orders = await Order.find(query).select('_id orderNumber').sort({ updatedAt: 1 }).limit(limit).lean();
+
+  const result = { processed: 0, credited: 0, skipped: 0, errors: [] };
+
+  for (const o of orders) {
+    result.processed += 1;
+    try {
+      const creditResult = await exports.creditSellerForOrder(o._id.toString(), adminId);
+      if (creditResult.success) {
+        result.credited += 1;
+        logger.info(`[OrderService] Backfill: credited sellers for order #${o.orderNumber || o._id}`);
+      } else {
+        result.skipped += 1;
+        result.errors.push({
+          orderId: o._id,
+          orderNumber: o.orderNumber,
+          message: creditResult.message || 'Unknown',
+        });
+      }
+    } catch (err) {
+      result.skipped += 1;
+      result.errors.push({
+        orderId: o._id,
+        orderNumber: o.orderNumber,
+        message: err.message || String(err),
+      });
+      logger.error(`[OrderService] Backfill: error crediting order ${o._id}:`, err);
+    }
+  }
+
+  return result;
+};
+
 module.exports = {
   creditSellerForOrder: exports.creditSellerForOrder,
   updateSellerBalancesOnOrderCompletion: exports.creditSellerForOrder, // Alias for backward compatibility
@@ -733,5 +794,6 @@ module.exports = {
   revertSellerBalancesForItems: exports.revertSellerBalancesForItems, // New: item-level refund reversal
   getSellerEarningsForOrder: exports.getSellerEarningsForOrder,
   calculateSellerEarnings,
+  backfillSellerCreditsForDeliveredOrders: exports.backfillSellerCreditsForDeliveredOrders,
 };
 
