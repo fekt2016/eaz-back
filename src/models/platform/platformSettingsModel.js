@@ -59,6 +59,15 @@ const platformSettingsSchema = new mongoose.Schema({
     max: 1,
     comment: 'Platform commission rate (0%)',
   },
+  /**
+   * Platform store (EazShop) product → supplier seller mapping.
+   * Tracks which products are supplied by which sellers so they get credited on delivery.
+   * Source of truth per product is Product.supplierSeller; this is a denormalized view for reporting/admin.
+   */
+  eazShopProductSuppliers: [{
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    seller: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller', required: true },
+  }],
 }, {
   timestamps: true,
 });

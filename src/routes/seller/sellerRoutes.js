@@ -81,6 +81,22 @@ router
     sellerControllor.updateSeller
   );
 
+// Admin: Reactivate seller (set active: true). Uses updateOne so inactive sellers can be found.
+router.patch(
+  '/:id/reactivate',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  sellerControllor.reactivateSeller
+);
+
+// Admin: Update seller business status (pending/active/deactive). Must be before protectSeller so admin JWT is used.
+router.patch(
+  '/:id/status',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  sellerControllor.sellerStatus
+);
+
 // Admin: Approve/Reject seller verification and update individual document status.
 // IMPORTANT: These MUST be defined BEFORE protectSeller so they work with admin_jwt/main_jwt.
 router.patch(
@@ -445,13 +461,6 @@ router.patch(
   resizeImage,
   sellerControllor.updateSellerImage,
 );
-router.patch(
-  '/:id/status',
-
-  authController.restrictTo('admin'),
-  sellerControllor.sellerStatus,
-);
-
 // Admin: Approve/Reject seller verification
 router.patch(
   '/:id/approve-verification',

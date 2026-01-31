@@ -105,12 +105,20 @@ exports.logoutOthers = catchAsync(async (req, res, next) => {
 exports.logoutAll = catchAsync(async (req, res, next) => {
   try {
     await logoutAllDevices(req);
-    
-    // Clear JWT cookie
+
+    // Clear JWT cookie - use path when available so admin/seller logout clear correct cookie
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieName = req.headers['x-platform'] === 'eazseller' ? 'seller_jwt' : 
-                      req.headers['x-platform'] === 'eazadmin' ? 'admin_jwt' : 'main_jwt';
-    
+    const path = req.path || '';
+    let cookieName = 'main_jwt';
+    if (path.includes('/admin/')) {
+      cookieName = 'admin_jwt';
+    } else if (path.includes('/seller/')) {
+      cookieName = 'seller_jwt';
+    } else {
+      cookieName = req.headers['x-platform'] === 'eazseller' ? 'seller_jwt' :
+                  req.headers['x-platform'] === 'eazadmin' ? 'admin_jwt' : 'main_jwt';
+    }
+
     res.cookie(cookieName, 'loggedout', {
       expires: new Date(Date.now() + 10 * 1000),
       httpOnly: true,

@@ -623,42 +623,44 @@ exports.getPublicSeller = catchAsync(async (req, res, next) => {
 exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
   // Get query parameters with defaults
   const limit = parseInt(req.query.limit) || 10;
-  const minRating = parseFloat(req.query.minRating) || 4.0;
+  const minRating = parseFloat(req.query.minRating);
+  const useMinRating = Number.isFinite(minRating) && minRating > 0;
   const productsPerSeller = parseInt(req.query.productsPerSeller) || 4; // Number of products to include per seller
 
-  // Fetch featured sellers from database with flexible filtering
-  const sellers = await Seller.aggregate([
-    {
-      $match: {
-        // Handle missing status field
-        $or: [
-          { status: 'active' },
-          { status: { $exists: false } }, // Include documents without status field
-        ],
-        // Convert string ratings to numbers for comparison
-        $expr: {
-          $gte: [
-            { $toDouble: '$ratings.average' }, // Convert string to number
-            minRating,
-          ],
-        },
-      },
+  // Aggregate does not run Mongoose pre('find'), so we must filter active explicitly
+  const matchStage = {
+    $match: {
+      active: { $ne: false },
+      $or: [
+        { status: 'active' },
+        { status: 'pending' },
+        { status: { $exists: false } },
+      ],
     },
+  };
+  if (useMinRating) {
+    matchStage.$match.$expr = {
+      $gte: [{ $ifNull: [{ $toDouble: '$ratings.average' }, 0] }, minRating],
+    };
+  }
+
+  // Fetch featured sellers: include active/pending sellers, sort by rating (best first)
+  const sellers = await Seller.aggregate([
+    matchStage,
     // Convert ratings to numbers for proper sorting
     {
       $addFields: {
-        'ratings.average': { $toDouble: '$ratings.average' },
+        'ratings.average': { $ifNull: [{ $toDouble: '$ratings.average' }, 0] },
         'ratings.count': {
           $cond: [
             { $ifNull: ['$ratings.count', false] },
             { $toInt: '$ratings.count' },
-            0, // Default to 0 if missing
+            0,
           ],
         },
       },
     },
-    // Sort by the converted numeric values
-    { $sort: { 'ratings.average': -1, 'ratings.count': -1 } },
+    { $sort: { 'ratings.average': -1, 'ratings.count': -1, createdAt: -1 } },
     { $limit: limit },
     // Lookup products for each seller
     {
@@ -726,7 +728,6 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
       category: product.parentCategory,
     })),
   }));
-  logger.info('transformedSellers', transformedSellers);
   res.status(200).json({
     status: 'success',
     results: transformedSellers.length,
@@ -1101,22 +1102,44 @@ exports.getSeller = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid ID format', 400));
   }
 
-  const seller = await Seller.findById(req.params.id)
+  const id = req.params.id;
+  let seller = await Seller.findById(id)
     .populate({
       path: 'verifiedBy',
       select: 'name email',
     })
-    .select('+verificationDocuments +paymentMethods'); // Include fields needed for isSetupComplete
+    .select('+verificationDocuments +paymentMethods +active'); // Include fields needed for isSetupComplete and admin reactivate UI
+
+  // If not found (seller may be deactivated: active=false), allow admin to fetch for order detail / reactivate
+  if (!seller && ['admin', 'superadmin', 'moderator'].includes(req.user?.role)) {
+    const docs = await Seller.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id) } },
+      { $project: { name: 1, email: 1, shopName: 1, active: 1, status: 1 } },
+    ]);
+    if (docs.length > 0) seller = docs[0];
+  }
 
   if (!seller) {
     return next(new AppError('Seller with this ID is not found', 404));
   }
 
-  // Convert to object and add computed field
-  const sellerData = seller.toObject ? seller.toObject() : seller;
-  
-  // ✅ BACKEND-DRIVEN: Add isSetupComplete from backend computation
-  sellerData.isSetupComplete = seller.computeIsSetupComplete();
+  const isAggregateResult = seller && !seller.toObject && !seller.computeIsSetupComplete;
+  const sellerData = isAggregateResult
+    ? {
+        _id: seller._id?.toString ? seller._id.toString() : seller._id,
+        name: seller.name,
+        email: seller.email,
+        shopName: seller.shopName,
+        active: seller.active,
+        status: seller.status,
+      }
+    : (seller.toObject ? seller.toObject() : seller);
+
+  if (!isAggregateResult) {
+    sellerData.isSetupComplete = seller.computeIsSetupComplete();
+  } else {
+    sellerData.isSetupComplete = false;
+  }
 
   // Log response for debugging (production)
   if (process.env.NODE_ENV === 'production') {
@@ -1127,14 +1150,39 @@ exports.getSeller = catchAsync(async (req, res, next) => {
     });
   }
 
-  res.status(200).json({ 
-    status: 'success', 
-    data: { 
+  res.status(200).json({
+    status: 'success',
+    data: {
       data: sellerData,
-      // Also include at top level for easier access
       isSetupComplete: sellerData.isSetupComplete,
-    } 
+    },
   });
 });
+
+/**
+ * Admin: Reactivate a seller (set active: true).
+ * Uses updateOne so the pre('find') hook does not filter out inactive sellers.
+ */
+exports.reactivateSeller = catchAsync(async (req, res, next) => {
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new AppError('Invalid seller ID', 400));
+  }
+  const result = await Seller.updateOne(
+    { _id: id },
+    { $set: { active: true } }
+  );
+  if (!result.matchedCount) {
+    return next(new AppError('Seller not found', 404));
+  }
+  const seller = await Seller.findById(id)
+    .select('+verificationDocuments +paymentMethods +active')
+    .populate({ path: 'verifiedBy', select: 'name email' });
+  res.status(200).json({
+    status: 'success',
+    data: { doc: seller },
+  });
+});
+
 exports.updateSeller = handleFactory.updateOne(Seller);
 exports.deleteSeller = handleFactory.deleteOne(Seller);

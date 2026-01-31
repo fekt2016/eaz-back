@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+const orderService = require('../../services/order/orderService');
+const logger = require('../../utils/logger');
 // Shared helpers for standardized auth
 const { normalizeEmail, handleSuccessfulLogin, clearAuthCookie } = require('../../utils/helpers/authHelpers');
 
@@ -185,6 +187,18 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
     // In production, you might want to require additional verification
     logger.warn(`[Admin Login] CRITICAL RISK detected for admin ${admin.email}. Login allowed but logged.`);
   }
+
+  // Run seller credits backfill in background (don't block login response)
+  const adminId = admin._id.toString();
+  logger.info('[Admin Login] Triggering seller credits backfill in background (adminId: %s)', adminId);
+  orderService.backfillSellerCreditsForDeliveredOrders(adminId, { limit: 100 })
+    .then((result) => {
+      logger.info('[Admin Login] Seller credits backfill complete: processed=%d, credited=%d, skipped=%d',
+        result.processed, result.credited, result.skipped);
+    })
+    .catch((err) => {
+      logger.error('[Admin Login] Seller credits backfill on login failed:', err);
+    });
 
   // Use standardized login helper
   try {

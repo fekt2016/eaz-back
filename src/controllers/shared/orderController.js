@@ -310,8 +310,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* ---------------------------------- */
     const productIds = [...new Set(orderItems.map(i => i.product))];
 
+    // Do NOT populate seller: we need the raw ObjectId from the product document so the order
+    // always gets the actual seller ID (not null when seller is inactive, and not wrongly EazShop).
     const products = await Product.find({ _id: { $in: productIds } })
-      .populate('seller', '_id role')
       .session(session);
 
     const productMap = new Map();
@@ -324,7 +325,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // 1. Approved by admin (moderationStatus === 'approved')
     // 2. From sellers that exist in the system (but we no longer block on seller verification status)
     const Seller = require('../../models/user/sellerModel');
-    
+
     for (const product of products) {
       // Check product approval status
       if (product.moderationStatus !== 'approved') {
@@ -335,12 +336,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         ));
       }
 
-      // Check seller exists; allow orders even if seller is not verified.
-      // This prevents hard blocking the checkout flow while still giving us
-      // observability via logs when something looks off.
-      const sellerId = product.seller?._id || product.seller;
-      if (sellerId) {
-        const seller = await Seller.findById(sellerId)
+      // seller is the raw ObjectId ref from the product document (we did not populate)
+      const sellerRef = product.seller;
+      if (sellerRef) {
+        const seller = await Seller.findById(sellerRef)
           .select('verificationStatus')
           .session(session);
 
@@ -442,31 +441,22 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Reuse products array that was already fetched
     logger.info('Found products:', products.length);
 
-    // EazShop Seller ID constant
+    // EazShop Seller ID constant – only use when product actually belongs to EazShop
     const EAZSHOP_SELLER_ID = '000000000000000000000001';
 
-    // Create product-seller map
+    // Create product-seller map using the product's raw seller ref (we did not populate seller).
+    // This ensures the order always gets the actual seller ID from the product document,
+    // and we never wrongly assign EazShop ID to a third-party seller's product.
     const productSellerMap = new Map();
     products.forEach((product) => {
-      let sellerId;
+      const rawSellerId = product.seller ? product.seller.toString() : null;
 
-      // Priority 1: If product is marked as EazShop product, use EazShop seller ID
-      if (product.isEazShopProduct) {
-        sellerId = EAZSHOP_SELLER_ID;
-      }
-      // Priority 2: Use the product's seller field
-      else if (product.seller?._id) {
-        sellerId = product.seller._id.toString();
-      }
-      // Priority 3: Check if seller field is EazShop seller ID (for backward compatibility)
-      else if (product.seller?.toString() === EAZSHOP_SELLER_ID) {
-        sellerId = EAZSHOP_SELLER_ID;
-      }
+      // Only use EazShop ID when the product is explicitly EazShop or its seller ref is EazShop
+      const sellerId = product.isEazShopProduct || rawSellerId === EAZSHOP_SELLER_ID
+        ? EAZSHOP_SELLER_ID
+        : rawSellerId || undefined;
 
-      productSellerMap.set(
-        product._id.toString(),
-        sellerId,
-      );
+      productSellerMap.set(product._id.toString(), sellerId);
     });
 
     // Group items by seller and calculate subtotal
@@ -631,15 +621,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       const total = sellerSubtotal + shipping;
       orderTotal += total;
 
-      // Determine if this is an EazShop order
+      // Determine if this is an EazShop order (seller is raw ObjectId ref, not populated)
       const isEazShopStore = sellerId === EAZSHOP_SELLER_ID;
-      const sellerProduct = products.find(p =>
-        p.seller?._id?.toString() === sellerId ||
-        p.seller?.toString() === sellerId
-      );
-      const isEazShopProduct = sellerProduct?.isEazShopProduct ||
-        sellerProduct?.seller?.role === 'eazshop_store' ||
-        isEazShopStore;
+      const sellerProduct = products.find(p => p.seller?.toString() === sellerId);
+      const isEazShopProduct = sellerProduct?.isEazShopProduct || isEazShopStore;
 
       // Determine delivery method for this seller
       // Map 'dispatch' to 'eazshop_dispatch' for SellerOrder model
@@ -1628,7 +1613,7 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
     }
   });
 });
-exports.getOrder = handleFactory.getOne(Order, [
+const getOrderPopulates = [
   {
     path: 'orderItems',
     select: 'quantity product price productName productImage sku variantAttributes variantName',
@@ -1637,21 +1622,46 @@ exports.getOrder = handleFactory.getOne(Order, [
       select: 'name price imageCover description slug defaultSku',
     },
   },
-  // Second population: User information
-  {
-    path: 'user',
-    select: 'name email phone',
-  },
-  // Third population: Seller orders with seller details (for admin order detail "Sellers" section)
+  { path: 'user', select: 'name email phone' },
   {
     path: 'sellerOrder',
-    select: 'seller subtotal total shippingCost totalBasePrice status payoutStatus',
-    populate: {
-      path: 'seller',
-      select: 'name email shopName',
-    },
+    select: 'seller subtotal total shippingCost totalBasePrice status payoutStatus sellerPaymentStatus',
+    // Do NOT populate 'seller' here: Seller pre('find') filters active:false, so inactive sellers
+    // would become null and the frontend would wrongly use sellerOrder._id as sellerId. Frontend
+    // fetches seller by ID (GET /seller/:id) so seller stays as ObjectId ref.
   },
-]);
+];
+
+exports.getOrder = catchAsync(async (req, res, next) => {
+  const orderId = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    return next(new AppError('Invalid ID format', 400));
+  }
+  let query = Order.findById(orderId);
+  getOrderPopulates.forEach((pop) => query = query.populate(pop));
+  const doc = await query.lean();
+  if (!doc) {
+    return next(new AppError('Order not found', 404));
+  }
+  // Resolve shippingAddress when stored as Address ref (ObjectId)
+  if (doc.shippingAddress && (typeof doc.shippingAddress === 'string' || mongoose.Types.ObjectId.isValid(doc.shippingAddress))) {
+    const addressId = typeof doc.shippingAddress === 'string' ? doc.shippingAddress : doc.shippingAddress.toString();
+    const address = await Address.findById(addressId).lean();
+    if (address) {
+      doc.shippingAddress = address;
+    } else {
+      doc.shippingAddress = null;
+    }
+  }
+  // Ensure each sellerOrder has an explicit sellerId (string) so admin can fetch seller details
+  if (Array.isArray(doc.sellerOrder)) {
+    doc.sellerOrder = doc.sellerOrder.map((so) => {
+      const sellerIdStr = so.seller && (typeof so.seller === 'object' && so.seller.toString ? so.seller.toString() : String(so.seller));
+      return { ...so, sellerId: sellerIdStr || so.sellerId || null };
+    });
+  }
+  res.status(200).json({ status: 'success', data: { data: doc } });
+});
 // Override updateOrder to handle status sync and seller balance updates
 exports.updateOrder = catchAsync(async (req, res, next) => {
   const orderId = req.params.id;
@@ -1663,9 +1673,12 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
     return next(new AppError('Order not found', 404));
   }
 
-  // Store previous status
+  // Store previous status (treat legacy typo 'delievered' as completed)
   const previousStatus = order.currentStatus;
-  const wasCompleted = order.currentStatus === 'delivered' || order.status === 'completed';
+  const wasCompleted =
+    order.currentStatus === 'delivered' ||
+    order.currentStatus === 'delievered' ||
+    order.status === 'completed';
 
   // If status is being updated, sync all status fields
   if (updateData.currentStatus) {
@@ -1715,13 +1728,38 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
     }
   });
 
+  // If client sent only legacy "delivered" fields (orderStatus/FulfillmentStatus 'delievered' or status 'completed')
+  // without currentStatus, treat as delivered so seller crediting runs.
+  let effectiveStatusBecameDelivered = false;
+  const isDeliveredViaLegacy =
+    (order.orderStatus === 'delievered' || order.FulfillmentStatus === 'delievered' || order.status === 'completed') &&
+    order.currentStatus !== 'delivered' &&
+    order.currentStatus !== 'delievered';
+  if (isDeliveredViaLegacy) {
+    order.currentStatus = 'delivered';
+    order.orderStatus = 'delievered';
+    order.FulfillmentStatus = 'delievered';
+    order.status = 'completed';
+    order.trackingHistory.push({
+      status: 'delivered',
+      message: updateData.message || 'Order marked delivered (legacy status sync)',
+      location: updateData.location || '',
+      updatedBy: req.user.id,
+      updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
+      timestamp: new Date(),
+    });
+    effectiveStatusBecameDelivered = true;
+    logger.info(`[updateOrder] Order ${orderId} had legacy delivered status; set currentStatus to 'delivered' for crediting`);
+  }
+
   await order.save();
 
   // Sync SellerOrder status with Order status if currentStatus was updated
-  if (updateData.currentStatus) {
+  if (updateData.currentStatus || effectiveStatusBecameDelivered) {
     try {
       const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
-      const syncResult = await syncSellerOrderStatus(orderId, updateData.currentStatus);
+      const statusToSync = effectiveStatusBecameDelivered ? 'delivered' : updateData.currentStatus;
+      const syncResult = await syncSellerOrderStatus(orderId, statusToSync);
       logger.info('[updateOrder] SellerOrder sync result:', syncResult);
     } catch (error) {
       logger.error('[updateOrder] Error syncing SellerOrder status:', error);
@@ -1730,8 +1768,8 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
   }
 
   // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-  // This is the ONLY place where sellers should be credited
-  if (updateData.currentStatus === 'delivered' && !wasCompleted) {
+  // This is the ONLY place where sellers should be credited (including when legacy delivered status was synced)
+  if ((updateData.currentStatus === 'delivered' || effectiveStatusBecameDelivered) && !wasCompleted) {
     try {
       const orderService = require('../../services/order/orderService');
       const balanceUpdateResult = await orderService.creditSellerForOrder(

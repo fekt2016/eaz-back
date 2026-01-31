@@ -9,6 +9,23 @@ const AppError = require('../../utils/errors/appError');
 const logger = require('../../utils/logger');
 const { logSellerRevenue } = require('../historyLogger');
 
+/** Platform store (EazShop) seller ID – orders with this seller credit actual suppliers via Product.supplierSeller */
+const EAZSHOP_SELLER_ID = '000000000000000000000001';
+
+/**
+ * Load seller by ID including inactive (aggregate bypasses pre('find') so we can credit deactivated sellers).
+ * @param {ObjectId|string} sellerId
+ * @param {ClientSession} session
+ * @returns {Promise<Object|null>} Plain seller object or null
+ */
+const getSellerByIdIncludingInactive = async (sellerId, session) => {
+  if (!sellerId) return null;
+  const id = mongoose.Types.ObjectId.isValid(sellerId) ? (typeof sellerId === 'string' ? sellerId : sellerId.toString()) : null;
+  if (!id) return null;
+  const docs = await Seller.aggregate([{ $match: { _id: new mongoose.Types.ObjectId(id) } }]).session(session).exec();
+  return docs.length ? docs[0] : null;
+};
+
 /**
  * Calculate seller earnings for a seller order
  * @param {Object} sellerOrder - SellerOrder document
@@ -67,8 +84,13 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       throw new AppError('Order not found', 404);
     }
 
-    // CRITICAL: Only credit when order is DELIVERED
-    if (order.currentStatus !== 'delivered') {
+    // CRITICAL: Only credit when order is DELIVERED (currentStatus, or legacy orderStatus/status)
+    const isDelivered =
+      order.currentStatus === 'delivered' ||
+      order.currentStatus === 'delievered' ||
+      order.orderStatus === 'delievered' ||
+      order.status === 'completed';
+    if (!isDelivered) {
       await session.abortTransaction();
       return {
         success: false,
@@ -76,13 +98,62 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         updates: [],
       };
     }
+    // Normalize: if delivered only via legacy fields, set currentStatus so document is consistent
+    if (order.currentStatus !== 'delivered' && order.currentStatus !== 'delievered') {
+      order.currentStatus = 'delivered';
+      order.orderStatus = 'delievered';
+      order.FulfillmentStatus = 'delievered';
+      order.status = 'completed';
+    }
 
-    // Prevent double-crediting using sellerCredited flag
-    if (order.sellerCredited) {
+    // Process each seller order (sellerOrder may be populated docs or IDs)
+    const sellerOrderRefs = Array.isArray(order.sellerOrder) ? order.sellerOrder : [];
+    const sellerOrderIds = sellerOrderRefs.map((ref) => ref && (ref._id || ref)).filter(Boolean);
+
+    // Prevent double-crediting: if sellerCredited is true, only skip when we have proof (a completed credit transaction)
+    if (order.sellerCredited && sellerOrderIds.length > 0) {
+      const existingCreditCount = await Transaction.countDocuments({
+        sellerOrder: { $in: sellerOrderIds },
+        type: 'credit',
+        status: 'completed',
+      }).session(session);
+      if (existingCreditCount > 0) {
+        // Sync payout status to 'paid' for SellerOrders that were credited but still show pending
+        for (const soId of sellerOrderIds) {
+          const hasTransaction = await Transaction.exists({
+            sellerOrder: soId,
+            type: 'credit',
+            status: 'completed',
+          }).session(session);
+          if (hasTransaction) {
+            const so = await SellerOrder.findById(soId).session(session);
+            if (so && (so.payoutStatus !== 'paid' || so.sellerPaymentStatus !== 'paid')) {
+              so.payoutStatus = 'paid';
+              so.sellerPaymentStatus = 'paid';
+              await so.save({ session });
+              logger.info(`[OrderService] Synced SellerOrder ${soId} payout status to paid (order ${orderId})`);
+            }
+          }
+        }
+        if (order.sellerPayoutStatus !== 'paid') {
+          order.sellerPayoutStatus = 'paid';
+          await order.save({ session });
+        }
+        await session.commitTransaction();
+        return {
+          success: false,
+          message: 'Sellers have already been credited for this order; payout status synced to paid',
+          updates: [],
+        };
+      }
+      logger.info(`[OrderService] Order ${orderId} had sellerCredited=true but no credit transactions; crediting (fixing inconsistent state)`);
+    }
+
+    if (sellerOrderRefs.length === 0) {
       await session.abortTransaction();
       return {
         success: false,
-        message: 'Sellers have already been credited for this order',
+        message: 'Order has no seller orders to credit',
         updates: [],
       };
     }
@@ -92,19 +163,23 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
     const settings = await PlatformSettings.getSettings();
 
     const balanceUpdates = [];
-
-    // Process each seller order (sellerOrder may be populated docs or IDs)
-    const sellerOrderRefs = Array.isArray(order.sellerOrder) ? order.sellerOrder : [];
     for (const ref of sellerOrderRefs) {
       const sellerOrderId = ref && (ref._id || ref);
       if (!sellerOrderId) continue;
-      const sellerOrder = await SellerOrder.findById(sellerOrderId)
-        .populate('seller')
-        .session(session);
+      // Do NOT populate seller: we need the raw ObjectId so inactive sellers are still credited
+      const sellerOrder = await SellerOrder.findById(sellerOrderId).session(session);
 
-      if (!sellerOrder) continue;
-
-      const sellerId = sellerOrder.seller._id || sellerOrder.seller;
+      if (!sellerOrder) {
+        logger.warn(`[OrderService] Skipping credit for order ${orderId}: SellerOrder ${sellerOrderId} not found`);
+        continue;
+      }
+      const rawSellerRef = sellerOrder.seller;
+      if (!rawSellerRef) {
+        logger.warn(`[OrderService] Skipping credit for order ${orderId}: SellerOrder ${sellerOrderId} has no seller reference`);
+        continue;
+      }
+      const sellerId = rawSellerRef._id || rawSellerRef;
+      const sellerIdStr = sellerId.toString();
 
       // Additional check: Verify transaction doesn't already exist (extra safety)
       const existingTransaction = await Transaction.findOne({
@@ -114,60 +189,128 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       }).session(session);
 
       if (existingTransaction) {
-        logger.info(`[OrderService] Transaction already exists for seller ${sellerId} and order ${orderId}`);
+        logger.warn(`[OrderService] Skipping credit for seller ${sellerId} (order ${orderId}): transaction already exists - seller may have been credited earlier`);
         continue;
       }
 
-      // Calculate seller earnings
+      // --- Platform store (EazShop): credit actual suppliers (Product.supplierSeller), not the platform ---
+      if (sellerIdStr === EAZSHOP_SELLER_ID) {
+        const totalEarnings = await calculateSellerEarnings(sellerOrder);
+        if (totalEarnings <= 0) {
+          logger.warn(`[OrderService] EazShop SellerOrder ${sellerOrderId} has zero/negative earnings, skipping`);
+          continue;
+        }
+        const itemIds = Array.isArray(sellerOrder.items) ? sellerOrder.items : [];
+        if (itemIds.length === 0) {
+          logger.warn(`[OrderService] EazShop SellerOrder ${sellerOrderId} has no items, skipping`);
+          continue;
+        }
+        const orderItems = await OrderItem.find({ _id: { $in: itemIds } }).session(session).lean();
+        const totalBasePrice = (sellerOrder.totalBasePrice || 0) || 1;
+        const supplierToAmount = new Map(); // supplierId (string) -> raw amount to credit (sum of shares)
+        for (const item of orderItems) {
+          const itemBase = (item.basePrice || 0) * (item.quantity || 1);
+          const share = totalBasePrice > 0 ? (itemBase / totalBasePrice) * totalEarnings : totalEarnings / orderItems.length;
+          const product = await Product.findById(item.product).select('supplierSeller').session(session).lean();
+          const supplierId = product?.supplierSeller ? (product.supplierSeller._id || product.supplierSeller).toString() : null;
+          if (supplierId) {
+            supplierToAmount.set(supplierId, (supplierToAmount.get(supplierId) || 0) + share);
+          }
+        }
+        // Credit each supplier (round amount per supplier to avoid cumulative rounding errors)
+        let creditedAny = false;
+        for (const [supId, rawAmount] of supplierToAmount) {
+          const amount = Math.round(rawAmount * 100) / 100;
+          if (amount <= 0) continue;
+          const existingSupTx = await Transaction.findOne({
+            sellerOrder: sellerOrder._id,
+            seller: supId,
+            type: 'credit',
+            status: 'completed',
+          }).session(session);
+          if (existingSupTx) {
+            logger.warn(`[OrderService] Supplier ${supId} already credited for EazShop SellerOrder ${sellerOrderId}`);
+            creditedAny = true;
+            continue;
+          }
+          const supplier = await getSellerByIdIncludingInactive(supId, session);
+          if (!supplier) {
+            logger.warn(`[OrderService] Supplier ${supId} not found, skipping credit for EazShop order`);
+            continue;
+          }
+          const oldBal = supplier.balance || 0;
+          const newBal = Math.round((oldBal + amount) * 100) / 100;
+          const newWithdrawable = Math.max(0, newBal - (supplier.lockedBalance || 0));
+          await Seller.updateOne(
+            { _id: supId },
+            { $set: { balance: newBal, withdrawableBalance: newWithdrawable } },
+            { session }
+          );
+          const [tx] = await Transaction.create([{
+            seller: supId,
+            sellerOrder: sellerOrder._id,
+            type: 'credit',
+            amount,
+            description: `Order Delivered (EazShop) — Supplier credited - Order #${order.orderNumber}`,
+            status: 'completed',
+            metadata: { orderId, orderNumber: order.orderNumber, platformStore: true, updatedBy },
+          }], { session });
+          try {
+            await logSellerRevenue({
+              sellerId: supId,
+              amount,
+              type: 'ORDER_EARNING',
+              description: `Earnings from EazShop order #${order.orderNumber}`,
+              reference: `ORDER-${order.orderNumber}-${supId}`,
+              orderId: mongoose.Types.ObjectId(orderId),
+              balanceBefore: oldBal,
+              balanceAfter: newBal,
+              metadata: { orderNumber: order.orderNumber, platformStore: true },
+            });
+          } catch (e) {
+            logger.error(`[OrderService] logSellerRevenue failed for supplier ${supId}:`, e.message);
+          }
+          balanceUpdates.push({ sellerId: supId, sellerName: supplier.name || supplier.shopName || 'Supplier', amount, transactionId: tx?._id });
+          creditedAny = true;
+          logger.info(`[OrderService] Credited supplier ${supId} amount ${amount} for EazShop order ${orderId}`);
+        }
+        if (creditedAny) {
+          sellerOrder.payoutStatus = 'paid';
+          sellerOrder.sellerPaymentStatus = 'paid';
+          await sellerOrder.save({ session });
+        }
+        continue;
+      }
+
+      // Calculate seller earnings (regular seller, not platform store)
       const sellerEarnings = await calculateSellerEarnings(sellerOrder);
 
       if (sellerEarnings <= 0) {
-        logger.info(`[OrderService] No earnings for seller ${sellerId} (amount: ${sellerEarnings});`);
+        logger.warn(`[OrderService] Skipping credit for seller ${sellerId} (order ${orderId}): zero or negative earnings (${sellerEarnings}) - check sellerOrder totalBasePrice/shippingCost/commission`);
         continue;
       }
 
-      // Update seller balance
-      const seller = await Seller.findById(sellerId).session(session);
+      // Load seller including inactive (aggregate bypasses pre('find') so deactivated sellers still get credited)
+      const seller = await getSellerByIdIncludingInactive(sellerId, session);
       if (!seller) {
-        logger.info(`[OrderService] Seller ${sellerId} not found`);
+        logger.warn(`[OrderService] Skipping credit for seller ${sellerId} (order ${orderId}): seller document not found`);
         continue;
       }
 
-      // Credit seller balance - Add seller earnings to seller.balance in seller model
       const oldBalance = seller.balance || 0;
       const oldWithdrawableBalance = seller.withdrawableBalance || 0;
-      
-      // Update seller balance: Add the seller earnings amount to the balance
-      seller.balance = oldBalance + sellerEarnings;
-      
-      // Ensure withdrawableBalance is calculated correctly
-      // The pre-save hook will also update it, but we calculate it explicitly here
-      seller.calculateWithdrawableBalance();
-      
-      // Explicitly ensure withdrawableBalance is updated (balance - lockedBalance)
-      const expectedWithdrawableBalance = Math.max(0, seller.balance - (seller.lockedBalance || 0));
-      seller.withdrawableBalance = expectedWithdrawableBalance;
-      
-      logger.info(`[OrderService] Seller ${sellerId} balance update in seller model:`);
-      logger.info(`  Old Balance: ${oldBalance}`);
-      logger.info(`  Seller Earnings: ${sellerEarnings}`);
-      logger.info(`  New Balance: ${seller.balance}`);
-      logger.info(`  WithdrawableBalance: ${oldWithdrawableBalance} → ${seller.withdrawableBalance}`);
-      logger.info(`  LockedBalance: ${seller.lockedBalance || 0}`);
-      
-      // Save the updated balance to the seller model
-      await seller.save({ session });
-      
-      // Verify the save worked by re-fetching the seller
-      const savedSeller = await Seller.findById(sellerId).session(session);
-      if (savedSeller) {
-        logger.info(`[OrderService] ✅ Verified save - Seller balance in model: ${savedSeller.balance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
-        if (savedSeller.balance !== seller.balance) {
-          logger.error(`[OrderService] ❌ ERROR: Balance mismatch! Expected: ${seller.balance}, Saved: ${savedSeller.balance}`);
-        }
-      } else {
-        logger.error(`[OrderService] ❌ ERROR: Could not verify save - Seller ${sellerId} not found after save`);
-      }
+      const sellerName = seller.name || seller.shopName || sellerId;
+      const newBalance = Math.round((oldBalance + sellerEarnings) * 100) / 100;
+      const newWithdrawableBalance = Math.max(0, newBalance - (seller.lockedBalance || 0));
+
+      logger.info(`[OrderService] Seller ${sellerId} (${sellerName}) balance update: ${oldBalance} + ${sellerEarnings} → ${newBalance}`);
+      console.log(`[OrderService] SELLER BALANCE (order ${order.orderNumber}): sellerId=${sellerId} (${sellerName}) | oldBalance=${oldBalance} | earnings=${sellerEarnings} | newBalance=${newBalance}`);
+
+      await Seller.updateOne(
+        { _id: sellerId },
+        { $set: { balance: newBalance, withdrawableBalance: newWithdrawableBalance } },
+        { session }
+      );
 
       // Create transaction record
       const transaction = await Transaction.create(
@@ -221,10 +364,8 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       });
 
       // Log seller revenue history with correct balance values
-      // Pass balanceBefore and balanceAfter to ensure accurate tracking
-      // This is called within the transaction, so we use the calculated values
       const balanceBeforeValue = oldBalance;
-      const balanceAfterValue = seller.balance;
+      const balanceAfterValue = newBalance;
       
       try {
         await logSellerRevenue({
@@ -256,6 +397,18 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       }
 
       logger.info(`[OrderService] Credited ${sellerEarnings} to seller ${sellerId} for order ${orderId}`);
+    }
+
+    // Only mark order as seller credited if we actually credited at least one seller
+    // Otherwise backfill (or retry) can credit later; do not set sellerCredited so it stays eligible
+    if (balanceUpdates.length === 0) {
+      await session.abortTransaction();
+      logger.warn(`[OrderService] No sellers were credited for order ${orderId} (all skipped: already credited, zero earnings, or seller not found). Order left unmarked so backfill can retry.`);
+      return {
+        success: false,
+        message: 'No sellers were credited (already credited, zero earnings, or seller not found). Order not marked as sellerCredited so backfill can retry.',
+        updates: [],
+      };
     }
 
     // Mark order as seller credited to prevent double-crediting
@@ -367,6 +520,16 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
     }
 
     await session.commitTransaction();
+
+    // After commit: re-fetch sellers and log balance so we verify persistence (no session)
+    for (const u of balanceUpdates) {
+      const sellerAfter = await Seller.findById(u.sellerId).select('balance withdrawableBalance name shopName').lean();
+      if (sellerAfter) {
+        console.log(`[OrderService] AFTER COMMIT - Seller ${u.sellerId} (${sellerAfter.name || sellerAfter.shopName}): balance=${sellerAfter.balance}, withdrawableBalance=${sellerAfter.withdrawableBalance}`);
+      } else {
+        console.warn(`[OrderService] AFTER COMMIT - Seller ${u.sellerId} not found`);
+      }
+    }
 
     return {
       success: true,
@@ -750,37 +913,47 @@ exports.updateSellerBalancesOnOrderCompletion = exports.creditSellerForOrder;
  */
 exports.backfillSellerCreditsForDeliveredOrders = async (adminId, options = {}) => {
   const limit = Math.min(Math.max(Number(options.limit) || 100, 1), 500);
+  // Include all delivered orders (including sellerCredited: true so we fix inconsistent state when no transaction exists)
   const query = {
-    currentStatus: 'delivered',
-    $or: [{ sellerCredited: { $ne: true } }, { sellerCredited: { $exists: false } }],
+    $or: [
+      { currentStatus: { $in: ['delivered', 'delievered'] } },
+      { orderStatus: 'delievered' },
+      { status: 'completed' },
+    ],
   };
-  const orders = await Order.find(query).select('_id orderNumber').sort({ updatedAt: 1 }).limit(limit).lean();
+  const orders = await Order.find(query).select('_id orderNumber sellerCredited').sort({ updatedAt: 1 }).limit(limit).lean();
+
+  logger.info('[OrderService] Backfill: found %d delivered order(s) to process (limit=%d)', orders.length, limit);
 
   const result = { processed: 0, credited: 0, skipped: 0, errors: [] };
 
   for (const o of orders) {
     result.processed += 1;
+    const orderLabel = o.orderNumber || o._id.toString();
     try {
       const creditResult = await exports.creditSellerForOrder(o._id.toString(), adminId);
       if (creditResult.success) {
         result.credited += 1;
-        logger.info(`[OrderService] Backfill: credited sellers for order #${o.orderNumber || o._id}`);
+        logger.info(`[OrderService] Backfill: credited sellers for order #${orderLabel}`);
       } else {
         result.skipped += 1;
+        const msg = creditResult.message || 'Unknown';
         result.errors.push({
           orderId: o._id,
           orderNumber: o.orderNumber,
-          message: creditResult.message || 'Unknown',
+          message: msg,
         });
+        logger.warn(`[OrderService] Backfill: order #${orderLabel} skipped - ${msg}`);
       }
     } catch (err) {
       result.skipped += 1;
+      const errMsg = err.message || String(err);
       result.errors.push({
         orderId: o._id,
         orderNumber: o.orderNumber,
-        message: err.message || String(err),
+        message: errMsg,
       });
-      logger.error(`[OrderService] Backfill: error crediting order ${o._id}:`, err);
+      logger.error(`[OrderService] Backfill: error crediting order #${orderLabel}:`, err);
     }
   }
 

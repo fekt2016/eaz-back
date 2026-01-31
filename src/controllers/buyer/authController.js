@@ -1267,11 +1267,12 @@ exports.logout = catchAsync(async (req, res, next) => {
 //protect auth
 exports.protect = catchAsync(async (req, res, next) => {
   const fullPath = req.originalUrl.split('?')[0];
+  const fullPathNorm = fullPath.replace(/\/+$/, '') || '/'; // normalize trailing slashes for comparison
   const method = req.method.toUpperCase();
 
   // Admin-only seller routes (GET /api/v1/seller, GET/PATCH /api/v1/seller/:id, etc.) correctly use protect + restrictTo('admin')
   const isAdminOnlySellerRoute =
-    (fullPath === '/api/v1/seller' && method === 'GET') ||
+    (fullPathNorm === '/api/v1/seller' && method === 'GET') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') ||

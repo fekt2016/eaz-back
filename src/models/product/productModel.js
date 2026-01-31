@@ -14,6 +14,16 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /**
+     * For EazShop (platform store) products: the actual seller/supplier the platform deals with.
+     * When an order containing this product is delivered, this supplier is credited (not the platform).
+     * Required for platform-store products that are supplied by third-party sellers.
+     */
+    supplierSeller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Seller',
+      default: null,
+    },
     name: {
       type: String,
       required: [true, 'Product name is required'],

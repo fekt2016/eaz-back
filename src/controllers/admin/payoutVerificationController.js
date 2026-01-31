@@ -8,7 +8,6 @@ const {
   updatePaymentMethodVerification,
   getAccountIdentifier,
   checkAccountReuse,
-  validateNameMatch,
   getPaymentMethodType,
 } = require('../../utils/helpers/paymentMethodHelpers');
 
@@ -207,49 +206,14 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
     return next(new AppError(`Payment details for ${paymentMethod} not found. Seller must add payment details first.`, 400));
   }
 
-  // SECURITY: Name matching validation
-  // Check if seller has a name first
-  const sellerName = seller.name || seller.shopName;
-  if (!sellerName || sellerName.trim() === '') {
-    return next(new AppError(
-      'Seller name is required for payout verification. Please ensure the seller has a name or shop name set in their profile.',
-      400
-    ));
-  }
-
-  // Check if payment details have account name
-  const accountName = paymentDetails.accountName;
-  console.log('[Approve Payout Verification] Checking account name:', {
-    accountName,
-    paymentDetails,
+  // Account name on payment details is optional for verification (verify with any name).
+  // Log for audit; no requirement that account name matches seller name.
+  const accountName = paymentDetails.accountName?.trim() || '';
+  console.log('[Approve Payout Verification] Payment details:', {
+    accountName: accountName || '(none)',
     paymentMethod,
     hasAccountName: !!accountName,
-    accountNameTrimmed: accountName?.trim(),
   });
-  
-  if (!accountName || accountName.trim() === '') {
-    const paymentMethodType = paymentMethod === 'bank' ? 'bank account' : 'mobile money';
-    console.error('[Approve Payout Verification] Account name missing:', {
-      paymentMethod,
-      paymentDetails,
-      paymentMethodRecord: paymentMethodRecord ? {
-        _id: paymentMethodRecord._id,
-        name: paymentMethodRecord.name,
-        accountName: paymentMethodRecord.accountName,
-      } : null,
-    });
-    return next(new AppError(
-      `Account name is required for ${paymentMethodType} verification. Please ensure the seller has provided an account name in their payment details.`,
-      400
-    ));
-  }
-
-  // Validate name match
-  const nameValidation = validateNameMatch(sellerName, accountName);
-  
-  if (!nameValidation.isValid) {
-    return next(new AppError(nameValidation.message, 400));
-  }
 
   // SECURITY: Account reuse prevention
   const accountIdentifier = getAccountIdentifier(seller, paymentMethod);
