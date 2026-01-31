@@ -966,22 +966,27 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(seller._id, seller.email, 'resend');
   secureLog.debug('Resend OTP generated', {
-    userId: seller._id,
+    userId: seller._id?.toString?.() ?? String(seller._id),
     email: seller.email,
     // OTP value is NEVER logged, even in development
   });
 
   // Send OTP via email
+  const sellerIdStr = seller._id?.toString?.() ?? String(seller._id);
   try {
     await sendLoginOtpEmail(seller.email, otp, seller.name || seller.shopName);
     secureLog.debug('Resend OTP email sent', {
-      userId: seller._id,
+      userId: sellerIdStr,
       email: seller.email,
     });
   } catch (error) {
+    const errMsg = error?.message || String(error);
     secureLog.error('Failed to send resend OTP email', {
-      userId: seller._id,
-      error: error.message,
+      userId: sellerIdStr,
+      error: errMsg,
+      ...(errMsg.includes('domain is not verified') && {
+        hint: 'Verify the sending domain at https://resend.com/domains (e.g. saiisai.com)',
+      }),
     });
   }
 

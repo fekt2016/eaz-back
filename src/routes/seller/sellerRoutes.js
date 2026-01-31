@@ -58,8 +58,8 @@ router
   .route('/:id')
   .get(
     (req, res, next) => {
-      // Exclude 'me' and 'status' from matching this route
-      if (req.params.id === 'me' || req.params.id === 'status') {
+      // Exclude literal path segments from matching this route (they are not seller ObjectIds)
+      if (['me', 'status', 'updateMe', 'update-onboarding'].includes(req.params.id)) {
         return next('route'); // Skip to next route handler
       }
       next();
@@ -70,8 +70,8 @@ router
   )
   .patch(
     (req, res, next) => {
-      // Exclude 'me' and 'status' from matching this route
-      if (req.params.id === 'me' || req.params.id === 'status') {
+      // Exclude literal path segments from matching this route (they are not seller ObjectIds)
+      if (['me', 'status', 'updateMe', 'update-onboarding'].includes(req.params.id)) {
         return next('route'); // Skip to next route handler
       }
       next();

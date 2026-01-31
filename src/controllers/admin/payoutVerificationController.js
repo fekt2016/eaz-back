@@ -674,25 +674,29 @@ exports.getPayoutVerificationDetails = catchAsync(async (req, res, next) => {
     return next(new AppError('Seller not found', 404));
   }
 
-  // Also fetch PaymentMethod records if seller has a User account
+  // Also fetch PaymentMethod records: seller adds payment via PaymentMethod API (linked to User by email)
   let paymentMethodRecords = [];
   try {
     const PaymentMethod = require('../../models/payment/PaymentMethodModel');
     const User = require('../../models/user/userModel');
-    
-    const userAccount = await User.findOne({ email: seller.email });
-    console.log('[Get Payout Verification Details] User account found:', userAccount ? { id: userAccount._id, email: userAccount.email } : 'NOT FOUND');
-    
+
+    // Find User by seller email (exact first, then case-insensitive so admin always sees payment methods)
+    const sellerEmail = (seller.email || '').trim();
+    let userAccount = sellerEmail ? await User.findOne({ email: sellerEmail }) : null;
+    if (!userAccount && sellerEmail) {
+      userAccount = await User.findOne({ email: new RegExp(`^${sellerEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    }
+    console.log('[Get Payout Verification Details] User account found:', userAccount ? { id: userAccount._id, email: userAccount.email } : 'NOT FOUND', 'seller email:', seller.email);
+
     if (userAccount) {
       paymentMethodRecords = await PaymentMethod.find({ user: userAccount._id })
         .sort({ isDefault: -1, createdAt: -1 })
-        .select('type isDefault name provider mobileNumber bankName accountNumber accountName branch verificationStatus verifiedAt verifiedBy rejectionReason verificationHistory')
-        .lean(); // Use lean() for better performance and to get plain objects
-      
+        .select('type isDefault name provider mobileNumber bankName accountNumber accountName branch verificationStatus verifiedAt verifiedBy rejectionReason verificationHistory status')
+        .lean();
+
       console.log('[Get Payout Verification Details] PaymentMethod records found:', paymentMethodRecords.length);
-      console.log('[Get Payout Verification Details] PaymentMethod records data:', JSON.stringify(paymentMethodRecords, null, 2));
     } else {
-      console.log('[Get Payout Verification Details] No User account found for seller email:', seller.email);
+      console.log('[Get Payout Verification Details] No User account found for seller email:', seller.email, '- Payment methods are linked to User; one is created when seller adds payment in seller app.');
     }
   } catch (error) {
     console.error('[Get Payout Verification Details] Error fetching PaymentMethod records:', error);

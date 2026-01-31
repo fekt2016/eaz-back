@@ -132,6 +132,12 @@ exports.sanitizeLogData = (data) => {
   for (const [key, value] of Object.entries(sanitized)) {
     const lowerKey = key.toLowerCase();
     
+    // MongoDB ObjectId: log as hex string to avoid buffer dump in logs
+    if (value && typeof value === 'object' && typeof value.toString === 'function' &&
+        (value.constructor?.name === 'ObjectID' || (value.constructor?.name === 'ObjectId'))) {
+      sanitized[key] = value.toString();
+      continue;
+    }
     // Check if field name contains sensitive keywords
     if (sensitiveFields.some(field => lowerKey.includes(field))) {
       sanitized[key] = maskSensitive(String(value));

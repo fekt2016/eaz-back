@@ -7,9 +7,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const SellerOrder = require('../../models/order/sellerOrderModel');
+const logger = require('../../utils/logger');
 
 // Configure multer for file uploads
 const { safeFs } = require('../../utils/safePath');
+const { escapeRegex } = require('../../utils/helpers/searchUtils');
+
+const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+const isAdminRole = (user) => user && ADMIN_ROLES.includes(user.role);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -20,7 +25,7 @@ const storage = multer.diskStorage({
       try {
         fs.mkdirSync(uploadPath, { recursive: true });
       } catch (mkdirError) {
-        console.error('[supportController] Error creating upload directory:', mkdirError.message);
+        logger.error('[supportController] Error creating upload directory:', mkdirError.message);
         return cb(mkdirError);
       }
     }
@@ -94,7 +99,7 @@ exports.createTicket = catchAsync(async (req, res, next) => {
     userId = req.user.id;
     
     // Determine role and model based on user type
-    if (req.user.role === 'admin') {
+    if (isAdminRole(req.user)) {
       userModel = 'Admin';
       role = 'admin';
       userName = req.user.name || 'Admin';
@@ -161,8 +166,8 @@ exports.createTicket = catchAsync(async (req, res, next) => {
   ticket.lastMessageAt = new Date();
   await ticket.save();
 
-  // Notify all admins about new support ticket (only if not created by admin)
-  if (role !== 'admin') {
+  // Notify all admins about new support ticket (only if not created by admin-role user)
+  if (!isAdminRole(req.user)) {
     try {
       const notificationService = require('../../services/notification/notificationService');
       await notificationService.createSupportTicketNotification(
@@ -197,7 +202,7 @@ exports.getMyTickets = catchAsync(async (req, res, next) => {
   
   // Determine user model
   let userModel = 'User';
-  if (req.user.role === 'admin') {
+  if (isAdminRole(req.user)) {
     userModel = 'Admin';
   } else if (req.user.role === 'seller') {
     userModel = 'Seller';
@@ -315,7 +320,7 @@ exports.getTicketById = catchAsync(async (req, res, next) => {
 
   // Determine user model
   let userModel = 'User';
-  if (req.user.role === 'admin') {
+  if (isAdminRole(req.user)) {
     userModel = 'Admin';
   } else if (req.user.role === 'seller') {
     userModel = 'Seller';
@@ -348,8 +353,8 @@ exports.getTicketById = catchAsync(async (req, res, next) => {
   }
 
   if (!ticket) {
-    // Check if admin is trying to access any ticket
-    if (req.user.role === 'admin') {
+    // Check if admin-role user is trying to access any ticket
+    if (isAdminRole(req.user)) {
       const adminTicket = await SupportTicket.findById(id)
         .populate('relatedOrderId', 'orderNumber totalPrice')
         .populate('relatedPayoutId', 'amount status')
@@ -381,7 +386,7 @@ exports.getTicketById = catchAsync(async (req, res, next) => {
 
   // Get messages (exclude internal notes for non-admins)
   const messageQuery = { ticketId: id };
-  if (req.user.role !== 'admin') {
+  if (!isAdminRole(req.user)) {
     messageQuery.isInternal = false;
   }
 
@@ -424,7 +429,7 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
   let role = 'buyer';
   let userName = req.user.name || 'Customer';
 
-  if (req.user.role === 'admin') {
+  if (isAdminRole(req.user)) {
     userModel = 'Admin';
     role = 'admin';
     userName = req.user.name || 'Admin';
@@ -440,8 +445,8 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
     return next(new AppError('Ticket not found', 404));
   }
 
-  // Check access (user can only reply to their own tickets, seller can reply to tickets related to their orders/products, admin can reply to any)
-  if (req.user.role !== 'admin') {
+  // Check access (user can only reply to their own tickets, seller can reply to tickets related to their orders/products, admin-role can reply to any)
+  if (!isAdminRole(req.user)) {
     if (req.user.role === 'seller') {
       const sellerId = req.user.id;
       
@@ -498,14 +503,14 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
     senderName: userName,
     message: sanitizedMessage, // SECURITY FIX #10: Use sanitized message
     attachments,
-    isInternal: isInternal === true && req.user.role === 'admin',
+    isInternal: isInternal === true && isAdminRole(req.user),
   });
 
   // Update ticket
   ticket.lastMessageAt = new Date();
   
   // Auto-update status based on who replied
-  if (req.user.role === 'admin') {
+  if (isAdminRole(req.user)) {
     // Admin replied - set to in_progress or awaiting_user
     if (ticket.status === 'awaiting_user') {
       ticket.status = 'in_progress';
@@ -526,9 +531,9 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
     // Only notify if the reply is from a different user
     if (ticket.userId.toString() !== req.user.id.toString() || ticket.userModel !== userModel) {
       // Determine who replied
-      const replierName = req.user.role === 'admin' 
-        ? 'Admin' 
-        : req.user.role === 'seller' 
+      const replierName = isAdminRole(req.user)
+        ? 'Admin'
+        : req.user.role === 'seller'
           ? (req.user.shopName || req.user.name || 'Seller')
           : (req.user.name || 'Customer');
       
@@ -538,7 +543,7 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
         ticket.role,
         `${replierName} replied to your support ticket: "${ticket.title}"`
       );
-      console.log(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
+      logger.info(`[Support Reply] Notification created for ticket owner ${ticket.userId}`);
 
       // Send push notification
       try {
@@ -549,17 +554,15 @@ exports.replyToTicket = catchAsync(async (req, res, next) => {
           'New Reply to Your Support Ticket',
           `${replierName} replied to your support ticket: "${ticket.title}"`
         );
-        console.log(`[Support Reply] ✅ Push notification sent for ticket ${ticket._id}`);
+        logger.info(`[Support Reply] ✅ Push notification sent for ticket ${ticket._id}`);
       } catch (pushError) {
-        console.error('[Support Reply] Error sending push notification:', pushError.message);
+        logger.error('[Support Reply] Error sending push notification:', pushError.message);
         // Don't fail ticket reply if push notification fails
       }
     }
     
     // If ticket is related to seller's order/product, notify the seller
     if (ticket.role === 'buyer' && (ticket.relatedOrderId || ticket.relatedProductId)) {
-      const SellerOrder = require('../../models/order/sellerOrderModel');
-const logger = require('../../utils/logger');
       const Product = mongoose.model('Product');
       let sellerId = null;
       
@@ -572,8 +575,8 @@ const logger = require('../../utils/logger');
       }
       
       if (sellerId && sellerId.toString() !== req.user.id.toString()) {
-        const replierName = req.user.role === 'admin' 
-          ? 'Admin' 
+        const replierName = isAdminRole(req.user)
+          ? 'Admin'
           : (req.user.name || 'Customer');
         
         await notificationService.createSupportNotification(
@@ -609,8 +612,8 @@ exports.updateTicketStatus = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const { status, priority, department, assignedTo, internalNote } = req.body;
 
-  // Only admins can update status
-  if (req.user.role !== 'admin') {
+  // Only admin-role users can update status
+  if (!isAdminRole(req.user)) {
     return next(new AppError('Only admins can update ticket status', 403));
   }
 
@@ -660,8 +663,8 @@ exports.updateTicketStatus = catchAsync(async (req, res, next) => {
  * Returns ALL tickets in the system (buyers, sellers, admins)
  */
 exports.getAllTickets = catchAsync(async (req, res, next) => {
-  // Verify admin role
-  if (req.user.role !== 'admin') {
+  // Verify admin role (admin, superadmin, moderator)
+  if (!isAdminRole(req.user)) {
     return next(new AppError('Only admins can access all tickets', 403));
   }
 
@@ -704,13 +707,15 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
     query.assignedTo = assignedTo === 'unassigned' ? null : assignedTo;
   }
 
-  // Search in title or ticket number
-  // MongoDB will AND the $or with other query conditions automatically
+  // Search in title or ticket number (escape regex special chars to prevent ReDoS / injection)
   if (search) {
-    query.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { ticketNumber: { $regex: search, $options: 'i' } },
-    ];
+    const escapedSearch = escapeRegex(search.trim());
+    if (escapedSearch) {
+      query.$or = [
+        { title: { $regex: escapedSearch, $options: 'i' } },
+        { ticketNumber: { $regex: escapedSearch, $options: 'i' } },
+      ];
+    }
   }
 
   // Debug logging for admin queries
@@ -781,6 +786,10 @@ exports.getAllTickets = catchAsync(async (req, res, next) => {
  * GET /api/v1/support/admin/stats
  */
 exports.getSupportStats = catchAsync(async (req, res, next) => {
+  if (!isAdminRole(req.user)) {
+    return next(new AppError('Only admins can access support stats', 403));
+  }
+
   const stats = await SupportTicket.aggregate([
     {
       $group: {

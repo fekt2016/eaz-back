@@ -1268,19 +1268,30 @@ exports.logout = catchAsync(async (req, res, next) => {
 exports.protect = catchAsync(async (req, res, next) => {
   const fullPath = req.originalUrl.split('?')[0];
   const method = req.method.toUpperCase();
-  
-  // 🛡️ HARD SAFETY GUARD: Prevent seller routes from using buyer auth
-  if (fullPath.startsWith('/api/v1/seller') || fullPath.startsWith('/seller')) {
+
+  // Admin-only seller routes (GET /api/v1/seller, GET/PATCH /api/v1/seller/:id, etc.) correctly use protect + restrictTo('admin')
+  const isAdminOnlySellerRoute =
+    (fullPath === '/api/v1/seller' && method === 'GET') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/document-status$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews') ||
+    // PATCH /seller/:id (admin update seller) – exclude seller-only segments updateMe, update-onboarding
+    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'PATCH' && fullPath !== '/api/v1/seller/updateMe' && fullPath !== '/api/v1/seller/update-onboarding');
+
+  // 🛡️ HARD SAFETY GUARD: Prevent seller-only routes from using buyer auth (admin-only seller routes are OK)
+  if ((fullPath.startsWith('/api/v1/seller') || fullPath.startsWith('/seller')) && !isAdminOnlySellerRoute) {
     console.error('═══════════════════════════════════════════════════════════');
     console.error('[AUTH TRACE] ❌ CRITICAL ERROR: SELLER route passed to BUYER auth middleware');
     console.error('[AUTH TRACE] Route:', method, fullPath);
     console.error('[AUTH TRACE] This is a CONFIGURATION ERROR - seller routes must use protectSeller');
     console.error('[AUTH TRACE] Stack trace:', new Error().stack);
     console.error('═══════════════════════════════════════════════════════════');
-    // Don't throw - let it fail with 401 so we can see the issue
-    // But log it clearly so we know what's wrong
   }
-  
+
   // 🔍 AUTH TRACE LOGGING
   if (fullPath.includes('/coupon') || fullPath.includes('/seller')) {
     console.log('[AUTH TRACE]', {
@@ -1320,17 +1331,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   // PATCH /api/v1/seller/:id/document-status - update document status (admin-only)
   // PATCH /api/v1/seller/:id/approve-payout - approve payout (admin-only)
   // PATCH /api/v1/seller/:id/reject-payout - reject payout (admin-only)
-  // GET /api/v1/seller/:id - getSeller (admin-only, unless seller accessing their own)
-  const isAdminOnlySellerRoute = 
-    (fullPath === '/api/v1/seller' && method === 'GET') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-verification$/) && method === 'PATCH') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/document-status$/) && method === 'PATCH') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
-    // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
-    (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews');
+  // GET /api/v1/seller/:id - getSeller (admin-only) - isAdminOnlySellerRoute already defined above
   // Check if this is a seller route (but allow admins to access shared product routes with admin_jwt)
   const isSellerRoute = !isAdminOnlySellerRoute && (
     fullPath.startsWith('/api/v1/seller') ||
