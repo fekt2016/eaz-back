@@ -51,8 +51,7 @@ const sellerShippingSettingsSchema = new mongoose.Schema(
   },
 );
 
-// Index for faster queries
-// sellerShippingSettingsSchema.index({ seller: 1 });
+// seller field has unique: true so Mongoose already creates an index; no duplicate schema.index
 
 // Static method to get or create default settings
 sellerShippingSettingsSchema.statics.getOrCreateDefault = async function (sellerId) {

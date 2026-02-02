@@ -213,9 +213,7 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) {
-      if (isDevelopment) {
-        logger.info('[CORS] Request with no origin, allowing');
-      }
+      logger.debug('[CORS] Request with no origin, allowing');
       return callback(null, true);
     }
 
@@ -237,9 +235,7 @@ const corsOptions = {
 
       // Check if origin is in the allowed list (case-insensitive)
       if (devOrigins.includes(normalizedOrigin)) {
-        if (isDevelopment) {
-          logger.info(`[CORS] Development - allowing origin: ${origin}`);
-        }
+        logger.debug(`[CORS] Development - allowing origin: ${origin}`);
         return callback(null, true);
       }
 
@@ -251,9 +247,7 @@ const corsOptions = {
           origin.startsWith('http://172.') ||
           origin.startsWith('http://10.')
         ) {
-          if (isDevelopment) {
-            logger.info(`[CORS] Development - allowing network origin: ${origin}`);
-          }
+          logger.debug(`[CORS] Development - allowing network origin: ${origin}`);
           return callback(null, true);
         }
       }
@@ -269,9 +263,7 @@ const corsOptions = {
 
     // Check if origin is in allowed list (case-insensitive, trailing slash insensitive)
     if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
-      if (isDevelopment) {
-        logger.info(`[CORS] Production - allowing origin: ${origin}`);
-      }
+      logger.debug(`[CORS] Production - allowing origin: ${origin}`);
       return callback(null, true);
     }
 
@@ -287,16 +279,14 @@ const corsOptions = {
       ].map(o => o.toLowerCase());
       
       if (localhostOrigins.includes(normalizedOrigin)) {
-        logger.info(`[CORS] Allowing localhost origin in production: ${origin}`);
+        logger.debug(`[CORS] Allowing localhost origin in production: ${origin}`);
         return callback(null, true);
       }
     }
 
     // Allow AWS Amplify domains (*.amplifyapp.com)
     if (origin && origin.endsWith('.amplifyapp.com')) {
-      if (isDevelopment) {
-        logger.info(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
-      }
+      logger.debug(`[CORS] Production - allowing AWS Amplify origin: ${origin}`);
       return callback(null, true);
     }
 
@@ -366,11 +356,13 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // 🐢 Slow Down Repeated Requests (SECURITY)
+// In development, skip entirely so local dev isn't artificially slowed (100+ requests per 15min is normal).
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 100, // Allow 100 requests per window
   delayMs: (hits) => hits * 500, // Add 500ms delay per request after limit
   maxDelayMs: 20000, // Max 20s delay
+  skip: () => isDevelopment, // Skip in development to avoid slow backend during local testing
 });
 app.use('/api', speedLimiter);
 

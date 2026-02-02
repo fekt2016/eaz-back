@@ -35,6 +35,10 @@ cartSchema.pre('save', async function (next) {
   }
   next();
 });
+
+// Index for lookup by user (one cart per user)
+cartSchema.index({ user: 1 });
+
 const Cart = mongoose.model('Cart', cartSchema);
 
 module.exports = Cart;;

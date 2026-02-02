@@ -140,6 +140,13 @@ sellerOrderSchema.virtual('payoutAmount').get(async function () {
   }
   return total - total * commissionRate;
 });
+
+// Indexes for seller orders list, payout, and order lookup
+sellerOrderSchema.index({ seller: 1, status: 1 });
+sellerOrderSchema.index({ order: 1 });
+sellerOrderSchema.index({ payoutStatus: 1 });
+sellerOrderSchema.index({ seller: 1, payoutStatus: 1 });
+
 const SellerOrder = mongoose.model('SellerOrder', sellerOrderSchema);
 
 module.exports = SellerOrder;;

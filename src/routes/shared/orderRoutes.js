@@ -6,6 +6,7 @@ const { getAllOrder,
   updateOrder,
   totalSales,
   getCount,
+  getOrderStats,
   getUserOrders,
   getUserOrder,
   OrderDeleteOrderItem,
@@ -46,6 +47,7 @@ router
 
 router.get('/get/totalsales', authController.protect, totalSales);
 router.get('/get/count', authController.protect, getCount);
+router.get('/get/stats', authController.protect, authController.restrictTo('admin'), getOrderStats);
 // router.get('/get/userorders', authController.protect, getUserOrder);
 
 // Cart validation endpoint (must be before /:id route)

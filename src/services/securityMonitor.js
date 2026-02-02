@@ -1,6 +1,7 @@
 const ActivityLog = require('../models/activityLog/activityLogModel');
 const catchAsync = require('../utils/helpers/catchAsync');
 const sendEmail = require('../utils/email/emailService');
+const logger = require('../utils/logger');
 
 /**
  * Security Monitor Service

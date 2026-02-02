@@ -1,8 +1,10 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Product = require('../../models/product/productModel');
+const Seller = require('../../models/user/sellerModel');
 const OrderItem = require('../../models/order/OrderItemModel');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const emailDispatcher = require('../../emails/emailDispatcher');
 const logger = require('../../utils/logger');
 const mongoose = require('mongoose');
 
@@ -158,6 +160,27 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
       },
       req,
     });
+
+    // Notify seller by email (non-blocking; don't fail approval if email fails)
+    if (product.seller) {
+      try {
+        const seller = await Seller.findById(product.seller)
+          .select('email name shopName')
+          .lean();
+        if (seller && seller.email) {
+          await emailDispatcher.sendProductApprovedEmail(seller, product);
+          logger.info(`[Approve Product] Product approved email sent to seller ${seller.email}`);
+        } else {
+          logger.warn(`[Approve Product] Seller not found or has no email for product ${id}`);
+        }
+      } catch (emailErr) {
+        logger.error(`[Approve Product] Failed to send product approved email to seller:`, {
+          productId: id,
+          sellerId: product.seller,
+          error: emailErr?.message || emailErr,
+        });
+      }
+    }
 
     res.status(200).json({
       status: 'success',

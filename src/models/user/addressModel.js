@@ -177,4 +177,8 @@ addressSchema.pre('save', async function (next) {
   next();
 });
 
+// Indexes for list by user and default address lookup
+addressSchema.index({ user: 1 });
+addressSchema.index({ user: 1, isDefault: 1 });
+
 module.exports = mongoose.model('Address', addressSchema);;

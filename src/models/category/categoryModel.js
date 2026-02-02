@@ -153,5 +153,10 @@ categorySchema.pre('findOne', function () {
   this.populate('parentCategory');
 });
 
+// Indexes for slug lookup, tree queries, and filtering
+categorySchema.index({ slug: 1 }, { unique: true });
+categorySchema.index({ parentCategory: 1 });
+categorySchema.index({ status: 1 });
+
 const Category = mongoose.model('Category', categorySchema);
 module.exports = Category;;

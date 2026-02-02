@@ -1136,9 +1136,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* 10. RESPONSE                        */
     /* ---------------------------------- */
     // Verify order was saved correctly before responding
+    // Populate sellerOrder and seller so we can send new-order emails to each seller
     const fullOrder = await Order.findById(newOrder._id)
       .populate('orderItems')
       .populate('user', 'name email')
+      .populate({ path: 'sellerOrder', populate: { path: 'seller', select: 'email name shopName' } })
       .lean();
 
     if (!fullOrder) {
@@ -1233,6 +1235,38 @@ exports.getCount = catchAsync(async (req, res, next) => {
   const orderCount = await Order.countDocuments();
   if (!orderCount) return next(new AppError('Order not found', 404));
   res.status(200).json({ status: 'success', data: { orderCount } });
+});
+
+/**
+ * Get order counts by status for admin order management dashboard.
+ * GET /api/v1/order/get/stats — admin only.
+ */
+exports.getOrderStats = catchAsync(async (req, res, next) => {
+  const stats = await Order.aggregate([
+    { $facet: {
+      total: [{ $count: 'count' }],
+      pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
+      processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
+      confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
+      shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
+      delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
+      cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
+    } },
+  ]);
+  const facet = (stats && stats[0]) ? stats[0] : {};
+  const getCount = (key) => (facet[key] && facet[key][0] && facet[key][0].count) ? facet[key][0].count : 0;
+  res.status(200).json({
+    status: 'success',
+    data: {
+      totalOrders: getCount('total'),
+      pendingCount: getCount('pending'),
+      processing: getCount('processing'),
+      confirmed: getCount('confirmed'),
+      shipped: getCount('shipped'),
+      delivered: getCount('delivered'),
+      cancelled: getCount('cancelled'),
+    },
+  });
 });
 
 //get each seller order

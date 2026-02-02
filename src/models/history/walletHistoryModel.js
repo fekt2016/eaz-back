@@ -55,6 +55,7 @@ const walletHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
       sparse: true,
+      index: true,
       comment: 'Related order ID if transaction is order-related',
     },
     refundId: {
@@ -92,6 +93,9 @@ walletHistorySchema.virtual('isCredit').get(function () {
 walletHistorySchema.virtual('isDebit').get(function () {
   return this.type === 'ORDER_DEBIT';
 });
+
+// Indexes for user history list (orderId: avoid duplicate with field-level index if any)
+walletHistorySchema.index({ userId: 1, createdAt: -1 });
 
 const WalletHistory = mongoose.model('WalletHistory', walletHistorySchema);
 

@@ -13,6 +13,8 @@ const sessionManagementController = require('../../controllers/admin/sessionMana
 const historyController = require('../../controllers/admin/historyController');
 const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
+const { updateOrderStatus } = require('../../controllers/shared/orderTrackingController');
+const { validateObjectId } = require('../../middleware/validateObjectId');
 
 const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
@@ -33,6 +35,13 @@ router.post('/forgotPassword', resetLimiter, authAdminController.forgetPassword)
 router.patch('/resetPassword/:token', authAdminController.resetPassword);
 
 router.use(authController.protect, authController.restrictTo('admin'));
+
+// Admin-only order tracking/status update (avoid buyer-route auth ambiguity)
+router.post(
+  '/orders/:orderId/status',
+  validateObjectId('orderId'),
+  updateOrderStatus
+);
 
 router.post('/user/signup', authAdminController.signupUser);
 router.post(

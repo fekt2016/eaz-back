@@ -197,29 +197,50 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     logger.error('[updateOrderStatus] Error creating notifications:', notificationError);
   }
 
-  // Send email notifications for order status changes
+  // Send email notifications for order status changes (buyer + seller)
   try {
     const emailDispatcher = require('../../emails/emailDispatcher');
     const User = require('../../models/user/userModel');
+    const SellerOrder = require('../../models/order/sellerOrderModel');
     
-    // Populate user for email
-    const user = await User.findById(order.user).select('name email').lean();
+    // Populate buyer for email
+    const buyer = await User.findById(order.user).select('name email').lean();
     
-    if (user && user.email) {
-      // Send order shipped email
+    if (buyer && buyer.email) {
+      // Buyer: shipped email
       if (status === 'out_for_delivery') {
-        await emailDispatcher.sendOrderShipped(order, user);
-        logger.info(`[updateOrderStatus] ✅ Order shipped email sent to ${user.email}`);
+        await emailDispatcher.sendOrderShipped(order, buyer);
+        logger.info('[updateOrderStatus] ✅ Order shipped email sent to buyer %s', buyer.email);
       }
       
-      // Send order delivered email
+      // Buyer: delivered email
       if (status === 'delivered') {
-        await emailDispatcher.sendOrderDelivered(order, user);
-        logger.info(`[updateOrderStatus] ✅ Order delivered email sent to ${user.email}`);
+        await emailDispatcher.sendOrderDelivered(order, buyer);
+        logger.info('[updateOrderStatus] ✅ Order delivered email sent to buyer %s', buyer.email);
+      }
+    }
+
+    // Sellers: status update email (for key milestones)
+    if (['out_for_delivery', 'delivered', 'cancelled', 'refunded', 'confirmed'].includes(status)) {
+      const sellerOrders = await SellerOrder.find({ order: order._id })
+        .populate('seller', 'email name shopName')
+        .lean();
+
+      for (const so of sellerOrders) {
+        const seller = so.seller;
+        if (seller && seller.email) {
+          await emailDispatcher.sendSellerOrderStatusUpdate(seller, order, status);
+          logger.info(
+            '[updateOrderStatus] ✅ Seller order status email sent to %s for order %s (status=%s)',
+            seller.email,
+            order.orderNumber || order._id,
+            status
+          );
+        }
       }
     }
   } catch (emailError) {
-    logger.error('[updateOrderStatus] Error sending order status emails:', emailError.message);
+    logger.error('[updateOrderStatus] Error sending order status emails:', emailError.message || emailError);
     // Don't fail the order update if email fails
   }
 

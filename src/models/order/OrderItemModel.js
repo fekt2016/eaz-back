@@ -310,6 +310,11 @@ OrderItemSchema.methods.getDisplayName = function() {
   return 'Product';
 };
 
+// Indexes for product/seller lookups and refund flows
+OrderItemSchema.index({ product: 1 });
+OrderItemSchema.index({ sku: 1 });
+OrderItemSchema.index({ sellerId: 1 });
+
 const OrderItems = mongoose.model('OrderItems', OrderItemSchema);
 
 module.exports = OrderItems;

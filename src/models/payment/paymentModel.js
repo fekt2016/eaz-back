@@ -15,6 +15,10 @@ const paymentSchema = new mongoose.Schema({
   transactionId: String,
   paymentDate: Date,
 });
+
+// Index for lookup by order
+paymentSchema.index({ orderId: 1 });
+
 const Payment = mongoose.model('payment', paymentSchema);
 
 module.exports = Payment;;

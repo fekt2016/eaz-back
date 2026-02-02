@@ -474,5 +474,13 @@ orderSchema.methods.updateOrderStatus = function () {
   return this.save();
 };
 
+// Indexes for list/sort and filter performance
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ user: 1, status: 1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ currentStatus: 1 });
+orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ createdAt: -1 });
+
 const Order = mongoose.model('Order', orderSchema);
 module.exports = Order;;

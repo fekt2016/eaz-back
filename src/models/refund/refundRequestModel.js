@@ -203,6 +203,11 @@ refundRequestSchema.methods.allItemsRejected = function() {
   return this.items.every(item => item.status === 'rejected');
 };
 
+// Indexes for order/buyer lists and status filter
+refundRequestSchema.index({ order: 1 });
+refundRequestSchema.index({ buyer: 1, createdAt: -1 });
+refundRequestSchema.index({ status: 1 });
+
 const RefundRequest = mongoose.model('RefundRequest', refundRequestSchema);
 
 module.exports = RefundRequest;

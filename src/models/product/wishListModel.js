@@ -24,7 +24,8 @@ const wishlistSchema = new mongoose.Schema(
     // Add session field for guest wishlists
     sessionId: {
       type: String,
-      sparse: true, // Allows null values but ensures uniqueness for non-null values
+      sparse: true,
+      index: true, // Single index for findBySessionId (sparse allows nulls)
     },
   },
   {
@@ -72,6 +73,9 @@ wishlistSchema.methods.mergeWishlist = function (otherWishlist) {
 
   return this.save();
 };
+
+// Indexes for user and guest wishlist lookup (sessionId: field has sparse; avoid duplicate index)
+wishlistSchema.index({ user: 1 }, { sparse: true });
 
 const Wishlist = mongoose.model('Wishlist', wishlistSchema);
 

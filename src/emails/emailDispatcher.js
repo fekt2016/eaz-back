@@ -225,6 +225,84 @@ const sendSellerNewOrder = async (seller, order) => {
 };
 
 /**
+ * Send order status update email to seller
+ * @param {Object} seller - Seller object with email and name/shopName
+ * @param {Object} order - Order object
+ * @param {string} status - New order status (e.g. 'delivered', 'out_for_delivery')
+ */
+const sendSellerOrderStatusUpdate = async (seller, order, status) => {
+  const brandConfig = {
+    name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+    url: process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com',
+  };
+
+  const orderId = order._id || order.id;
+  const orderNumber = order.orderNumber || orderId || 'N/A';
+  const sellerDashboardUrl = `${brandConfig.url}/dashboard/orders/${orderId}`;
+
+  const statusLabelMap = {
+    confirmed: 'Confirmed',
+    processing: 'Processing',
+    preparing: 'Preparing',
+    ready_for_dispatch: 'Ready for Dispatch',
+    out_for_delivery: 'Out for Delivery',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    refunded: 'Refunded',
+  };
+
+  const statusLabel = statusLabelMap[status] || status;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2563eb; }
+        .button { display: inline-block; padding: 12px 30px; background: #2563eb; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📦 Order Status Updated</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${seller.name || seller.shopName || 'Seller'},</p>
+          <p>The status of one of your orders has been updated.</p>
+          <div class="info-box">
+            <p><strong>Order Number:</strong> ${orderNumber}</p>
+            <p><strong>New Status:</strong> ${statusLabel}</p>
+            <p><strong>Updated On:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          <p>Please review the order details and take any necessary action from your seller dashboard.</p>
+          <p style="text-align: center;">
+            <a href="${sellerDashboardUrl}" class="button">View Order in Dashboard</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Best regards,<br>The ${brandConfig.name} Team</p>
+          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `Order #${orderNumber} Status Updated to ${statusLabel} - ${brandConfig.name}`,
+    text: `Hello ${seller.name || seller.shopName || 'Seller'}, the status of order #${orderNumber} has been updated to "${statusLabel}". View order: ${sellerDashboardUrl}`,
+    html: htmlContent,
+  });
+};
+
+/**
  * Send withdrawal request confirmation email to seller
  * @param {Object} seller - Seller object with email and name
  * @param {Object} withdrawal - Withdrawal request object
@@ -407,6 +485,73 @@ const sendWithdrawalRejected = async (seller, withdrawal, reason) => {
     to: seller.email,
     subject: `Withdrawal Request Rejected - GH₵${amount.toFixed(2)} - ${brandConfig.name}`,
     text: `Hello ${seller.name || seller.shopName || 'Seller'}, your withdrawal request for GH₵${amount.toFixed(2)} has been rejected. Reason: ${reason || 'No reason provided'}. The amount has been refunded to your balance.`,
+    html: htmlContent,
+  });
+};
+
+/**
+ * Send product approved email to seller
+ * @param {Object} seller - Seller object with email, name, shopName
+ * @param {Object} product - Product object with name, _id
+ */
+const sendProductApprovedEmail = async (seller, product) => {
+  const brandConfig = {
+    name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
+  };
+
+  const productName = product.name || 'Your product';
+  const productId = product._id || product.id;
+  const sellerProductsUrl = `${brandConfig.url}/seller/products`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .success-box { background: #d4edda; border-left: 4px solid #28a745; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 30px; background: #28a745; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✅ Product Approved!</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${seller.name || seller.shopName || 'Seller'},</p>
+          <p>Great news! Your product has been approved and is now live on the marketplace.</p>
+          <div class="success-box">
+            <p><strong>Your product has been approved.</strong></p>
+          </div>
+          <div class="info-box">
+            <p><strong>Product:</strong> ${productName}</p>
+            <p><strong>Approved on:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          <p>Buyers can now see and purchase this product. You can manage it from your seller dashboard.</p>
+          <p style="text-align: center;">
+            <a href="${sellerProductsUrl}" class="button">View My Products</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Best regards,<br>The ${brandConfig.name} Team</p>
+          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `Product Approved: ${productName} - ${brandConfig.name}`,
+    text: `Hello ${seller.name || seller.shopName || 'Seller'}, your product "${productName}" has been approved and is now live on ${brandConfig.name}. View your products: ${sellerProductsUrl}`,
     html: htmlContent,
   });
 };
@@ -759,9 +904,11 @@ module.exports = {
   sendOrderShipped,
   sendOrderDelivered,
   sendSellerNewOrder,
+   sendSellerOrderStatusUpdate,
   sendWithdrawalRequest,
   sendWithdrawalApproved,
   sendWithdrawalRejected,
+  sendProductApprovedEmail,
   sendRefundProcessed,
   sendCouponToBuyer,
   sendWalletCredit,

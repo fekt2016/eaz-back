@@ -47,21 +47,12 @@ exports.buildBuyerSafeQuery = (baseFilter = {}, options = {}) => {
     return baseFilter;
   }
   
-  // For buyers/public: only show products that are actually *orderable*.
-  //
-  // The Product model maintains an `isVisible` flag (see productSchema and its
-  // pre/post save hooks plus updateSellerProductsVisibility). That flag encodes:
-  // - seller is verified
-  // - product is active / out of stock
-  // - product is approved (moderationStatus === 'approved')
-  // - product is not soft‑deleted
-  //
-  // Using `isVisible: true` keeps listing behaviour aligned with the existing
-  // order placement checks (which already require a verified seller) without
-  // changing the core business rule – we simply hide items that would be
-  // rejected at checkout.
+  // For buyers/public: only show products that are approved and orderable.
+  // CRITICAL: Explicitly require moderationStatus === 'approved' so we never
+  // fetch pending/rejected products even if isVisible is out of sync.
   return {
     ...baseFilter,
+    moderationStatus: 'approved',
     isVisible: true,
   };
 };
