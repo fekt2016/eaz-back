@@ -11,6 +11,10 @@ const User = require('../../models/user/userModel');
 const Order = require('../../models/order/orderModel');
 const SellerOrder = require('../../models/order/sellerOrderModel');
 const Follow = require('../../models/user/followModel');
+const {
+  canSendUserEmail,
+  EMAIL_CATEGORY,
+} = require('../../utils/helpers/emailPermission');
 exports.createCouponBatch = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -236,8 +240,28 @@ exports.updateCouponBatch = catchAsync(async (req, res, next) => {
             const seller = updatedBatch.seller || { name: 'A seller', shopName: 'A seller' };
 
             if (user && user.email) {
-              await emailDispatcher.sendCouponToBuyer(user, coupon, updatedBatch, seller);
-              logger.info(`[updateCouponBatch] ✅ Coupon email sent to ${user.email}`);
+              const userId = user._id || user.id || user;
+              const allowed = await canSendUserEmail(
+                userId,
+                EMAIL_CATEGORY.PROMOTION,
+              );
+
+              if (!allowed) {
+                logger.info(
+                  '[updateCouponBatch] Skipping coupon email due to user email preferences',
+                  { userId, email: user.email },
+                );
+              } else {
+                await emailDispatcher.sendCouponToBuyer(
+                  user,
+                  coupon,
+                  updatedBatch,
+                  seller,
+                );
+                logger.info(
+                  `[updateCouponBatch] ✅ Coupon email sent to ${user.email}`,
+                );
+              }
             }
           }
         }
@@ -381,18 +405,40 @@ exports.assignCouponToBuyer = catchAsync(async (req, res, next) => {
   // Update batch reference for email
   const updatedBatch = updateResult;
 
-  // Send email to buyer
+  // Send email to buyer (respect email permissions)
   try {
     const emailDispatcher = require('../../emails/emailDispatcher');
     const User = require('../../models/user/userModel');
     const user = await User.findById(userId).select('name email').lean();
 
     if (user && user.email) {
-      await emailDispatcher.sendCouponToBuyer(user, savedCoupon || coupon, updatedBatch, updatedBatch.seller);
-      logger.info(`[assignCouponToBuyer] ✅ Coupon email sent to ${user.email}`);
+      const allowed = await canSendUserEmail(
+        user._id || user.id || userId,
+        EMAIL_CATEGORY.PROMOTION,
+      );
+
+      if (!allowed) {
+        logger.info(
+          '[assignCouponToBuyer] Skipping coupon email due to user email preferences',
+          { userId, email: user.email },
+        );
+      } else {
+        await emailDispatcher.sendCouponToBuyer(
+          user,
+          savedCoupon || coupon,
+          updatedBatch,
+          updatedBatch.seller,
+        );
+        logger.info(
+          `[assignCouponToBuyer] ✅ Coupon email sent to ${user.email}`,
+        );
+      }
     }
   } catch (emailError) {
-    logger.error('[assignCouponToBuyer] Error sending coupon email:', emailError.message);
+    logger.error(
+      '[assignCouponToBuyer] Error sending coupon email:',
+      emailError.message,
+    );
     // Don't fail assignment if email fails
   }
 
@@ -650,14 +696,37 @@ exports.sendCouponEmail = catchAsync(async (req, res, next) => {
 
     // Now send the email
     const emailDispatcher = require('../../emails/emailDispatcher');
-const logger = require('../../utils/logger');
     const seller = updateResult.seller || { name: 'A seller', shopName: 'A seller' };
 
     // Get the updated coupon for email
-    const updatedCoupon = savedCoupon || updateResult.coupons.find(c => c.code === couponCode.toUpperCase());
-    await emailDispatcher.sendCouponToBuyer(buyer, updatedCoupon, updateResult, seller, message);
+    const updatedCoupon =
+      savedCoupon ||
+      updateResult.coupons.find(
+        (c) => c.code === couponCode.toUpperCase(),
+      );
 
-    logger.info(`[sendCouponEmail] ✅ Coupon email sent to ${buyer.email} and recipient assigned`);
+    const allowed = await canSendUserEmail(
+      buyer._id || buyer.id || buyerId,
+      EMAIL_CATEGORY.PROMOTION,
+    );
+
+    if (!allowed) {
+      logger.info(
+        '[sendCouponEmail] Skipping coupon email due to user email preferences',
+        { buyerId, email: buyer.email },
+      );
+    } else {
+      await emailDispatcher.sendCouponToBuyer(
+        buyer,
+        updatedCoupon,
+        updateResult,
+        seller,
+        message,
+      );
+      logger.info(
+        `[sendCouponEmail] ✅ Coupon email sent to ${buyer.email} and recipient assigned`,
+      );
+    }
 
     res.status(200).json({
       status: 'success',

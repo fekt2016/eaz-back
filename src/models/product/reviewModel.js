@@ -100,17 +100,6 @@ reviewSchema.statics.calcAverageRatings = async function (productId) {
 reviewSchema.post('save', async function (doc) {
   await doc.constructor.calcAverageRatings(doc.product);
 });
-
-reviewSchema.pre(/^findOneAnd/, async function (next) {
-  this.reviewDoc = await this.model.findOne(this.getQuery());
-  next();
-});
-
-reviewSchema.post(/^findOneAnd/, async function () {
-  if (this.reviewDoc) {
-    await this.reviewDoc.constructor.calcAverageRatings(this.reviewDoc.product);
-  }
-});
 // Add index to prevent duplicate reviews - one review per order item
 // If orderItem is provided, use it; otherwise fall back to product+user+order
 reviewSchema.index({ orderItem: 1, user: 1 }, { unique: true, sparse: true });
@@ -233,16 +222,11 @@ reviewSchema.post('save', function (doc) {
   }
 });
 
-// Pre-remove hook
-reviewSchema.pre(/^findOneAnd/, async function (next) {
-  // Store document in query so we can access it in post hook
-  this.r = await this.findOne();
-  next();
-});
-
-// Post-remove hook
-reviewSchema.post(/^findOneAnd/, function () {
-  if (this.r) this.r.constructor.calcAverageRatings(this.r.product);
+// Post findOneAndDelete/Update hook - doc is the deleted/updated document
+reviewSchema.post(/^findOneAnd/, function (doc) {
+  if (doc && doc.product) {
+    doc.constructor.calcAverageRatings(doc.product);
+  }
 });
 const Review = mongoose.model('Review', reviewSchema);
 

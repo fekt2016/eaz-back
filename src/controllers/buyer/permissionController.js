@@ -7,6 +7,7 @@ const anonymizeUser = require('../../utils/helpers/anonymizeUser');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const { isMobileApp } = require('../../middleware/mobileAppGuard');
 const { checkFeature, FEATURES } = require('../../utils/featureFlags');
+const logger = require('../../utils/logger');
 // Get permissions - creates default permissions if not found
 exports.getPermissions = catchAsync(async (req, res, next) => {
   try {
@@ -51,48 +52,115 @@ exports.getPermissions = catchAsync(async (req, res, next) => {
 exports.updateEmailPrefs = catchAsync(async (req, res, next) => {
   const { promotions, newsletters, accountUpdates } = req.body;
 
+  if (
+    typeof promotions !== 'boolean' ||
+    typeof newsletters !== 'boolean' ||
+    typeof accountUpdates !== 'boolean'
+  ) {
+    return next(new AppError('Invalid email preference values', 400));
+  }
+
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { emailPreferences: { promotions, newsletters, accountUpdates } },
-      { new: true, runValidators: true },
+      {
+        $set: {
+          'emailPreferences.promotions': promotions,
+          'emailPreferences.newsletters': newsletters,
+          'emailPreferences.accountUpdates': accountUpdates,
+        },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
     );
 
-    res.status(200).json(permissions.emailPreferences);
+    if (!permissions) {
+      return next(new AppError('Unable to update email preferences', 500));
+    }
+
+    return res.status(200).json(permissions.emailPreferences);
   } catch (error) {
-    res.status(400).json({ message: 'Invalid data' });
+    logger.error('[updateEmailPrefs] Error:', error);
+    return next(new AppError('Invalid email preference data', 400));
   }
-  // res.send('ok');
 });
 
 // Update SMS preferences
 exports.updateSMSPrefs = catchAsync(async (req, res, next) => {
-  const preferences = req.body;
+  const { promotions, orderUpdates } = req.body;
+
+  if (typeof promotions !== 'boolean' || typeof orderUpdates !== 'boolean') {
+    return next(new AppError('Invalid SMS preference values', 400));
+  }
+
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { smsPreferences: preferences },
-      { new: true, runValidators: true },
+      {
+        $set: {
+          'smsPreferences.promotions': promotions,
+          'smsPreferences.orderUpdates': orderUpdates,
+        },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
     );
+    if (!permissions) {
+      return next(new AppError('Unable to update SMS preferences', 500));
+    }
     res.status(200).json(permissions.smsPreferences);
   } catch (error) {
-    res.status(400).json({ message: 'Invalid data' });
+    logger.error('[updateSMSPrefs] Error:', error);
+    res.status(400).json({ message: 'Invalid SMS preference data' });
   }
 });
 
 // Update data sharing
 exports.updateDataSharing = catchAsync(async (req, res, next) => {
-  logger.info(req.body);
-  const data = req.body;
+  const { analytics, personalizedAds, thirdParties } = req.body;
+  if (
+    typeof analytics !== 'boolean' ||
+    typeof personalizedAds !== 'boolean' ||
+    typeof thirdParties !== 'boolean'
+  ) {
+    return next(new AppError('Invalid data sharing values', 400));
+  }
+
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { dataSharing: data },
-      { new: true, runValidators: true },
+      {
+        $set: {
+          'dataSharing.analytics': analytics,
+          'dataSharing.personalizedAds': personalizedAds,
+          'dataSharing.thirdParties': thirdParties,
+        },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
     );
-    res.json(permissions.dataSharing);
+    if (!permissions) {
+      return next(new AppError('Unable to update data sharing settings', 500));
+    }
+    res.status(200).json(permissions.dataSharing);
   } catch (error) {
-    res.status(400).json({ message: 'Invalid data' });
+    logger.error('[updateDataSharing] Error:', error);
+    res.status(400).json({ message: 'Invalid data sharing payload' });
   }
 });
 
@@ -112,12 +180,24 @@ exports.updateLocationAccess = catchAsync(async (req, res, next) => {
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { locationAccess: level },
-      { new: true, runValidators: true },
+      {
+        $set: { locationAccess: level },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
     );
     logger.info('permissions', permissions);
-    res.json({ locationAccess: permissions.locationAccess });
+    if (!permissions) {
+      return next(new AppError('Unable to update location access', 500));
+    }
+    res.status(200).json({ locationAccess: permissions.locationAccess });
   } catch (error) {
+    logger.error('[updateLocationAccess] Error:', error);
     res.status(400).json({ message: 'Invalid access level' });
   }
 });
@@ -132,15 +212,26 @@ exports.updateSocialSharing = catchAsync(async (req, res, next) => {
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { socialMediaSharing },
-      { new: true },
+      {
+        $set: { socialMediaSharing },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      },
     );
 
-    res
-      .status(200)
-      .json({ socialMediaSharing: permissions.socialMediaSharing });
+    if (!permissions) {
+      return next(new AppError('Unable to update social sharing preference', 500));
+    }
+
+    res.status(200).json({ socialMediaSharing: permissions.socialMediaSharing });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    logger.error('[updateSocialSharing] Error:', error);
+    res.status(500).json({ message: 'Unable to update social sharing' });
   }
 });
 
@@ -156,11 +247,23 @@ exports.updateAccountVisibility = catchAsync(async (req, res, next) => {
   try {
     const permissions = await Permission.findOneAndUpdate(
       { user: req.user.id },
-      { accountVisibility: req.body.level },
-      { new: true, runValidators: true },
+      {
+        $set: { accountVisibility: req.body.level },
+        $setOnInsert: { user: req.user.id },
+      },
+      {
+        new: true,
+        runValidators: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+      },
     );
-    res.json({ accountVisibility: permissions.accountVisibility });
+    if (!permissions) {
+      return next(new AppError('Unable to update account visibility', 500));
+    }
+    res.status(200).json({ accountVisibility: permissions.accountVisibility });
   } catch (error) {
+    logger.error('[updateAccountVisibility] Error:', error);
     res.status(400).json({ message: 'Invalid visibility level' });
   }
 });
@@ -217,8 +320,10 @@ exports.requestDataDownload = catchAsync(async (req, res, next) => {
     console.warn('[PermissionController] Data export requested but background jobs are disabled (Bull/Redis removed)');
 
     res.status(200).json({
-      message: 'Data export started. You will receive an email when ready.',
-      exportId: exportId,
+      status: 'failed',
+      message:
+        'Data export is currently unavailable. Please try again later.',
+      exportId,
     });
   } catch (error) {
     logger.error('Data export error:', error);
@@ -245,7 +350,7 @@ exports.requestAccountDeletion = catchAsync(async (req, res, next) => {
   }
 
   // Schedule deletion
-  await req.user.scheduleAccountDeletion(req.body.reason);
+  const updatedUser = await req.user.scheduleAccountDeletion(req.body.reason);
 
   // Invalidate all sessions
   await TokenBlacklist.invalidateAllSessions(req.user.id);
@@ -253,14 +358,16 @@ exports.requestAccountDeletion = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'Account scheduled for deletion. You have 30 days to cancel.',
+    deletionDate: updatedUser.accountDeletion?.scheduledAt || null,
   });
 });
 
 exports.cancelAccountDeletion = catchAsync(async (req, res, next) => {
-  await req.user.cancelAccountDeletion();
+  const updatedUser = await req.user.cancelAccountDeletion();
   res.status(200).json({
     status: 'success',
     message: 'Account deletion cancelled',
+    data: updatedUser.accountDeletion,
   });
 });
 

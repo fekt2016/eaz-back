@@ -77,6 +77,7 @@ const adminNeighborhoodRoutes = require('./routes/admin/neighborhoodRoutes');
 const adminReviewRoutes = require('./routes/admin/reviewRoutes');
 const adminPayoutRoutes = require('./routes/admin/payoutRoutes');
 const adminRefundRoutes = require('./routes/admin/refundRoutes');
+const adRoutes = require('./routes/admin/adRoutes');
 
 const productRoutes = require('./routes/shared/productRoutes');
 const categoryRoutes = require('./routes/shared/categoryRoutes');
@@ -503,6 +504,7 @@ app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 // IMPORTANT: adminNeighborhoodRoutes must come BEFORE adminRoutes to avoid route conflicts
 // adminRoutes has a catch-all /:id route that would match /neighborhoods
 // Mount adminNeighborhoodRoutes at /api/v1/admin/neighborhoods
+app.use('/api/v1/ads', adRoutes);
 app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
 app.use('/api/v1/admin/reviews', adminReviewRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);

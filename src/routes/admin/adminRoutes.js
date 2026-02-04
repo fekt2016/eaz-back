@@ -52,7 +52,7 @@ router.post(
 router.get(
   '/me',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   adminController.getMe,
 );
 router

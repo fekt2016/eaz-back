@@ -41,7 +41,8 @@ router
     createProduct,
   );
 // More specific routes should come before generic :id route
-router.route('/:id/reviews').get(getProductReviews);
+// optionalAuth: logged-in users see their own pending reviews; anonymous users see only approved
+router.route('/:id/reviews').get(optionalAuth, getProductReviews);
 
 // Variant routes - must be before /:id route
 router

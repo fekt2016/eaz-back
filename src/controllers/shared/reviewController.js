@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Review = require('../../models/product/reviewModel');
 const handleFactory = require('../shared/handleFactory');
 const catchAsync = require('../../utils/helpers/catchAsync');
@@ -317,23 +318,39 @@ exports.updateReview = catchAsync(async (req, res, next) => {
 });
 
 exports.deleteReview = catchAsync(async (req, res, next) => {
-  const review = await Review.findById(req.params.id);
+  const review = await Review.findById(req.params.id).select('user product');
 
   if (!review) {
     return next(new AppError('Review not found', 404));
   }
 
-  // SECURITY FIX #10: Verify review ownership
-  if (review.user.toString() !== req.user.id.toString()) {
+  const isAdmin = ['admin', 'superadmin', 'moderator'].includes(req.user?.role);
+  const reviewUserRef = review.user && (review.user._id || review.user);
+  const currentUserRef = req.user && (req.user._id || req.user.id);
+  let isOwner = false;
+  if (reviewUserRef && currentUserRef) {
+    try {
+      isOwner = new mongoose.Types.ObjectId(reviewUserRef).equals(new mongoose.Types.ObjectId(currentUserRef));
+    } catch {
+      isOwner = String(reviewUserRef) === String(currentUserRef);
+    }
+  }
+
+  if (!isAdmin && !isOwner) {
     return next(new AppError('You are not authorized to delete this review', 403));
   }
 
-  // SECURITY: Check if user owns the review or is admin
-  if (review.user.toString() !== req.user.id && req.user.role !== 'admin') {
-    return next(new AppError('You can only delete your own reviews', 403));
-  }
-
+  const productId = review.product;
   await Review.findByIdAndDelete(req.params.id);
+
+  // Recalculate product ratings after complete removal (non-blocking - don't fail delete if recalc errors)
+  if (productId) {
+    try {
+      await Review.calcAverageRatings(productId);
+    } catch (err) {
+      console.error('[deleteReview] Error recalculating product ratings:', err.message);
+    }
+  }
 
   res.status(204).json({ data: null, status: 'success' });
 });

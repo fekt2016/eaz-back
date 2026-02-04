@@ -20,7 +20,7 @@ const router = express.Router({ mergeParams: true });
 router.get(
   '/my-reviews',
   authController.protect,
-  authController.restrictTo('user'),
+  authController.restrictTo('user', 'buyer'),
   getMyReviews
 );
 
@@ -29,7 +29,7 @@ router
   .get(authController.protect, authController.restrictTo('admin'), getAllReview)
   .post(
     authController.protect,
-    authController.restrictTo('user'),
+    authController.restrictTo('user', 'buyer'),
     reviewSubmissionLimiter, // Rate limiting: 5 reviews per hour per user
     reviewController.setProductUserIds,
     createUserReview,
@@ -40,13 +40,13 @@ router
   .get(validateObjectId('id'), reviewController.getReview)
   .patch(
     authController.protect,
-    authController.restrictTo('user', 'admin'),
+    authController.restrictTo('user', 'buyer', 'admin'), // 'buyer' alias for customer role
     validateObjectId('id'),
     reviewController.updateReview,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('user', 'admin'),
+    authController.restrictTo('user', 'buyer', 'admin'), // 'buyer' alias for customer role
     validateObjectId('id'),
     reviewController.deleteReview,
   );

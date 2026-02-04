@@ -1380,7 +1380,9 @@ exports.protect = catchAsync(async (req, res, next) => {
   // PATCH /api/v1/users/:id - admin only (updateUser)
   // DELETE /api/v1/users/:id - admin only (deleteUser)
   // GET /api/v1/review (list) - admin only (getAllReview on shared review route)
+  // /api/v1/ads (CRUD) - admin only; mounted at /api/v1/ads not /api/v1/admin/ads, so must use admin_jwt
   const isAdminOnlySharedRoute = (
+    (fullPath.startsWith('/api/v1/ads') && !fullPath.startsWith('/api/v1/ads/public')) ||
     (method === 'GET' && (fullPath === '/api/v1/review' || fullPath.startsWith('/api/v1/review?'))) ||
     (fullPath === '/api/v1/order' && method === 'GET') ||
     (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||

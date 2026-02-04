@@ -7,6 +7,9 @@ const {
   sendLoginOtpEmail,
 } = require('../utils/email/emailService');
 
+// Buyer-facing marketing emails (e.g. sendCouponToBuyer) must be gated by the caller
+// using canSendUserEmail(userId, EMAIL_CATEGORY.PROMOTION) from utils/helpers/emailPermission.
+// Order/payment/refund/wallet/auth emails are transactional or security – always send.
 
 const sendSignupEmail = async (user, otp) => {
   return await sendLoginOtpEmail(user.email, otp, user.name || 'User');

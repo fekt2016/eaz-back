@@ -63,6 +63,12 @@ const productSchema = new mongoose.Schema(
       ref: 'Category',
       required: [true, 'Parent category is required'],
     },
+    // Optional promotion key used for homepage/offers landing pages (e.g. "back-to-school")
+    promotionKey: {
+      type: String,
+      trim: true,
+      index: true,
+    },
     subCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
