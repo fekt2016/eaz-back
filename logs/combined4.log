@@ -13193,3 +13193,374 @@
 {"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:44:29"}
 {"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 5402.917 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:44:30"}
 {"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 5671.336 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:44:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:44:58"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:44:58"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:44:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 816.507 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:44:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:45:29"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:45:29"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:45:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 746.118 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:45:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:46:00"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:46:00"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:46:01"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 747.501 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:46:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:46:31"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:46:31"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:46:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 746.409 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:46:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:47:02"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:47:02"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:47:02"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 870.061 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:47:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:47:32"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:47:32"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:47:33"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 812.842 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:47:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:48:03"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:48:03"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:48:04"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 868.001 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:48:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 997.422 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:38"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1245.019 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 17:52:39"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 17:52:40","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 749.527 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"admin_jwt":"present","cookieKeys":["main_jwt","admin_jwt","seller_jwt","csrf-token"],"cookieName":"admin_jwt","fullPath":"/api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8","hasAuthHeader":false,"isSellerRoute":false,"level":"info","main_jwt":"present","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1027.076 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1283.767 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1512.216 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 17:52:41","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 774.048 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"admin_jwt":"present","cookieKeys":["main_jwt","admin_jwt","seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"present","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1002.552 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:41"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentrequest \u001b[36m304\u001b[0m 770.179 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1018.062 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 17:52:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/transactions?limit=20 \u001b[36m304\u001b[0m 1505.163 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:43"}
+{"hasPaymentDetails":true,"id":"6984d40b1183d5165c7f4ac8","level":"info","message":"[getWithdrawalRequest] Payment details:","paymentDetails":{"accountName":"umar faisal","network":"MTN","phone":"0244388190"},"paymentMethod":"mtn_momo","payoutMethod":"mtn_momo","service":"backend-api","timestamp":"2026-02-05 17:52:43"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8 \u001b[36m304\u001b[0m 2824.360 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 17:52:43"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-05 18:27:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/ads/public \u001b[36m304\u001b[0m 2738.487 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:47"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 18:55:47"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:47"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:48"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1883.050 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 4988.290 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-05 18:55:49"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 5312.277 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 18:55:50","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 5586.664 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 5972.027 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=20&sort=-createdAt \u001b[36m304\u001b[0m 1427.761 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 6373.397 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 18:55:51","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1307.041 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"admin_jwt":"present","cookieKeys":["main_jwt","admin_jwt","seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"present","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1861.867 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentrequest \u001b[36m304\u001b[0m 1004.638 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 1488.437 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"admin_jwt":"present","cookieKeys":["main_jwt","admin_jwt","seller_jwt","csrf-token"],"cookieName":"admin_jwt","fullPath":"/api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8","hasAuthHeader":false,"isSellerRoute":false,"level":"info","main_jwt":"present","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=100 \u001b[32m200\u001b[0m 1905.539 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1272.561 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 3223.206 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"buffer":{"data":[105,127,39,209,3,102,158,21,117,93,97,215],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/transactions?limit=20 \u001b[36m304\u001b[0m 1553.207 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 1853.872 ms - 554\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"deletedBy":null,"deletedByRole":null,"isAdmin":true,"isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isSellerOwnProduct":false,"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"697f27d103669e15755d61d7","sellerId":"697605eb3206c0a57a1667cd","service":"backend-api","status":"active","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-02-05 18:55:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1045.556 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[getProductReviews] Product ID: 697f27d103669e15755d61d7","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[getProductReviews] User: 6798101470646250be061204, Role: admin","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[getProductReviews] Status filter:","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[getProductReviews] Found 1 reviews","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/697f27d103669e15755d61d7/reviews \u001b[36m304\u001b[0m 1295.601 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"68c14745079f517f4e9ced3a","attributes":[],"createdAt":"2025-09-10T09:39:17.068Z","description":"Clothing, footwear, toys, essentials, and accessories for babies and children.","id":"68c14745079f517f4e9ced3a","image":"https://res.cloudinary.com/eazworld/image/upload/v1757497155/categories/1757497154403-632162495-image.jpg","isSubcategory":false,"name":"Baby & Kids","parentCategory":null,"productCount":11,"products":["697614bd479b428d68231529","692d7bf22ecf623f4471fef0","692d7bf12ecf623f4471feb2","692d7bf12ecf623f4471fe77","692d7bf02ecf623f4471fe46","692d7bf02ecf623f4471fe38","692d7bf02ecf623f4471fe17","692d7bef2ecf623f4471fddf","692d7bef2ecf623f4471fdd3","692d7bf02ecf623f4471fded","697f27d103669e15755d61d7"],"slug":"baby-and-kids","status":"active","subcategories":["68c14877079f517f4e9ceec1","68c149d2079f517f4e9cf040","68c14ac0079f517f4e9cf1df","68c14ba8079f517f4e9cf370","68c14c83079f517f4e9cf509","68c14d34079f517f4e9cf6a7","68c14df4079f517f4e9cf848","68c14e95079f517f4e9cf9f0","68c14f78079f517f4e9cfb9e","68c15051079f517f4e9cfd4c","68c150f5079f517f4e9cff02","68c15296079f517f4e9d00be","68c15460079f517f4e9d0390"],"updatedAt":"2026-02-04T14:22:46.084Z"}],"_docs":{"68c150f5079f517f4e9cff02":"68c14745079f517f4e9ced3a"},"_queryProjection":null,"path":"parentCategory"},"value":"68c14745079f517f4e9ced3a"},"subcategories":{"options":{"_childDocs":[],"_docs":{"68c150f5079f517f4e9cff02":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":0,"_id":"68c150f5079f517f4e9cff02","attributes":[{"_id":"68c150f5079f517f4e9cff03","id":"68c150f5079f517f4e9cff03","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Type","type":"enum","values":["Caps","Mittens","Socks","Bibs","Blankets"]},{"_id":"68c150f5079f517f4e9cff04","id":"68c150f5079f517f4e9cff04","isFilterable":true,"isRequired":false,"isVariant":false,"name":"Material","type":"enum","values":["Cotton","Wool","Fleece"]},{"_id":"68c150f5079f517f4e9cff05","id":"68c150f5079f517f4e9cff05","isFilterable":true,"isRequired":false,"isVariant":true,"name":"Color","type":"color","values":["Blue","Pink","White","Yellow"]}],"createdAt":"2025-09-10T10:20:37.177Z","description":"Caps, mittens, socks, bibs, and blankets.","image":"https://res.cloudinary.com/eazworld/image/upload/v1757499636/categories/1757499634936-899114318-image.jpg","name":"Baby Accessories","parentCategory":{"__v":0,"_id":"68c14745079f517f4e9ced3a","attributes":[],"createdAt":"2025-09-10T09:39:17.068Z","description":"Clothing, footwear, toys, essentials, and accessories for babies and children.","id":"68c14745079f517f4e9ced3a","image":"https://res.cloudinary.com/eazworld/image/upload/v1757497155/categories/1757497154403-632162495-image.jpg","isSubcategory":false,"name":"Baby & Kids","parentCategory":null,"productCount":11,"products":["697614bd479b428d68231529","692d7bf22ecf623f4471fef0","692d7bf12ecf623f4471feb2","692d7bf12ecf623f4471fe77","692d7bf02ecf623f4471fe46","692d7bf02ecf623f4471fe38","692d7bf02ecf623f4471fe17","692d7bef2ecf623f4471fddf","692d7bef2ecf623f4471fdd3","692d7bf02ecf623f4471fded","697f27d103669e15755d61d7"],"slug":"baby-and-kids","status":"active","subcategories":["68c14877079f517f4e9ceec1","68c149d2079f517f4e9cf040","68c14ac0079f517f4e9cf1df","68c14ba8079f517f4e9cf370","68c14c83079f517f4e9cf509","68c14d34079f517f4e9cf6a7","68c14df4079f517f4e9cf848","68c14e95079f517f4e9cf9f0","68c14f78079f517f4e9cfb9e","68c15051079f517f4e9cfd4c","68c150f5079f517f4e9cff02","68c15296079f517f4e9d00be","68c15460079f517f4e9d0390"],"updatedAt":"2026-02-04T14:22:46.084Z"},"products":["692d7bef2ecf623f4471fdd3","697f27d103669e15755d61d7"],"slug":"baby-accessories","status":"active","subcategories":[],"updatedAt":"2026-02-04T14:22:45.725Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"68c14745079f517f4e9ced3a","attributes":[],"createdAt":"2025-09-10T09:39:17.068Z","description":"Clothing, footwear, toys, essentials, and accessories for babies and children.","id":"68c14745079f517f4e9ced3a","image":"https://res.cloudinary.com/eazworld/image/upload/v1757497155/categories/1757497154403-632162495-image.jpg","isSubcategory":false,"name":"Baby & Kids","parentCategory":null,"productCount":11,"products":["697614bd479b428d68231529","692d7bf22ecf623f4471fef0","692d7bf12ecf623f4471feb2","692d7bf12ecf623f4471fe77","692d7bf02ecf623f4471fe46","692d7bf02ecf623f4471fe38","692d7bf02ecf623f4471fe17","692d7bef2ecf623f4471fddf","692d7bef2ecf623f4471fdd3","692d7bf02ecf623f4471fded","697f27d103669e15755d61d7"],"slug":"baby-and-kids","status":"active","subcategories":["68c14877079f517f4e9ceec1","68c149d2079f517f4e9cf040","68c14ac0079f517f4e9cf1df","68c14ba8079f517f4e9cf370","68c14c83079f517f4e9cf509","68c14d34079f517f4e9cf6a7","68c14df4079f517f4e9cf848","68c14e95079f517f4e9cf9f0","68c14f78079f517f4e9cfb9e","68c15051079f517f4e9cfd4c","68c150f5079f517f4e9cff02","68c15296079f517f4e9d00be","68c15460079f517f4e9d0390"],"updatedAt":"2026-02-04T14:22:46.084Z"}],"_docs":{"68c150f5079f517f4e9cff02":"68c14745079f517f4e9ced3a"},"_queryProjection":null,"path":"parentCategory"},"value":"68c14745079f517f4e9ced3a"},"subcategories":{"options":{"_childDocs":[],"_docs":{"68c150f5079f517f4e9cff02":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":0,"_id":"68c150f5079f517f4e9cff02","attributes":[{"_id":"68c150f5079f517f4e9cff03","id":"68c150f5079f517f4e9cff03","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Type","type":"enum","values":["Caps","Mittens","Socks","Bibs","Blankets"]},{"_id":"68c150f5079f517f4e9cff04","id":"68c150f5079f517f4e9cff04","isFilterable":true,"isRequired":false,"isVariant":false,"name":"Material","type":"enum","values":["Cotton","Wool","Fleece"]},{"_id":"68c150f5079f517f4e9cff05","id":"68c150f5079f517f4e9cff05","isFilterable":true,"isRequired":false,"isVariant":true,"name":"Color","type":"color","values":["Blue","Pink","White","Yellow"]}],"createdAt":"2025-09-10T10:20:37.177Z","description":"Caps, mittens, socks, bibs, and blankets.","image":"https://res.cloudinary.com/eazworld/image/upload/v1757499636/categories/1757499634936-899114318-image.jpg","name":"Baby Accessories","parentCategory":{"__v":0,"_id":"68c14745079f517f4e9ced3a","attributes":[],"createdAt":"2025-09-10T09:39:17.068Z","description":"Clothing, footwear, toys, essentials, and accessories for babies and children.","id":"68c14745079f517f4e9ced3a","image":"https://res.cloudinary.com/eazworld/image/upload/v1757497155/categories/1757497154403-632162495-image.jpg","isSubcategory":false,"name":"Baby & Kids","parentCategory":null,"productCount":11,"products":["697614bd479b428d68231529","692d7bf22ecf623f4471fef0","692d7bf12ecf623f4471feb2","692d7bf12ecf623f4471fe77","692d7bf02ecf623f4471fe46","692d7bf02ecf623f4471fe38","692d7bf02ecf623f4471fe17","692d7bef2ecf623f4471fddf","692d7bef2ecf623f4471fdd3","692d7bf02ecf623f4471fded","697f27d103669e15755d61d7"],"slug":"baby-and-kids","status":"active","subcategories":["68c14877079f517f4e9ceec1","68c149d2079f517f4e9cf040","68c14ac0079f517f4e9cf1df","68c14ba8079f517f4e9cf370","68c14c83079f517f4e9cf509","68c14d34079f517f4e9cf6a7","68c14df4079f517f4e9cf848","68c14e95079f517f4e9cf9f0","68c14f78079f517f4e9cfb9e","68c15051079f517f4e9cfd4c","68c150f5079f517f4e9cff02","68c15296079f517f4e9d00be","68c15460079f517f4e9d0390"],"updatedAt":"2026-02-04T14:22:46.084Z"},"products":["692d7bef2ecf623f4471fdd3","697f27d103669e15755d61d7"],"slug":"baby-accessories","status":"active","subcategories":[],"updatedAt":"2026-02-04T14:22:45.725Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/68c150f5079f517f4e9cff02 \u001b[36m304\u001b[0m 596.436 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/697f27d103669e15755d61d7/related?limit=10 \u001b[36m304\u001b[0m 591.325 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/697f27d103669e15755d61d7 \u001b[36m304\u001b[0m 1612.297 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"error","message":"[Recommendation] Error getting also bought products: Cannot read properties of undefined (reading 'toString')","service":"backend-api","stack":"TypeError: Cannot read properties of undefined (reading 'toString')\n    at /Users/mac/Desktop/Saiisai/backend/src/services/recommendationService.js:167:79\n    at Array.map (<anonymous>)\n    at Object.getAlsoBoughtProducts (/Users/mac/Desktop/Saiisai/backend/src/services/recommendationService.js:167:56)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async /Users/mac/Desktop/Saiisai/backend/src/controllers/shared/recommendationController.js:40:20","timestamp":"2026-02-05 18:55:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/697f27d103669e15755d61d7/ai-similar?limit=10 \u001b[36m304\u001b[0m 512.356 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"hasPaymentDetails":true,"id":"6984d40b1183d5165c7f4ac8","level":"info","message":"[getWithdrawalRequest] Payment details:","paymentDetails":{"accountName":"umar faisal","network":"MTN","phone":"0244388190"},"paymentMethod":"mtn_momo","payoutMethod":"mtn_momo","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/payout/request/6984d40b1183d5165c7f4ac8 \u001b[36m304\u001b[0m 2693.399 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/697f27d103669e15755d61d7/also-bought?limit=10 \u001b[36m304\u001b[0m 861.023 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 18:55:54"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 18:55:54","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 18:55:55"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 18:55:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1043.619 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1252.202 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 18:55:55"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-05 20:05:44"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-05 20:05:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:39"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1293.955 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentrequest \u001b[36m304\u001b[0m 1572.900 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/transactions?limit=20 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 20:12:41","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 20:12:41"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 1344.725 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 20:12:43"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 20:12:43","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 794.554 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:44"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 20:12:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[32m200\u001b[0m 1057.521 ms - 89\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[32m200\u001b[0m 1559.774 ms - 308\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:44"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[32m200\u001b[0m 3024.098 ms - 976\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentrequest","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"admin_jwt":"present","cookieKeys":["main_jwt","admin_jwt","seller_jwt","csrf-token"],"cookieName":"seller_jwt","fullPath":"/api/v1/paymentmethod/me","hasAuthHeader":false,"isSellerRoute":true,"level":"info","main_jwt":"present","message":"[Auth] 🔍 Payment/OTP route detected:","method":"GET","seller_jwt":"present","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/paymentmethod/me","service":"backend-api","timestamp":"2026-02-05 20:12:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentrequest \u001b[36m304\u001b[0m 809.641 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 1071.083 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/transactions?limit=20 \u001b[32m200\u001b[0m 1526.377 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/logout \u001b[32m200\u001b[0m 8.930 ms - 56\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[33m401\u001b[0m 272.559 ms - 376\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:12:55"}
+{"email":"benzflex00@gmail.com","emailVerified":false,"hasPassword":true,"ip":"127.0.0.1","level":"info","message":"[Seller Login] Seller found - checking authorization","sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","status":"active","timestamp":"2026-02-05T20:12:56.136Z"}
+{"email":"benzflex00@gmail.com","emailVerified":false,"ip":"127.0.0.1","level":"warn","message":"[Seller Login] 403 - Account not verified","sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","status":"active","timestamp":"2026-02-05T20:12:56.137Z"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/login \u001b[33m403\u001b[0m 334.161 ms - 466\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:12:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:14:13"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:14:13"}
+{"from":"no-reply@saiisai.com","level":"info","message":"[Resend] 📤 Attempting to send email","service":"backend-api","subject":"Your Login Code - Saiisai","timestamp":"2026-02-05 20:14:14","to":"benzflex00@gmail.com"}
+{"from":"no-reply@saiisai.com","id":"2beb90fc-0604-4d23-a8fd-5390a3e5ca97","level":"info","message":"[Resend] ✅ Email sent successfully","service":"backend-api","timestamp":"2026-02-05 20:14:15","to":"benzflex00@gmail.com"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/resend-otp \u001b[32m200\u001b[0m 2085.109 ms - 89\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:14:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:14:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:14:32"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/verify-account \u001b[32m200\u001b[0m 1666.330 ms - 206\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:14:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:14:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[33m401\u001b[0m 1.934 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:14:34"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-05 20:14:50"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-05 20:14:51"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-05 20:14:51"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-05 20:14:51"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-05 20:14:51"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-05 20:14:51"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"database":"test","host":"cluster0-shard-00-02.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-05 20:14:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:04"}
+{"email":"benzflex00@gmail.com","emailVerified":true,"hasPassword":true,"ip":"127.0.0.1","level":"info","message":"[Seller Login] Seller found - checking authorization","sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","status":"active","timestamp":"2026-02-05T20:15:04.968Z"}
+{"email":"benzflex00@gmail.com","hasPassword":true,"ip":"127.0.0.1","level":"info","message":"[Seller Login] Verifying password","passwordLength":60,"sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","timestamp":"2026-02-05T20:15:04.969Z"}
+{"email":"benzflex00@gmail.com","ip":"127.0.0.1","level":"info","message":"[Seller Login] Password verification result","passwordValid":true,"sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","timestamp":"2026-02-05T20:15:05.398Z"}
+{"level":"info","message":"[createDeviceSession] Development mode - skipping device limit check","service":"backend-api","timestamp":"2026-02-05 20:15:05"}
+{"0":"L","1":"o","10":"o","11":"r","12":"k","2":"c","3":"a","4":"l","5":" ","6":"N","7":"e","8":"t","9":"w","level":"info","message":"[createDeviceSession] Location detected (async):","service":"backend-api","timestamp":"2026-02-05 20:15:05"}
+{"level":"info","message":"[createDeviceSession] Suspicious device check:","service":"backend-api","timestamp":"2026-02-05 20:15:05"}
+{"deviceId":"62612962-ca46-4a15-b4fb-7dcc2d208704","deviceType":"desktop","ipAddress":"127.0.0.1","level":"info","message":"[createDeviceSession] Creating device session with data:","platform":"eazseller","service":"backend-api","timestamp":"2026-02-05 20:15:05","userId":"6970b22eaba06cadfd4b8035","userModel":"Seller"}
+{"buffer":{"data":[105,132,250,73,228,50,165,213,104,14,240,91],"type":"Buffer"},"level":"info","message":"[createDeviceSession] ✅ Device session created successfully:","service":"backend-api","timestamp":"2026-02-05 20:15:05"}
+{"cookieDomain":"not set","email":"benzflex00@gmail.com","ip":"127.0.0.1","level":"info","message":"[Seller Login] ✅ Login successful","nodeEnv":"development","origin":"http://localhost:5174","sellerId":"6970b22eaba06cadfd4b8035","service":"backend-api","status":"active","timestamp":"2026-02-05T20:15:07.219Z"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/login \u001b[32m200\u001b[0m 2585.136 ms - 348\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:07"}
+{"level":"info","message":"[ActivityLog] Logged: LOGIN (OTHER); by seller (6970b22eaba06cadfd4b8035) - Risk: low - Platform: eazseller","service":"backend-api","timestamp":"2026-02-05 20:15:07"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:07"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 1024.969 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1048.756 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-02-05 20:15:09"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 263.123 ms - 554\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-05 20:15:10","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"[OptionalAuth] Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 829.164 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1033.170 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1551.759 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 1766.129 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:11"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-seller-orders \u001b[36m304\u001b[0m 4611.581 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:14"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:14"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-05 20:15:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[32m200\u001b[0m 1282.400 ms - 975\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-05 20:15:40"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-05 20:15:40"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-05 20:15:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 752.374 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-05 20:15:41"}

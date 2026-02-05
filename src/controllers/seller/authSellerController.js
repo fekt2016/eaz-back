@@ -330,19 +330,31 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   }
 
   // SECURITY: Check if account is verified (REQUIRED before login)
-  if (!seller.verification?.emailVerified) {
+  // Treat as verified if: emailVerified flag is set, OR onboarding/verification status is 'verified' (admin-approved or legacy)
+  const isEmailVerified = seller.verification?.emailVerified === true;
+  const isOnboardingVerified = seller.onboardingStage === 'verified';
+  const isVerificationStatusVerified = seller.verificationStatus === 'verified';
+  const consideredVerified = isEmailVerified || isOnboardingVerified || isVerificationStatusVerified;
+
+  if (!consideredVerified) {
     // Production-safe logging (no sensitive data)
     logger.warn('[Seller Login] 403 - Account not verified', {
       sellerId: seller._id.toString(),
       email: seller.email,
       emailVerified: seller.verification?.emailVerified || false,
+      onboardingStage: seller.onboardingStage,
+      verificationStatus: seller.verificationStatus,
       status: seller.status,
       timestamp: new Date().toISOString(),
       ip: req.ip,
     });
-    
+
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Seller Login] ❌ Account not verified:', { emailVerified: seller.verification?.emailVerified });
+      console.log('[Seller Login] ❌ Account not verified:', {
+        emailVerified: seller.verification?.emailVerified,
+        onboardingStage: seller.onboardingStage,
+        verificationStatus: seller.verificationStatus,
+      });
     }
     return next(
       new AppError(
