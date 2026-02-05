@@ -125,11 +125,20 @@ exports.createPaymentMethod = catchAsync(async (req, res, next) => {
   // Use name or mobileName or accountName for the name field
   const paymentMethodName = name || mobileName || accountName || 'Payment Method';
 
-  // SECURITY: Check maximum payment methods limit (5 total per seller)
-  const existingMethodsCount = await PaymentMethod.countDocuments({ user: userId });
-  if (existingMethodsCount >= 5) {
+  // SECURITY: Limit to 1 bank account and 1 mobile money per seller
+  const existingBank = await PaymentMethod.findOne({ user: userId, type: 'bank_transfer' });
+  const existingMobileMoney = await PaymentMethod.findOne({ user: userId, type: 'mobile_money' });
+
+  if (type === 'bank_transfer' && existingBank) {
     return next(new AppError(
-      'Maximum payment methods limit reached. You can have up to 5 payment methods. Please delete an existing one to add a new one.',
+      'You can only have one bank account. Please update or delete your existing bank account to add a new one.',
+      400
+    ));
+  }
+
+  if (type === 'mobile_money' && existingMobileMoney) {
+    return next(new AppError(
+      'You can only have one mobile money number. Please update or delete your existing mobile money to add a new one.',
       400
     ));
   }

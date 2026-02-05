@@ -329,6 +329,152 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
 };
 
 /**
+ * Finalize a Paystack transfer using OTP (admin-only)
+ * @param {String} transferCode - Paystack transfer_code
+ * @param {String} otp - OTP sent to Paystack business contact
+ * @returns {Promise<Object>} Paystack response
+ */
+exports.finalizeTransferOtp = async (transferCode, otp) => {
+  if (!transferCode || !otp) {
+    throw new AppError('Transfer code and OTP are required to finalize transfer', 400);
+  }
+
+  try {
+    const payload = {
+      transfer_code: transferCode,
+      otp: String(otp).trim(),
+    };
+
+    logger.info('[PayoutService] Finalizing transfer with OTP:', {
+      transferCode,
+      otpLength: payload.otp.length,
+    });
+
+    const response = await paystackApi.post(
+      PAYSTACK_ENDPOINTS.FINALIZE_TRANSFER,
+      payload
+    );
+
+    // Validate response structure
+    if (!response || !response.data) {
+      logger.error('[PayoutService] Invalid Paystack response structure:', {
+        hasResponse: !!response,
+        hasData: !!response?.data,
+      });
+      throw new AppError('Invalid response from Paystack', 500);
+    }
+
+    // Check if Paystack returned an error in the response (even with 200 status)
+    if (response.data.status === false) {
+      const errorMessage = response.data.message || 'Paystack returned an error';
+      logger.error('[PayoutService] Paystack returned error in response:', {
+        message: errorMessage,
+        response: response.data,
+      });
+      throw new AppError(`Paystack error: ${errorMessage}`, 400);
+    }
+
+    return response;
+  } catch (error) {
+    logger.error('[PayoutService] Error finalizing transfer with OTP:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    if (error.response?.data?.message) {
+      const paystackMessage = error.response.data.message;
+      
+      // Provide more helpful error messages for common Paystack errors
+      if (paystackMessage.toLowerCase().includes('not currently awaiting otp') ||
+          paystackMessage.toLowerCase().includes('transfer is not') ||
+          paystackMessage.toLowerCase().includes('not awaiting otp')) {
+        throw new AppError(
+          `Paystack OTP error: Transfer is not currently awaiting OTP. ` +
+          `The transfer status may have changed. Please check the transfer status or resend OTP if needed.`,
+          400
+        );
+      }
+      
+      if (paystackMessage.toLowerCase().includes('invalid otp') ||
+          paystackMessage.toLowerCase().includes('incorrect otp')) {
+        throw new AppError(
+          `Paystack OTP error: Invalid OTP. Please check the OTP and try again.`,
+          400
+        );
+      }
+      
+      if (paystackMessage.toLowerCase().includes('expired')) {
+        throw new AppError(
+          `Paystack OTP error: OTP has expired. Please resend OTP and try again.`,
+          400
+        );
+      }
+      
+      throw new AppError(
+        `Paystack OTP error: ${paystackMessage}`,
+        error.response.status || 400
+      );
+    }
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError('Failed to finalize Paystack transfer with OTP', 500);
+  }
+};
+
+/**
+ * Resend Paystack OTP for a transfer
+ * @param {String} transferCode - Paystack transfer_code
+ * @returns {Promise<Object>} Paystack response
+ */
+exports.resendTransferOtp = async (transferCode) => {
+  if (!transferCode) {
+    throw new AppError('Transfer code is required to resend OTP', 400);
+  }
+
+  try {
+    const payload = {
+      transfer_code: transferCode,
+      // Paystack only accepts 'disable_otp' or 'transfer' as reason
+      reason: 'transfer',
+    };
+
+    logger.info('[PayoutService] Resending OTP for transfer:', {
+      transferCode,
+    });
+
+    const response = await paystackApi.post(
+      PAYSTACK_ENDPOINTS.RESEND_TRANSFER_OTP,
+      payload
+    );
+
+    return response;
+  } catch (error) {
+    logger.error('[PayoutService] Error resending transfer OTP:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    if (error.response?.data?.message) {
+      throw new AppError(
+        `Paystack resend OTP error: ${error.response.data.message}`,
+        error.response.status || 400
+      );
+    }
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError('Failed to resend Paystack OTP', 500);
+  }
+};
+
+/**
  * Submit PIN for mobile money transfer
  * @param {String} transferCode - Paystack transfer code
  * @param {String} pin - PIN received by the seller

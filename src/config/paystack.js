@@ -37,6 +37,7 @@ const PAYSTACK_ENDPOINTS = {
   GET_TRANSFER: '/transfer',
   VERIFY_TRANSFER: '/transfer/verify',
   FINALIZE_TRANSFER: '/transfer/finalize_transfer',
+  RESEND_TRANSFER_OTP: '/transfer/resend_otp',
   LIST_TRANSFERS: '/transfer',
   LIST_BANKS: '/bank',
   RESOLVE_BANK: '/bank/resolve',

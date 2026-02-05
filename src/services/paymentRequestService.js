@@ -5,6 +5,7 @@
  */
 
 const AppError = require('../utils/errors/appError');
+const logger = require('../utils/logger');
 const Seller = require('../models/user/sellerModel');
 const PaymentRequest = require('../models/payment/paymentRequestModel');
 const PaymentMethod = require('../models/payment/PaymentMethodModel');
@@ -33,8 +34,30 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
 
   // SECURITY: Require payout verification before allowing withdrawal
   const { hasVerifiedPayoutMethod } = require('../utils/helpers/paymentMethodHelpers');
-  const payoutCheck = hasVerifiedPayoutMethod(currentSeller);
-  
+  let payoutCheck = hasVerifiedPayoutMethod(currentSeller);
+
+  // Fallback: if Seller.paymentMethods doesn't show verified, check PaymentMethod records
+  if (!payoutCheck.hasVerified && currentSeller.email) {
+    try {
+      let userAccount = await User.findOne({ email: currentSeller.email }).select('_id').lean();
+      if (!userAccount) {
+        const escaped = String(currentSeller.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        userAccount = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).select('_id').lean();
+      }
+      if (userAccount) {
+        const verifiedPm = await PaymentMethod.findOne({
+          user: userAccount._id,
+          $or: [{ verificationStatus: 'verified' }, { status: 'verified' }],
+        }).lean();
+        if (verifiedPm) {
+          payoutCheck = { hasVerified: true, rejectionReasons: [] };
+        }
+      }
+    } catch (err) {
+      // Non-critical: continue with payoutCheck from Seller
+    }
+  }
+
   if (!payoutCheck.hasVerified) {
     const reason = payoutCheck.allRejected
       ? payoutCheck.rejectionReasons.join('; ') || 'Payout details were rejected. Please update your payment details and resubmit for verification.'
@@ -388,7 +411,6 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   // Notify all admins about withdrawal request
   try {
     const notificationService = require('../services/notification/notificationService');
-const logger = require('../utils/logger');
     await notificationService.createWithdrawalRequestNotification(
       paymentRequest._id,
       seller.id,

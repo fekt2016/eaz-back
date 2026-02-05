@@ -376,9 +376,9 @@ const sendWithdrawalApproved = async (seller, withdrawal) => {
     url: process.env.FRONTEND_URL || 'https://saiisai.com',
   };
 
-  const amount = withdrawal.amount || 0;
+  const amount = withdrawal.amount ?? withdrawal.amountRequested ?? 0;
   const requestId = withdrawal._id || withdrawal.id;
-  const transactionId = withdrawal.transactionId || withdrawal.paystackReference || 'N/A';
+  const transactionId = withdrawal.transactionId || withdrawal.paystackReference || withdrawal.paystackTransferCode || 'N/A';
 
   const htmlContent = `
     <!DOCTYPE html>

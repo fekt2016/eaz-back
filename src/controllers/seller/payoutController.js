@@ -5,6 +5,7 @@
 
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const Seller = require('../../models/user/sellerModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel');
 const Transaction = require('../../models/transaction/transactionModel');

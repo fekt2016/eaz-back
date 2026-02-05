@@ -623,6 +623,9 @@ sellerSchema.pre('save', async function (next) {
   // 2. Check if phone is verified (phone exists and is not empty)
   const isPhoneVerified = this.phone && this.phone.trim() !== '';
 
+  // ✅ Contact is verified if EITHER email OR phone is verified
+  const hasVerifiedContact = isEmailVerified || isPhoneVerified;
+
   // 3. Check if all three documents exist and are verified
   const businessCertStatus = getDocumentStatus(this.verificationDocuments?.businessCert);
   const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
@@ -647,21 +650,43 @@ sellerSchema.pre('save', async function (next) {
       this.verificationDocuments.addresProof.url));
 
   // 4. Check if payment method is verified (at least one payment method is verified)
-  // Use the shared helper to check payment method verification status
+  // Use the shared helper for embedded paymentMethods first, then PaymentMethod collection fallback
   const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
-  const payoutCheck = hasVerifiedPayoutMethod(this);
-  const hasPaymentMethodVerified = payoutCheck.hasVerified;
+  let payoutCheck = hasVerifiedPayoutMethod(this);
+  let hasPaymentMethodVerified = payoutCheck.hasVerified;
+  // Fallback: if embedded doesn't show verified, check PaymentMethod records (admin may have verified there)
+  if (!hasPaymentMethodVerified && this.email) {
+    try {
+      const User = require('../../models/user/userModel');
+      const PaymentMethod = require('../../models/payment/PaymentMethodModel');
+      let userAccount = await User.findOne({ email: this.email }).select('_id').lean();
+      if (!userAccount) {
+        const escaped = String(this.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        userAccount = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).select('_id').lean();
+      }
+      if (userAccount) {
+        const verifiedPm = await PaymentMethod.findOne({
+          user: userAccount._id,
+          $or: [{ verificationStatus: 'verified' }, { status: 'verified' }],
+        }).lean();
+        if (verifiedPm) {
+          hasPaymentMethodVerified = true;
+          payoutCheck = { hasVerified: true };
+        }
+      }
+    } catch (err) {
+      // Non-critical: continue with payoutCheck from embedded
+    }
+  }
 
   // CRITICAL: All requirements must be met to auto-verify seller
   // - All 3 documents verified and uploaded
-  // - Email verified (verified during registration)
-  // - Phone verified (phone exists)
+  // - At least ONE contact is verified (email OR phone)
   // - Payment method verified (at least one payment method is verified)
   const allRequirementsMet = 
     allDocumentsVerified && 
     allDocumentsUploaded &&
-    isEmailVerified &&
-    isPhoneVerified &&
+    hasVerifiedContact &&
     hasPaymentMethodVerified;
 
   if (allRequirementsMet) {
@@ -723,7 +748,7 @@ sellerSchema.pre('save', async function (next) {
     // This handles cases where verification is removed or requirements are no longer met
     if (this.verificationStatus === 'verified' || this.onboardingStage === 'verified') {
       // Only revert if we're missing any requirement
-      if (!allDocumentsVerified || !allDocumentsUploaded || !isEmailVerified || !isPhoneVerified || !hasPaymentMethodVerified) {
+      if (!allDocumentsVerified || !allDocumentsUploaded || !hasVerifiedContact || !hasPaymentMethodVerified) {
         this.verificationStatus = 'pending';
         this.onboardingStage = 'pending_verification';
         this.verification = this.verification || {};

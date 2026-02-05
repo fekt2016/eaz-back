@@ -20,7 +20,7 @@ exports.requirePayoutVerified = catchAsync(async (req, res, next) => {
 
   // Fetch seller with payout verification data and verification status
   const seller = await Seller.findById(req.user.id).select(
-    'paymentMethods name shopName verificationStatus'
+    'paymentMethods name shopName verificationStatus email'
   );
 
   if (!seller) {
@@ -39,9 +39,34 @@ exports.requirePayoutVerified = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Check if seller has at least one verified payment method
-  const payoutCheck = hasVerifiedPayoutMethod(seller);
-  
+  // Check if seller has at least one verified payment method (embedded first, then PaymentMethod collection fallback)
+  let payoutCheck = hasVerifiedPayoutMethod(seller);
+
+  // Fallback: if Seller.paymentMethods doesn't show verified, check PaymentMethod records
+  // (admin may have verified via PaymentMethod but Seller.paymentMethods wasn't synced)
+  if (!payoutCheck.hasVerified && seller.email) {
+    try {
+      const User = require('../../models/user/userModel');
+      const PaymentMethod = require('../../models/payment/PaymentMethodModel');
+      let userAccount = await User.findOne({ email: seller.email }).select('_id').lean();
+      if (!userAccount) {
+        const escaped = String(seller.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        userAccount = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).select('_id').lean();
+      }
+      if (userAccount) {
+        const verifiedPm = await PaymentMethod.findOne({
+          user: userAccount._id,
+          $or: [{ verificationStatus: 'verified' }, { status: 'verified' }],
+        }).lean();
+        if (verifiedPm) {
+          payoutCheck = { hasVerified: true, bankStatus: 'verified', mobileStatus: 'verified', rejectionReasons: [] };
+        }
+      }
+    } catch (err) {
+      // Non-critical: continue with payoutCheck from Seller
+    }
+  }
+
   if (!payoutCheck.hasVerified) {
     const reason = payoutCheck.allRejected
       ? payoutCheck.rejectionReasons.join('; ') || 'Payout details were rejected. Please update your payment details and resubmit for verification.'

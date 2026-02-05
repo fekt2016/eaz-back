@@ -31,5 +31,11 @@ router.post('/request/:id/reverse', payoutController.reverseWithdrawal);
 // Verify transfer status
 router.post('/request/:id/verify', payoutController.verifyTransferStatus);
 
+// Resend Paystack OTP for a withdrawal
+router.post('/request/:id/resend-otp', payoutController.resendPaystackOtpForWithdrawal);
+
+// Verify Paystack OTP for a withdrawal (admin-only)
+router.post('/request/:id/verify-otp', payoutController.verifyPaystackOtpForWithdrawal);
+
 module.exports = router;
 
