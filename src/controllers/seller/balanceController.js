@@ -1,19 +1,23 @@
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const logger = require('../../utils/logger');
 const Seller = require('../../models/user/sellerModel');
 const Transaction = require('../../models/transaction/transactionModel');
 const SellerRevenueHistory = require('../../models/history/sellerRevenueHistoryModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel');
 const mongoose = require('mongoose');
+const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
 
 /**
  * Get seller balance
  * GET /api/v1/seller/balance
+ * GET /api/v1/seller/me/balance
  */
 exports.getSellerBalance = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
 
-  const seller = await Seller.findById(sellerId).select('balance lockedBalance pendingBalance withdrawableBalance name shopName');
+  // Include paymentMethods and email to compute payout verification status for wallet page
+  const seller = await Seller.findById(sellerId).select('balance lockedBalance pendingBalance withdrawableBalance name shopName email paymentMethods');
 
   if (!seller) {
     return next(new AppError('Seller not found', 404));
@@ -61,6 +65,44 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
   // This represents all earnings from delivered orders
   const totalRevenue = (seller.balance || 0) + (totalWithdrawn || 0);
 
+  // Compute payout verification status: Seller.paymentMethods first, then PaymentMethod records (fallback)
+  let payoutCheck = hasVerifiedPayoutMethod(seller);
+  let payoutStatus = payoutCheck.hasVerified ? 'verified' : (payoutCheck.allRejected ? 'rejected' : 'pending');
+
+  // Fallback: if Seller.paymentMethods doesn't show verified, check PaymentMethod records
+  // (admin may have verified via PaymentMethod but Seller.paymentMethods wasn't synced)
+  if (payoutStatus !== 'verified' && seller.email) {
+    try {
+      const User = require('../../models/user/userModel');
+      const PaymentMethod = require('../../models/payment/PaymentMethodModel');
+      let userAccount = await User.findOne({ email: seller.email }).select('_id').lean();
+      if (!userAccount) {
+        const escaped = String(seller.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        userAccount = await User.findOne({ email: new RegExp(`^${escaped}$`, 'i') }).select('_id').lean();
+      }
+      if (userAccount) {
+        const verifiedPm = await PaymentMethod.findOne({
+          user: userAccount._id,
+          $or: [{ verificationStatus: 'verified' }, { status: 'verified' }],
+        }).lean();
+        if (verifiedPm) {
+          payoutStatus = 'verified';
+          payoutCheck = { hasVerified: true, rejectionReasons: [] };
+        }
+      }
+    } catch (err) {
+      // Non-critical: continue with payoutCheck from Seller
+    }
+  }
+
+  const payoutRejectionReason = payoutCheck.rejectionReasons?.length > 0
+    ? payoutCheck.rejectionReasons.join('; ')
+    : (seller.paymentMethods?.bankAccount?.payoutStatus === 'rejected'
+        ? seller.paymentMethods.bankAccount.payoutRejectionReason
+        : seller.paymentMethods?.mobileMoney?.payoutStatus === 'rejected'
+          ? seller.paymentMethods.mobileMoney.payoutRejectionReason
+          : null);
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -71,6 +113,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
       availableBalance: seller.withdrawableBalance || 0, // Alias for backward compatibility
       totalWithdrawn: totalWithdrawn || 0, // Total amount withdrawn by seller (all time)
       totalRevenue: totalRevenue || 0, // Total revenue = balance + totalWithdrawn (all earnings from delivered orders)
+      payoutStatus, // 'verified' | 'pending' | 'rejected' - from bankAccount.payoutStatus or mobileMoney.payoutStatus
+      payoutRejectionReason, // Reason if rejected (for wallet page withdrawal guard)
       seller: {
         name: seller.name,
         shopName: seller.shopName,
@@ -191,7 +235,6 @@ exports.getSellerEarningsByOrder = catchAsync(async (req, res, next) => {
   // Get transaction for this order and seller
   // Find by sellerOrder which links to the order
   const SellerOrder = require('../../models/order/sellerOrderModel');
-const logger = require('../../utils/logger');
   const sellerOrder = await SellerOrder.findOne({ 
     order: orderId, 
     seller: sellerId 

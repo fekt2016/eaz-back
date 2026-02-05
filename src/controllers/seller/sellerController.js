@@ -1096,21 +1096,56 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
     },
   });
 });
+/**
+ * Compute isSetupComplete from plain seller data (for lean() results)
+ * Mirrors Seller.prototype.computeIsSetupComplete logic
+ */
+const computeIsSetupCompleteFromData = (data) => {
+  if (!data) return false;
+  const getDocStatus = (doc) => {
+    if (!doc) return null;
+    if (typeof doc === 'string') return null;
+    return doc.status || null;
+  };
+  const biz = getDocStatus(data.verificationDocuments?.businessCert);
+  const idP = getDocStatus(data.verificationDocuments?.idProof);
+  const addr = getDocStatus(data.verificationDocuments?.addresProof);
+  const docsUploaded =
+    (data.verificationDocuments?.businessCert &&
+      (typeof data.verificationDocuments.businessCert === 'string' ||
+        data.verificationDocuments.businessCert.url)) &&
+    (data.verificationDocuments?.idProof &&
+      (typeof data.verificationDocuments.idProof === 'string' ||
+        data.verificationDocuments.idProof.url)) &&
+    (data.verificationDocuments?.addresProof &&
+      (typeof data.verificationDocuments.addresProof === 'string' ||
+        data.verificationDocuments.addresProof.url));
+  const docsVerified = biz === 'verified' && idP === 'verified' && addr === 'verified';
+  const docsComplete = docsUploaded && docsVerified;
+  const bankOk = data.paymentMethods?.bankAccount?.payoutStatus === 'verified';
+  const mobileOk = data.paymentMethods?.mobileMoney?.payoutStatus === 'verified';
+  const paymentOk = bankOk || mobileOk;
+  const emailOk = data.verification?.emailVerified === true;
+  const phoneOk = data.phone && typeof data.phone === 'string' && data.phone.trim() !== '';
+  const contactOk = emailOk || phoneOk;
+  return docsComplete && paymentOk && contactOk;
+};
+
 // Override getSeller to include computed isSetupComplete field
+// Optimized: uses lean() for faster serialization, minimal populate
 exports.getSeller = catchAsync(async (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     return next(new AppError('Invalid ID format', 400));
   }
 
   const id = req.params.id;
+  // Use lean() for faster response - avoids Mongoose document overhead
   let seller = await Seller.findById(id)
-    .populate({
-      path: 'verifiedBy',
-      select: 'name email',
-    })
-    .select('+verificationDocuments +paymentMethods +active'); // Include fields needed for isSetupComplete and admin reactivate UI
+    .populate({ path: 'verifiedBy', select: 'name email' })
+    .select('+verificationDocuments +paymentMethods +active')
+    .lean();
 
-  // If not found (seller may be deactivated: active=false), allow admin to fetch for order detail / reactivate
+  // If not found (seller may be deactivated: active=false), allow admin to fetch for reactivate
   if (!seller && ['admin', 'superadmin', 'moderator'].includes(req.user?.role)) {
     const docs = await Seller.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
@@ -1123,25 +1158,12 @@ exports.getSeller = catchAsync(async (req, res, next) => {
     return next(new AppError('Seller with this ID is not found', 404));
   }
 
-  const isAggregateResult = seller && !seller.toObject && !seller.computeIsSetupComplete;
-  const sellerData = isAggregateResult
-    ? {
-        _id: seller._id?.toString ? seller._id.toString() : seller._id,
-        name: seller.name,
-        email: seller.email,
-        shopName: seller.shopName,
-        active: seller.active,
-        status: seller.status,
-      }
-    : (seller.toObject ? seller.toObject() : seller);
+  const isAggregateResult = !seller.verificationDocuments && !seller.paymentMethods;
+  const sellerData = typeof seller.toObject === 'function' ? seller.toObject() : seller;
+  sellerData.isSetupComplete = isAggregateResult
+    ? false
+    : computeIsSetupCompleteFromData(seller);
 
-  if (!isAggregateResult) {
-    sellerData.isSetupComplete = seller.computeIsSetupComplete();
-  } else {
-    sellerData.isSetupComplete = false;
-  }
-
-  // Log response for debugging (production)
   if (process.env.NODE_ENV === 'production') {
     logger.info('[getSeller] Sending seller data response', {
       sellerId: sellerData._id || sellerData.id,
