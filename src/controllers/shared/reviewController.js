@@ -309,6 +309,22 @@ exports.updateReview = catchAsync(async (req, res, next) => {
     { new: true, runValidators: true },
   );
 
+  // After updating the review, recalculate the seller's rating based on product reviews.
+  try {
+    if (updatedReview && updatedReview.product) {
+      const Product = require('../../models/product/productModel');
+      const sellerRatingService = require('../../services/sellerRatingService');
+      const productDoc = await Product.findById(updatedReview.product).select('seller');
+      if (productDoc && productDoc.seller) {
+        sellerRatingService.updateSellerRating(productDoc.seller).catch(err => {
+          console.error('[Update Review] Error updating seller rating:', err);
+        });
+      }
+    }
+  } catch (ratingError) {
+    console.error('[Update Review] Error triggering seller rating update:', ratingError);
+  }
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -350,6 +366,22 @@ exports.deleteReview = catchAsync(async (req, res, next) => {
     } catch (err) {
       console.error('[deleteReview] Error recalculating product ratings:', err.message);
     }
+  }
+
+  // Also recalculate seller rating since the set of product reviews changed
+  try {
+    if (productId) {
+      const Product = require('../../models/product/productModel');
+      const sellerRatingService = require('../../services/sellerRatingService');
+      const productDoc = await Product.findById(productId).select('seller');
+      if (productDoc && productDoc.seller) {
+        sellerRatingService.updateSellerRating(productDoc.seller).catch(err => {
+          console.error('[deleteReview] Error updating seller rating:', err);
+        });
+      }
+    }
+  } catch (ratingError) {
+    console.error('[deleteReview] Error triggering seller rating update:', ratingError);
   }
 
   res.status(204).json({ data: null, status: 'success' });
