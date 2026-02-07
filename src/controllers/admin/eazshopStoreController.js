@@ -134,10 +134,64 @@ exports.getEazShopProducts = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * Parse and normalize req.body variants/specifications (match seller product controller).
+ * Returns true if an error was passed to next(), so caller should return.
+ */
+function parseAndNormalizeProductBody(req, next) {
+  // Parse variants from JSON string (multipart/form-data sends strings)
+  if (req.body.variants != null) {
+    if (typeof req.body.variants === 'string') {
+      try {
+        req.body.variants = JSON.parse(req.body.variants);
+      } catch (err) {
+        next(new AppError('Invalid variants format', 400));
+        return true;
+      }
+    }
+    if (!Array.isArray(req.body.variants)) {
+      next(new AppError('Variants must be an array', 400));
+      return true;
+    }
+    req.body.variants = req.body.variants.map((variant) => {
+      let attributes = variant.attributes || [];
+      if (!Array.isArray(attributes)) attributes = [];
+      attributes = attributes.filter(attr => attr && attr.key && attr.value);
+      if (attributes.length === 0) attributes = [{ key: 'Default', value: 'N/A' }];
+      return {
+        ...variant,
+        attributes,
+        price: parseFloat(variant.price) || 0,
+        stock: parseInt(variant.stock) || 0,
+        sku: variant.sku || '',
+        status: variant.status || 'active',
+        condition: variant.condition || 'new',
+      };
+    });
+  }
+
+  // Parse specifications from JSON string
+  if (req.body.specifications != null && typeof req.body.specifications === 'string') {
+    try {
+      req.body.specifications = JSON.parse(req.body.specifications);
+    } catch (err) {
+      next(new AppError('Invalid specifications format', 400));
+      return true;
+    }
+  }
+
+  // Manufacturer string -> object
+  if (req.body.manufacturer !== undefined && typeof req.body.manufacturer === 'string' && req.body.manufacturer.trim() !== '') {
+    req.body.manufacturer = { name: req.body.manufacturer.trim() };
+  }
+  return false;
+}
+
+/**
  * Create EazShop product
  */
 exports.createEazShopProduct = catchAsync(async (req, res, next) => {
-  // Ensure seller is set to EazShop seller
+  if (parseAndNormalizeProductBody(req, next)) return;
+
   req.body.seller = EAZSHOP_SELLER_ID;
   req.body.isEazShopProduct = true;
 
@@ -167,7 +221,8 @@ exports.updateEazShopProduct = catchAsync(async (req, res, next) => {
     return next(new AppError('This product is not a Saiisai product', 403));
   }
 
-  // Ensure seller remains EazShop seller
+  if (parseAndNormalizeProductBody(req, next)) return;
+
   req.body.seller = EAZSHOP_SELLER_ID;
   req.body.isEazShopProduct = true;
 
@@ -222,9 +277,24 @@ exports.markProductAsEazShop = catchAsync(async (req, res, next) => {
     return next(new AppError('Product not found', 404));
   }
 
-  // Mark as EazShop product
+  /**
+   * Mark as EazShop product WITHOUT changing the owning seller.
+   *
+   * Rationale:
+   * - Company-owned EazShop inventory will use EAZSHOP_SELLER_ID as the seller
+   *   (created via createEazShopProduct).
+   * - When we "promote" a regular seller product into EazShop, we keep the
+   *   original seller ID so we can still track and credit that seller when
+   *   the product is ordered and delivered.
+   *
+   * So:
+   * - `isEazShopProduct === true`  => product is managed under EazShop.
+   * - `seller === EAZSHOP_SELLER_ID` => product is owned by EazShop itself.
+   * - `seller !== EAZSHOP_SELLER_ID` & `isEazShopProduct === true`
+   *      => seller product that has been approved for EazShop.
+   */
   product.isEazShopProduct = true;
-  product.seller = EAZSHOP_SELLER_ID;
+
   await product.save();
 
   res.status(200).json({

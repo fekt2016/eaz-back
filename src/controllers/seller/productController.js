@@ -1981,7 +1981,7 @@ exports.getSimilarProducts = catchAsync(async (req, res, next) => {
       moderationStatus: 'approved',
       status: { $ne: 'inactive' },
     })
-      .select('_id name price discountPrice images imageCover rating ratingsAverage totalSold slug')
+      .select('_id name price discountPrice images imageCover rating ratingsAverage totalSold totalViews slug')
       .populate('parentCategory', 'name slug')
       .populate('subCategory', 'name slug')
       .sort({ totalSold: -1, createdAt: -1 })
@@ -2016,6 +2016,7 @@ exports.getSimilarProducts = catchAsync(async (req, res, next) => {
         imageCover: imageUri,
         rating: rating,
         totalSold: product.totalSold || 0,
+        totalViews: product.totalViews ?? 0,
         slug: product.slug,
         parentCategory: product.parentCategory,
         subCategory: product.subCategory,

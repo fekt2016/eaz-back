@@ -35,6 +35,14 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     return next(new AppError('No product found on this Seller Id', 400));
   }
 
+  // Total count of seller products (for dashboard card) – exclude soft-deleted
+  const totalProducts = await Product.countDocuments({
+    seller: req.user.id,
+    isDeleted: { $ne: true },
+    isDeletedBySeller: { $ne: true },
+    isDeletedByAdmin: { $ne: true },
+  });
+
   // Calculate totalStock for each product if not already calculated (virtual should handle this)
   // But ensure variants are included in the response
   const productsWithStock = sellerProducts.map((product) => {
@@ -56,6 +64,7 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     result: productsWithStock.length,
     data: {
       data: productsWithStock,
+      total: totalProducts,
     },
   });
 });

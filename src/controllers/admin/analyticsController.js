@@ -1166,9 +1166,9 @@ exports.recordView = catchAsync(async (req, res, next) => {
     return next(new AppError('Product ID is required', 400));
   }
 
-  // Increment product views count
+  // Increment product views count (Product schema uses totalViews)
   await Product.findByIdAndUpdate(productId, {
-    $inc: { views: 1 },
+    $inc: { totalViews: 1 },
   });
 
   // Log activity using the activity log service (handles all required fields)
@@ -1226,61 +1226,30 @@ exports.recordView = catchAsync(async (req, res, next) => {
 
 /**
  * Get Seller Product Views
- * GET /admin/analytics/seller/:sellerId/views
+ * GET /api/v1/analytics/seller/:sellerId/views
+ * Uses Product.totalViews (incremented on every view, including anonymous).
  */
 exports.getSellerProductViews = catchAsync(async (req, res, next) => {
   const { sellerId } = req.params;
-  const range = parseInt(req.query.range) || 30;
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - range);
-  startDate.setHours(0, 0, 0, 0);
 
-  // Get seller's products
-  const sellerProducts = await Product.find({ seller: sellerId }).select('_id name').lean();
-  const productIds = sellerProducts.map(p => p._id);
+  const sellerProducts = await Product.find({ seller: sellerId })
+    .select('_id name totalViews')
+    .lean();
 
-  // Get views from ActivityLog
-  const views = await ActivityLog.aggregate([
-    {
-      $match: {
-        action: { $in: ['VIEW_PRODUCT', 'VIEW_PAGE'] },
-        timestamp: { $gte: startDate },
-        'metadata.productId': { $in: productIds.map(id => id.toString()) },
-      },
-    },
-    {
-      $group: {
-        _id: '$metadata.productId',
-        views: { $sum: 1 },
-        uniqueSessions: { $addToSet: '$metadata.sessionId' },
-      },
-    },
-    {
-      $lookup: {
-        from: 'products',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'productInfo',
-      },
-    },
-    { $unwind: '$productInfo' },
-    {
-      $project: {
-        productId: '$_id',
-        productName: '$productInfo.name',
-        views: 1,
-        uniqueSessions: { $size: '$uniqueSessions' },
-      },
-    },
-    { $sort: { views: -1 } },
-  ]);
+  const views = sellerProducts.map((p) => ({
+    productId: p._id.toString(),
+    productName: p.name || 'Unknown',
+    views: p.totalViews || 0,
+  })).sort((a, b) => (b.views || 0) - (a.views || 0));
+
+  const totalViews = views.reduce((sum, item) => sum + (item.views || 0), 0);
 
   res.status(200).json({
     status: 'success',
     data: {
       views,
-      totalViews: views.reduce((sum, item) => sum + (item.views || 0), 0),
-      range,
+      totalViews,
+      range: 30,
     },
   });
 });

@@ -218,11 +218,13 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
   }
 
   // Use findOneAndUpdate with $pull for atomic operation
+  // Match by ObjectId so $pull finds the array element (stored product is ObjectId)
+  const productObjectId = new mongoose.Types.ObjectId(productId);
   const wishlist = await WishList.findOneAndUpdate(
     { user: req.user.id },
     {
       $pull: {
-        products: { product: productId },
+        products: { product: productObjectId },
       },
     },
     {
@@ -543,12 +545,13 @@ exports.removeFromGuestWishlist = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid product ID', 400));
   }
 
-  // Use findOneAndUpdate with $pull for atomic operation
+  // Use findOneAndUpdate with $pull for atomic operation (match ObjectId)
+  const productObjectId = new mongoose.Types.ObjectId(productId);
   const wishlist = await WishList.findOneAndUpdate(
     { sessionId },
     {
       $pull: {
-        products: { product: productId },
+        products: { product: productObjectId },
       },
     },
     {
