@@ -18,7 +18,9 @@ const mapAdToResponse = (ad, { includeAdminFields = false } = {}) => {
     active: doc.active,
     startDate: doc.startDate,
     endDate: doc.endDate ?? null,
+    discountType: doc.discountType || 'percentage',
     discountPercent: typeof doc.discountPercent === 'number' ? doc.discountPercent : 0,
+    discountFixed: typeof doc.discountFixed === 'number' ? doc.discountFixed : 0,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };
@@ -53,8 +55,16 @@ const validateDateRange = (startDate, endDate) => {
 
 /**
  * Admin: Create advertisement
- * POST /api/v1/ads
+ * POST /api/v1/promotional-discounts
  */
+const DISCOUNT_TYPES = ['percentage', 'fixed'];
+
+function validateDiscountType(value) {
+  if (value && !DISCOUNT_TYPES.includes(value)) {
+    throw new AppError(`Invalid discount type. Allowed values: ${DISCOUNT_TYPES.join(', ')}`, 400);
+  }
+}
+
 exports.createAd = catchAsync(async (req, res, next) => {
   const {
     title,
@@ -64,21 +74,37 @@ exports.createAd = catchAsync(async (req, res, next) => {
     active = true,
     startDate: startDateInput,
     endDate: endDateInput,
+    discountType: discountTypeInput = 'percentage',
     discountPercent,
+    discountFixed,
   } = req.body || {};
 
   validateType(type);
+  validateDiscountType(discountTypeInput);
   const startDate = parseDateInput(startDateInput ?? new Date(), 'start date');
   const endDate = parseDateInput(endDateInput, 'end date');
   validateDateRange(startDate, endDate);
 
-  let normalizedDiscount = 0;
-  if (discountPercent !== undefined && discountPercent !== null && discountPercent !== '') {
-    const value = Number(discountPercent);
-    if (Number.isNaN(value) || value < 0 || value > 100) {
-      throw new AppError('Discount percent must be a number between 0 and 100.', 400);
+  const discountType = discountTypeInput === 'fixed' ? 'fixed' : 'percentage';
+  let discountPercentVal = 0;
+  let discountFixedVal = 0;
+
+  if (discountType === 'percentage') {
+    if (discountPercent !== undefined && discountPercent !== null && discountPercent !== '') {
+      const value = Number(discountPercent);
+      if (Number.isNaN(value) || value < 0 || value > 100) {
+        throw new AppError('Discount percent must be a number between 0 and 100.', 400);
+      }
+      discountPercentVal = value;
     }
-    normalizedDiscount = value;
+  } else {
+    if (discountFixed !== undefined && discountFixed !== null && discountFixed !== '') {
+      const value = Number(discountFixed);
+      if (Number.isNaN(value) || value < 0) {
+        throw new AppError('Discount fixed amount must be a non-negative number.', 400);
+      }
+      discountFixedVal = value;
+    }
   }
 
   const payload = {
@@ -90,7 +116,9 @@ exports.createAd = catchAsync(async (req, res, next) => {
     startDate,
     endDate,
     createdBy: req.user?.id || req.user?._id || null,
-    discountPercent: normalizedDiscount,
+    discountType,
+    discountPercent: discountPercentVal,
+    discountFixed: discountFixedVal,
   };
 
   const ad = await AdvertisementModel.create(payload);
@@ -111,7 +139,7 @@ exports.createAd = catchAsync(async (req, res, next) => {
 
 /**
  * Admin: Get advertisements list
- * GET /api/v1/ads
+ * GET /api/v1/promotional-discounts
  */
 exports.getAds = catchAsync(async (req, res, next) => {
   const filter = {};
@@ -152,7 +180,7 @@ exports.getAds = catchAsync(async (req, res, next) => {
 
 /**
  * Admin: Update advertisement
- * PATCH /api/v1/ads/:id
+ * PATCH /api/v1/promotional-discounts/:id
  */
 exports.updateAd = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -167,7 +195,7 @@ exports.updateAd = catchAsync(async (req, res, next) => {
   }
 
   const updates = {};
-  const allowedFields = ['title', 'imageUrl', 'link', 'type', 'active', 'startDate', 'endDate', 'discountPercent'];
+  const allowedFields = ['title', 'imageUrl', 'link', 'type', 'active', 'startDate', 'endDate', 'discountType', 'discountPercent', 'discountFixed'];
 
   allowedFields.forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
@@ -177,6 +205,11 @@ exports.updateAd = catchAsync(async (req, res, next) => {
 
   if (updates.type) {
     validateType(updates.type);
+  }
+
+  if (updates.discountType) {
+    validateDiscountType(updates.discountType);
+    updates.discountType = updates.discountType === 'fixed' ? 'fixed' : 'percentage';
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'active')) {
@@ -200,6 +233,18 @@ exports.updateAd = catchAsync(async (req, res, next) => {
         throw new AppError('Discount percent must be a number between 0 and 100.', 400);
       }
       updates.discountPercent = value;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'discountFixed')) {
+    if (updates.discountFixed === '' || updates.discountFixed === null) {
+      updates.discountFixed = 0;
+    } else {
+      const value = Number(updates.discountFixed);
+      if (Number.isNaN(value) || value < 0) {
+        throw new AppError('Discount fixed amount must be a non-negative number.', 400);
+      }
+      updates.discountFixed = value;
     }
   }
 
@@ -232,7 +277,7 @@ exports.updateAd = catchAsync(async (req, res, next) => {
 
 /**
  * Admin: Delete advertisement
- * DELETE /api/v1/ads/:id
+ * DELETE /api/v1/promotional-discounts/:id
  */
 exports.deleteAd = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -256,7 +301,7 @@ exports.deleteAd = catchAsync(async (req, res, next) => {
 
 /**
  * Public: Get active advertisements
- * GET /api/v1/ads/public
+ * GET /api/v1/promotional-discounts/public
  */
 exports.getPublicAds = catchAsync(async (req, res, next) => {
   const ads = await AdvertisementModel.findActive();

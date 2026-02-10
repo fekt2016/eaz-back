@@ -2,10 +2,15 @@ const Order = require('../../models/order/orderModel');
 const OrderItems = require('../../models/order/OrderItemModel');
 const RefundRequest = require('../../models/refund/refundRequestModel');
 const SellerOrder = require('../../models/order/sellerOrderModel');
+const Transaction = require('../../models/transaction/transactionModel');
+const User = require('../../models/user/userModel');
+const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
+const { sendCustomEmail, brandConfig } = require('../../utils/email/emailService');
 
 /**
  * POST /api/v1/orders/:orderId/request-refund
@@ -241,15 +246,77 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
     order.trackingHistory = order.trackingHistory || [];
     order.trackingHistory.push({
       status: 'refunded',
-      message: items && items.length > 0 
-        ? `Refund request submitted for ${items.length} item(s). Awaiting review.`
-        : 'Refund request submitted. Awaiting admin review.',
+      message:
+        items && items.length > 0
+          ? `Refund request submitted for ${items.length} item(s). Awaiting review.`
+          : 'Refund request submitted. Awaiting admin review.',
       location: '',
       updatedBy: userId,
       updatedByModel: 'User',
       timestamp: new Date(),
     });
     await order.save({ session });
+
+    // BUSINESS RULE:
+    // When a buyer requests a refund/return, the seller's earnings for that order
+    // should be moved into "locked" balance so they cannot be withdrawn until
+    // the dispute is resolved.
+    //
+    // Implementation (first version):
+    // - For each SellerOrder on this order, find the completed CREDIT transaction
+    //   that credited the seller when the order was delivered.
+    // - Lock that credited amount by:
+    //   lockedBalance += creditedAmount
+    //   withdrawableBalance = balance - lockedBalance - pendingBalance
+    //
+    // NOTE:
+    // - This locks the FULL credited earnings for the seller order, even if the
+    //   refund is only for some items. This is safer for now and matches the
+    //   requirement that "the amount" is locked until the issue is resolved.
+    try {
+      const sellerOrdersForLock = await SellerOrder.find({ order: orderId }).session(session);
+
+      for (const so of sellerOrdersForLock) {
+        if (!so || !so.seller) continue;
+
+        // Find the credit transaction for this seller order (seller payout)
+        const creditTx = await Transaction.findOne({
+          sellerOrder: so._id,
+          type: 'credit',
+          status: 'completed',
+        }).session(session);
+
+        if (!creditTx || !creditTx.amount || creditTx.amount <= 0) continue;
+
+        const sellerDoc = await Seller.findById(so.seller).session(session);
+        if (!sellerDoc) continue;
+
+        const amountToLock = creditTx.amount;
+
+        // Increase locked balance by credited amount
+        sellerDoc.lockedBalance = (sellerDoc.lockedBalance || 0) + amountToLock;
+
+        // Recalculate withdrawableBalance = balance - lockedBalance - pendingBalance
+        const currentBalance = sellerDoc.balance || 0;
+        const lockedBalance = sellerDoc.lockedBalance || 0;
+        const pendingBalance = sellerDoc.pendingBalance || 0;
+        sellerDoc.withdrawableBalance = Math.max(
+          0,
+          currentBalance - lockedBalance - pendingBalance,
+        );
+
+        await sellerDoc.save({ session });
+
+        logger.info(
+          `[Refund Request] Locked GH₵${amountToLock.toFixed(
+            2,
+          )} for seller ${sellerDoc._id} due to refund request on order ${order.orderNumber}`,
+        );
+      }
+    } catch (lockError) {
+      // Do NOT abort the refund if locking fails; log for diagnostics
+      logger.error('[Refund Request] Error locking seller balances for refund:', lockError);
+    }
 
     await session.commitTransaction();
 
@@ -273,76 +340,91 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
       },
     });
 
-    // Notify all admins about refund request
+    // Send email notifications instead of in-app notifications
     try {
-      const notificationService = require('../../services/notification/notificationService');
       const user = await User.findById(userId).select('name email');
-      await notificationService.createRefundRequestNotification(
-        refundRequest._id,
-        order._id,
-        order.orderNumber,
-        totalRefundAmount,
-        user?.name || user?.email || 'Customer'
-      );
-      logger.info(`[Refund Request] Admin notification created for refund ${refundRequest._id}`);
-    } catch (notificationError) {
-      logger.error('[Refund Request] Error creating admin notification:', notificationError);
-      // Don't fail refund request if notification fails
-    }
+      const buyerName = user?.name || user?.email || 'Customer';
 
-    // Notify sellers about refund request
-    try {
-      const notificationService = require('../../services/notification/notificationService');
-      const SellerOrder = require('../../models/order/sellerOrderModel');
-const logger = require('../../utils/logger');
-      const user = await User.findById(userId).select('name email');
-      
-      // Get unique seller IDs from refund items
+      // Admin email (use support email / configured from-address)
+      const adminEmail = brandConfig.supportEmail || process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM;
+
+      if (adminEmail) {
+        await sendCustomEmail({
+          email: adminEmail,
+          subject: `New refund request for Order #${order.orderNumber}`,
+          message: `${buyerName} requested a refund of GH₵${totalRefundAmount.toFixed(
+            2,
+          )} for order #${order.orderNumber}.`,
+          html: `
+            <h2>New Refund Request</h2>
+            <p><strong>Order:</strong> ${order.orderNumber}</p>
+            <p><strong>Buyer:</strong> ${buyerName}</p>
+            <p><strong>Amount:</strong> GH₵${totalRefundAmount.toFixed(2)}</p>
+            <p><strong>Refund ID:</strong> ${refundRequest._id}</p>
+          `,
+        });
+      }
+
+      // Collect seller IDs involved in this refund
       const sellerIds = new Set();
       if (items && items.length > 0) {
         for (const item of items) {
           const orderItem = await OrderItems.findById(item.orderItemId);
           if (orderItem) {
-            // Find which seller this item belongs to
             const sellerOrder = await SellerOrder.findOne({
               order: orderId,
               items: item.orderItemId,
             }).populate('seller', '_id');
-            
-            if (sellerOrder && sellerOrder.seller && sellerOrder.seller._id) {
+
+            if (sellerOrder?.seller?._id) {
               sellerIds.add(sellerOrder.seller._id.toString());
             }
           }
         }
       } else {
-        // For whole-order refund, get all sellers from the order
         const sellerOrders = await SellerOrder.find({ order: orderId }).populate('seller', '_id');
-        sellerOrders.forEach(so => {
+        sellerOrders.forEach((so) => {
           if (so.seller && so.seller._id) {
             sellerIds.add(so.seller._id.toString());
           }
         });
       }
 
-      // Notify each seller
-      for (const sellerId of sellerIds) {
-        try {
-          await notificationService.createSellerRefundRequestNotification(
-            sellerId,
-            refundRequest._id,
-            order._id,
-            order.orderNumber,
-            totalRefundAmount,
-            user?.name || user?.email || 'Customer'
-          );
-          logger.info(`[Refund Request] Seller notification created for seller ${sellerId}`);
-        } catch (sellerNotifError) {
-          logger.error(`[Refund Request] Error creating notification for seller ${sellerId}:`, sellerNotifError);
+      // Email each seller
+      if (sellerIds.size > 0) {
+        const sellers = await Seller.find({ _id: { $in: Array.from(sellerIds) } }).select(
+          'name shopName email',
+        );
+
+        for (const seller of sellers) {
+          if (!seller.email) continue;
+          try {
+            await sendCustomEmail({
+              email: seller.email,
+              subject: `Refund request for Order #${order.orderNumber}`,
+              message: `A refund request of GH₵${totalRefundAmount.toFixed(
+                2,
+              )} has been submitted for an order containing your items.`,
+              html: `
+                <h2>Refund Request Submitted</h2>
+                <p>Hello ${seller.shopName || seller.name || 'Seller'},</p>
+                <p>A refund request has been submitted for order <strong>${order.orderNumber}</strong> that contains your items.</p>
+                <p><strong>Buyer:</strong> ${buyerName}</p>
+                <p><strong>Total refund amount (order level):</strong> GH₵${totalRefundAmount.toFixed(2)}</p>
+                <p>Please review this refund in your seller dashboard.</p>
+              `,
+            });
+          } catch (sellerEmailError) {
+            logger.error(
+              `[Refund Request] Error sending refund email to seller ${seller._id}:`,
+              sellerEmailError,
+            );
+          }
         }
       }
-    } catch (sellerNotificationError) {
-      logger.error('[Refund Request] Error creating seller notifications:', sellerNotificationError);
-      // Don't fail refund request if seller notification fails
+    } catch (emailError) {
+      logger.error('[Refund Request] Error sending refund emails:', emailError);
+      // Do not fail the refund request if email sending fails
     }
 
     res.status(200).json({
@@ -369,7 +451,15 @@ const logger = require('../../utils/logger');
     });
 
   } catch (error) {
-    await session.abortTransaction();
+    try {
+      // Only abort if the session still has an active transaction
+      if (session && typeof session.inTransaction === 'function' && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+    } catch (abortError) {
+      // Swallow double-abort errors but log for diagnostics
+      logger.error('[Refund Request] Error aborting transaction:', abortError);
+    }
     throw error;
   } finally {
     session.endSession();
@@ -392,16 +482,20 @@ exports.getRefundStatus = catchAsync(async (req, res, next) => {
     return next(new AppError('Order not found', 404));
   }
 
-  // Verify order belongs to user
-  if (!order.user || order.user.toString() !== userId.toString()) {
-    return next(new AppError('You are not authorized to view this order', 403));
+  // Verify order belongs to user (buyers only) - allow admins/superadmins to bypass
+  const userRole = req.user && req.user.role;
+  const isAdminLike = userRole === 'admin' || userRole === 'superadmin';
+  if (!isAdminLike) {
+    if (!order.user || order.user.toString() !== userId.toString()) {
+      return next(new AppError('You are not authorized to view this order', 403));
+    }
   }
 
   // Find RefundRequest(s) for this order
   const refundRequests = await RefundRequest.find({ order: orderId })
     .sort({ createdAt: -1 })
     .populate('items.orderItemId', 'product price quantity')
-    .populate('items.productId', 'name images')
+    .populate('items.productId', 'name imageCover images')
     .populate('items.sellerId', 'shopName email');
 
   // Get item-level refund statuses
@@ -444,12 +538,27 @@ exports.getRefundStatus = catchAsync(async (req, res, next) => {
         rejectionReason: order.refundRejectionReason || null,
         // Item-level refunds (new)
         itemRefunds: itemRefunds.length > 0 ? itemRefunds : null,
+        // Expose full latest RefundRequest metadata (used by buyer refund detail page)
         refundRequests: refundRequests.length > 0 ? refundRequests.map(rr => ({
           _id: rr._id,
           status: rr.status,
           totalRefundAmount: rr.totalRefundAmount,
           items: rr.items,
           createdAt: rr.createdAt,
+          sellerReviewed: rr.sellerReviewed,
+          sellerDecision: rr.sellerDecision,
+          sellerReviewDate: rr.sellerReviewDate,
+          sellerNote: rr.sellerNote,
+          adminReviewed: rr.adminReviewed,
+          adminDecision: rr.adminDecision,
+          adminReviewDate: rr.adminReviewDate,
+          adminNote: rr.adminNote,
+          requireReturn: rr.requireReturn,
+          returnShippingMethod: rr.returnShippingMethod,
+          returnShippingSelectedAt: rr.returnShippingSelectedAt,
+          finalRefundAmount: rr.finalRefundAmount,
+          resolutionType: rr.resolutionType || 'refund',
+          resolutionNote: rr.resolutionNote || null,
         })) : null,
       },
     },
@@ -498,4 +607,105 @@ function checkRefundEligibility(order) {
 
   return { eligible: true };
 }
+
+/**
+ * PATCH /api/v1/orders/:orderId/refunds/:refundId/select-return-shipping
+ * Buyer selects return shipping method (drop-off or pickup)
+ */
+exports.selectReturnShippingMethod = catchAsync(async (req, res, next) => {
+  const { orderId, refundId } = req.params;
+  const { returnShippingMethod } = req.body;
+  const userId = req.user.id;
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+
+  // Validate input
+  if (!returnShippingMethod || !['drop_off', 'pickup'].includes(returnShippingMethod)) {
+    return next(new AppError('Valid return shipping method is required (drop_off or pickup)', 400));
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Find refund request
+    const refundRequest = await RefundRequest.findById(refundId).session(session);
+
+    if (!refundRequest) {
+      await session.abortTransaction();
+      return next(new AppError('Refund request not found', 404));
+    }
+
+    // Verify refund belongs to user (skip for admin/superadmin)
+    if (!isAdmin) {
+      const buyerId = refundRequest.buyer && (refundRequest.buyer._id ? refundRequest.buyer._id.toString() : refundRequest.buyer.toString());
+      if (buyerId !== userId.toString()) {
+        await session.abortTransaction();
+        return next(new AppError('You are not authorized to modify this refund request', 403));
+      }
+    }
+
+    // Verify order matches
+    if (refundRequest.order.toString() !== orderId.toString()) {
+      await session.abortTransaction();
+      return next(new AppError('Order ID mismatch', 400));
+    }
+
+    // Check if seller has already approved the return
+    if (!refundRequest.sellerReviewed || refundRequest.sellerDecision !== 'approve_return') {
+      await session.abortTransaction();
+      return next(new AppError('Seller must approve the return before selecting shipping method', 400));
+    }
+
+    // Check if already selected
+    if (refundRequest.returnShippingMethod) {
+      await session.abortTransaction();
+      return next(new AppError('Return shipping method has already been selected', 400));
+    }
+
+    // Update refund request
+    refundRequest.returnShippingMethod = returnShippingMethod;
+    refundRequest.returnShippingSelectedAt = new Date();
+    await refundRequest.save({ session });
+
+    await session.commitTransaction();
+
+    // Notify admin that buyer has selected shipping method
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+      const order = await Order.findById(orderId).select('orderNumber').lean();
+      await notificationService.createNotification({
+        user: null, // Will notify all admins
+        role: 'admin',
+        type: 'REFUND_SHIPPING_SELECTED',
+        title: 'Buyer Selected Return Shipping Method',
+        message: `Buyer has selected ${returnShippingMethod === 'drop_off' ? 'drop-off' : 'pickup'} as return shipping method for refund request #${refundId.toString().slice(-8)} (Order #${order?.orderNumber || orderId.slice(-8)})`,
+        metadata: {
+          refundId: refundRequest._id,
+          orderId: orderId,
+          returnShippingMethod,
+        },
+      });
+      logger.info(`[Select Return Shipping] Admin notification created for refund ${refundRequest._id}`);
+    } catch (notificationError) {
+      logger.error('[Select Return Shipping] Error creating admin notification:', notificationError);
+      // Don't fail the operation if notification fails
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Return shipping method selected successfully',
+      data: {
+        refund: refundRequest,
+      },
+    });
+
+  } catch (error) {
+    if (session && typeof session.inTransaction === 'function' && session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
+});
 

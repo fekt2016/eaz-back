@@ -1,6 +1,7 @@
 const recommendationService = require('../../services/recommendationService');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 
 /**
  * GET /api/v1/products/:id/related
@@ -155,7 +156,7 @@ exports.trackActivity = catchAsync(async (req, res, next) => {
     {
       ...metadata,
       sessionId: req.sessionId || metadata?.sessionId,
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+      ipAddress: getIpAddress(req),
       userAgent: req.headers['user-agent'],
     }
   );

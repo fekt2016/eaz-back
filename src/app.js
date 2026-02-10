@@ -437,6 +437,10 @@ app.use((err, req, res, next) => {
 app.use(mongoSanitize());
 app.use(xss());
 
+// 🚫 Strip __proto__, constructor, prototype and $/. keys from req.query (prototype pollution / NoSQLi)
+const { stripQueryPollution } = require('./middleware/sanitizeSearch');
+app.use(stripQueryPollution);
+
 // 🚫 HTTP Parameter Pollution Protection (SECURITY)
 app.use(hpp({
   whitelist: ['price', 'rating', 'category', 'limit', 'page', 'sort'],
@@ -504,7 +508,7 @@ app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 // IMPORTANT: adminNeighborhoodRoutes must come BEFORE adminRoutes to avoid route conflicts
 // adminRoutes has a catch-all /:id route that would match /neighborhoods
 // Mount adminNeighborhoodRoutes at /api/v1/admin/neighborhoods
-app.use('/api/v1/ads', adRoutes);
+app.use('/api/v1/promotional-discounts', adRoutes);
 app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
 app.use('/api/v1/admin/reviews', adminReviewRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);

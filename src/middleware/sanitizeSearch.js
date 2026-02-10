@@ -1,8 +1,30 @@
 const AppError = require('../utils/errors/appError');
 
+/** Keys that must not appear in req.query (prototype pollution / NoSQLi) */
+const FORBIDDEN_QUERY_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Strip prototype-pollution and dangerous keys from req.query.
+ * Use on routes that build DB queries or merge req.query into objects.
+ */
+exports.stripQueryPollution = (req, res, next) => {
+  if (req.query && typeof req.query === 'object') {
+    FORBIDDEN_QUERY_KEYS.forEach((key) => {
+      delete req.query[key];
+    });
+    // Also delete any key that looks like a MongoDB operator
+    Object.keys(req.query).forEach((key) => {
+      if (key.startsWith('$') || (typeof key === 'string' && key.includes('.'))) {
+        delete req.query[key];
+      }
+    });
+  }
+  next();
+};
+
 /**
  * SECURITY FIX #22: Search Query Sanitization Middleware
- * Prevents NoSQL injection, XSS, and excessively long queries
+ * Prevents NoSQL injection, XSS, template injection, and excessively long queries
  */
 
 exports.sanitizeSearchQuery = (req, res, next) => {

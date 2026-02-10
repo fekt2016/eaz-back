@@ -15,6 +15,7 @@ const {
   canSendUserEmail,
   EMAIL_CATEGORY,
 } = require('../../utils/helpers/emailPermission');
+const logger = require('../../utils/logger');
 exports.createCouponBatch = catchAsync(async (req, res, next) => {
   const {
     name,
@@ -32,6 +33,7 @@ exports.createCouponBatch = catchAsync(async (req, res, next) => {
     platformFunded = false,
     maxUsagePerUser = 1,
     stackingAllowed = false,
+    code, // optional custom coupon code provided by seller
   } = req.body;
 
   // Validate required fields

@@ -3,9 +3,10 @@ const router = express.Router();
 const { searchProducts,
   getSearchSuggestions,
   searchProductsResults, } = require('../../controllers/shared/searchController');
+const { sanitizeSearchQuery } = require('../../middleware/sanitizeSearch');
 
 // For filtered/product/category/brand/tag results (using query params)
-router.get('/results', searchProductsResults);
+router.get('/results', sanitizeSearchQuery, searchProductsResults);
 
 // For free-text search (e.g. /search/query/iphone)
 router.get('/query/:query', searchProducts);

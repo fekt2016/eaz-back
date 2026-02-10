@@ -6,6 +6,7 @@ const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const logger = require('../../utils/logger');
 const mongoose = require('mongoose');
 
 /**
@@ -158,8 +159,10 @@ exports.getSellerRefundById = catchAsync(async (req, res, next) => {
  */
 exports.approveReturn = catchAsync(async (req, res, next) => {
   const { refundId } = req.params;
-  const { notes } = req.body;
+  const { notes, resolutionType, resolutionNote } = req.body;
   const sellerId = req.user.id;
+
+  const validResolution = resolutionType === 'replacement' ? 'replacement' : 'refund';
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -199,7 +202,11 @@ exports.approveReturn = catchAsync(async (req, res, next) => {
     refundRequest.sellerReviewDate = new Date();
     refundRequest.sellerDecision = 'approve_return';
     refundRequest.sellerNote = notes || '';
-    
+    refundRequest.resolutionType = validResolution;
+    if (validResolution === 'replacement' && resolutionNote) {
+      refundRequest.resolutionNote = resolutionNote;
+    }
+
     // Update item statuses for seller's items
     for (const item of sellerItems) {
       item.status = 'seller_review';
@@ -224,7 +231,9 @@ exports.approveReturn = catchAsync(async (req, res, next) => {
     order.trackingHistory = order.trackingHistory || [];
     order.trackingHistory.push({
       status: 'refunded',
-      message: `Seller approved return request for ${sellerItems.length} item(s). Awaiting admin review.`,
+      message: validResolution === 'replacement'
+        ? `Seller offered replacement for ${sellerItems.length} item(s).`
+        : `Seller approved return request for ${sellerItems.length} item(s). Awaiting admin review.`,
       location: '',
       updatedBy: sellerId,
       updatedByModel: 'Seller',
@@ -270,14 +279,18 @@ exports.approveReturn = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Return request approved. Awaiting admin review for refund processing.',
+      message: validResolution === 'replacement'
+        ? 'Replacement offered. Buyer can accept or request refund.'
+        : 'Return request approved. Awaiting admin review for refund processing.',
       data: {
         refund: refundRequest,
       },
     });
 
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
@@ -391,7 +404,6 @@ exports.rejectReturn = catchAsync(async (req, res, next) => {
     // Notify all admins about seller's return rejection decision
     try {
       const notificationService = require('../../services/notification/notificationService');
-const logger = require('../../utils/logger');
       const seller = await Seller.findById(sellerId).select('shopName name');
       await notificationService.createSellerReturnDecisionNotification(
         refundRequest._id,

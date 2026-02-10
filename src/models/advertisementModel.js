@@ -35,12 +35,23 @@ const advertisementSchema = new mongoose.Schema(
       },
       required: [true, 'Advertisement type is required'],
     },
-    // Optional percentage discount to apply to products linked to this promotion
-    // (0–100, interpreted as "% off" the normal price)
+    // Discount type: percentage (% off) or fixed (amount off in currency)
+    discountType: {
+      type: String,
+      enum: { values: ['percentage', 'fixed'], message: 'Discount type must be percentage or fixed' },
+      default: 'percentage',
+    },
+    // When discountType is 'percentage': 0–100 (% off)
     discountPercent: {
       type: Number,
       min: [0, 'Discount percent cannot be negative'],
       max: [100, 'Discount percent cannot exceed 100'],
+      default: 0,
+    },
+    // When discountType is 'fixed': amount off in currency (e.g. 5.00 for GH₵5 off)
+    discountFixed: {
+      type: Number,
+      min: [0, 'Discount fixed cannot be negative'],
       default: 0,
     },
     active: {

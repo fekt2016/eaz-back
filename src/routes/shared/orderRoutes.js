@@ -24,9 +24,10 @@ const {
   getOrderByTrackingNumber,
   addTrackingUpdate,
 } = require('../../controllers/shared/orderTrackingController');
-const { requestRefund, getRefundStatus } = require('../../controllers/buyer/refundController');
+const { requestRefund, getRefundStatus, selectReturnShippingMethod } = require('../../controllers/buyer/refundController');
 
 const authController = require('../../controllers/buyer/authController');
+const platformSettingsController = require('../../controllers/admin/platformSettingsController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
 // SECURITY FIX #5: Input validation for orders
 const { validateOrder, handleValidationErrors } = require('../../middleware/validation/orderValidator');
@@ -57,6 +58,9 @@ router.post(
   authController.restrictTo('user'),
   validateCart
 );
+
+// Platform tax rates for checkout (from admin platform settings) – public so checkout always gets current VAT/NHIL/GETFund
+router.get('/tax-rates', platformSettingsController.getTaxRates);
 
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
@@ -184,8 +188,16 @@ router.post(
 router.get(
   '/:orderId/refund-status',
   authController.protect,
-  authController.restrictTo('user'),
+  // Allow both buyers and admins to view refund status
+  authController.restrictTo('user', 'admin', 'superadmin'),
   getRefundStatus
+);
+
+router.patch(
+  '/:orderId/refunds/:refundId/select-return-shipping',
+  authController.protect,
+  authController.restrictTo('user', 'admin', 'superadmin'),
+  selectReturnShippingMethod
 );
 
 router

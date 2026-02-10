@@ -23,6 +23,7 @@ const { isPublicRoute,
   extractToken,
   verifyToken, } = require('../../utils/helpers/routeUtils');
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const logger = require('../../utils/logger');
@@ -991,7 +992,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     }
 
     // Capture IP and device
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+    const ipAddress = getIpAddress(req);
     const userAgent = req.headers['user-agent'] || 'unknown';
 
     // Security monitoring
@@ -1380,9 +1381,9 @@ exports.protect = catchAsync(async (req, res, next) => {
   // PATCH /api/v1/users/:id - admin only (updateUser)
   // DELETE /api/v1/users/:id - admin only (deleteUser)
   // GET /api/v1/review (list) - admin only (getAllReview on shared review route)
-  // /api/v1/ads (CRUD) - admin only; mounted at /api/v1/ads not /api/v1/admin/ads, so must use admin_jwt
+  // /api/v1/promotional-discounts (CRUD) - admin only; same resource as ads (promo discount), must use admin_jwt
   const isAdminOnlySharedRoute = (
-    (fullPath.startsWith('/api/v1/ads') && !fullPath.startsWith('/api/v1/ads/public')) ||
+    (fullPath.startsWith('/api/v1/promotional-discounts') && !fullPath.startsWith('/api/v1/promotional-discounts/public')) ||
     (method === 'GET' && (fullPath === '/api/v1/review' || fullPath.startsWith('/api/v1/review?'))) ||
     (fullPath === '/api/v1/order' && method === 'GET') ||
     (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
@@ -1412,12 +1413,12 @@ exports.protect = catchAsync(async (req, res, next) => {
     /^\/api\/v1\/order\/[^/]+\/tracking\/?$/.test(fullPath) && method === 'POST'
   );
 
-  // For shared product routes, check admin_jwt first (admins can manage products)
-  // Then fall back to seller_jwt (sellers can manage their own products)
+  // For shared product routes, prefer seller_jwt when present so seller app POST /product
+  // uses the seller (not admin). Admins can still use admin_jwt.
   let cookieName;
   if (isSharedProductRoute) {
-    // Shared product routes: try admin_jwt first, then seller_jwt
-    cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';
+    // Prefer seller_jwt so seller app product create gets seller; fall back to admin_jwt
+    cookieName = req.cookies?.['seller_jwt'] ? 'seller_jwt' : 'admin_jwt';
   } else if (isSharedOrderTrackingRoute) {
     // Order tracking routes: try admin_jwt first, then seller_jwt
     cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';

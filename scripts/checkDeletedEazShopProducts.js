@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 require('dotenv').config({ path: '../.env' });
 const Product = require('../src/models/product/productModel');
 
-const EAZSHOP_SELLER_ID = '000000000000000000000001';
+const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
 async function checkDeletedEazShopProducts() {
   try {

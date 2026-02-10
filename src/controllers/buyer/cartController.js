@@ -6,23 +6,60 @@ const mongoose = require('mongoose');
 const Product = require('../../models/product/productModel');
 const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const {
+  getPromosFromAds,
+  getApplicablePromos,
+  applyPromosToPrice,
+} = require('../seller/productController');
 
 // Set user ID from authenticated user
 exports.setUserId = (req, res, next) => {
   req.body.user = req.user.id;
   next();
 };
-// Helper function to populate cart with product details
+
+// Helper function to populate cart with product details (include promotionKey for promo price)
 const populateCart = (cart) => {
   return cart.populate({
     path: 'products.product',
-    select: 'name price imageCover variants seller isEazShopProduct',
+    select: 'name price priceInclVat imageCover variants seller isEazShopProduct promotionKey',
     populate: {
       path: 'seller',
       select: '_id name shopName role shopAddress location',
     },
     options: { virtuals: true }, // Include virtual properties
   });
+};
+
+// Apply promo pricing to cart products; mutates items in place, adds unitPrice and originalUnitPrice when discounted
+const applyCartPromoPricing = async (products) => {
+  if (!products?.length) return;
+  let promos;
+  try {
+    promos = await getPromosFromAds();
+  } catch (e) {
+    logger.warn('[cart] Could not load promos for cart:', e?.message);
+    return;
+  }
+  for (const item of products) {
+    const product = item.product;
+    if (!product) continue;
+    const variant = item.variant;
+    // Dual VAT: display inclusive price to customer (seller enters base; we store priceInclVat on product)
+    const basePrice = (variant && (variant.priceInclVat ?? variant.price != null))
+      ? Number(variant.priceInclVat ?? variant.price)
+      : Number(product.priceInclVat ?? product.price ?? 0);
+    if (!basePrice) {
+      item.unitPrice = 0;
+      continue;
+    }
+    const applicable = getApplicablePromos(product, promos);
+    const { unitPrice, originalPrice } = applyPromosToPrice(basePrice, applicable);
+    item.unitPrice = unitPrice;
+    if (originalPrice != null && originalPrice > unitPrice) {
+      item.originalUnitPrice = originalPrice;
+    }
+  }
 };
 
 // Get current user's cart
@@ -66,6 +103,8 @@ exports.getMyCart = catchAsync(async (req, res, next) => {
       };
     });
 
+  await applyCartPromoPricing(populatedCart.products);
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -77,16 +116,28 @@ exports.getMyCart = catchAsync(async (req, res, next) => {
   });
 });
 
+// Max quantity per line item (cart abuse prevention)
+const MAX_QUANTITY_PER_ITEM = 999;
+
 // Update specific cart item (user operation)
 // Backend: cartController.js
 exports.updateCartItem = catchAsync(async (req, res, next) => {
   const { itemId } = req.params;
   const { quantity } = req.body;
 
-  // Find cart and update item
+  // SECURITY: Validate quantity type and range before any DB work
+  const rawQty = quantity != null ? Number(quantity) : NaN;
+  if (!Number.isInteger(rawQty) || rawQty < 1) {
+    return next(new AppError('Quantity must be a positive integer', 400));
+  }
+  if (rawQty > MAX_QUANTITY_PER_ITEM) {
+    return next(new AppError(`Quantity cannot exceed ${MAX_QUANTITY_PER_ITEM} per item`, 400));
+  }
+
+  // Find cart and update item (include stock for validation)
   const cart = await Cart.findOne({ user: req.user._id }).populate({
     path: 'products.product',
-    select: 'name price imageCover variants',
+    select: 'name price imageCover variants stock',
   });
 
   if (!cart) {
@@ -109,7 +160,29 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
     return next(new AppError('Product no longer available. Item removed from cart.', 404));
   }
 
-  cart.products[itemIndex].quantity = quantity;
+  // SECURITY: Resolve sellable unit (variant or product) and available stock
+  const product = cart.products[itemIndex].product;
+  let availableStock = 0;
+  if (product.variants && product.variants.length > 0 && cart.products[itemIndex].variant) {
+    const variantId = String(cart.products[itemIndex].variant);
+    const variant = product.variants.find(
+      (v) => v._id && v._id.toString() === variantId,
+    );
+    if (variant) {
+      availableStock = Math.max(0, (variant.stock || 0) - (variant.sold || 0));
+    }
+  } else {
+    availableStock = Math.max(0, (product.stock || 0) - (product.sold || 0));
+  }
+
+  if (rawQty > availableStock) {
+    return next(new AppError(
+      `Only ${availableStock} available in stock. Reduce quantity or remove item.`,
+      400,
+    ));
+  }
+
+  cart.products[itemIndex].quantity = rawQty;
   const updatedCart = await cart.save();
   const populatedCart = await populateCart(Cart.findById(updatedCart._id));
 
@@ -128,6 +201,7 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
           variant: selectedVariant,
         };
       });
+    await applyCartPromoPricing(populatedCart.products);
   }
 
   // Return the FULL updated cart, not just the item
@@ -280,6 +354,7 @@ exports.addToCart = catchAsync(async (req, res, next) => {
           variant: selectedVariant,
         };
       });
+    await applyCartPromoPricing(populatedCart.products);
   }
 
   // Log activity
@@ -314,6 +389,8 @@ exports.getCart = catchAsync(async (req, res, next) => {
       const selectedVariant = item.product?.variants?.id(variantId) || null;
       return { ...item.toObject(), variant: selectedVariant };
     });
+
+  await applyCartPromoPricing(cart.products);
 
   res.status(200).json({
     status: 'success',

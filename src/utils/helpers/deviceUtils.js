@@ -35,17 +35,41 @@ exports.detectDeviceType = (userAgent) => {
 };
 
 /**
- * Extract IP address from request
+ * True if the string is a valid IPv4 or IPv6 address (no hostnames, no ports, no localhost spoofing).
+ * Used to avoid trusting X-Forwarded-For values like "localhost:5173" in prod.
+ */
+function isValidClientIp(value) {
+  if (!value || typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 45) return false;
+  // Reject hostnames / spoofed values
+  if (/localhost|\.local$|^[\w.-]+:\d+$/i.test(trimmed)) return false;
+  // IPv4
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed)) {
+    return trimmed.split('.').every((n) => parseInt(n, 10) >= 0 && parseInt(n, 10) <= 255);
+  }
+  // IPv6 (simplified: hex groups and ::)
+  if (/^[\da-f:]+$/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Extract IP address from request.
+ * X-Forwarded-For is only used when it looks like a real IP (no localhost/hostname/port).
  */
 exports.getIpAddress = (req) => {
-  return (
-    req.ip ||
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    'unknown'
-  );
+  const candidates = [
+    req.ip,
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim(),
+    req.headers['x-real-ip'],
+    req.connection?.remoteAddress,
+    req.socket?.remoteAddress,
+  ].filter(Boolean);
+  for (const c of candidates) {
+    const normalized = typeof c === 'string' ? c.trim() : String(c).trim();
+    if (isValidClientIp(normalized)) return normalized;
+  }
+  return 'unknown';
 };
 
 /**

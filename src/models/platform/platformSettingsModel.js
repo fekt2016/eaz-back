@@ -51,6 +51,14 @@ const platformSettingsSchema = new mongoose.Schema({
     max: 1,
     comment: 'Withholding tax rate for company sellers (15%)',
   },
+  // Product-level VAT (Ghana): single rate for VAT-inclusive product prices. Default 15%.
+  productVatRate: {
+    type: Number,
+    default: 0.15,
+    min: 0,
+    max: 1,
+    comment: 'VAT rate applied to product prices (inclusive). Used to compute priceExVat/vatAmount from seller-entered price.',
+  },
   // Platform Fees
   platformCommissionRate: {
     type: Number,

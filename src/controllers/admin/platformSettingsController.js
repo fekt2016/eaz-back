@@ -24,9 +24,43 @@ exports.getPlatformSettings = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * Normalize a rate to decimal (0-1). If stored as percentage (e.g. 15), convert to 0.15.
+ */
+function toDecimalRate(value, defaultRate) {
+  const n = value != null ? Number(value) : defaultRate;
+  if (Number.isNaN(n)) return defaultRate;
+  return n > 1 ? n / 100 : n;
+}
+
+/**
+ * Get tax rates for buyer checkout.
+ * Returns the same VAT, NHIL and GETFund values as the Platform Settings table (admin).
+ * Checkout must use these values to calculate tax – single source of truth.
+ * GET /api/v1/order/tax-rates
+ */
+exports.getTaxRates = catchAsync(async (req, res, next) => {
+  const settings = await PlatformSettings.getSettings();
+  // Return actual stored values (no defaults that override saved 15% etc.)
+  const vatRate = settings.vatRate != null ? toDecimalRate(settings.vatRate, 0.125) : 0.125;
+  const nhilRate = settings.nhilRate != null ? toDecimalRate(settings.nhilRate, 0.025) : 0.025;
+  const getfundRate = settings.getfundRate != null ? toDecimalRate(settings.getfundRate, 0.025) : 0.025;
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      taxRates: {
+        vatRate,
+        nhilRate,
+        getfundRate,
+      },
+    },
+  });
+});
+
+/**
  * Update platform settings
  * PATCH /api/v1/admin/settings/platform
- * Body: { vatRate, nhilRate, getfundRate, covidLevyRate, withholdingIndividual, withholdingCompany, platformCommissionRate }
+ * Body: { vatRate, nhilRate, getfundRate, platformCommissionRate }
  */
 exports.updatePlatformSettings = catchAsync(async (req, res, next) => {
   const adminId = req.user.id;
@@ -40,9 +74,6 @@ exports.updatePlatformSettings = catchAsync(async (req, res, next) => {
     'vatRate',
     'nhilRate',
     'getfundRate',
-    'covidLevyRate',
-    'withholdingIndividual',
-    'withholdingCompany',
     'platformCommissionRate',
   ];
 
@@ -69,8 +100,6 @@ exports.updatePlatformSettings = catchAsync(async (req, res, next) => {
         let actionType = 'SETTINGS_UPDATE';
         if (field.includes('vat') || field.includes('nhil') || field.includes('getfund')) {
           actionType = 'TAX_UPDATE';
-        } else if (field.includes('withholding')) {
-          actionType = 'WITHHOLDING_UPDATE';
         } else if (field.includes('commission')) {
           actionType = 'COMMISSION_UPDATE';
         }

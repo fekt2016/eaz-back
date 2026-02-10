@@ -11,25 +11,25 @@ const mongoose = require('mongoose');
 const { uploadMultipleFields } = require('../../middleware/upload/cloudinaryUpload');
 
 exports.getSellerProducts = catchAsync(async (req, res, next) => {
-  const features = new APIFeature(
-    Product.find({ seller: req.user.id }), // Use the filter object
-    req.query,
-  )
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
+  // Seller dashboard: always return full list (ignore client limit to avoid "only 3 products" bug)
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = 500; // Fixed: always fetch up to 500 per page so seller sees all products
+  const skip = (page - 1) * limit;
+  logger.info('[getSellerProducts] page=%s limit=%s skip=%s (query limit ignored)', String(page), String(limit), String(skip));
 
-  // Ensure variants are included in the response (needed for stock calculation)
-  // If fields are specified, make sure variants is included
-  if (req.query.fields && !req.query.fields.includes('variants')) {
-    features.query = features.query.select(req.query.fields + ' variants');
-  }
-
-  const sellerProducts = await features.query.populate({
-    path: 'parentCategory subCategory',
-    select: 'name slug',
-  });
+  const selectStr = req.query.fields
+    ? `${req.query.fields.split(',').map((f) => f.trim()).join(' ')} variants`
+    : '-__v';
+  const sellerProducts = await Product.find({ seller: req.user.id })
+    .sort(req.query.sort || '-createdAt')
+    .select(selectStr)
+    .skip(skip)
+    .limit(limit)
+    .populate({
+      path: 'parentCategory subCategory',
+      select: 'name slug',
+    })
+    .lean();
 
   if (!sellerProducts) {
     return next(new AppError('No product found on this Seller Id', 400));
@@ -42,6 +42,15 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     isDeletedBySeller: { $ne: true },
     isDeletedByAdmin: { $ne: true },
   });
+
+  // Seller is always the login user for this endpoint – attach so UI gets seller as login user
+  const loginSeller = {
+    _id: req.user._id || req.user.id,
+    id: req.user.id || req.user._id,
+    name: req.user.name,
+    shopName: req.user.shopName,
+    email: req.user.email,
+  };
 
   // Calculate totalStock for each product if not already calculated (virtual should handle this)
   // But ensure variants are included in the response
@@ -56,9 +65,12 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
     } else if (productObj.totalStock === undefined) {
       productObj.totalStock = 0;
     }
+    // Ensure seller is the login user (never trust stored ref for seller dashboard)
+    productObj.seller = loginSeller;
     return productObj;
   });
 
+  logger.info('[getSellerProducts] returning %s products (total for seller: %s)', productsWithStock.length, totalProducts);
   res.status(200).json({
     status: 'success',
     result: productsWithStock.length,
@@ -610,20 +622,41 @@ exports.getMe = (req, res, next) => {
   req.params.id = req.user.id;
   next();
 };
+/** Allowed status values for seller */
+const SELLER_STATUS_ENUM = ['active', 'deactive', 'pending', 'suspended'];
+
+/** Admin only: update seller status (e.g. active → suspended). PATCH /seller/:id/status */
 exports.sellerStatus = catchAsync(async (req, res, next) => {
+  const newStatus = req.body.newStatus;
+  if (!newStatus || !SELLER_STATUS_ENUM.includes(newStatus)) {
+    return next(new AppError(`Invalid status. Must be one of: ${SELLER_STATUS_ENUM.join(', ')}`, 400));
+  }
   const seller = await Seller.findByIdAndUpdate(
     req.params.id,
-    { status: req.body.newStatus },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { status: newStatus },
+    { new: true, runValidators: true },
   );
-
   if (!seller) return next(new AppError('No seller found with that ID', 404));
-  logger.info('Updated seller:', seller);
+  logger.info('[sellerStatus] Admin updated seller status', { sellerId: seller._id, newStatus });
   res.status(200).json({ status: 'success', data: { seller } });
 });
+
+/** Seller only (settings): update own status to 'deactive'. Cannot set active/suspended. PATCH /seller/me/status */
+exports.updateMyStatus = catchAsync(async (req, res, next) => {
+  const newStatus = req.body.status || req.body.newStatus;
+  if (newStatus !== 'deactive') {
+    return next(new AppError('Sellers can only deactivate their account (status: deactive). To reactivate or change status, contact support.', 400));
+  }
+  const seller = await Seller.findByIdAndUpdate(
+    req.user.id,
+    { status: 'deactive' },
+    { new: true, runValidators: true },
+  );
+  if (!seller) return next(new AppError('Seller not found', 404));
+  logger.info('[updateMyStatus] Seller deactivated account', { sellerId: seller._id });
+  res.status(200).json({ status: 'success', data: { seller } });
+});
+
 exports.getPublicSeller = catchAsync(async (req, res, next) => {
   const seller = await Seller.findById(req.params.id);
   if (!seller) return next(new AppError('No seller found with that ID', 404));
@@ -1087,10 +1120,36 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
     orderCountMap[item._id.toString()] = item.orderCount;
   });
 
-  // Add orderCount to each seller result
+  // Helper: get document status from verificationDocuments (handles string or { url, status } format)
+  const getDocStatus = (doc) => {
+    if (!doc) return null;
+    if (typeof doc === 'string') return null;
+    return doc.status || null;
+  };
+
+  // Add orderCount, account status, and derived verification status (so table matches actual document verification)
   const resultsWithOrderCount = results.map(seller => {
-    const sellerDoc = seller.toObject ? seller.toObject() : seller;
+    const sellerDoc = seller.toObject ? seller.toObject() : { ...seller };
     sellerDoc.orderCount = orderCountMap[seller._id.toString()] || 0;
+    // Ensure status is the account status from the document (active/pending/suspended/deactive)
+    const accountStatus = seller.status !== undefined && seller.status !== null
+      ? seller.status
+      : (sellerDoc.status || 'pending');
+    sellerDoc.status = accountStatus;
+    // Derive verification status so table matches reality for all sellers:
+    // - If all 3 verification documents are verified → show Verified
+    // - If stored verificationStatus is already 'verified' (e.g. from approve flow) → keep Verified
+    // - Otherwise use stored verificationStatus or 'pending'
+    const docs = sellerDoc.verificationDocuments || seller.verificationDocuments;
+    const biz = getDocStatus(docs?.businessCert);
+    const idP = getDocStatus(docs?.idProof);
+    const addr = getDocStatus(docs?.addresProof);
+    const allDocsVerified = biz === 'verified' && idP === 'verified' && addr === 'verified';
+    const storedVerification = sellerDoc.verificationStatus || seller.verificationStatus;
+    const displayVerification = allDocsVerified || storedVerification === 'verified'
+      ? 'verified'
+      : (storedVerification || 'pending');
+    sellerDoc.verificationStatus = displayVerification;
     return sellerDoc;
   });
 

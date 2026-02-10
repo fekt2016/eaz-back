@@ -134,6 +134,18 @@ const refundRequestSchema = new mongoose.Schema({
     type: String,
     maxlength: 500,
   },
+  // Seller resolution: refund or offer replacement
+  resolutionType: {
+    type: String,
+    enum: ['refund', 'replacement'],
+    default: 'refund',
+    comment: 'When seller approves: refund = process refund, replacement = offer new item instead',
+  },
+  resolutionNote: {
+    type: String,
+    maxlength: 500,
+    comment: 'Seller note when offering replacement (e.g. when new item will ship)',
+  },
   // Admin review
   adminReviewed: {
     type: Boolean,
@@ -159,6 +171,17 @@ const refundRequestSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
     comment: 'Whether item return is required',
+  },
+  // Buyer return shipping selection
+  returnShippingMethod: {
+    type: String,
+    enum: ['drop_off', 'pickup', null],
+    default: null,
+    comment: 'Buyer-selected return shipping method: drop_off or pickup',
+  },
+  returnShippingSelectedAt: {
+    type: Date,
+    comment: 'When buyer selected the return shipping method',
   },
   // Processing
   processedAt: {

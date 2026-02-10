@@ -103,6 +103,10 @@ const productSchema = new mongoose.Schema(
           required: [true, 'Price is required'],
           min: [0, 'Price must be at least 0'],
         },
+        priceInclVat: { type: Number, min: 0 },
+        priceExVat: { type: Number, min: 0 },
+        vatAmount: { type: Number, min: 0 },
+        vatRate: { type: Number, default: 0.15 },
         originalPrice: {
           type: Number,
           min: [0, 'Original price must be at least 0'],
@@ -187,6 +191,11 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Price is required'],
       min: [0, 'Price must be at least 0'],
     },
+    // VAT-inclusive: server-computed only (never trust seller input)
+    priceInclVat: { type: Number, min: 0 },
+    priceExVat: { type: Number, min: 0 },
+    vatAmount: { type: Number, min: 0 },
+    vatRate: { type: Number, default: 0.15 },
     minPrice: {
       type: Number,
       min: 0,
@@ -194,6 +203,12 @@ const productSchema = new mongoose.Schema(
     maxPrice: {
       type: Number,
       min: 0,
+    },
+    // Calculated price when a promotion (promotionKey/discount) applies. Uses variant price + discount value. 0 when no promotion. Used by product card.
+    promoPrice: {
+      type: Number,
+      min: 0,
+      default: 0,
     },
     brand: {
       type: String,
@@ -212,6 +227,23 @@ const productSchema = new mongoose.Schema(
         type: String,
         trim: true,
       },
+    },
+    /**
+     * Return / refund window (in days).
+     *
+     * BUSINESS RULE:
+     * - This defines how long after purchase/delivery a buyer can request a return/refund
+     *   for this product, as configured by the seller.
+     * - If not set, the platform-wide default window applies (currently 30 days in refundController).
+     *
+     * NOTE:
+     * - Stored on the product so different products can have different return policies.
+     */
+    returnWindowDays: {
+      type: Number,
+      min: [0, 'Return window must be at least 0 days'],
+      max: [365, 'Return window cannot exceed 365 days'],
+      default: null,
     },
     status: {
       type: String,
@@ -570,6 +602,37 @@ productSchema.pre('save', function (next) {
   this.popularity =
     this.totalViews * 0.1 + this.totalSold * 0.5 + this.ratingsAverage * 10;
 
+  next();
+});
+
+// Dual VAT (Ghana): sellers enter BASE price (VAT exclusive). Server adds VAT and stores priceInclVat for display.
+// Never trust client-submitted priceExVat or vatAmount.
+productSchema.pre('save', async function (next) {
+  const taxService = require('../../services/tax/taxService');
+  try {
+    const settings = await taxService.getPlatformSettings();
+    if (this.price != null && this.price > 0) {
+      const computed = await taxService.addVatToBase(this.price, settings);
+      this.priceExVat = computed.basePrice;
+      this.priceInclVat = computed.priceInclVat;
+      this.vatAmount = computed.vatAmount;
+      this.vatRate = computed.vatRate;
+    }
+
+    if (Array.isArray(this.variants) && this.variants.length > 0) {
+      for (const v of this.variants) {
+        if (v.price != null && v.price > 0) {
+          const computed = await taxService.addVatToBase(v.price, settings);
+          v.priceExVat = computed.basePrice;
+          v.priceInclVat = computed.priceInclVat;
+          v.vatAmount = computed.vatAmount;
+          v.vatRate = computed.vatRate;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Product Pre-Save] VAT computation failed:', err?.message);
+  }
   next();
 });
 

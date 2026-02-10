@@ -48,15 +48,16 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     })
     .select('totalBasePrice totalVAT totalNHIL totalGETFund totalCovidLevy totalTax totalPrice createdAt sellerOrder');
 
-  // Aggregate tax totals
+  // Aggregate tax totals (including VAT withheld by platform for non-VAT-registered sellers)
   let totalBasePrice = 0;
   let totalVAT = 0;
   let totalNHIL = 0;
   let totalGETFund = 0;
   let totalCovidLevy = 0;
   let totalTax = 0;
-  let totalSales = 0; // VAT-inclusive sales
+  let totalSales = 0;
   let orderCount = 0;
+  let vatWithheldByPlatform = 0;
 
   const sellerBreakdown = {};
   const categoryBreakdown = {};
@@ -71,9 +72,11 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     totalSales += order.totalPrice || 0;
     orderCount++;
 
-    // Seller breakdown
     if (order.sellerOrder && Array.isArray(order.sellerOrder)) {
       order.sellerOrder.forEach((so) => {
+        if (so.vatCollectedBy === 'platform' && so.totalVatAmount != null) {
+          vatWithheldByPlatform += so.totalVatAmount;
+        }
         if (so.seller) {
           const sellerId = so.seller._id?.toString() || so.seller.toString();
           if (!sellerBreakdown[sellerId]) {
@@ -88,6 +91,8 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
               totalTax: 0,
               totalSales: 0,
               orderCount: 0,
+              vatCollectedBy: so.vatCollectedBy || 'platform',
+              vatWithheld: 0,
             };
           }
           sellerBreakdown[sellerId].totalBasePrice += so.totalBasePrice || 0;
@@ -98,6 +103,9 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
           sellerBreakdown[sellerId].totalTax += so.totalTax || 0;
           sellerBreakdown[sellerId].totalSales += so.total || 0;
           sellerBreakdown[sellerId].orderCount++;
+          if (so.vatCollectedBy === 'platform' && so.totalVatAmount != null) {
+            sellerBreakdown[sellerId].vatWithheld += so.totalVatAmount;
+          }
         }
       });
     }
@@ -112,7 +120,8 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
   totalTax = Math.round(totalTax * 100) / 100;
   totalSales = Math.round(totalSales * 100) / 100;
 
-  // Round seller breakdown values
+  vatWithheldByPlatform = Math.round(vatWithheldByPlatform * 100) / 100;
+
   Object.keys(sellerBreakdown).forEach((sellerId) => {
     const seller = sellerBreakdown[sellerId];
     seller.totalBasePrice = Math.round(seller.totalBasePrice * 100) / 100;
@@ -122,6 +131,7 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     seller.totalCovidLevy = Math.round(seller.totalCovidLevy * 100) / 100;
     seller.totalTax = Math.round(seller.totalTax * 100) / 100;
     seller.totalSales = Math.round(seller.totalSales * 100) / 100;
+    seller.vatWithheld = Math.round((seller.vatWithheld || 0) * 100) / 100;
   });
 
   // Get withholding tax summary
@@ -153,16 +163,15 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
       endDate: endDate ? new Date(endDate) : null,
     },
     summary: {
-      // VAT components
       totalBasePrice,
       totalVAT,
       totalNHIL,
       totalGETFund,
       totalCovidLevy,
       totalTax,
-      totalSales, // VAT-inclusive sales
+      totalSales,
       orderCount,
-      // Withholding tax
+      vatWithheldByPlatform,
       totalWithholdingCollected: Math.round(totalWithholdingCollected * 100) / 100,
       totalWithholdingRemitted: Math.round(totalWithholdingRemitted * 100) / 100,
       totalWithholdingUnremitted: Math.round(totalWithholdingUnremitted * 100) / 100,

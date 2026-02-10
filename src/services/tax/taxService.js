@@ -224,6 +224,98 @@ exports.applyDiscountToVATInclusivePrice = async (vatInclusivePrice, discountAmo
 };
 
 /**
+ * Add VAT to base price (dual VAT model: sellers enter base / VAT-exclusive).
+ * Ghana GRA: VAT + NHIL + GETFund applied to base. Used for product save and order/cart display.
+ * @param {Number} basePrice - Seller-entered price (VAT exclusive)
+ * @param {Object} settings - Optional platform settings (if not provided, will fetch)
+ * @returns {Promise<Object>|Object} { basePrice, vatAmount, priceInclVat, vatRate, vat, nhil, getfund }
+ */
+exports.addVatToBase = async (basePrice, settings = null) => {
+  if (!settings) {
+    settings = await getSettings();
+  }
+  const vatRate = settings.vatRate ?? 0.125;
+  const nhilRate = settings.nhilRate ?? 0.025;
+  const getfundRate = settings.getfundRate ?? 0.025;
+  const totalVATRate = vatRate + nhilRate + getfundRate;
+
+  if (!basePrice || basePrice <= 0) {
+    return {
+      basePrice: 0,
+      vatAmount: 0,
+      priceInclVat: 0,
+      vatRate: totalVATRate,
+      vat: 0,
+      nhil: 0,
+      getfund: 0,
+    };
+  }
+
+  const vat = basePrice * vatRate;
+  const nhil = basePrice * nhilRate;
+  const getfund = basePrice * getfundRate;
+  const vatAmount = vat + nhil + getfund;
+  const priceInclVat = basePrice + vatAmount;
+
+  return {
+    basePrice: Math.round(basePrice * 100) / 100,
+    vatAmount: Math.round(vatAmount * 100) / 100,
+    priceInclVat: Math.round(priceInclVat * 100) / 100,
+    vatRate: totalVATRate,
+    vat: Math.round(vat * 100) / 100,
+    nhil: Math.round(nhil * 100) / 100,
+    getfund: Math.round(getfund * 100) / 100,
+  };
+};
+
+/**
+ * Compute product-level tax from VAT-inclusive price (backward compat / migration).
+ * Dual VAT model uses addVatToBase instead (seller enters base price).
+ * @param {Number} priceInclVat - Price including VAT+NHIL+GETFund (what buyer pays per unit)
+ * @param {Number} overrideRate - Optional single rate override. If omitted, uses platform vatRate + nhilRate + getfundRate.
+ * @param {Object} settings - Optional platform settings (if not provided, will fetch)
+ * @returns {Promise<Object>|Object} { priceInclVat, priceExVat, vatAmount, vatRate, vat, nhil, getfund }
+ */
+exports.computeProductVatFromInclusive = async (priceInclVat, overrideRate = null, settings = null) => {
+  if (!settings) {
+    settings = await getSettings();
+  }
+  const vatRate = settings.vatRate ?? 0.125;
+  const nhilRate = settings.nhilRate ?? 0.025;
+  const getfundRate = settings.getfundRate ?? 0.025;
+  const totalVATRate = overrideRate != null ? overrideRate : (vatRate + nhilRate + getfundRate);
+
+  if (!priceInclVat || priceInclVat <= 0) {
+    return {
+      priceInclVat: 0,
+      priceExVat: 0,
+      vatAmount: 0,
+      vatRate: totalVATRate,
+      vat: 0,
+      nhil: 0,
+      getfund: 0,
+    };
+  }
+
+  const factor = 1 + totalVATRate;
+  const priceExVat = priceInclVat / factor;
+  const vat = priceExVat * vatRate;
+  const nhil = priceExVat * nhilRate;
+  const getfund = priceExVat * getfundRate;
+  const vatAmount = vat + nhil + getfund;
+
+  return {
+    priceInclVat,
+    priceExVat: Math.round(priceExVat * 100) / 100,
+    vatAmount: Math.round(vatAmount * 100) / 100,
+    vatRate: totalVATRate,
+    vat: Math.round(vat * 100) / 100,
+    nhil: Math.round(nhil * 100) / 100,
+    getfund: Math.round(getfund * 100) / 100,
+  };
+};
+
+/**
  * Get tax rates (for display purposes)
  * @param {Object} settings - Optional platform settings (if not provided, will fetch)
  * @returns {Promise<Object>|Object} Tax rates

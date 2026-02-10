@@ -14,6 +14,7 @@ const User = require('../../models/user/userModel');
 const payoutService = require('../../services/payoutService');
 const mongoose = require('mongoose');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 const { logSellerRevenue } = require('../../services/historyLogger');
 const { sendPaymentNotification } = require('../../utils/helpers/notificationService');
 
@@ -1524,7 +1525,7 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
       name: seller.name || seller.shopName || seller.email,
       role: 'seller',
       timestamp: new Date(),
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+      ipAddress: getIpAddress(req),
       userAgent: req.headers['user-agent'] || 'unknown',
     });
 

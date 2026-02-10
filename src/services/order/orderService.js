@@ -10,7 +10,7 @@ const logger = require('../../utils/logger');
 const { logSellerRevenue } = require('../historyLogger');
 
 /** Platform store (EazShop) seller ID – orders with this seller credit actual suppliers via Product.supplierSeller */
-const EAZSHOP_SELLER_ID = '000000000000000000000001';
+const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
 /**
  * Load seller by ID including inactive (aggregate bypasses pre('find') so we can credit deactivated sellers).
@@ -32,28 +32,53 @@ const getSellerByIdIncludingInactive = async (sellerId, session) => {
  * @returns {Number} - Seller earnings amount
  */
 /**
- * Calculate seller earnings (VAT-exclusive base price only)
- * Seller receives base price (before VAT) - VAT must be remitted to GRA
- * @param {Object} sellerOrder - SellerOrder document
- * @returns {Number} - Seller earnings amount (base price - platform commission)
+ * Calculate seller earnings (dual VAT model, Ghana).
+ *
+ * BUSINESS RULE (your requirement):
+ * - **Only the item amount** should be credited to the seller.
+ * - **Shipping charges must NOT be credited** to the seller at all.
+ *
+ * Implementation:
+ * - Ignore shipping completely in the payout formula.
+ * - Commission and VAT on commission are applied **only on items**, not shipping.
+ *
+ * - vatCollectedBy === 'seller': seller is VAT registered → payout = subtotal − commission − VAT on commission.
+ * - vatCollectedBy === 'platform': seller not registered → payout = basePrice − commission − VAT on commission.
+ *
+ * @param {Object} sellerOrder - SellerOrder document (must have vatCollectedBy, totalBasePrice, subtotal, shippingCost)
+ * @returns {Number} - Amount to credit to seller (items only, no shipping)
  */
 const calculateSellerEarnings = async (sellerOrder) => {
-  // Seller receives base price (VAT exclusive) + shipping
-  // VAT components are NOT part of seller revenue (must be remitted)
-  const basePrice = sellerOrder.totalBasePrice || 0; // Use base price (VAT exclusive)
-  const shipping = sellerOrder.shippingCost || 0;
-  const total = basePrice + shipping;
-  
-  // Get platform commission rate from settings (dynamic)
   const PlatformSettings = require('../../models/platform/platformSettingsModel');
   const settings = await PlatformSettings.getSettings();
-  const commissionRate = sellerOrder.commissionRate !== undefined 
-    ? sellerOrder.commissionRate 
-    : (settings.platformCommissionRate || 0); // Use platform settings default
-  const platformFee = total * commissionRate;
-  const sellerEarnings = total - platformFee;
-  
-  return Math.round(sellerEarnings * 100) / 100; // Round to 2 decimal places
+
+  const platformCommissionRate = settings.platformCommissionRate || 0;
+  const vatRateForCommission = settings.vatRate ?? 0.15;
+
+  // Use explicit commissionRate on sellerOrder when present; otherwise platform default
+  const commissionRate = sellerOrder.commissionRate !== undefined
+    ? sellerOrder.commissionRate
+    : platformCommissionRate;
+
+  // 1) Determine the revenue base for the seller (items only, no shipping)
+  //    - For VAT-registered sellers: subtotal is VAT-inclusive item amount seen by buyer.
+  //    - For non-VAT: totalBasePrice is item revenue before VAT (platform withholds VAT).
+  const isVatSeller = sellerOrder.vatCollectedBy === 'seller';
+  const itemRevenue = isVatSeller
+    ? (sellerOrder.subtotal || 0)          // VAT-inclusive items
+    : (sellerOrder.totalBasePrice || 0);   // VAT-exclusive items
+
+  // 2) Commission is charged ONLY on item revenue (no shipping)
+  const commissionAmount = Math.round(itemRevenue * commissionRate * 100) / 100;
+
+  // 3) VAT on commission (platform's commission is itself VAT-able)
+  const vatOnComm = Math.round(commissionAmount * vatRateForCommission * 100) / 100;
+
+  // 4) Seller earnings = item revenue − commission − VAT on commission
+  const earnings = itemRevenue - commissionAmount - vatOnComm;
+
+  // Round to 2 decimals
+  return Math.round(earnings * 100) / 100;
 };
 
 /**
@@ -193,8 +218,11 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         continue;
       }
 
-      // --- Platform store (EazShop): credit actual suppliers (Product.supplierSeller), not the platform ---
-      if (sellerIdStr === EAZSHOP_SELLER_ID) {
+      // --- Platform store (EazShop): identify by seller ID or sellerType; credit actual suppliers (Product.supplierSeller).
+      // Additionally, credit EazShop itself when there is no supplierSeller configured (platform-owned stock)
+      // or when a portion of the earnings is not mapped to any supplier (unassignedShare). ---
+      const isEazShopOrder = sellerIdStr === EAZSHOP_SELLER_ID || (sellerOrder.sellerType && String(sellerOrder.sellerType).toLowerCase() === 'eazshop');
+      if (isEazShopOrder) {
         const totalEarnings = await calculateSellerEarnings(sellerOrder);
         if (totalEarnings <= 0) {
           logger.warn(`[OrderService] EazShop SellerOrder ${sellerOrderId} has zero/negative earnings, skipping`);
@@ -208,14 +236,87 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         const orderItems = await OrderItem.find({ _id: { $in: itemIds } }).session(session).lean();
         const totalBasePrice = (sellerOrder.totalBasePrice || 0) || 1;
         const supplierToAmount = new Map(); // supplierId (string) -> raw amount to credit (sum of shares)
+        let unassignedShare = 0;
         for (const item of orderItems) {
           const itemBase = (item.basePrice || 0) * (item.quantity || 1);
           const share = totalBasePrice > 0 ? (itemBase / totalBasePrice) * totalEarnings : totalEarnings / orderItems.length;
-          const product = await Product.findById(item.product).select('supplierSeller').session(session).lean();
+          const product = await Product.findById(item.product).select('supplierSeller name').session(session).lean();
           const supplierId = product?.supplierSeller ? (product.supplierSeller._id || product.supplierSeller).toString() : null;
           if (supplierId) {
             supplierToAmount.set(supplierId, (supplierToAmount.get(supplierId) || 0) + share);
+          } else {
+            unassignedShare += share;
+            logger.warn(`[OrderService] EazShop product has no supplierSeller – set Product.supplierSeller so the supplier can be credited. Product id=${item.product}, name=${product?.name || 'n/a'}`);
           }
+        }
+
+        // If there are NO suppliers at all but there is unassignedShare, this is effectively
+        // EazShop-owned inventory. Credit EazShop itself for the full seller earnings.
+        if (supplierToAmount.size === 0 && unassignedShare > 0) {
+          const amount = Math.round(unassignedShare * 100) / 100;
+          const eazshopSeller = await getSellerByIdIncludingInactive(sellerId, session);
+          if (!eazshopSeller) {
+            logger.warn(`[OrderService] EazShop seller ${sellerIdStr} not found, skipping credit of ${amount} for order ${orderId}`);
+          } else {
+            const oldBal = eazshopSeller.balance || 0;
+            const newBal = Math.round((oldBal + amount) * 100) / 100;
+            const newWithdrawable = Math.max(0, newBal - (eazshopSeller.lockedBalance || 0));
+            await Seller.updateOne(
+              { _id: sellerId },
+              { $set: { balance: newBal, withdrawableBalance: newWithdrawable } },
+              { session }
+            );
+            const [tx] = await Transaction.create([{
+              seller: sellerId,
+              sellerOrder: sellerOrder._id,
+              type: 'credit',
+              amount,
+              description: `Order Delivered (EazShop) — EazShop credited (no supplierSeller) - Order #${order.orderNumber}`,
+              status: 'completed',
+              metadata: {
+                orderId,
+                orderNumber: order.orderNumber,
+                platformStore: true,
+                updatedBy,
+                eazshopCreditReason: 'no_supplier_seller',
+              },
+            }], { session });
+            try {
+              await logSellerRevenue({
+                sellerId,
+                amount,
+                type: 'ORDER_EARNING',
+                description: `EazShop earnings from platform store order #${order.orderNumber}`,
+                reference: `ORDER-${order.orderNumber}-${sellerIdStr}`,
+                orderId: mongoose.Types.ObjectId(orderId),
+                balanceBefore: oldBal,
+                balanceAfter: newBal,
+                metadata: { orderNumber: order.orderNumber, platformStore: true, noSupplierSeller: true },
+              });
+            } catch (e) {
+              logger.error(`[OrderService] logSellerRevenue failed for EazShop ${sellerIdStr}:`, e.message);
+            }
+            balanceUpdates.push({
+              sellerId: sellerIdStr,
+              sellerName: eazshopSeller.name || eazshopSeller.shopName || 'EazShop',
+              amount,
+              transactionId: tx?._id,
+            });
+            sellerOrder.payoutStatus = 'paid';
+            sellerOrder.sellerPaymentStatus = 'paid';
+            await sellerOrder.save({ session });
+          }
+          // Nothing else to credit in this sellerOrder, continue to next
+          continue;
+        }
+
+        // Build audit breakdown: amount each supplier is entitled to (rounded)
+        const supplierBreakdown = {};
+        for (const [supId, rawAmount] of supplierToAmount) {
+          supplierBreakdown[supId] = Math.round(rawAmount * 100) / 100;
+        }
+        if (unassignedShare > 0) {
+          supplierBreakdown._unassigned = Math.round(unassignedShare * 100) / 100;
         }
         // Credit each supplier (round amount per supplier to avoid cumulative rounding errors)
         let creditedAny = false;
@@ -253,7 +354,14 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
             amount,
             description: `Order Delivered (EazShop) — Supplier credited - Order #${order.orderNumber}`,
             status: 'completed',
-            metadata: { orderId, orderNumber: order.orderNumber, platformStore: true, updatedBy },
+            metadata: {
+              orderId,
+              orderNumber: order.orderNumber,
+              platformStore: true,
+              updatedBy,
+              supplierAmountEntitled: amount,
+              supplierBreakdown,
+            },
           }], { session });
           try {
             await logSellerRevenue({
@@ -274,6 +382,65 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
           creditedAny = true;
           logger.info(`[OrderService] Credited supplier ${supId} amount ${amount} for EazShop order ${orderId}`);
         }
+
+        // If part of the earnings was not mapped to any supplier (unassignedShare),
+        // credit that remainder to EazShop itself so 100% of the seller earnings are accounted for.
+        if (unassignedShare > 0) {
+          const amount = Math.round(unassignedShare * 100) / 100;
+          const eazshopSeller = await getSellerByIdIncludingInactive(sellerId, session);
+          if (!eazshopSeller) {
+            logger.warn(`[OrderService] EazShop seller ${sellerIdStr} not found for unassignedShare ${amount}, skipping credit for order ${orderId}`);
+          } else {
+            const oldBal = eazshopSeller.balance || 0;
+            const newBal = Math.round((oldBal + amount) * 100) / 100;
+            const newWithdrawable = Math.max(0, newBal - (eazshopSeller.lockedBalance || 0));
+            await Seller.updateOne(
+              { _id: sellerId },
+              { $set: { balance: newBal, withdrawableBalance: newWithdrawable } },
+              { session }
+            );
+            const [tx] = await Transaction.create([{
+              seller: sellerId,
+              sellerOrder: sellerOrder._id,
+              type: 'credit',
+              amount,
+              description: `Order Delivered (EazShop) — EazShop credited (unassigned share) - Order #${order.orderNumber}`,
+              status: 'completed',
+              metadata: {
+                orderId,
+                orderNumber: order.orderNumber,
+                platformStore: true,
+                updatedBy,
+                eazshopCreditReason: 'unassigned_share',
+                supplierBreakdown,
+              },
+            }], { session });
+            try {
+              await logSellerRevenue({
+                sellerId,
+                amount,
+                type: 'ORDER_EARNING',
+                description: `EazShop earnings (unassigned share) from platform store order #${order.orderNumber}`,
+                reference: `ORDER-${order.orderNumber}-${sellerIdStr}-UNASSIGNED`,
+                orderId: mongoose.Types.ObjectId(orderId),
+                balanceBefore: oldBal,
+                balanceAfter: newBal,
+                metadata: { orderNumber: order.orderNumber, platformStore: true, unassignedShare: true },
+              });
+            } catch (e) {
+              logger.error(`[OrderService] logSellerRevenue failed for EazShop (unassigned share) ${sellerIdStr}:`, e.message);
+            }
+            balanceUpdates.push({
+              sellerId: sellerIdStr,
+              sellerName: eazshopSeller.name || eazshopSeller.shopName || 'EazShop',
+              amount,
+              transactionId: tx?._id,
+            });
+            creditedAny = true;
+            logger.info(`[OrderService] Credited EazShop ${sellerIdStr} amount ${amount} (unassigned share) for EazShop order ${orderId}`);
+          }
+        }
+
         if (creditedAny) {
           sellerOrder.payoutStatus = 'paid';
           sellerOrder.sellerPaymentStatus = 'paid';
@@ -312,7 +479,11 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         { session }
       );
 
-      // Create transaction record
+      // Create transaction record (include VAT withheld for admin audit when seller not VAT registered)
+      const vatCollectedBy = sellerOrder.vatCollectedBy || 'platform';
+      const totalVatAmount = sellerOrder.totalVatAmount != null ? sellerOrder.totalVatAmount : 0;
+      const vatWithheld = vatCollectedBy === 'platform' ? totalVatAmount : 0;
+
       const transaction = await Transaction.create(
         [
           {
@@ -325,24 +496,26 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
             metadata: {
               orderId: orderId,
               orderNumber: order.orderNumber,
-              subtotal: sellerOrder.subtotal, // VAT-inclusive subtotal
-              basePrice: sellerOrder.totalBasePrice || 0, // VAT-exclusive (seller revenue)
+              subtotal: sellerOrder.subtotal,
+              basePrice: sellerOrder.totalBasePrice || 0,
               shippingCost: sellerOrder.shippingCost,
-              // Tax breakdown
               totalVAT: sellerOrder.totalVAT || 0,
               totalNHIL: sellerOrder.totalNHIL || 0,
               totalGETFund: sellerOrder.totalGETFund || 0,
               totalCovidLevy: sellerOrder.totalCovidLevy || 0,
               totalTax: sellerOrder.totalTax || 0,
-              commissionRate: sellerOrder.commissionRate !== undefined 
-                ? sellerOrder.commissionRate 
+              vatCollectedBy,
+              totalVatAmount,
+              vatWithheld,
+              commissionRate: sellerOrder.commissionRate !== undefined
+                ? sellerOrder.commissionRate
                 : (settings.platformCommissionRate || 0),
               platformFee: (() => {
-                const rate = sellerOrder.commissionRate !== undefined 
-                  ? sellerOrder.commissionRate 
+                const rate = sellerOrder.commissionRate !== undefined
+                  ? sellerOrder.commissionRate
                   : (settings.platformCommissionRate || 0);
                 if (rate === 0) return 0;
-                return sellerEarnings * rate / (1 - rate); // Calculate platform fee from earnings
+                return sellerEarnings * rate / (1 - rate);
               })(),
               updatedBy,
             },

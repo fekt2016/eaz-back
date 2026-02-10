@@ -44,13 +44,16 @@ exports.validateOrder = [
     .toInt(),
 
   body('orderItems.*.sku')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 100 })
-    .withMessage('SKU must be between 1 and 100 characters')
+    .optional({ values: 'null' })
+    .custom((value) => {
+      if (value == null || (typeof value === 'string' && value.trim() === '')) return true;
+      const str = String(value).trim();
+      if (str.length < 1 || str.length > 100) throw new Error('SKU must be between 1 and 100 characters');
+      return true;
+    })
     .customSanitizer((value) => {
-      // Ensure SKU is uppercase if provided
-      return value && typeof value === 'string' ? value.toUpperCase().trim() : value;
+      if (value == null || (typeof value === 'string' && value.trim() === '')) return value;
+      return typeof value === 'string' ? value.toUpperCase().trim() : value;
     }),
 
   // Validate address
@@ -71,32 +74,31 @@ exports.validateOrder = [
     .isIn(['payment_on_delivery', 'mobile_money', 'bank', 'credit_balance'])
     .withMessage('Invalid payment method'),
 
-  // Validate coupon code (optional)
+  // Validate coupon code (optional) - accept any case, sanitize to uppercase
   body('couponCode')
-    .optional()
+    .optional({ values: 'null' })
     .trim()
     .isLength({ max: 50 })
     .withMessage('Coupon code must be 50 characters or less')
-    .matches(/^[A-Z0-9\-_]+$/)
-    .withMessage('Coupon code must contain only uppercase letters, numbers, hyphens, and underscores'),
+    .customSanitizer((value) => (value && typeof value === 'string' ? value.toUpperCase().trim() : value))
+    .matches(/^[A-Z0-9\-_]*$/)
+    .withMessage('Coupon code must contain only letters, numbers, hyphens, and underscores'),
 
   // Validate coupon ID (optional)
   body('couponId')
-    .optional()
+    .optional({ values: 'null' })
     .custom((value) => {
-      if (!mongoose.Types.ObjectId.isValid(value)) {
-        throw new Error('Invalid coupon ID format');
-      }
+      if (value == null || value === '') return true;
+      if (!mongoose.Types.ObjectId.isValid(value)) throw new Error('Invalid coupon ID format');
       return true;
     }),
 
   // Validate batch ID (optional)
   body('batchId')
-    .optional()
+    .optional({ values: 'null' })
     .custom((value) => {
-      if (!mongoose.Types.ObjectId.isValid(value)) {
-        throw new Error('Invalid batch ID format');
-      }
+      if (value == null || value === '') return true;
+      if (!mongoose.Types.ObjectId.isValid(value)) throw new Error('Invalid batch ID format');
       return true;
     }),
 
@@ -136,9 +138,13 @@ exports.validateOrder = [
 
   // Validate shipping fee (optional, for dispatch method)
   body('shippingFee')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Shipping fee must be a positive number')
+    .optional({ values: 'null' })
+    .custom((value) => {
+      if (value == null || value === '') return true;
+      const n = Number(value);
+      if (Number.isNaN(n) || n < 0) throw new Error('Shipping fee must be a positive number');
+      return true;
+    })
     .toFloat(),
 
   // Reject unknown fields (prevent mass assignment)

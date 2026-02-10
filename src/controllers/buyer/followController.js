@@ -1,8 +1,15 @@
+const mongoose = require('mongoose');
 const Follow = require('../../models/user/followModel');
 const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const Seller = require('../../models/user/sellerModel');
+const Product = require('../../models/product/productModel');
 const logger = require('../../utils/logger');
+const {
+  getPromosFromAds,
+  getApplicablePromos,
+  applyDiscountsAtReadTime,
+} = require('../seller/productController');
 
 exports.followSeller = catchAsync(async (req, res, next) => {
   const { sellerId } = req.params;
@@ -79,6 +86,84 @@ exports.getSellerfollowers = catchAsync(async (req, res, next) => {
     data: {
       follows,
     },
+  });
+});
+
+/**
+ * GET /api/v1/follow/products
+ * Get products from sellers the current user follows (buyer only).
+ * Used for homepage "From sellers you follow" section.
+ */
+exports.getFollowedSellerProducts = catchAsync(async (req, res, next) => {
+  const rawUserId = req.user.id;
+  const userId = mongoose.Types.ObjectId.isValid(rawUserId) ? new mongoose.Types.ObjectId(rawUserId) : rawUserId;
+  const limit = Math.min(parseInt(req.query.limit, 10) || 12, 24);
+
+  const follows = await Follow.find({ user: userId }).select('seller').lean();
+  const sellerIds = follows
+    .map((f) => f.seller)
+    .filter(Boolean)
+    .map((id) => {
+      if (!id) return null;
+      if (id instanceof mongoose.Types.ObjectId) return id;
+      return mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : null;
+    })
+    .filter(Boolean);
+  if (sellerIds.length === 0) {
+    return res.status(200).json({
+      status: 'success',
+      results: 0,
+      total: 0,
+      data: { data: [] },
+    });
+  }
+
+  // Match seller public page: show products that are active/out_of_stock and not deleted.
+  // Include both approved and pending so products visible on the seller's shop page also show here.
+  const filter = {
+    seller: { $in: sellerIds },
+    status: { $in: ['active', 'out_of_stock'] },
+    isDeleted: { $ne: true },
+    isDeletedByAdmin: { $ne: true },
+    isDeletedBySeller: { $ne: true },
+  };
+
+  const products = await Product.find(filter)
+    .populate({ path: 'seller', select: 'name shopName verificationStatus' })
+    .populate({ path: 'parentCategory', select: 'name slug' })
+    .populate({ path: 'subCategory', select: 'name slug' })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  // Apply promos from ads so promo discounts appear in \"From sellers you follow\" just like other listings
+  let promos = [];
+  try {
+    promos = await getPromosFromAds();
+  } catch (e) {
+    logger.warn('[getFollowedSellerProducts] Could not load promos:', e?.message);
+  }
+
+  if (Array.isArray(products) && products.length > 0 && promos.length > 0) {
+    const requestPromoKey = req.query.promotionKey || null;
+    for (const product of products) {
+      const applicable = getApplicablePromos(product, promos, requestPromoKey);
+      if (applicable.length > 0) {
+        applyDiscountsAtReadTime(product, applicable);
+      } else {
+        product.promoPrice = 0;
+        product.isOnSale = false;
+      }
+    }
+  }
+
+  const total = await Product.countDocuments(filter);
+
+  res.status(200).json({
+    status: 'success',
+    results: products.length,
+    total,
+    data: { data: products },
   });
 });
 

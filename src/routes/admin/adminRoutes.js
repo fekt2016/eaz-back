@@ -15,7 +15,6 @@ const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
 const { updateOrderStatus } = require('../../controllers/shared/orderTrackingController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
-
 const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
 const router = express.Router();
@@ -446,6 +445,15 @@ router
     authController.protect,
     authController.restrictTo('admin'),
     historyController.getSellerRevenueHistory
+  );
+
+// Admin view of all seller transactions (credits/debits)
+router
+  .route('/transactions')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    historyController.getAllSellerTransactions
   );
 
 router

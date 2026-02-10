@@ -5,6 +5,7 @@ const SellerRevenueHistory = require('../../models/history/sellerRevenueHistoryM
 const User = require('../../models/user/userModel');
 const Seller = require('../../models/user/sellerModel');
 const PaymentRequest = require('../../models/payment/paymentRequestModel'); // Required for populate to work
+const Transaction = require('../../models/transaction/transactionModel');
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
 
@@ -831,6 +832,79 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
     logger.error('Error in getAllSellerRevenueHistory:', error);
     return next(new AppError('An error occurred while fetching seller revenue history', 500));
   }
+});
+
+/**
+ * GET /api/v1/admin/transactions
+ * Admin view all seller transactions (credits/debits) with optional filters.
+ * This mirrors the seller-facing /seller/me/transactions endpoint, but allows
+ * filtering by sellerId and viewing all sellers in one place.
+ */
+exports.getAllSellerTransactions = catchAsync(async (req, res, next) => {
+  if (!req.user || !req.user.id || req.user.role !== 'admin') {
+    return next(new AppError('Admin authentication required', 401));
+  }
+
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = Math.min(100, Math.max(parseInt(req.query.limit, 10) || 20, 1));
+  const skip = (page - 1) * limit;
+
+  const filter = {};
+
+  // Optional: filter by specific sellerId
+  if (req.query.sellerId && mongoose.Types.ObjectId.isValid(req.query.sellerId)) {
+    filter.seller = new mongoose.Types.ObjectId(req.query.sellerId);
+  }
+
+  // Optional: filter by transaction type (credit/debit)
+  if (req.query.type) {
+    const type = String(req.query.type).toLowerCase();
+    if (type === 'credit' || type === 'debit') {
+      filter.type = type;
+    }
+  }
+
+  // Optional: filter by status
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
+
+  const [transactions, total] = await Promise.all([
+    Transaction.find(filter)
+      .populate('seller', 'name shopName email')
+      .populate({
+        path: 'sellerOrder',
+        select: 'subtotal shippingCost tax',
+        populate: {
+          path: 'order',
+          select: 'orderNumber totalPrice createdAt',
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Transaction.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  // Match BalanceHistoryPage structure: data.history + pagination
+  res.status(200).json({
+    status: 'success',
+    results: transactions.length,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+    data: {
+      history: transactions,
+    },
+  });
 });
 
 /**

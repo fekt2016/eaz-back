@@ -5,6 +5,7 @@ const { createSendToken } = require('../../utils/helpers/createSendToken');
 const { sendEmail, sendPasswordResetEmail } = require('../../utils/email/emailService');
 const crypto = require('crypto');
 const { logActivityAsync, logActivity } = require('../../modules/activityLog/activityLog.service');
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const orderService = require('../../services/order/orderService');
@@ -89,7 +90,7 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
   }
   
   // Capture IP and device
-  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   // Security monitoring

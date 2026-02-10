@@ -1,23 +1,7 @@
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const logger = require('../../utils/logger');
-
-/**
- * Extract IP address from request
- * @param {Object} req - Express request object
- * @returns {String} - IP address
- */
-const getIpAddress = (req) => {
-  return (
-    req.ip ||
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    (req.connection?.socket ? req.connection.socket.remoteAddress : null) ||
-    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    'unknown'
-  );
-};
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 
 /**
  * Extract platform from request headers

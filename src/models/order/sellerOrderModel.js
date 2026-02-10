@@ -74,6 +74,29 @@ const sellerOrderSchema = new mongoose.Schema({
     type: Number,
     default: 0, // Default to 0% platform commission
   },
+  commissionAmount: {
+    type: Number,
+    default: 0,
+    comment: 'Platform commission amount (before VAT on commission)',
+  },
+  vatOnCommission: {
+    type: Number,
+    default: 0,
+    comment: 'VAT on platform commission (stored separately for payouts)',
+  },
+  /** Dual VAT (Ghana): seller = payout includes VAT (base+VAT-commission); platform = VAT withheld (base-commission only) */
+  vatCollectedBy: {
+    type: String,
+    enum: ['seller', 'platform'],
+    default: 'platform',
+    comment: 'seller = VAT paid to seller; platform = VAT withheld by Saiisai for GRA',
+  },
+  /** Total VAT amount on this seller order (for audit / withheld amount when vatCollectedBy=platform) */
+  totalVatAmount: {
+    type: Number,
+    default: 0,
+    comment: 'Sum of VAT on items; when vatCollectedBy=platform this amount is withheld',
+  },
   status: {
     type: String,
     enum: [
@@ -128,17 +151,18 @@ const sellerOrderSchema = new mongoose.Schema({
     enum: ['EAZSHOP', 'SELLER'],
   },
 });
-sellerOrderSchema.virtual('payoutAmount').get(async function () {
-  // Tax removed - no longer included in total calculation
-  const total = this.subtotal + this.shippingCost;
-  // Get commission rate from platform settings if not set on order
-  let commissionRate = this.commissionRate;
-  if (commissionRate === undefined || commissionRate === null) {
-    const PlatformSettings = require('../../platform/platformSettingsModel');
-    const settings = await PlatformSettings.getSettings();
-    commissionRate = settings.platformCommissionRate || 0;
+// Dual VAT: seller registered => payout = (base+VAT) - commission; platform => payout = base - commission (VAT withheld)
+sellerOrderSchema.virtual('payoutAmount').get(function () {
+  const commission = this.commissionAmount != null && this.commissionAmount >= 0
+    ? this.commissionAmount
+    : (this.subtotal + this.shippingCost) * (this.commissionRate ?? 0);
+  const vatOnComm = this.vatOnCommission != null && this.vatOnCommission >= 0 ? this.vatOnCommission : 0;
+  if (this.vatCollectedBy === 'seller') {
+    const total = this.subtotal + this.shippingCost;
+    return Math.max(0, total - commission - vatOnComm);
   }
-  return total - total * commissionRate;
+  const baseAndShipping = (this.totalBasePrice || 0) + (this.shippingCost || 0);
+  return Math.max(0, baseAndShipping - commission - vatOnComm);
 });
 
 // Indexes for seller orders list, payout, and order lookup

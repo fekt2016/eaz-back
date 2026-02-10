@@ -7,6 +7,7 @@ const logger = require('../../utils/logger');
 const Review = require('../../models/product/reviewModel');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
+const Advertisement = require('../../models/advertisementModel');
 const Seller = require('../../models/user/sellerModel');
 const Order = require('../../models/order/orderModel');
 const OrderItems = require('../../models/order/OrderItemModel');
@@ -15,21 +16,182 @@ const handleFactory = require('../shared/handleFactory');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 const { buildBuyerSafeQuery } = require('../../utils/helpers/productVisibility');
 
-//product middleWare
-exports.setProductIds = (req, res, next) => {
-  if (!req.body.seller) req.body.seller = req.user.id;
+/** VAT-inclusive: never trust seller-submitted VAT values; server computes from price only */
+function stripSellerSubmittedVatFields(body) {
+  if (!body || typeof body !== 'object') return;
+  ['priceInclVat', 'priceExVat', 'vatAmount', 'vatRate'].forEach((k) => delete body[k]);
+  if (Array.isArray(body.variants)) {
+    body.variants.forEach((v) => {
+      if (v && typeof v === 'object') ['priceInclVat', 'priceExVat', 'vatAmount', 'vatRate'].forEach((k) => delete v[k]);
+    });
+  }
+}
 
-  // If admin is creating an EazShop product, set seller to EazShop seller ID
-  const EAZSHOP_SELLER_ID = '000000000000000000000001';
-  if (req.user.role === 'admin' && req.body.isEazShopProduct === true) {
-    req.body.seller = EAZSHOP_SELLER_ID;
-    req.body.isEazShopProduct = true;
+/**
+ * Apply applicable discounts at read time using variant price and discount value.
+ * Sets product.promoPrice = calculated discount price (from variant price + discount); 0 when no promotion.
+ * Product card uses promoPrice when > 0 for display; otherwise uses price.
+ */
+function applyDiscountsAtReadTime(product, applicableDiscounts) {
+  // When no promotion applies, clear promo price so card uses regular price
+  product.promoPrice = 0;
+  if (!product?.variants?.length || !applicableDiscounts?.length) return;
+
+  // Use first variant price as base for calculation (or best discounted across variants)
+  const v = product.variants[0];
+  const variantPrice = Number(v?.price) || 0;
+  const originalPrice = v?.originalPrice != null && v.originalPrice > 0 ? Number(v.originalPrice) : variantPrice;
+  if (originalPrice <= 0) return;
+
+  let bestPrice = originalPrice;
+  for (const d of applicableDiscounts) {
+    let discounted = originalPrice;
+    if (d.type === 'percentage') discounted = originalPrice * (1 - (d.value || 0) / 100);
+    else if (d.type === 'fixed') discounted = Math.max(0, originalPrice - (d.value || 0));
+    if (discounted < bestPrice) bestPrice = discounted;
+  }
+
+  if (bestPrice < originalPrice) {
+    product.promoPrice = Math.round(bestPrice * 100) / 100;
+    product.originalPrice = originalPrice;
+    product.isOnSale = true;
+  }
+}
+
+/**
+ * Normalize promotion key for comparison (e.g. "Ramdan-Special" -> "ramdan-special").
+ */
+function normalizePromoKey(key) {
+  return key ? String(key).trim().toLowerCase().replace(/\s+/g, '-') : '';
+}
+
+/**
+ * Extract promotion key from ad link (e.g. https://site.com/offers/ramdan-special -> "ramdan-special").
+ * Matches frontend useAds extractPromotionKeyFromLink.
+ */
+function getPromotionKeyFromLink(link) {
+  if (!link || typeof link !== 'string') return '';
+  const raw = String(link).trim();
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      const url = new URL(raw);
+      const match = url.pathname.match(/\/offers\/([^/?#]+)/i);
+      return match ? normalizePromoKey(match[1]) : '';
+    }
+    const match = raw.match(/\/offers\/([^/?#]+)/i);
+    return match ? normalizePromoKey(match[1]) : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Build promotional discount list from active ads (Ads = promotional discount).
+ * Each ad with link containing /offers/:key and discountPercent > 0 becomes a promo.
+ */
+async function getPromosFromAds() {
+  const now = new Date();
+  const ads = await Advertisement.find({
+    active: true,
+    startDate: { $lte: now },
+    $or: [{ endDate: null }, { endDate: { $gte: now } }, { endDate: { $exists: false } }],
+  })
+    .select('link discountType discountPercent discountFixed')
+    .lean();
+  const promos = [];
+  for (const ad of ads) {
+    const promotionKey = getPromotionKeyFromLink(ad.link);
+    if (!promotionKey) continue;
+    const discountType = ad.discountType === 'fixed' ? 'fixed' : 'percentage';
+    const value = discountType === 'fixed'
+      ? (typeof ad.discountFixed === 'number' && ad.discountFixed > 0 ? ad.discountFixed : 0)
+      : (typeof ad.discountPercent === 'number' && ad.discountPercent > 0 ? ad.discountPercent : 0);
+    if (value > 0) {
+      promos.push({ promotionKey, type: discountType, value });
+    }
+  }
+  return promos;
+}
+
+/**
+ * Returns promotional discounts (from ads) that apply to this product (match by promotionKey only).
+ */
+function getApplicablePromos(product, promos, requestPromoKey) {
+  const productPromoKey = normalizePromoKey(product.promotionKey) || normalizePromoKey(requestPromoKey);
+  if (!productPromoKey) return [];
+  return promos.filter((p) => p.promotionKey && normalizePromoKey(p.promotionKey) === productPromoKey);
+}
+
+/**
+ * Compute best discounted price from base price and applicable promos.
+ * Used by cart and anywhere we need a single price with promo applied.
+ * @param {number} basePrice - Original unit price
+ * @param {Array<{ type: 'percentage'|'fixed', value: number }>} applicablePromos
+ * @returns {{ unitPrice: number, originalPrice?: number }} unitPrice (after promo), originalPrice if discounted
+ */
+function applyPromosToPrice(basePrice, applicablePromos) {
+  if (!basePrice || basePrice <= 0 || !applicablePromos?.length) {
+    return { unitPrice: basePrice || 0 };
+  }
+  let best = basePrice;
+  for (const d of applicablePromos) {
+    let discounted = basePrice;
+    if (d.type === 'percentage') discounted = basePrice * (1 - (d.value || 0) / 100);
+    else if (d.type === 'fixed') discounted = Math.max(0, basePrice - (d.value || 0));
+    if (discounted < best) best = discounted;
+  }
+  const unitPrice = Math.round(best * 100) / 100;
+  if (unitPrice < basePrice) {
+    return { unitPrice, originalPrice: basePrice };
+  }
+  return { unitPrice: basePrice };
+}
+
+exports.getPromosFromAds = getPromosFromAds;
+exports.getApplicablePromos = getApplicablePromos;
+exports.applyPromosToPrice = applyPromosToPrice;
+exports.applyDiscountsAtReadTime = applyDiscountsAtReadTime;
+
+/** Get the current (logged-in) seller id from req.user. Returns string id or null. */
+function getCurrentSellerId(req) {
+  if (!req?.user) return null;
+  const u = req.user;
+  const id = u.id ?? u._id;
+  if (id == null) return null;
+  const role = u.role ?? u._doc?.role;
+  const isSeller =
+    role === 'seller' ||
+    role === 'eazshop_store' ||
+    u.shopName != null ||
+    (u.constructor?.modelName === 'Seller') ||
+    (u.collection?.name === 'sellers');
+  return isSeller ? String(id) : null;
+}
+
+//product middleWare – ensure seller is always set from authenticated user (never trust client)
+exports.setProductIds = (req, res, next) => {
+  if (!req.user) {
+    return next(new AppError('You must be logged in to add a product.', 401));
+  }
+  const role = req.user.role || (req.user._doc && req.user._doc.role);
+  const currentSellerId = getCurrentSellerId(req);
+
+  if (currentSellerId) {
+    // Current user is a seller: assign their id to product.seller
+    req.body.seller = currentSellerId;
+  } else if (role === 'admin' || role === 'superadmin' || role === 'moderator') {
+    // Admin: only set seller for EazShop products; never use admin's own id as seller
+    const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
+    if (req.body.isEazShopProduct === true) {
+      req.body.seller = EAZSHOP_SELLER_ID;
+      req.body.isEazShopProduct = true;
+    }
   }
 
   // Set moderation status: pending for sellers, approved for admins
-  if (req.user.role === 'seller' && !req.body.moderationStatus) {
+  if (currentSellerId && !req.body.moderationStatus) {
     req.body.moderationStatus = 'pending';
-  } else if (req.user.role === 'admin' && !req.body.moderationStatus) {
+  } else if ((role === 'admin' || role === 'superadmin' || role === 'moderator') && !req.body.moderationStatus) {
     req.body.moderationStatus = 'approved';
   }
 
@@ -491,10 +653,50 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     .lean(); // Use lean() for better performance, calculate virtuals manually
 
   let products = await features.query;
-  
+
+  // Admin: ensure seller label is always available (populate can leave seller as id when Seller is inactive)
+  if (isAdmin && Array.isArray(products) && products.length > 0) {
+    const unpopulatedSellerIds = [];
+    products.forEach((p) => {
+      if (p.seller && typeof p.seller === 'object' && !p.seller.shopName && !p.seller.name) {
+        const id = p.seller._id ? p.seller._id.toString() : (p.seller.toString ? p.seller.toString() : p.seller);
+        if (id && mongoose.Types.ObjectId.isValid(id)) unpopulatedSellerIds.push(new mongoose.Types.ObjectId(id));
+      }
+    });
+    if (unpopulatedSellerIds.length > 0) {
+      try {
+        const sellerDocs = await Seller.collection.find(
+          { _id: { $in: unpopulatedSellerIds } },
+          { projection: { shopName: 1, name: 1 } }
+        ).toArray();
+        const sellerMap = {};
+        sellerDocs.forEach((d) => {
+          const id = d._id.toString();
+          sellerMap[id] = { _id: d._id, shopName: d.shopName || null, name: d.name || null };
+        });
+        products.forEach((p) => {
+          if (!p.seller || (typeof p.seller === 'object' && !p.seller.shopName && !p.seller.name)) {
+            const id = p.seller && (p.seller._id ? p.seller._id.toString() : (p.seller.toString ? p.seller.toString() : p.seller));
+            if (id && sellerMap[id]) p.seller = sellerMap[id];
+          }
+        });
+      } catch (e) {
+        logger.warn('[getAllProduct] Fallback seller resolve failed:', e?.message);
+      }
+    }
+  }
+
+  // Promotional discounts = Ads. Fetch active ads and derive promos from link + discountPercent.
+  let promosFromAds = [];
+  try {
+    promosFromAds = await getPromosFromAds();
+  } catch (e) {
+    logger.warn('[getAllProduct] Could not load promos from ads:', e?.message);
+  }
+
   // NOTE: We no longer filter by seller verification status
   // Approved products are visible regardless of seller verification status
-  
+
   // DEBUG: Log query results for buyer queries
   if (!isAdmin) {
     logger.info(`[getAllProduct] Query returned ${products.length} products for buyer`);
@@ -540,16 +742,30 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     }
   }
   
-  // Calculate totalStock for each product (lean() doesn't include virtuals)
-  // CRITICAL: Keep this synchronous and fast - only calculate what's needed
+  // Calculate totalStock and enrich sale fields from variants (lean() doesn't include virtuals)
+  // Apply read-time discounts first (Ramadan etc.) so product card shows correct price even if product wasn't saved
+  const requestPromoKey = req.query.promotionKey || null;
   if (Array.isArray(products) && products.length > 0) {
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
+      product.promoPrice = 0; // no promotion by default; set when ad promo applies
+      const applicablePromos = getApplicablePromos(product, promosFromAds, requestPromoKey);
+      if (applicablePromos.length > 0) {
+        applyDiscountsAtReadTime(product, applicablePromos);
+      }
       // Calculate totalStock from variants
       if (Array.isArray(product.variants) && product.variants.length > 0) {
         product.totalStock = product.variants.reduce((sum, variant) => {
           return sum + (variant.stock || 0);
         }, 0);
+        // Enrich for buyer: originalPrice + isOnSale from first variant with discount (e.g. Ramadan)
+        const variantWithDiscount = product.variants.find(
+          (v) => v?.originalPrice != null && v.originalPrice > 0 && (v.price ?? 0) < v.originalPrice
+        );
+        if (variantWithDiscount) {
+          product.originalPrice = variantWithDiscount.originalPrice;
+          product.isOnSale = true;
+        }
       } else {
         product.totalStock = 0;
         product.variants = [];
@@ -829,6 +1045,25 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     })
     .lean();
 
+  productResponse.promoPrice = 0;
+  // Promotional discounts = Ads (link + discountPercent). Seller discounts are separate.
+  if (productResponse?.variants?.length > 0) {
+    const promosFromAds = await getPromosFromAds();
+    const applicable = getApplicablePromos(productResponse, promosFromAds, null);
+    if (applicable.length > 0) applyDiscountsAtReadTime(productResponse, applicable);
+  }
+
+  // Enrich with originalPrice + isOnSale from variants (e.g. Ramadan/campaign discount) when using .lean()
+  if (productResponse?.variants?.length > 0) {
+    const variantWithDiscount = productResponse.variants.find(
+      (v) => v?.originalPrice != null && v.originalPrice > 0 && (v.price ?? 0) < v.originalPrice
+    );
+    if (variantWithDiscount) {
+      productResponse.originalPrice = variantWithDiscount.originalPrice;
+      productResponse.isOnSale = true;
+    }
+  }
+
   res.status(200).json({
     status: 'success',
     data: { product: productResponse },
@@ -887,27 +1122,40 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     isSeller: isSeller,
   });
 
-  const products = await Product.find(buyerSafeQuery);
-  // console.log(products);
-  // console.log(products);
-  // 5. Execute query
-  // const features = new APIFeatures(Product.find(baseQuery), req.query)
-  //   .filter()
-  //   .sort()
-  //   .limitFields()
-  //   .paginate();
-
-  // const products = await features.query;
-  // console.log(products);
+  let products = await Product.find(buyerSafeQuery).lean();
   const totalCount = await Product.countDocuments(buyerSafeQuery);
-  // console.log(products);
-  // 6. Send response
+
+  // Promotional discounts = Ads (link + discountPercent). Seller discounts are separate.
+  let promosFromAds = [];
+  try {
+    promosFromAds = await getPromosFromAds();
+  } catch (e) {
+    logger.warn('[getProductsByCategory] Could not load promos from ads:', e?.message);
+  }
+  const requestPromoKey = req.query.promotionKey || null;
+  for (let i = 0; i < products.length; i++) {
+    const product = products[i];
+    product.promoPrice = 0;
+    const applicable = getApplicablePromos(product, promosFromAds, requestPromoKey);
+    if (applicable.length > 0) applyDiscountsAtReadTime(product, applicable);
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      product.totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+      const variantWithDiscount = product.variants.find(
+        (v) => v?.originalPrice != null && v.originalPrice > 0 && (v.price ?? 0) < v.originalPrice
+      );
+      if (variantWithDiscount) {
+        product.originalPrice = variantWithDiscount.originalPrice;
+        product.isOnSale = true;
+      }
+    } else {
+      product.totalStock = 0;
+    }
+  }
+
   res.status(200).json({
     status: 'success',
     results: products.length,
     totalCount,
-    // page: req.query.page ? parseInt(req.query.page) : 1,
-    // limit: req.query.limit ? parseInt(req.query.limit) : 10,
     data: {
       category: {
         _id: category._id,
@@ -922,6 +1170,73 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
 // Custom createProduct with onboarding auto-update
 exports.createProduct = catchAsync(async (req, res, next) => {
   const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+
+  stripSellerSubmittedVatFields(req.body);
+
+  // Seller creating product: get the current (logged-in) seller id and assign it to product.seller. Never trust client.
+  delete req.body.seller;
+  const currentSellerId = getCurrentSellerId(req);
+
+  if (currentSellerId) {
+    // Seller creating product – product.seller = current seller id
+    req.body.seller = currentSellerId;
+    logger.info('[createProduct] Seller creating product: assigned product.seller from current seller', { sellerId: currentSellerId });
+  } else {
+    // Not a seller – only admin EazShop path can set seller (handled elsewhere if needed)
+    const role = req.user?.role ?? req.user?._doc?.role;
+    if ((role === 'admin' || role === 'superadmin' || role === 'moderator') && req.body.isEazShopProduct === true) {
+      req.body.seller = '6970b22eaba06cadfd4b8035';
+    }
+  }
+
+  if (!req.body.seller) {
+    logger.warn('[createProduct] No seller set – seller must be logged in to create a product', { hasUser: !!req.user, currentSellerId: !!currentSellerId });
+    return next(new AppError('Product must have a seller. Please log in and try again.', 400));
+  }
+  // Normalize to ObjectId so ref is valid (reject "undefined" string and invalid ids)
+  const sid = req.body.seller;
+  const isValidId =
+    sid != null &&
+    String(sid) !== '' &&
+    String(sid) !== 'undefined' &&
+    mongoose.Types.ObjectId.isValid(sid);
+  if (!isValidId) {
+    return next(new AppError('Invalid seller id.', 400));
+  }
+  try {
+    req.body.seller = new mongoose.Types.ObjectId(sid);
+  } catch (e) {
+    return next(new AppError('Invalid seller id.', 400));
+  }
+
+  // Product.create() in the factory does NOT run pre('save') hooks, so we must compute VAT here
+  // (sellers enter base price; we add VAT+NHIL+GETFund and store priceInclVat for display)
+  const taxService = require('../../services/tax/taxService');
+  try {
+    const settings = await taxService.getPlatformSettings();
+    const mainPrice = parseFloat(req.body.price);
+    if (mainPrice != null && !Number.isNaN(mainPrice) && mainPrice > 0) {
+      const computed = await taxService.addVatToBase(mainPrice, settings);
+      req.body.priceExVat = computed.basePrice;
+      req.body.priceInclVat = computed.priceInclVat;
+      req.body.vatAmount = computed.vatAmount;
+      req.body.vatRate = computed.vatRate;
+    }
+    if (Array.isArray(req.body.variants) && req.body.variants.length > 0) {
+      for (const v of req.body.variants) {
+        const vPrice = parseFloat(v.price);
+        if (vPrice != null && !Number.isNaN(vPrice) && vPrice > 0) {
+          const computed = await taxService.addVatToBase(vPrice, settings);
+          v.priceExVat = computed.basePrice;
+          v.priceInclVat = computed.priceInclVat;
+          v.vatAmount = computed.vatAmount;
+          v.vatRate = computed.vatRate;
+        }
+      }
+    }
+  } catch (vatErr) {
+    logger.warn('[createProduct] VAT computation failed, saving without priceInclVat:', vatErr?.message);
+  }
 
   // Use handleFactory to create product
   const createOneHandler = handleFactory.createOne(Product);
@@ -1026,6 +1341,8 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 // Wrapper for updateProduct with activity logging
 exports.updateProduct = catchAsync(async (req, res, next) => {
   const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+
+  stripSellerSubmittedVatFields(req.body);
 
   // Get old product data before update and verify ownership
   const oldProduct = await Product.findById(req.params.id);

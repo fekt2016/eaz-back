@@ -8,6 +8,7 @@ const walletService = require('../../services/walletService');
 const orderService = require('../../services/order/orderService');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 const mongoose = require('mongoose');
+const logger = require('../../utils/logger');
 
 /**
  * GET /api/v1/admin/refunds
@@ -138,7 +139,26 @@ exports.getRefundById = catchAsync(async (req, res, next) => {
 
     // Populate order items with product details
     if (order && order.orderItems) {
-      await OrderItems.populate(order.orderItems, { path: 'product', select: 'name imageCover price description' });
+      await OrderItems.populate(order.orderItems, {
+        path: 'product',
+        select: 'name imageCover price description',
+      });
+    }
+
+    // Determine primary seller for admin UI:
+    // 1) For item-level refunds, use the first item's sellerId (populated)
+    // 2) For whole-order refunds (items length === 0), derive from first SellerOrder
+    let primarySeller = null;
+
+    if (refundRequest.items && refundRequest.items.length > 0) {
+      const firstItem = refundRequest.items[0];
+      primarySeller = firstItem.sellerId || firstItem.seller || null;
+    } else if (order && order.sellerOrder && order.sellerOrder.length > 0) {
+      const firstSellerOrderId = order.sellerOrder[0]._id || order.sellerOrder[0];
+      const sellerOrderDoc = await SellerOrder.findById(firstSellerOrderId)
+        .populate('seller', 'name email shopName')
+        .lean();
+      primarySeller = sellerOrderDoc?.seller || null;
     }
 
     return res.status(200).json({
@@ -147,10 +167,13 @@ exports.getRefundById = catchAsync(async (req, res, next) => {
         refund: {
           ...refundRequest,
           order: order,
+          // Primary seller info for admin UI
+          seller: primarySeller,
           // Backward compatibility
           refundRequested: true,
           refundStatus: refundRequest.status,
           refundAmount: refundRequest.totalRefundAmount,
+          refundRequestDate: refundRequest.createdAt || refundRequest.createdAt,
         },
       },
     });
@@ -159,7 +182,7 @@ exports.getRefundById = catchAsync(async (req, res, next) => {
   // Fallback to legacy Order-based refund (backward compatibility)
   const order = await Order.findById(refundId)
     .populate('user', 'name email phone')
-    .populate('sellerOrder.seller', 'name email shopName')
+    // NOTE: sellerOrder is an array of refs to SellerOrder; we populate products here
     .populate('orderItems.product', 'name imageCover price description')
     .lean();
 
@@ -172,10 +195,24 @@ exports.getRefundById = catchAsync(async (req, res, next) => {
     return next(new AppError('This order does not have a refund request', 404));
   }
 
+  // Derive primary seller information for legacy refunds (first seller in sellerOrder array)
+  let legacySeller = null;
+  if (order.sellerOrder && order.sellerOrder.length > 0) {
+    const firstSellerOrderId = order.sellerOrder[0]._id || order.sellerOrder[0];
+    const sellerOrderDoc = await SellerOrder.findById(firstSellerOrderId)
+      .populate('seller', 'name email shopName')
+      .lean();
+
+    legacySeller = sellerOrderDoc?.seller || null;
+  }
+
   res.status(200).json({
     status: 'success',
     data: {
-      refund: order,
+      refund: {
+        ...order,
+        seller: legacySeller,
+      },
     },
   });
 });
@@ -213,6 +250,18 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
       if (!order) {
         await session.abortTransaction();
         return next(new AppError('Order not found', 404));
+      }
+
+      // Check if seller has approved the return
+      if (!refundRequest.sellerReviewed || refundRequest.sellerDecision !== 'approve_return') {
+        await session.abortTransaction();
+        return next(new AppError('Seller must approve the return before admin can approve the refund', 400));
+      }
+
+      // Check if buyer has selected return shipping method (if return is required)
+      if (requireReturn && !refundRequest.returnShippingMethod) {
+        await session.abortTransaction();
+        return next(new AppError('Buyer must select return shipping method before refund can be approved', 400));
       }
 
       // Determine final refund amount

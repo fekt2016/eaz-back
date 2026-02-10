@@ -7,7 +7,7 @@ const Category = require('../src/models/category/categoryModel');
 dotenv.config({ path: './.env' });
 
 // EazShop Seller ID constant
-const EAZSHOP_SELLER_ID = new mongoose.Types.ObjectId('000000000000000000000001');
+const EAZSHOP_SELLER_ID = new mongoose.Types.ObjectId('6970b22eaba06cadfd4b8035');
 
 // Load products from JSON file
 const productsData = require('./seedProducts.json');

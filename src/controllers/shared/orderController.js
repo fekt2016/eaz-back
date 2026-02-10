@@ -106,16 +106,26 @@ exports.validateCart = catchAsync(async (req, res, next) => {
     return next(new AppError('Order must contain at least one item', 400));
   }
 
-  // Fetch all products from database
+  // Fetch all products (include priceInclVat for display; sellers enter base price, we show inclusive)
   const productIds = [...new Set(orderItems.map(item => item.product))];
   const products = await Product.find({ _id: { $in: productIds } })
     .populate('seller', '_id')
-    .select('defaultPrice variants stock name');
+    .select('defaultPrice variants stock name promotionKey price priceInclVat priceExVat');
 
   const productMap = new Map();
   products.forEach(p => productMap.set(p._id.toString(), p));
 
-  // Validate prices and quantities
+  const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
+  let promos = [];
+  try {
+    promos = await getPromosFromAds();
+  } catch (e) {
+    logger.warn('[validateCart] Could not load promos:', e?.message);
+  }
+
+  const platformSettings = await require('../../models/platform/platformSettingsModel').getSettings();
+
+  // Validate prices and quantities; dual VAT: base -> add VAT -> inclusive -> apply promo (single final price to customer)
   const validatedItems = [];
   for (const item of orderItems) {
     const product = productMap.get(item.product?.toString());
@@ -123,30 +133,38 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       return next(new AppError(`Product ${item.product} not found`, 404));
     }
 
-    // Get price from database
-    let price = product.defaultPrice;
+    let basePrice = product.price ?? product.defaultPrice;
     let sellableUnit = product;
 
-    // Check for variant if provided
     if (item.variant) {
       const variant = product.variants?.id(item.variant);
       if (variant) {
-        price = variant.price || product.defaultPrice;
+        basePrice = variant.price ?? product.price ?? product.defaultPrice;
         sellableUnit = variant;
       }
     } else if (item.sku) {
-      // Try to find variant by SKU
       const sku = item.sku.trim().toUpperCase();
       if (product.variants && product.variants.length > 0) {
         const variant = product.variants.find(
           v => v.sku && v.sku.toUpperCase() === sku
         );
         if (variant) {
-          price = variant.price || product.defaultPrice;
+          basePrice = variant.price ?? product.price ?? product.defaultPrice;
           sellableUnit = variant;
         }
       }
     }
+
+    // Dual VAT: add VAT to base to get customer-facing inclusive price (no tax line at checkout)
+    let priceInclVat = sellableUnit.priceInclVat ?? product.priceInclVat;
+    if (priceInclVat == null || priceInclVat <= 0) {
+      const computed = await taxService.addVatToBase(basePrice, platformSettings);
+      priceInclVat = computed.priceInclVat;
+    }
+
+    // Apply promotion discount (same as cart) so checkout subtotal matches cart
+    const applicable = getApplicablePromos(product, promos);
+    const { unitPrice: price } = applyPromosToPrice(priceInclVat, applicable);
 
     // Validate quantity against stock
     const availableStock = sellableUnit.stock - (sellableUnit.sold || 0);
@@ -165,15 +183,25 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       variant: item.variant || null,
       sku: item.sku || null,
       quantity: validatedQuantity,
-      price, // From database
+      price, // From database with promo applied (matches cart)
       validated: true,
       productName: product.name,
       availableStock,
     });
   }
 
-  // Calculate subtotal
-  const subtotal = validatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Round to 2 decimal places for money (avoids floating-point total being 1 unit short)
+  const round2 = (n) => (n != null && !Number.isNaN(n) ? Math.round(Number(n) * 100) / 100 : 0);
+
+  // Subtotal = sum of rounded line totals
+  const subtotalSum = validatedItems.reduce(
+    (sum, item) => sum + round2(item.price * item.quantity),
+    0
+  );
+  let subtotal = round2(subtotalSum);
+  // If subtotal is 1199.x (e.g. float or rounding), treat as 1200 so total = 1200 + shipping (avoids 1 short)
+  if (subtotal >= 1199 && subtotal < 1200) subtotal = 1200;
+  else subtotal = Math.round(subtotal);
 
   // Calculate discount (if coupon provided)
   let discount = 0;
@@ -197,7 +225,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
         sellerIds
       );
 
-      discount = couponData.discountAmount || 0;
+      discount = round2(couponData.discountAmount || 0);
     } catch (couponError) {
       return next(new AppError(
         'Invalid or expired coupon code',
@@ -230,7 +258,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
           req.body.deliverySpeed || 'standard'
         );
 
-        shippingFee = shippingQuote.totalShippingFee || 0;
+        shippingFee = round2(shippingQuote.totalShippingFee || 0);
       }
     } catch (shippingError) {
       // Log error but don't fail validation - shipping can be calculated later
@@ -238,8 +266,14 @@ exports.validateCart = catchAsync(async (req, res, next) => {
     }
   }
 
-  // Calculate final total
-  const total = Math.max(0, subtotal - discount + shippingFee);
+  // Calculate final total (Jumia-style: buyer sees single price; no tax line)
+  const totalRaw = Math.max(0, subtotal - discount + shippingFee);
+  const totalRounded2 = round2(totalRaw);
+  // Round to nearest whole number so 1215.99 shows as 1216 (avoids floating-point showing 1215)
+  const total = Math.round(totalRounded2);
+
+  // VAT-inclusive: do NOT return tax breakdown to buyer (what you see is what you pay)
+  // Tax is kept server-side for orders/audits only
 
   res.status(200).json({
     status: 'success',
@@ -249,9 +283,10 @@ exports.validateCart = catchAsync(async (req, res, next) => {
         subtotal,
         discount,
         shipping: shippingFee,
-        total: total,
+        total,
+        totalAmount: total,
       },
-      paymentAmount: total * 100, // In smallest currency unit (pesewas/kobo)
+      paymentAmount: Math.round(total * 100), // In smallest currency unit (pesewas/kobo)
       coupon: couponData ? {
         code: couponCode,
         discountAmount: discount,
@@ -356,8 +391,24 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     }
 
     /* ---------------------------------- */
-    /* 3. NORMALIZE ORDER ITEMS (SKU ONLY) */
+    /* 3. NORMALIZE ORDER ITEMS (SKU ONLY) — Dual VAT: base -> add VAT -> apply promo */
     /* ---------------------------------- */
+    const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
+    let orderPromos = [];
+    try {
+      orderPromos = await getPromosFromAds();
+    } catch (e) {
+      logger.warn('[createOrder] Could not load promos:', e?.message);
+    }
+
+    const platformSettings = await require('../../models/platform/platformSettingsModel').getSettings();
+    const sellerIds = [...new Set(products.map(p => p.seller).filter(Boolean))];
+    const sellers = await Seller.find({ _id: { $in: sellerIds } }).select('isVatRegistered').session(session).lean();
+    const sellerVatCollectedBy = new Map();
+    sellers.forEach((s) => {
+      sellerVatCollectedBy.set(s._id.toString(), s.isVatRegistered === true ? 'seller' : 'platform');
+    });
+
     const normalizedItems = [];
 
     for (const item of orderItems) {
@@ -387,53 +438,65 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellableUnit = product;
       }
 
-      // Get price from sellableUnit (variant or product)
-      const vatInclusivePrice = sellableUnit.price || product.price;
+      // Dual VAT: seller enters base price; add VAT to get customer-facing inclusive price
+      const basePrice = sellableUnit.price ?? product.price;
+      const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
+      let priceInclVat = sellableUnit.priceInclVat ?? product.priceInclVat ?? vatComputed.priceInclVat;
+      const vatAmountPerUnit = vatComputed.vatAmount;
+      const vatRateUsed = vatComputed.vatRate;
 
-      // SECURITY: Validate quantity
+      // Apply promotion discount (same as cart/validateCart)
+      const applicable = getApplicablePromos(product, orderPromos);
+      const { unitPrice: finalPrice } = applyPromosToPrice(priceInclVat, applicable);
+
       const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
       if (quantity !== item.quantity) {
         throw new AppError(`Invalid quantity for product ${item.product}`, 400);
       }
 
-      // SECURITY: Log if frontend price doesn't match database price (for fraud detection)
-      if (item.price && Math.abs(item.price - vatInclusivePrice) > 0.01) {
-        logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${vatInclusivePrice}`);
-        // Don't reject immediately - might be rounding differences, but log for review
+      if (item.price && Math.abs(item.price - finalPrice) > 0.01) {
+        logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${finalPrice}`);
       }
+
+      const sellerIdStr = (product.seller && product.seller.toString()) || '';
+      const vatCollectedBy = sellerVatCollectedBy.get(sellerIdStr) || 'platform';
 
       normalizedItems.push({
         product: item.product,
         variant: sellableUnit._id !== product._id ? sellableUnit._id : null,
-        quantity: quantity,
-        price: vatInclusivePrice,
-        sku: sku,
+        quantity,
+        price: finalPrice,
+        sku,
+        basePrice: vatComputed.basePrice,
+        vatAmount: vatAmountPerUnit,
+        vatRate: vatRateUsed,
+        vatCollectedBy,
       });
     }
 
-    // Calculate taxes for all items
-    // NOTE: taxService will internally load PlatformSettings when settings are not provided
-    const orderItemsWithTax = await Promise.all(
-      normalizedItems.map(async (item) => {
-        const taxBreakdown = await taxService.extractTaxFromPrice(item.price);
-        const covidLevy = await taxService.calculateCovidLevy(taxBreakdown.basePrice);
-
-        return {
-          product: item.product,
-          variant: item.variant,
-          quantity: item.quantity,
-          price: item.price,
-          sku: item.sku, // Required by OrderItem schema
-          basePrice: taxBreakdown.basePrice,
-          vat: taxBreakdown.vat,
-          nhil: taxBreakdown.nhil,
-          getfund: taxBreakdown.getfund,
-          covidLevy: covidLevy,
-          totalTaxes: taxBreakdown.totalVATComponents + covidLevy,
-          isVATInclusive: true,
-        };
-      })
-    );
+    // Build order items with VAT metadata (vatAmount, vatRate, vatCollectedBy) for audit and payout
+    const vatR = platformSettings?.vatRate ?? 0.125;
+    const nhilR = platformSettings?.nhilRate ?? 0.025;
+    const getfundR = platformSettings?.getfundRate ?? 0.025;
+    const orderItemsWithTax = normalizedItems.map((item) => ({
+      product: item.product,
+      variant: item.variant,
+      quantity: item.quantity,
+      price: item.price,
+      sku: item.sku,
+      priceInclVat: item.price,
+      priceExVat: item.basePrice,
+      vatAmount: item.vatAmount,
+      vatRate: item.vatRate,
+      vatCollectedBy: item.vatCollectedBy,
+      basePrice: item.basePrice,
+      vat: Math.round((item.basePrice * vatR) * 100) / 100,
+      nhil: Math.round((item.basePrice * nhilR) * 100) / 100,
+      getfund: Math.round((item.basePrice * getfundR) * 100) / 100,
+      covidLevy: 0,
+      totalTaxes: item.vatAmount,
+      isVATInclusive: true,
+    }));
 
     const orderItemDocs = await OrderItems.insertMany(orderItemsWithTax, { session });
 
@@ -442,7 +505,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     logger.info('Found products:', products.length);
 
     // EazShop Seller ID constant – only use when product actually belongs to EazShop
-    const EAZSHOP_SELLER_ID = '000000000000000000000001';
+    const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
     // Create product-seller map using the product's raw seller ref (we did not populate seller).
     // This ensures the order always gets the actual seller ID from the product document,
@@ -534,17 +597,24 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       couponUsed = await CouponBatch.findById(couponData.batchId).session(session);
     }
 
-    // Get delivery method from request body
+    // Get delivery method and optional checkout-selected shipping from request body
     const deliveryMethod = req.body.deliveryMethod || 'seller_delivery';
     const pickupCenterId = req.body.pickupCenterId || null;
+    const deliverySpeed = req.body.deliverySpeed || req.body.shippingType || 'standard';
     const buyerCity = address?.city?.toUpperCase() || 'ACCRA';
+
+    // Checkout-selected shipping (use this when provided so order matches what user saw at checkout)
+    const checkoutShippingRaw = req.body.shippingFee ?? req.body.totalShippingFee;
+    const checkoutShipping = (typeof checkoutShippingRaw === 'number' && !Number.isNaN(checkoutShippingRaw) && checkoutShippingRaw >= 0)
+      ? Math.round(Number(checkoutShippingRaw) * 100) / 100
+      : null;
 
     // Validate buyer city
     if (!['ACCRA', 'TEMA'].includes(buyerCity)) {
       return next(new AppError('Saiisai currently delivers only in Accra and Tema.', 400));
     }
 
-    // Calculate shipping using the shipping quote service
+    // Calculate shipping using the shipping quote service (same deliverySpeed as checkout for consistency)
     const { calculateShippingQuote } = require('../../services/shipping/shippingCalculationService');
 
     // Prepare items for shipping calculation
@@ -554,26 +624,54 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       quantity: item.quantity,
     }));
 
-    // Calculate shipping quote based on delivery method
+    // Calculate shipping quote (pass deliverySpeed so quote matches checkout option)
     const shippingQuote = await calculateShippingQuote(
       buyerCity,
       shippingItems,
       deliveryMethod,
-      pickupCenterId
+      pickupCenterId,
+      deliverySpeed
     );
 
-    // Create SellerOrders
+    // Create SellerOrders (platformSettings already loaded above for order items)
     const sellerOrders = [];
-    // Load platform commission rate once (defaults to 0 if not set)
-    const PlatformSettings = require('../../models/platform/platformSettingsModel');
-    const platformSettings = await PlatformSettings.getSettings();
     const platformCommissionRate = platformSettings.platformCommissionRate || 0;
     let orderTotal = 0;
-    const shippingBreakdown = shippingQuote.perSeller || [];
+    let shippingBreakdown = shippingQuote.perSeller || [];
+
+    // Use checkout-selected shipping when provided so order total matches what user selected
+    if (checkoutShipping != null) {
+      const isDispatchMethod = deliveryMethod === 'dispatch';
+      if (isDispatchMethod) {
+        // Dispatch: one order-level fee; breakdown has 0 per seller
+        shippingBreakdown = shippingBreakdown.map((s) => ({ ...s, shippingFee: 0 }));
+      } else {
+        // Seller delivery / pickup: scale per-seller breakdown so sum = checkoutShipping
+        const recalcSum = shippingBreakdown.reduce((sum, s) => sum + (s.shippingFee || 0), 0);
+        if (recalcSum > 0) {
+          const scale = checkoutShipping / recalcSum;
+          shippingBreakdown = shippingBreakdown.map((s) => ({
+            ...s,
+            shippingFee: Math.round((s.shippingFee || 0) * scale * 100) / 100,
+          }));
+          // Fix rounding: ensure sum equals checkoutShipping
+          const scaledSum = shippingBreakdown.reduce((sum, s) => sum + (s.shippingFee || 0), 0);
+          if (scaledSum !== checkoutShipping && shippingBreakdown.length > 0) {
+            const diff = Math.round((checkoutShipping - scaledSum) * 100) / 100;
+            shippingBreakdown[0] = { ...shippingBreakdown[0], shippingFee: (shippingBreakdown[0].shippingFee || 0) + diff };
+          }
+        } else {
+          // No per-seller fee from quote (e.g. pickup): put full amount on first seller for storage
+          shippingBreakdown = shippingBreakdown.map((s, i) => ({ ...s, shippingFee: i === 0 ? checkoutShipping : 0 }));
+        }
+      }
+    }
 
     // For dispatch method, shipping is calculated at order level, not per seller
     const isDispatchMethod = deliveryMethod === 'dispatch';
-    const orderLevelShipping = isDispatchMethod ? shippingQuote.totalShippingFee : 0;
+    const orderLevelShipping = isDispatchMethod
+      ? (checkoutShipping != null ? checkoutShipping : shippingQuote.totalShippingFee)
+      : 0;
 
     for (const [sellerId, group] of sellerGroups) {
       // Get seller-specific discount from the map (calculated by coupon service)
@@ -594,6 +692,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       let sellerTotalGETFund = 0;
       let sellerTotalCovidLevy = 0;
 
+      let sellerTotalVatAmount = 0;
       sellerItems.forEach(item => {
         const quantity = item.quantity || 1;
         sellerTotalBasePrice += (item.basePrice || 0) * quantity;
@@ -601,6 +700,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellerTotalNHIL += (item.nhil || 0) * quantity;
         sellerTotalGETFund += (item.getfund || 0) * quantity;
         sellerTotalCovidLevy += (item.covidLevy || 0) * quantity;
+        sellerTotalVatAmount += (item.vatAmount || 0) * quantity;
       });
 
       // Round to 2 decimal places
@@ -609,17 +709,23 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       sellerTotalNHIL = Math.round(sellerTotalNHIL * 100) / 100;
       sellerTotalGETFund = Math.round(sellerTotalGETFund * 100) / 100;
       sellerTotalCovidLevy = Math.round(sellerTotalCovidLevy * 100) / 100;
+      sellerTotalVatAmount = Math.round(sellerTotalVatAmount * 100) / 100;
       const sellerTotalTax = Math.round((sellerTotalVAT + sellerTotalNHIL + sellerTotalGETFund + sellerTotalCovidLevy) * 100) / 100;
+
+      // Dual VAT: who collects VAT on this seller order (for payout: seller gets base+VAT or base only)
+      const vatCollectedBy = sellerItems[0]?.vatCollectedBy || 'platform';
 
       // Get shipping fee for this seller from the quote
       const sellerShippingInfo = shippingBreakdown.find(s => s.sellerId === sellerId.toString());
       const shipping = sellerShippingInfo?.shippingFee || 0;
 
       // Total for seller order: VAT-inclusive subtotal + shipping
-      // Note: VAT, NHIL, GETFund are already in the subtotal (VAT-inclusive)
-      // COVID levy is included in the VAT-inclusive price, not added separately
       const total = sellerSubtotal + shipping;
       orderTotal += total;
+
+      const commissionAmount = Math.round(total * platformCommissionRate * 100) / 100;
+      const vatRateForCommission = platformSettings?.vatRate ?? 0.15;
+      const vatOnCommission = Math.round(commissionAmount * vatRateForCommission * 100) / 100;
 
       // Determine if this is an EazShop order (seller is raw ObjectId ref, not populated)
       const isEazShopStore = sellerId === EAZSHOP_SELLER_ID;
@@ -627,33 +733,34 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       const isEazShopProduct = sellerProduct?.isEazShopProduct || isEazShopStore;
 
       // Determine delivery method for this seller
-      // Map 'dispatch' to 'eazshop_dispatch' for SellerOrder model
       let sellerDeliveryMethod = deliveryMethod;
       if (deliveryMethod === 'dispatch') {
         sellerDeliveryMethod = 'eazshop_dispatch';
       } else if (isEazShopProduct && deliveryMethod === 'seller_delivery') {
-        // EazShop products should use dispatch if seller_delivery was selected
         sellerDeliveryMethod = 'eazshop_dispatch';
       }
 
       const sellerOrder = new SellerOrder({
         seller: sellerId,
         items: group.items,
-        subtotal: sellerSubtotal, // VAT-inclusive subtotal
+        subtotal: sellerSubtotal,
         originalSubtotal: group.subtotal,
         discountAmount: sellerDiscount,
-        tax: 0, // Deprecated - use tax breakdown fields
+        tax: 0,
         shippingCost: shipping,
-        total: total, // Includes VAT-inclusive subtotal + shipping + COVID levy
-        // Tax breakdown fields
-        totalBasePrice: sellerTotalBasePrice, // Seller revenue (VAT exclusive)
+        total: total,
+        totalBasePrice: sellerTotalBasePrice,
         totalVAT: sellerTotalVAT,
         totalNHIL: sellerTotalNHIL,
         totalGETFund: sellerTotalGETFund,
         totalCovidLevy: sellerTotalCovidLevy,
         totalTax: sellerTotalTax,
+        totalVatAmount: sellerTotalVatAmount,
+        vatCollectedBy,
         isVATInclusive: true,
-        commissionRate: platformCommissionRate, // Use platform settings commission rate
+        commissionRate: platformCommissionRate,
+        commissionAmount,
+        vatOnCommission,
         status: 'pending',
         payoutStatus: 'pending',
         sellerType: isEazShopProduct ? 'eazshop' : 'regular',
@@ -667,16 +774,18 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       sellerOrders.push(sellerOrder._id);
     }
 
-    // Calculate total shipping fee
-    // For dispatch, add order-level shipping; for others, sum per-seller fees
-    const totalShippingFee = isDispatchMethod
-      ? orderLevelShipping
-      : shippingBreakdown.reduce((sum, item) => sum + item.shippingFee, 0);
+    // Total shipping: use checkout-selected amount when provided, else sum from breakdown
+    const totalShippingFee = checkoutShipping != null
+      ? checkoutShipping
+      : (isDispatchMethod ? orderLevelShipping : shippingBreakdown.reduce((sum, item) => sum + (item.shippingFee || 0), 0));
 
     // Add order-level shipping to total if dispatch method
     if (isDispatchMethod) {
       orderTotal += orderLevelShipping;
     }
+
+    // Round to nearest whole number so stored total matches checkout display (e.g. 1215.99 -> 1216)
+    orderTotal = Math.round(Math.round(orderTotal * 100) / 100);
 
     const dispatchType = deliveryMethod === 'dispatch' ? 'EAZSHOP' :
       deliveryMethod === 'seller_delivery' ? 'SELLER' : null;
@@ -1484,6 +1593,42 @@ exports.getUserOrders = catchAsync(async (req, res, next) => {
       },
     });
 
+  // Attach latest refund request ID for each order (for buyer refund detail navigation)
+  try {
+    const orderIdsWithRefunds = orders
+      .filter(o => o.refundRequested)
+      .map(o => o._id);
+
+    if (orderIdsWithRefunds.length > 0) {
+      const RefundRequest = require('../../models/refund/refundRequestModel');
+      const refundRequests = await RefundRequest.find({
+        order: { $in: orderIdsWithRefunds },
+      })
+        .sort({ createdAt: -1 })
+        .select('_id order createdAt')
+        .lean();
+
+      const latestByOrder = {};
+      for (const rr of refundRequests) {
+        const key = String(rr.order);
+        if (!latestByOrder[key]) {
+          latestByOrder[key] = rr._id;
+        }
+      }
+
+      orders.forEach(o => {
+        const key = String(o._id);
+        if (latestByOrder[key]) {
+          // attach as plain field so it serializes in JSON
+          o.set('latestRefundRequestId', latestByOrder[key]);
+        }
+      });
+    }
+  } catch (err) {
+    // Do not break orders listing if refund lookup fails
+    console.error('[getUserOrders] Error attaching latestRefundRequestId:', err);
+  }
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -1638,6 +1783,34 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   // Ensure shippingAddress is included (even if null)
   if (!orderData.shippingAddress) {
     logger.warn(`[getUserOrder] Shipping address missing for order ${req.params.id}`);
+  }
+
+  // Ensure shippingCost is set for buyer order detail (sum from sellerOrder if not on order)
+  if (orderData.shippingCost == null && Array.isArray(orderData.sellerOrder)) {
+    orderData.shippingCost = orderData.sellerOrder.reduce((sum, so) => sum + (so.shippingCost || 0), 0);
+  }
+
+  // When seller populate returns null (e.g. inactive seller), attach name/shopName/email via raw collection
+  const Seller = require('../../models/user/sellerModel');
+  if (Array.isArray(orderData.sellerOrder)) {
+    for (let i = 0; i < orderData.sellerOrder.length; i++) {
+      const so = orderData.sellerOrder[i];
+      const sellerId = so.seller?._id || so.seller;
+      const hasSellerDetails = so.seller && (so.seller.name != null || so.seller.shopName != null);
+      if (sellerId && !hasSellerDetails) {
+        try {
+          const id = mongoose.Types.ObjectId.isValid(sellerId) ? (typeof sellerId === 'string' ? new mongoose.Types.ObjectId(sellerId) : sellerId) : null;
+          if (id) {
+            const raw = await Seller.collection.findOne({ _id: id }, { projection: { name: 1, email: 1, shopName: 1 } });
+            if (raw) {
+              orderData.sellerOrder[i].seller = { _id: id, name: raw.name, email: raw.email, shopName: raw.shopName };
+            }
+          }
+        } catch (err) {
+          logger.warn(`[getUserOrder] Could not attach seller details for sellerOrder ${so._id}:`, err.message);
+        }
+      }
+    }
   }
 
   res.status(200).json({

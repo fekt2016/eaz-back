@@ -152,10 +152,14 @@ async function creditWallet(userId, amount, type, description, reference = null,
       description,
       reference,
       orderId,
-      refundId: metadata.refundRequestId ? mongoose.Types.ObjectId(metadata.refundRequestId) : null,
-      adminId: metadata.adjustedBy ? mongoose.Types.ObjectId(metadata.adjustedBy) : null,
+      refundId: metadata.refundRequestId
+        ? new mongoose.Types.ObjectId(metadata.refundRequestId)
+        : null,
+      adminId: metadata.adjustedBy
+        ? new mongoose.Types.ObjectId(metadata.adjustedBy)
+        : null,
       metadata,
-    }).catch(err => {
+    }).catch((err) => {
       logger.error('[WalletService] Failed to log wallet history (non-critical);:', err);
     });
 

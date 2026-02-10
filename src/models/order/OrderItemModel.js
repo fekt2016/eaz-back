@@ -117,6 +117,17 @@ const OrderItemSchema = new mongoose.Schema({
     min: 0,
     comment: 'VAT-inclusive price per unit at time of order (snapshot)',
   },
+  priceInclVat: { type: Number, min: 0, comment: 'Snapshot: same as price (VAT-inclusive)' },
+  priceExVat: { type: Number, min: 0, comment: 'Snapshot: price before VAT (base)' },
+  vatAmount: { type: Number, min: 0, comment: 'Snapshot: VAT amount per unit' },
+  vatRate: { type: Number, default: 0.15, comment: 'Snapshot: VAT rate used' },
+  /** Dual VAT (Ghana): who is responsible for VAT on this line — seller (registered) or platform (withheld) */
+  vatCollectedBy: {
+    type: String,
+    enum: ['seller', 'platform'],
+    default: 'platform',
+    comment: 'seller = VAT paid to seller; platform = VAT withheld by Saiisai',
+  },
   // Tax breakdown fields (computed from price)
   basePrice: {
     type: Number,

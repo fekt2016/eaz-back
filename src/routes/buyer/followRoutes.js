@@ -8,6 +8,8 @@ router
   .route('/status/:sellerId')
   .get(authController.protect, followController.getFollowStatus);
 router
+  .get('/products', authController.protect, authController.restrictTo('user'), followController.getFollowedSellerProducts);
+router
   .route('/:sellerId')
   .get(
     authController.protect,

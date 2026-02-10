@@ -68,6 +68,11 @@ const discountSchema = new mongoose.Schema(
         ref: 'Category',
       },
     ],
+    // Optional: link to promo/offers page (e.g. "ramdan-special"). When set, discount applies to any product with matching product.promotionKey.
+    promotionKey: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -129,11 +134,13 @@ discountSchema.virtual('status').get(function () {
   return 'active';
 });
 
-// Pre-save hook to ensure at least one of products or categories is provided
+// Pre-save hook: need at least one of products, categories, or promotionKey
 discountSchema.pre('validate', function (next) {
-  // Check if products array exists and has at least one item
-  if (!this.products || this.products.length === 0) {
-    return next(new Error('Discount must apply to at least one product'));
+  const hasProducts = this.products && this.products.length > 0;
+  const hasCategories = this.categories && this.categories.length > 0;
+  const hasPromoKey = this.promotionKey && String(this.promotionKey).trim() !== '';
+  if (!hasProducts && !hasCategories && !hasPromoKey) {
+    return next(new Error('Discount must apply to at least one product, category, or promotionKey'));
   }
   next();
 });

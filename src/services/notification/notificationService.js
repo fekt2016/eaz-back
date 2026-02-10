@@ -1,12 +1,21 @@
-const Notification = require('../../models/notification/notificationModel');
-const pushNotificationService = require('../pushNotificationService');
+const User = require('../../models/user/userModel');
+const Seller = require('../../models/user/sellerModel');
+const Admin = require('../../models/user/adminModel');
+const logger = require('../../utils/logger');
+const { sendCustomEmail } = require('../../utils/email/emailService');
 
 /**
- * Notification Service
- * Helper functions for creating notifications throughout the application
+ * Notification Service (EMAIL-ONLY)
+ * Helper functions for sending notification-style EMAILS throughout the application.
+ *
+ * IMPORTANT:
+ * - Previous implementation stored Notification documents and attempted push notifications.
+ * - This has been refactored to use EMAILS ONLY (no DB notifications, no push).
+ * - All existing callers (createOrderNotification, createPayoutNotification, etc.)
+ *   now send transactional emails via this service.
  * 
- * NOTE: This service automatically sends push notifications when creating database notifications
- * (if the user has registered device tokens)
+ * NOTE: We deliberately do NOT throw if email sending fails, to avoid breaking
+ *       core business flows (orders, payouts, refunds, etc.).
  */
 
 /**
@@ -32,91 +41,68 @@ exports.createNotification = async ({
   metadata = {},
   priority = 'medium',
   actionUrl = null,
-  expiresAt = null,
+  expiresAt = null, // kept for API compatibility, currently unused
 }) => {
   try {
-    // Determine userModel based on role
-    let userModel = 'User';
-    if (role === 'seller') {
-      userModel = 'Seller';
-    } else if (role === 'admin') {
-      userModel = 'Admin';
+    // Resolve user record by role
+    let Model = User;
+    if (role === 'seller') Model = Seller;
+    else if (role === 'admin') Model = Admin;
+
+    const userDoc = await Model.findById(user).select('email name shopName');
+
+    if (!userDoc || !userDoc.email) {
+      logger.warn('[NotificationService] Skipping email notification; user has no email', {
+        userId: user,
+        role,
+        type,
+      });
+      return null;
     }
 
-    // Ensure user ID is in correct format (ObjectId)
-    const mongoose = require('mongoose');
-    const userId = mongoose.Types.ObjectId.isValid(user) ? new mongoose.Types.ObjectId(user) : user;
+    const friendlyName = userDoc.shopName || userDoc.name || role || 'User';
 
-    logger.info(`[NotificationService] Creating notification:`, {
-      user: userId.toString(),
-      userModel,
-      role,
-      type,
-      title
+    // Build simple HTML with optional action link
+    const htmlLines = [
+      `<h2>${title}</h2>`,
+      `<p>${message}</p>`,
+    ];
+    if (actionUrl) {
+      htmlLines.push(
+        `<p><a href="${actionUrl}" target="_blank" rel="noopener noreferrer">View details</a></p>`,
+      );
+    }
+
+    await sendCustomEmail({
+      email: userDoc.email,
+      subject: title,
+      message,
+      html: htmlLines.join('\n'),
     });
 
-    const notification = await Notification.create({
-      user: userId,
-      userModel,
+    logger.info('[NotificationService] 📧 Email notification sent', {
+      to: userDoc.email,
+      role,
+      type,
+      title,
+    });
+
+    // Return a lightweight object for backwards compatibility
+    return {
+      user: userDoc._id,
+      role,
       type,
       title,
       message,
-      role,
       metadata,
       priority,
       actionUrl,
-      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-    });
-
-    logger.info(`[NotificationService] ✅ Created notification:`, {
-      id: notification._id,
-      user: notification.user?.toString(),
-      userModel: notification.userModel,
-      role: notification.role,
-      type: notification.type,
-      title: notification.title
-    });
-
-    // Automatically send push notification (non-blocking)
-    // This ensures users get real-time alerts when notifications are created
-    setImmediate(async () => {
-      try {
-        const pushResult = await pushNotificationService.sendPushToUser(userId.toString(), {
-          title: title,
-          body: message,
-          data: {
-            type: type,
-            referenceId: metadata?.orderId || metadata?.withdrawalId || metadata?.productId || metadata?.ticketId || metadata?.refundId || notification._id.toString(),
-            notificationId: notification._id.toString(),
-            actionUrl: actionUrl,
-            ...metadata,
-          },
-          priority: priority === 'urgent' || priority === 'high' ? 'high' : 'default',
-          badge: 1,
-        });
-
-        if (pushResult.success) {
-          console.log(`[NotificationService] 📱 Push notification sent:`, {
-            notificationId: notification._id,
-            sent: pushResult.sent,
-            total: pushResult.total,
-          });
-        } else {
-          // Not an error - user may not have registered device token
-          if (__DEV__) {
-            console.debug(`[NotificationService] ℹ️ Push notification not sent:`, pushResult.message);
-          }
-        }
-      } catch (pushError) {
-        // Don't fail notification creation if push fails
-        console.error('[NotificationService] ⚠️ Error sending push notification (non-critical):', pushError.message);
-      }
-    });
-
-    return notification;
+      sentAt: new Date(),
+    };
   } catch (error) {
-    logger.error('[NotificationService] Error creating notification:', error);
-    throw error;
+    logger.error('[NotificationService] Error sending email notification:', error);
+    // Do not throw to avoid breaking core flows
+    return null;
   }
 };
 

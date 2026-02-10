@@ -1,0 +1,669 @@
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:36","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1878.613 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 2140.828 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2469.441 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:36"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:37","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 767.435 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 2868.270 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1012.632 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1266.203 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:38"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:39","total":101}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:39"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 2747.276 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:40"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:41"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/a4435e30-6e6d-4757-a8d0-1b37a5949220","service":"backend-api","timestamp":"2026-02-08 21:15:41"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:42","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[32m200\u001b[0m 4155.661 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/a4435e30-6e6d-4757-a8d0-1b37a5949220","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:42"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[Admin] Force logged out device: a4435e30-6e6d-4757-a8d0-1b37a5949220 for user: 697933e15a774b18128b7819","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"\u001b[0mDELETE /api/v1/admin/sessions/logout-device/a4435e30-6e6d-4757-a8d0-1b37a5949220 \u001b[32m200\u001b[0m 2310.786 ms - 158\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:43"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:44","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:44"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:45","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3357.002 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1980.645 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:15:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 2222.657 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2499.137 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 761.286 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:46","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:46"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 3266.575 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1052.030 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1261.331 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:47"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:48","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3280.140 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:49"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 3082.769 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:50"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:51"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:15:51"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:52","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3103.057 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:52"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"[Admin] Force logged out device: 2142b316-1ef6-4b92-8510-46a9084b17a9 for user: 696ebf88f32a5928b76eaa36","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"info","message":"\u001b[0mDELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9 \u001b[32m200\u001b[0m 2537.039 ms - 158\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:54","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:54"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:55","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3726.521 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1847.644 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:15:55"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 2096.513 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2354.943 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 747.425 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:15:56","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:15:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 2990.829 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1002.414 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1265.481 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:15:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:15:58"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:58"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:15:58","total":101}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:15:59"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 3105.376 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:00"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:02","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[32m200\u001b[0m 3348.895 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:02"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Admin] Force logged out device: 2142b316-1ef6-4b92-8510-46a9084b17a9 for user: 696ebf88f32a5928b76eaa36","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"\u001b[0mDELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9 \u001b[32m200\u001b[0m 2538.666 ms - 158\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:03","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:03"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 778.094 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:04"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:04"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:04"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:05","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3091.374 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 2251.856 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2492.706 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:05"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 1970.488 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:06","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 3031.047 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1002.598 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:06"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1245.276 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:07"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:07"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:08","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3211.501 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:09"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1251.220 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:10"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:11","total":101}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:13","total":101}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:13","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 3094.572 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 3346.410 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:13"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:14"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:14"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[32m200\u001b[0m 4124.990 ms - 295\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:14"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:16","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[32m200\u001b[0m 5565.762 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:22"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:16:22"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:23"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:23"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for DELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9","service":"backend-api","timestamp":"2026-02-08 21:16:23"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:23"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:23"}
+{"level":"info","message":"[Admin] Force logged out device: 2142b316-1ef6-4b92-8510-46a9084b17a9 for user: 696ebf88f32a5928b76eaa36","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"\u001b[0mDELETE /api/v1/admin/sessions/logout-device/2142b316-1ef6-4b92-8510-46a9084b17a9 \u001b[32m200\u001b[0m 1604.679 ms - 158\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:24","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 777.711 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1036.069 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1261.828 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 1519.215 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 748.352 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:25"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:26","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:26"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:27","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3275.789 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 2279.367 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2382.658 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 2838.757 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:28"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:29"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:29"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:30","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3089.161 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:30"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:30"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:31"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[0m-\u001b[0m - ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:32"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:34","total":101}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:34"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:34"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2754.027 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:35"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:36","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 786.273 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1096.465 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 2837.255 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:38"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:39","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[32m200\u001b[0m 3658.963 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:42"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:42"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:43"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-08 21:16:43"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 1521.064 ms - 323\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications/unread","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"[Auth] ✅ Token found in seller_jwt cookie for notification route: GET /api/v1/notifications","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:44"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/sessions/suspicious","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"Authenticated as seller: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[getNotifications] 🔍 Initial request - userId: 6970b22eaba06cadfd4b8035, role from req.user: seller","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"filter":"{\"user\":\"6970b22eaba06cadfd4b8035\",\"role\":\"seller\",\"userModel\":\"Seller\"}","level":"info","message":"[getNotifications] 📋 Query filter for seller:","originalRole":"seller","role":"seller","service":"backend-api","timestamp":"2026-02-08 21:16:45","userId":"6970b22eaba06cadfd4b8035","userIdType":"string","userModel":"Seller"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications/unread \u001b[36m304\u001b[0m 800.401 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[getNotifications] 📊 Found 0 notifications for seller user 6970b22eaba06cadfd4b8035 with filter","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"Authenticated as admin: fekt@icloud.com","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: admin matches required roles","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","limit":"50","message":"[getAllSessions] Query params:","page":"1","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"0":"{","1":"}","level":"info","message":"[getAllSessions] MongoDB query:","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/notifications?page=1&limit=5 \u001b[36m304\u001b[0m 1057.064 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:45"}
+{"level":"info","message":"[getAllSessions] Total sessions found:","service":"backend-api","timestamp":"2026-02-08 21:16:46"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions/suspicious \u001b[36m304\u001b[0m 1932.931 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:46"}
+{"level":"info","message":"[getAllSessions] Sessions retrieved:","service":"backend-api","timestamp":"2026-02-08 21:16:46"}
+{"count":50,"level":"info","limit":50,"message":"[getAllSessions] Returning sessions:","page":1,"service":"backend-api","timestamp":"2026-02-08 21:16:48","total":101}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/sessions?page=1&limit=50 \u001b[36m304\u001b[0m 3444.009 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-08 21:16:48"}

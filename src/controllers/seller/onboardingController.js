@@ -459,6 +459,7 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   // and only set to verified if all are met
   seller.verificationStatus = 'verified';
   seller.onboardingStage = 'verified';
+  seller.status = 'active'; // So seller table shows "active" when verification is approved
   seller.verification = seller.verification || {};
   seller.verification.businessVerified = true;
   seller.verification.emailVerified = true; // CRITICAL: Mark email as verified when admin approves
@@ -729,6 +730,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
     if (allDocumentsVerified && allDocumentsUploaded) {
       updateData.verificationStatus = 'verified';
       updateData.onboardingStage = 'verified';
+      updateData.status = 'active'; // So seller table shows "active" when all verifications pass
       updateData['verification.businessVerified'] = true;
       // CRITICAL: When all documents are verified by admin, also mark email as verified
       // This ensures seller setup page recognizes email verification
@@ -737,6 +739,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
       // Also update seller object in memory for save() method
       seller.verificationStatus = 'verified';
       seller.onboardingStage = 'verified';
+      seller.status = 'active';
       if (!seller.verification) {
         seller.verification = {};
       }

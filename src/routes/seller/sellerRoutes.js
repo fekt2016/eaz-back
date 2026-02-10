@@ -59,7 +59,17 @@ router
   .get(
     (req, res, next) => {
       // Exclude literal path segments from matching this route (they are not seller ObjectIds)
-      if (['me', 'status', 'updateMe', 'update-onboarding'].includes(req.params.id)) {
+      if (
+        [
+          'me',
+          'status',
+          'updateMe',
+          'update-onboarding',
+          // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
+          'returns',
+          'refunds',
+        ].includes(req.params.id)
+      ) {
         return next('route'); // Skip to next route handler
       }
       next();
@@ -71,7 +81,17 @@ router
   .patch(
     (req, res, next) => {
       // Exclude literal path segments from matching this route (they are not seller ObjectIds)
-      if (['me', 'status', 'updateMe', 'update-onboarding'].includes(req.params.id)) {
+      if (
+        [
+          'me',
+          'status',
+          'updateMe',
+          'update-onboarding',
+          // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
+          'returns',
+          'refunds',
+        ].includes(req.params.id)
+      ) {
         return next('route'); // Skip to next route handler
       }
       next();
@@ -129,6 +149,13 @@ router.get(
   '/me',
   sellerControllor.getMe,
   sellerControllor.getSeller,
+);
+
+// Seller settings: can set own status to deactive only (admin sets suspended via PATCH /:id/status)
+router.patch(
+  '/me/status',
+  authController.restrictTo('seller'),
+  sellerControllor.updateMyStatus
 );
 
 // Onboarding routes (protected, but don't require verification)

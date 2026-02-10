@@ -29,9 +29,10 @@ const updateAffectedProducts = async (discount) => {
     // Find all affected products
     const products = await Product.find(query);
 
-    // Update each product
+    // Update each product and persist (applyDiscounts only mutates in memory)
     for (const product of products) {
       await product.applyDiscounts();
+      await product.save();
     }
 
     return products.length;

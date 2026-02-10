@@ -15,6 +15,7 @@ const Admin = require('../../models/user/adminModel');
 const payoutService = require('../../services/payoutService');
 const mongoose = require('mongoose');
 const { logSellerRevenue } = require('../../services/historyLogger');
+const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 
 /**
  * Get all withdrawal requests
@@ -669,7 +670,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
   }
 
   // Capture IP address and user agent
-  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   const session = await mongoose.startSession();
@@ -1304,7 +1305,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
   }
 
   // Capture IP address and user agent
-  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   const session = await mongoose.startSession();
@@ -1561,7 +1562,7 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
   }
 
   // Capture IP address and user agent
-  const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const ipAddress = getIpAddress(req);
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   const session = await mongoose.startSession();

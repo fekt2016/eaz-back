@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const DeviceSession = require('../../models/user/deviceSessionModel');
 const TokenBlacklist = require('../../models/user/tokenBlackListModal');
 const User = require('../../models/user/userModel');
@@ -7,6 +8,7 @@ const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const { parseUserAgent } = require('../../utils/helpers/deviceUtils');
 const { safeFs, safePath } = require('../../utils/safePath');
+const logger = require('../../utils/logger');
 
 /**
  * Get all sessions with filters (Admin only)
@@ -45,6 +47,33 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
     query.platform = platform;
   }
 
+  // Filter to only sessions belonging to "suspicious" users (same logic as getSuspiciousLogins)
+  if (suspicious === 'true') {
+    const activeSessions = await DeviceSession.find({ isActive: true })
+      .select('userId ipAddress deviceId')
+      .lean();
+    const userSessions = {};
+    activeSessions.forEach((s) => {
+      const id = s.userId?.toString();
+      if (!id) return;
+      if (!userSessions[id]) userSessions[id] = [];
+      userSessions[id].push(s);
+    });
+    const suspiciousUserIds = [];
+    for (const [uid, userSess] of Object.entries(userSessions)) {
+      const uniqueIPs = new Set(userSess.map((s) => s.ipAddress));
+      const uniqueDevices = new Set(userSess.map((s) => s.deviceId));
+      if (uniqueIPs.size > 3 || uniqueDevices.size > 5) {
+        suspiciousUserIds.push(uid);
+      }
+    }
+    const mongoose = require('mongoose');
+    query.userId =
+      suspiciousUserIds.length > 0
+        ? { $in: suspiciousUserIds.map((id) => new mongoose.Types.ObjectId(id)) }
+        : { $in: [] };
+  }
+
   logger.info('[getAllSessions] MongoDB query:', JSON.stringify(query));
 
   // Calculate pagination
@@ -55,23 +84,12 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
   logger.info('[getAllSessions] Total sessions found:', total);
 
   // Get sessions
-  let sessions = await DeviceSession.find(query)
+  const sessions = await DeviceSession.find(query)
     .sort({ lastActivity: -1 })
     .skip(skip)
     .limit(parseInt(limit));
 
   logger.info('[getAllSessions] Sessions retrieved:', sessions.length);
-
-  // Filter suspicious sessions if requested
-  if (suspicious === 'true') {
-    // A session is suspicious if it has a new IP, new user-agent, or new device
-    // This is a simplified check - in production, you might want more sophisticated logic
-    sessions = sessions.filter((session) => {
-      // Check if this is the only session for this user (new device)
-      // This is a simplified check
-      return true; // For now, return all - implement more sophisticated logic as needed
-    });
-  }
 
   // Populate user information
   const sessionsWithUsers = await Promise.all(
@@ -128,6 +146,7 @@ exports.getAllSessions = catchAsync(async (req, res, next) => {
 
 /**
  * Force logout a specific device (Admin only)
+ * Deletes the device session so it no longer appears in the list and the device must log in again.
  */
 exports.forceLogoutDevice = catchAsync(async (req, res, next) => {
   const { deviceId } = req.params;
@@ -136,33 +155,30 @@ exports.forceLogoutDevice = catchAsync(async (req, res, next) => {
     return next(new AppError('Device ID is required', 400));
   }
 
-  // Find and deactivate session
   const session = await DeviceSession.findOne({ deviceId });
 
   if (!session) {
     return next(new AppError('Device session not found', 404));
   }
 
-  // Get the token from the session if available (for blacklisting)
-  // Note: We can't get the actual token, but we can deactivate the session
-  session.isActive = false;
-  await session.save();
+  const userId = session.userId;
+  await DeviceSession.deleteOne({ deviceId });
 
-  // Log admin action
-  logger.info(`[Admin] Force logged out device: ${deviceId} for user: ${session.userId}`);
+  logger.info(`[Admin] Deleted device session: ${deviceId} for user: ${userId}`);
 
   res.status(200).json({
     status: 'success',
     message: 'Device logged out successfully',
     data: {
       deviceId,
-      userId: session.userId,
+      userId,
     },
   });
 });
 
 /**
  * Force logout all sessions for a specific user (Admin only)
+ * Deletes all device sessions for the user so they no longer appear and the user must log in again on each device.
  */
 exports.forceLogoutUser = catchAsync(async (req, res, next) => {
   const { userId } = req.params;
@@ -171,20 +187,18 @@ exports.forceLogoutUser = catchAsync(async (req, res, next) => {
     return next(new AppError('User ID is required', 400));
   }
 
-  // Deactivate all sessions for this user
-  const result = await DeviceSession.deactivateAll(userId);
+  const result = await DeviceSession.deleteMany({ userId });
 
-  // Invalidate all tokens for this user
   await TokenBlacklist.invalidateAllSessions(userId);
 
-  logger.info(`[Admin] Force logged out all devices for user: ${userId}`);
+  logger.info(`[Admin] Deleted all device sessions for user: ${userId}, count: ${result.deletedCount}`);
 
   res.status(200).json({
     status: 'success',
     message: `All sessions logged out for user ${userId}`,
     data: {
       userId,
-      sessionsDeactivated: result.modifiedCount,
+      sessionsDeactivated: result.deletedCount,
     },
   });
 });

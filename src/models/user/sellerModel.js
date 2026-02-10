@@ -249,6 +249,28 @@ const sellerSchema = new mongoose.Schema(
       default: 'individual',
       comment: 'Tax category for withholding tax: individual (3%) or company (15%)',
     },
+    // Dual VAT responsibility (Ghana): seller vs platform VAT collection. NEVER expose vatNumber to buyers.
+    isVatRegistered: {
+      type: Boolean,
+      default: false,
+      comment: 'If true: seller declares VAT (payout = base+VAT - commission). If false: platform collects VAT (payout = base - commission, VAT withheld).',
+    },
+    vatNumber: {
+      type: String,
+      trim: true,
+      sparse: true,
+      default: null,
+      select: false,
+      comment: 'GRA VAT registration number. Required when isVatRegistered is true. NEVER expose to buyers.',
+    },
+    // Alias for API clarity (same as vatNumber; required when isVatRegistered)
+    vatRegistrationNumber: {
+      type: String,
+      trim: true,
+      default: null,
+      select: false,
+      comment: 'Same as vatNumber. Required if isVatRegistered. Use vatNumber in code.',
+    },
     paystackRecipientCode: {
       type: String,
       default: null,
@@ -351,7 +373,7 @@ const sellerSchema = new mongoose.Schema(
     active: { type: Boolean, default: true, select: false },
     status: {
       type: String,
-      enum: ['active', 'deactive', 'pending'],
+      enum: ['active', 'deactive', 'pending', 'suspended'],
       default: 'pending',
     },
     passwordChangedAt: { type: Date, default: Date },
@@ -543,6 +565,22 @@ sellerSchema.methods.computeIsSetupComplete = function() {
   // All three must be complete
   return documentsComplete && hasPaymentMethodVerified && contactComplete;
 };
+// Dual VAT: require vatNumber when isVatRegistered is true (Ghana compliance)
+sellerSchema.pre('save', function (next) {
+  if (this.isVatRegistered === true) {
+    const vatNum = (this.vatNumber || this.vatRegistrationNumber || '').trim();
+    if (!vatNum) {
+      return next(new Error('VAT registration number is required when seller is VAT registered'));
+    }
+  }
+  if (this.vatNumber !== undefined && this.vatNumber !== null) {
+    this.vatRegistrationNumber = this.vatNumber;
+  } else if (this.vatRegistrationNumber !== undefined && this.vatRegistrationNumber !== null) {
+    this.vatNumber = this.vatRegistrationNumber;
+  }
+  next();
+});
+
 sellerSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
@@ -690,11 +728,14 @@ sellerSchema.pre('save', async function (next) {
     hasPaymentMethodVerified;
 
   if (allRequirementsMet) {
-    // All requirements met - auto-verify the seller
+    // All requirements met - auto-verify the seller and set status to active for seller table
     // Only update if not already verified to avoid unnecessary updates
     if (this.verificationStatus !== 'verified' || this.onboardingStage !== 'verified') {
       this.verificationStatus = 'verified';
       this.onboardingStage = 'verified';
+      if (this.status === 'pending') {
+        this.status = 'active';
+      }
       this.verification = this.verification || {};
       this.verification.businessVerified = true;
       

@@ -8,7 +8,7 @@ const SellerOrder = require('../../models/order/sellerOrderModel');
 const PickupCenter = require('../../models/shipping/pickupCenterModel');
 
 // EazShop Seller ID constant
-const EAZSHOP_SELLER_ID = '000000000000000000000001';
+const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
 /**
  * Get all EazShop products (public - for homepage/display)
@@ -335,9 +335,16 @@ exports.unmarkProductAsEazShop = catchAsync(async (req, res, next) => {
  * Get EazShop orders
  */
 exports.getEazShopOrders = catchAsync(async (req, res, next) => {
+  // Support both legacy EazShop seller ID and the current company seller account.
+  // Also include any SellerOrders explicitly marked as sellerType: 'eazshop',
+  // even if the seller field differs (for historical data).
+  const legacyIds = ['000000000000000000000001', EAZSHOP_SELLER_ID];
+
   const sellerOrders = await SellerOrder.find({
-    seller: EAZSHOP_SELLER_ID,
-    sellerType: 'eazshop',
+    $or: [
+      { seller: { $in: legacyIds } },
+      { sellerType: 'eazshop' },
+    ],
   })
     .populate('order')
     .populate('items')

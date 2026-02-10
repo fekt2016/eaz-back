@@ -15,7 +15,7 @@ const {
 } = require('../../utils/helpers/shippingHelpers');
 
 // EazShop Seller ID constant
-const EAZSHOP_SELLER_ID = '000000000000000000000001';
+const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
 /**
  * Calculate shipping fee for a group of items from the same seller
