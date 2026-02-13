@@ -5,6 +5,23 @@ const logger = require('../../utils/logger');
 const AdvertisementModel = require('../../models/advertisementModel');
 const { AD_TYPES } = AdvertisementModel;
 
+// Helper function to convert relative URLs to absolute URLs using FRONTEND_URL
+const normalizeAdLink = (link) => {
+  if (!link || typeof link !== 'string') return link;
+  
+  // If it's already an absolute URL (http:// or https://), return as-is
+  if (/^https?:\/\//i.test(link.trim())) {
+    return link.trim();
+  }
+  
+  // If it's a relative path, prepend FRONTEND_URL
+  const frontendUrl = process.env.FRONTEND_URL || process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || 'https://saiisai.com';
+  const cleanFrontendUrl = frontendUrl.trim().replace(/\/$/, ''); // Remove trailing slash
+  const cleanLink = link.trim().replace(/^\//, ''); // Remove leading slash from link
+  
+  return `${cleanFrontendUrl}/${cleanLink}`;
+};
+
 const mapAdToResponse = (ad, { includeAdminFields = false } = {}) => {
   if (!ad) return null;
   const doc = typeof ad.toObject === 'function' ? ad.toObject({ getters: true }) : ad;
@@ -13,7 +30,7 @@ const mapAdToResponse = (ad, { includeAdminFields = false } = {}) => {
     id: doc._id?.toString() ?? doc.id,
     title: doc.title,
     imageUrl: doc.imageUrl,
-    link: doc.link,
+    link: normalizeAdLink(doc.link), // Normalize link using FRONTEND_URL
     type: doc.type,
     active: doc.active,
     startDate: doc.startDate,
@@ -107,10 +124,13 @@ exports.createAd = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Normalize link to ensure it's an absolute URL using FRONTEND_URL if relative
+  const normalizedLink = normalizeAdLink(link);
+
   const payload = {
     title,
     imageUrl,
-    link,
+    link: normalizedLink, // Use normalized link
     type,
     active: Boolean(active),
     startDate,
@@ -199,7 +219,12 @@ exports.updateAd = catchAsync(async (req, res, next) => {
 
   allowedFields.forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(req.body, field)) {
-      updates[field] = req.body[field];
+      // Normalize link field to ensure it's an absolute URL using FRONTEND_URL if relative
+      if (field === 'link' && req.body[field]) {
+        updates[field] = normalizeAdLink(req.body[field]);
+      } else {
+        updates[field] = req.body[field];
+      }
     }
   });
 

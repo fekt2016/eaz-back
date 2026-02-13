@@ -4773,3 +4773,70 @@
 {"level":"info","message":"[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...","service":"backend-api","timestamp":"2026-02-13 11:00:00"}
 {"level":"info","message":"[WithdrawalCleanupJob] Found 0 stuck withdrawals","service":"backend-api","timestamp":"2026-02-13 11:00:00"}
 {"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup complete: 0 refunded, 0 errors","service":"backend-api","timestamp":"2026-02-13 11:00:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/promotional-discounts/public \u001b[32m200\u001b[0m 267.854 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"[OptionalAuth] Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"0":"{","1":"\n","10":"a","11":"t","12":"i","13":"o","14":"n","15":"S","16":"t","17":"a","18":"t","19":"u","2":" ","20":"s","21":"\"","22":":","23":" ","24":"\"","25":"a","26":"p","27":"p","28":"r","29":"o","3":" ","30":"v","31":"e","32":"d","33":"\"","34":",","35":"\n","36":" ","37":" ","38":"\"","39":"i","4":"\"","40":"s","41":"V","42":"i","43":"s","44":"i","45":"b","46":"l","47":"e","48":"\"","49":":","5":"m","50":" ","51":"t","52":"r","53":"u","54":"e","55":"\n","56":"}","6":"o","7":"d","8":"e","9":"r","level":"info","message":"[getAllProduct] Buyer query filter:","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[32m200\u001b[0m 776.965 ms - 999\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"level":"info","message":"[getAllProduct] Query returned 0 products for buyer","service":"backend-api","timestamp":"2026-02-13 11:05:17"}
+{"0":{"id":"6977b86c3b035fa9f7db36d4","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":false,"moderationStatus":"approved","name":"Phone","seller":"6977b4993b035fa9f7db3209","status":"active"},"1":{"id":"6977eeaec33eafe54dfe4953","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":false,"moderationStatus":"approved","name":"samsung galaxy ultra 24","seller":"6970b22eaba06cadfd4b8035","status":"active"},"2":{"id":"6977f0c15a774b18128b4d54","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":true,"moderationStatus":"approved","name":"apple imac desktop","seller":"6970b22eaba06cadfd4b8035","status":"active"},"3":{"id":"697937b75a774b18128b7a48","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":true,"moderationStatus":"approved","name":"Melin hat","seller":"697935695a774b18128b782b","status":"active"},"4":{"id":"697f27d103669e15755d61d7","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":false,"moderationStatus":"approved","name":"Girls non tarnish earring set","seller":"697605eb3206c0a57a1667cd","status":"active"},"5":{"id":"69892e9da5a603ffd1ba15d6","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":true,"moderationStatus":"approved","name":"iphone 13 pro max","seller":"6970b22eaba06cadfd4b8035","status":"active"},"6":{"id":"698c49ac8d96dcd1a8d4c938","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":true,"moderationStatus":"approved","name":"iphone 14 pro max","seller":"6970b22eaba06cadfd4b8035","status":"active"},"7":{"id":"698ef90126ebb9013b2343d8","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":true,"moderationStatus":"approved","name":"light speed perfume","seller":"6970b22eaba06cadfd4b8035","status":"active"},"8":{"id":"6975ff633206c0a57a166624","isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isVisible":false,"moderationStatus":"approved","name":"mac book pro","seller":"000000000000000000000001","status":"out_of_stock"},"level":"warn","message":"[getAllProduct] No products returned. Sample approved products in DB:","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[32m200\u001b[0m 1290.207 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"warn","message":"[getAllProduct] Total approved products in DB: 9","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[32m200\u001b[0m 1552.103 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=100&promotionKey=valentine-gift \u001b[32m200\u001b[0m 1804.334 ms - 61\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[32m200\u001b[0m 998.119 ms - 905\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[32m200\u001b[0m 1001.705 ms - 221\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/promotional-discounts/public \u001b[36m304\u001b[0m 339.188 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:26"}
+{"level":"info","message":"[OptionalAuth] Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"0":"{","1":"\n","10":"a","11":"t","12":"i","13":"o","14":"n","15":"S","16":"t","17":"a","18":"t","19":"u","2":" ","20":"s","21":"\"","22":":","23":" ","24":"\"","25":"a","26":"p","27":"p","28":"r","29":"o","3":" ","30":"v","31":"e","32":"d","33":"\"","34":",","35":"\n","36":" ","37":" ","38":"\"","39":"i","4":"\"","40":"s","41":"V","42":"i","43":"s","44":"i","45":"b","46":"l","47":"e","48":"\"","49":":","5":"m","50":" ","51":"t","52":"r","53":"u","54":"e","55":"\n","56":"}","6":"o","7":"d","8":"e","9":"r","level":"info","message":"[getAllProduct] Buyer query filter:","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 844.126 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 1339.231 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-13 11:05:27"}
+{"level":"info","message":"[getAllProduct] Query returned 1 products for buyer","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"0":{"id":"6977f0c15a774b18128b4d54","isVisible":true,"moderationStatus":"approved","name":"apple imac desktop","status":"active"},"level":"info","message":"[getAllProduct] Sample returned products:","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 1866.559 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=100&promotionKey=ramdan-special \u001b[32m200\u001b[0m 1856.879 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 993.253 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 997.853 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-13 11:05:28"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-13 11:10:34"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-13 11:10:35"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-13 11:10:35"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-13 11:10:35"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-13 11:10:35"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-13 11:10:35"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
+{"database":"test","host":"cluster0-shard-00-01.lax0r.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-13 11:11:03"}
