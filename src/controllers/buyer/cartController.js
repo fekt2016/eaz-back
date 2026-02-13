@@ -22,7 +22,10 @@ exports.setUserId = (req, res, next) => {
 const populateCart = (cart) => {
   return cart.populate({
     path: 'products.product',
-    select: 'name price priceInclVat imageCover variants seller isEazShopProduct promotionKey',
+    // Include isPreOrder + pre-order metadata so frontend (cart, checkout)
+    // can clearly label pre-order items and show international shipping info.
+    select:
+      'name price priceInclVat imageCover variants seller isEazShopProduct promotionKey isPreOrder preOrderAvailableDate preOrderNote preOrderOriginCountry',
     populate: {
       path: 'seller',
       select: '_id name shopName role shopAddress location',

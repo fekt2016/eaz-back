@@ -245,6 +245,49 @@ const productSchema = new mongoose.Schema(
       max: [365, 'Return window cannot exceed 365 days'],
       default: null,
     },
+    /**
+     * Pre-order flag.
+     * When true the product is available for advance purchase before it is in stock.
+     * The storefront should display a "Pre-Order" label instead of "Add to Cart".
+     */
+    isPreOrder: {
+      type: Boolean,
+      default: false,
+    },
+    /**
+     * Country of origin for pre-order items.
+     * Used for international shipping and customs estimation for
+     * preorder_international orders (e.g. China, USA).
+     *
+     * NOTE:
+     *  - This field is optional for backward compatibility.
+     *  - When provided and the order is flagged as preorder_international,
+     *    the system can default the supplierCountry and international
+     *    shipping matrix based on this value.
+     */
+    preOrderOriginCountry: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    /**
+     * Expected availability date for pre-order products.
+     * Shown to buyers so they know when to expect delivery.
+     */
+    preOrderAvailableDate: {
+      type: Date,
+      default: null,
+    },
+    /**
+     * Optional note displayed to buyers for pre-order products
+     * (e.g. "Expected to ship by March 2026").
+     */
+    preOrderNote: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      default: null,
+    },
     status: {
       type: String,
       enum: ['active', 'inactive', 'draft', 'out_of_stock', 'archived'],

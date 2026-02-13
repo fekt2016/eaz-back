@@ -6,6 +6,10 @@ const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderSt
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
+const {
+  validateStatusTransition,
+  mapRoleToUpdatedByRole,
+} = require('../../utils/helpers/orderStatusTransitions');
 
 /**
  * Update order status
@@ -17,13 +21,21 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const { status, message, location } = req.body;
   const user = req.user;
 
-  // Validate status
+  // Validate status (generic tracking system)
   const validStatuses = [
     'pending_payment',
+    'payment_completed',
     'processing',
     'confirmed',
     'preparing',
     'ready_for_dispatch',
+    // International pre-order specific statuses
+    'supplier_confirmed',
+    'awaiting_dispatch',
+    'international_shipped',
+    'customs_clearance',
+    'arrived_destination',
+    'local_dispatch',
     'out_for_delivery',
     'delivered',
     'cancelled',
@@ -77,6 +89,40 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     updatedByModel = 'User';
   }
 
+  // Enforce safe status flow & order-type specific rules
+  const transitionCheck = validateStatusTransition(order, status, user.role);
+  if (!transitionCheck.allowed) {
+    return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
+  }
+
+  // Do not allow progressing unpaid orders beyond cancellation.
+  const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+  const isPaid =
+    rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
+  if (!isPaid && status !== order.currentStatus && status !== 'cancelled') {
+    return next(
+      new AppError(
+        'Cannot update order status while payment is pending. You may only cancel unpaid orders.',
+        400,
+      ),
+    );
+  }
+
+  // For international pre-orders, certain steps are admin-only
+  const isInternational = order.orderType === 'preorder_international';
+  const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
+
+  if (
+    isInternational &&
+    isSeller &&
+    !isAdminLike &&
+    ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
+  ) {
+    return next(
+      new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
+    );
+  }
+
   // Add to tracking history
   const trackingEntry = {
     status,
@@ -84,6 +130,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     location: location || '',
     updatedBy: user.id,
     updatedByModel,
+    updatedByRole: mapRoleToUpdatedByRole(user.role),
     timestamp: new Date(),
   };
 
@@ -94,6 +141,27 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   // Update order - currentStatus is the single source of truth
   order.currentStatus = status;
   order.trackingHistory.push(trackingEntry);
+
+  // Attach international pre-order metadata when relevant
+  if (isInternational) {
+    if (status === 'supplier_confirmed') {
+      if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
+      if (req.body.supplierName) order.supplierName = req.body.supplierName;
+      if (req.body.estimatedArrivalDate) {
+        order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
+      }
+    }
+
+    if (status === 'awaiting_dispatch' || status === 'international_shipped') {
+      if (req.body.internationalTrackingNumber) {
+        order.internationalTrackingNumber = req.body.internationalTrackingNumber;
+      }
+    }
+
+    if (status === 'customs_clearance' && !order.customsClearedAt) {
+      order.customsClearedAt = new Date();
+    }
+  }
 
   // Sync legacy status fields for backward compatibility (but currentStatus is primary)
   if (status === 'delivered') {
@@ -429,9 +497,15 @@ exports.getOrderTracking = catchAsync(async (req, res, next) => {
         _id: order._id,
         orderNumber: order.orderNumber,
         trackingNumber: order.trackingNumber,
+        orderType: order.orderType || 'normal',
         currentStatus: order.currentStatus || 'pending_payment',
         trackingHistory: sortedHistory,
         driverLocation: order.driverLocation || null,
+        supplierCountry: order.supplierCountry || null,
+        supplierName: order.supplierName || null,
+        internationalTrackingNumber: order.internationalTrackingNumber || null,
+        estimatedArrivalDate: order.estimatedArrivalDate || null,
+        customsClearedAt: order.customsClearedAt || null,
         user: {
           name: order.user?.name,
           email: order.user?.email,
@@ -459,7 +533,9 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
       path: 'orderItems',
       populate: {
         path: 'product',
-        select: 'name imageCover',
+        // Include isPreOrder so tracking page can show
+        // "Pre-Order" even if orderType is missing/legacy
+        select: 'name imageCover isPreOrder preOrderAvailableDate preOrderNote',
       },
     })
     .populate('trackingHistory.updatedBy', 'name email')
@@ -552,6 +628,7 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         _id: order._id,
         orderNumber: order.orderNumber,
         trackingNumber: order.trackingNumber,
+        orderType: order.orderType || 'normal',
         currentStatus: order.currentStatus || 'pending_payment',
         trackingHistory: sortedHistory,
         latestUpdateTimestamp: latestUpdate?.timestamp || order.createdAt,
@@ -569,6 +646,11 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         createdAt: order.createdAt,
         deliveryZone: order.deliveryZone,
         pickupCenter: order.pickupCenterId || null,
+        supplierCountry: order.supplierCountry || null,
+        supplierName: order.supplierName || null,
+        internationalTrackingNumber: order.internationalTrackingNumber || null,
+        estimatedArrivalDate: order.estimatedArrivalDate || null,
+        customsClearedAt: order.customsClearedAt || null,
         user: {
           name: order.user?.name,
           email: order.user?.email,
@@ -601,6 +683,13 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     'confirmed',
     'preparing',
     'ready_for_dispatch',
+    // International pre-order specific statuses
+    'supplier_confirmed',
+    'awaiting_dispatch',
+    'international_shipped',
+    'customs_clearance',
+    'arrived_destination',
+    'local_dispatch',
     'out_for_delivery',
     'delivered',
     'cancelled',
@@ -656,6 +745,26 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
   // Ensure updatedBy is ObjectId (schema expects ObjectId; user may be Admin/Seller doc)
   const updatedById = user._id || (mongoose.Types.ObjectId.isValid(user.id) ? new mongoose.Types.ObjectId(user.id) : user.id);
 
+  // Enforce safe status flow & order-type specific rules
+  const transitionCheck = validateStatusTransition(order, status, user.role);
+  if (!transitionCheck.allowed) {
+    return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
+  }
+
+  const isInternational = order.orderType === 'preorder_international';
+  const isAdminLike = isAdmin;
+
+  if (
+    isInternational &&
+    isSeller &&
+    !isAdminLike &&
+    ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
+  ) {
+    return next(
+      new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
+    );
+  }
+
   // Add to tracking history
   const trackingEntry = {
     status,
@@ -663,6 +772,7 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     location: '',
     updatedBy: updatedById,
     updatedByModel,
+    updatedByRole: mapRoleToUpdatedByRole(user.role),
     timestamp: new Date(),
   };
 
@@ -676,6 +786,27 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
     order.trackingHistory = [];
   }
   order.trackingHistory.push(trackingEntry);
+
+  // Attach international pre-order metadata when relevant
+  if (isInternational) {
+    if (status === 'supplier_confirmed') {
+      if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
+      if (req.body.supplierName) order.supplierName = req.body.supplierName;
+      if (req.body.estimatedArrivalDate) {
+        order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
+      }
+    }
+
+    if (status === 'awaiting_dispatch' || status === 'international_shipped') {
+      if (req.body.internationalTrackingNumber) {
+        order.internationalTrackingNumber = req.body.internationalTrackingNumber;
+      }
+    }
+
+    if (status === 'customs_clearance' && !order.customsClearedAt) {
+      order.customsClearedAt = new Date();
+    }
+  }
 
   // Sync legacy status fields for backward compatibility (but currentStatus is primary)
   if (status === 'delivered') {

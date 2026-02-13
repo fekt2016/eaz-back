@@ -213,6 +213,12 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     logger.info('[Paystack Initialize] ✅ Using production default base URL:', baseUrl);
   }
 
+  // Development fallback: if no env is set and we're in development, use localhost:5173
+  if (!baseUrl && (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV)) {
+    baseUrl = 'http://localhost:5173';
+    logger.info('[Paystack Initialize] ✅ Using development default base URL:', baseUrl);
+  }
+
   if (!baseUrl) {
     logger.error(
       '[Paystack Initialize] ❌ No valid frontend URL configured. ' +

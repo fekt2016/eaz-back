@@ -7,6 +7,8 @@ const payoutVerificationController = require('../../controllers/admin/payoutVeri
 const statsController = require('../../controllers/admin/statsController');
 const taxController = require('../../controllers/admin/taxController');
 const platformSettingsController = require('../../controllers/admin/platformSettingsController');
+const internationalShippingController = require('../../controllers/admin/internationalShippingController');
+const internationalShippingManagementController = require('../../controllers/admin/internationalShippingManagementController');
 const adminAuditLogController = require('../../controllers/admin/adminAuditLogController');
 const analyticsController = require('../../controllers/admin/analyticsController');
 const sessionManagementController = require('../../controllers/admin/sessionManagementController');
@@ -14,6 +16,7 @@ const historyController = require('../../controllers/admin/historyController');
 const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
 const { updateOrderStatus } = require('../../controllers/shared/orderTrackingController');
+const { deleteOrder } = require('../../controllers/shared/orderController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
 const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
@@ -40,6 +43,16 @@ router.post(
   '/orders/:orderId/status',
   validateObjectId('orderId'),
   updateOrderStatus
+);
+
+// Admin-only hard delete for orders (unpaid orders only in UI; backend still
+// performs full backup + revenue reversal logic in shared deleteOrder).
+// IMPORTANT: use ':id' so shared deleteOrder (which reads req.params.id)
+// sees the correct value.
+router.delete(
+  '/orders/:id',
+  validateObjectId('id'),
+  deleteOrder
 );
 
 router.post('/user/signup', authAdminController.signupUser);
@@ -249,6 +262,72 @@ router
     authController.protect,
     authController.restrictTo('admin'),
     shippingConfigController.updateShippingConfig
+  );
+
+// International shipping (read-only matrix for admin UI)
+router.get(
+  '/international-shipping/matrix',
+  authController.protect,
+  authController.restrictTo('admin'),
+  internationalShippingController.getInternationalShippingMatrix,
+);
+
+// International Shipping Management (CRUD for configs and duty by category)
+router
+  .route('/international-shipping/configs')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.getInternationalShippingConfigs
+  )
+  .post(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.createInternationalShippingConfig
+  );
+
+router
+  .route('/international-shipping/configs/:country')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.getInternationalShippingConfigByCountry
+  )
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.updateInternationalShippingConfig
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.deleteInternationalShippingConfig
+  );
+
+router
+  .route('/international-shipping/duty-by-category')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.getImportDutyByCategory
+  )
+  .post(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.createImportDutyByCategory
+  );
+
+router
+  .route('/international-shipping/duty-by-category/:id')
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.updateImportDutyByCategory
+  )
+  .delete(
+    authController.protect,
+    authController.restrictTo('admin'),
+    internationalShippingManagementController.deleteImportDutyByCategory
   );
 
 // Seller Management Routes

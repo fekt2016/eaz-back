@@ -106,11 +106,12 @@ exports.validateCart = catchAsync(async (req, res, next) => {
     return next(new AppError('Order must contain at least one item', 400));
   }
 
-  // Fetch all products (include priceInclVat for display; sellers enter base price, we show inclusive)
+  // Fetch all products (include priceInclVat, isPreOrder, preOrderOriginCountry for international detection)
   const productIds = [...new Set(orderItems.map(item => item.product))];
   const products = await Product.find({ _id: { $in: productIds } })
     .populate('seller', '_id')
-    .select('defaultPrice variants stock name promotionKey price priceInclVat priceExVat');
+    .populate('subCategory', 'name')
+    .select('defaultPrice variants stock name promotionKey price priceInclVat priceExVat isPreOrder preOrderOriginCountry specifications shipping');
 
   const productMap = new Map();
   products.forEach(p => productMap.set(p._id.toString(), p));
@@ -234,15 +235,81 @@ exports.validateCart = catchAsync(async (req, res, next) => {
     }
   }
 
-  // Calculate shipping (simplified - using address if provided)
+  // Pre-orders are ALWAYS international (from China/USA)
+  // If origin not specified, default to "China"
+  const hasPreOrderItem = products.some((p) => p.isPreOrder === true);
+  const originCountries = [...new Set(
+    products
+      .filter((p) => p.isPreOrder && p.preOrderOriginCountry)
+      .map((p) => String(p.preOrderOriginCountry).trim())
+      .filter((c) => ['China', 'USA'].includes(c)),
+  )];
+  
+  // Use specified origin if available, otherwise default to "China" for pre-orders
+  let supplierCountry = null;
+  if (hasPreOrderItem) {
+    if (originCountries.length === 1) {
+      supplierCountry = originCountries[0];
+    } else if (originCountries.length === 0) {
+      // Pre-order without specified origin - default to China
+      supplierCountry = 'China';
+    }
+    // If multiple origins, prefer China (or could use first one)
+    else {
+      supplierCountry = originCountries.includes('China') ? 'China' : originCountries[0];
+    }
+  }
+  
+  const isInternationalPreorder = hasPreOrderItem && supplierCountry;
+
   let shippingFee = 0;
-  if (address && deliveryMethod) {
+  let internationalBreakdown = null;
+
+  if (isInternationalPreorder) {
+    try {
+      const { calculateInternationalShipping } = require('../../services/shipping/internationalShippingCalculationService');
+      const { calculateCartWeight } = require('../../utils/helpers/shippingHelpers');
+
+      const itemsForWeight = validatedItems.map((item) => ({
+        product: item.product,
+        quantity: item.quantity,
+        variant: item.variant,
+        sku: item.sku,
+      }));
+      const orderWeight = await calculateCartWeight(itemsForWeight);
+
+      const firstPreOrder = products.find((p) => p.isPreOrder);
+      const primaryCategory = firstPreOrder?.subCategory?.name || firstPreOrder?.subCategory || null;
+
+      const breakdown = await calculateInternationalShipping({
+        country: supplierCountry,
+        weight: orderWeight || 0.5,
+        productPrice: subtotal,
+        category: primaryCategory,
+      });
+
+      internationalBreakdown = {
+        shippingCost: breakdown.shippingCost,
+        importDuty: breakdown.importDuty,
+        vat: breakdown.vat,
+        nhil: breakdown.nhil,
+        getFund: breakdown.getFund,
+        exim: breakdown.exim,
+        totalCustoms: breakdown.totalCustoms,
+        clearingFee: breakdown.clearingFee,
+        localDeliveryFee: breakdown.localDeliveryFee,
+        landedCost: breakdown.landedCost,
+      };
+      shippingFee = round2(breakdown.landedCost - subtotal);
+    } catch (intlErr) {
+      logger.warn('[validateCart] International shipping calc error:', intlErr?.message);
+    }
+  } else if (address && deliveryMethod) {
     try {
       const Address = require('../../models/user/addressModel');
       const addressDoc = await Address.findById(address);
 
       if (addressDoc && addressDoc.city) {
-        // Prepare items for shipping calculation
         const shippingItems = validatedItems.map(item => ({
           productId: item.product,
           quantity: item.quantity,
@@ -261,32 +328,32 @@ exports.validateCart = catchAsync(async (req, res, next) => {
         shippingFee = round2(shippingQuote.totalShippingFee || 0);
       }
     } catch (shippingError) {
-      // Log error but don't fail validation - shipping can be calculated later
       console.warn('[validateCart] Shipping calculation error:', shippingError.message);
     }
   }
 
-  // Calculate final total (Jumia-style: buyer sees single price; no tax line)
   const totalRaw = Math.max(0, subtotal - discount + shippingFee);
   const totalRounded2 = round2(totalRaw);
-  // Round to nearest whole number so 1215.99 shows as 1216 (avoids floating-point showing 1215)
   const total = Math.round(totalRounded2);
 
-  // VAT-inclusive: do NOT return tax breakdown to buyer (what you see is what you pay)
-  // Tax is kept server-side for orders/audits only
+  const totalsPayload = {
+    subtotal,
+    discount,
+    shipping: shippingFee,
+    total,
+    totalAmount: total,
+  };
+  if (internationalBreakdown) {
+    totalsPayload.internationalBreakdown = internationalBreakdown;
+    totalsPayload.supplierCountry = supplierCountry;
+  }
 
   res.status(200).json({
     status: 'success',
     data: {
       validatedItems,
-      totals: {
-        subtotal,
-        discount,
-        shipping: shippingFee,
-        total,
-        totalAmount: total,
-      },
-      paymentAmount: Math.round(total * 100), // In smallest currency unit (pesewas/kobo)
+      totals: totalsPayload,
+      paymentAmount: Math.round(total * 100),
       coupon: couponData ? {
         code: couponCode,
         discountAmount: discount,
@@ -348,6 +415,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Do NOT populate seller: we need the raw ObjectId from the product document so the order
     // always gets the actual seller ID (not null when seller is inactive, and not wrongly EazShop).
     const products = await Product.find({ _id: { $in: productIds } })
+      .populate('subCategory', 'name')
       .session(session);
 
     const productMap = new Map();
@@ -790,20 +858,83 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     const dispatchType = deliveryMethod === 'dispatch' ? 'EAZSHOP' :
       deliveryMethod === 'seller_delivery' ? 'SELLER' : null;
 
+    // Determine order type & pre‑order metadata BEFORE delivery estimate:
+    //  - hasPreOrderProduct: any product flagged as pre‑order
+    //  - isInternationalPreorder: explicitly requested + supplier country in China/USA
+    const hasPreOrderProduct = products.some((p) => p.isPreOrder === true);
+
+    const requestedOrderType = req.body.orderType;
+
+    // Pre-orders are ALWAYS international (from China/USA)
+    // Prefer explicit supplierCountry from the request; if not provided,
+    // fall back to the preOrderOriginCountry defined on products.
+    // If no origin specified, default to "China"
+    const rawSupplierCountryFromRequest = req.body.supplierCountry;
+    let normalizedSupplierCountry = rawSupplierCountryFromRequest
+      ? String(rawSupplierCountryFromRequest).trim()
+      : null;
+
+    if (!normalizedSupplierCountry && hasPreOrderProduct) {
+      const originCountries = Array.from(
+        new Set(
+          products
+            .filter((p) => p.isPreOrder && p.preOrderOriginCountry)
+            .map((p) => String(p.preOrderOriginCountry).trim())
+            .filter((c) => ['China', 'USA'].includes(c)),
+        ),
+      );
+
+      if (originCountries.length === 1) {
+        normalizedSupplierCountry = originCountries[0];
+      } else if (originCountries.length === 0) {
+        // Pre-order without specified origin - default to China
+        normalizedSupplierCountry = 'China';
+      } else {
+        // Multiple origins - prefer China, else use first
+        normalizedSupplierCountry = originCountries.includes('China') ? 'China' : originCountries[0];
+      }
+    }
+
+    // Pre-orders are ALWAYS international (from China/USA)
+    // Don't require requestedOrderType to be 'preorder_international' - if it's pre-order, it's international
+    const isInternationalPreorder =
+      hasPreOrderProduct &&
+      (normalizedSupplierCountry === 'China' || normalizedSupplierCountry === 'USA');
+
+    // For pre‑orders, derive a base availability date from product‑level
+    // preOrderAvailableDate so delivery estimates are anchored on when stock
+    // is actually expected to be ready (not the order creation date).
+    let preOrderBaseDate = null;
+    if (hasPreOrderProduct) {
+      const preOrderDates = products
+        .filter((p) => p.isPreOrder && p.preOrderAvailableDate)
+        .map((p) => new Date(p.preOrderAvailableDate).getTime());
+
+      if (preOrderDates.length > 0) {
+        // Use the latest availability date across all items so we don't
+        // promise delivery before every pre‑order item is ready.
+        const latestTs = Math.max(...preOrderDates);
+        preOrderBaseDate = new Date(latestTs);
+      }
+    }
+
     // Get neighborhood and zone information for dispatch orders
     let neighborhood = null;
     let deliveryZone = null;
     let shippingType = req.body.shippingType || 'standard';
     let deliveryEstimate = null;
 
-    // Calculate delivery estimate from shipping options
+    // Calculate delivery estimate from shipping options.
+    // IMPORTANT: for pre‑orders we base the estimate on the product's
+    // preOrderAvailableDate (when stock is expected), not the order date.
     const { calculateDeliveryEstimate } = require('../../utils/helpers/shippingHelpers');
     const { getActiveShippingConfig } = require('../../utils/helpers/shippingHelpers');
     const shippingConfig = await getActiveShippingConfig();
     const orderDate = new Date();
+    const deliveryBaseDate = preOrderBaseDate || orderDate;
 
     if (shippingConfig) {
-      deliveryEstimate = calculateDeliveryEstimate(shippingType, orderDate, shippingConfig);
+      deliveryEstimate = calculateDeliveryEstimate(shippingType, deliveryBaseDate, shippingConfig);
     }
 
     if (deliveryMethod === 'dispatch' && address) {
@@ -855,6 +986,72 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     orderTotalCovidLevy = Math.round(orderTotalCovidLevy * 100) / 100;
     const orderTotalTax = Math.round((orderTotalVAT + orderTotalNHIL + orderTotalGETFund + orderTotalCovidLevy) * 100) / 100;
 
+    // --- International pre‑order shipping & customs (Ghana) ---
+    let internationalShippingCost = 0;
+    let customsCostEstimate = 0;
+    let clearingFee = 0;
+    let localDeliveryCostFromBreakdown = 0;
+    let landedCost = 0;
+    let importDutyRate = 0;
+    let internationalCustomsMetadata = null;
+
+    if (isInternationalPreorder) {
+      const { calculateInternationalShipping } = require('../../services/shipping/internationalShippingCalculationService');
+
+      // Get primary category from first pre-order product for duty rate lookup
+      const firstPreOrderProduct = products.find((p) => p.isPreOrder);
+      const primaryCategory = firstPreOrderProduct?.subCategory?.name
+        || firstPreOrderProduct?.subCategory
+        || null;
+
+      const breakdown = await calculateInternationalShipping({
+        country: normalizedSupplierCountry,
+        weight: orderWeight || 0.5,
+        productPrice: overallSubtotal,
+        category: primaryCategory,
+      });
+
+      internationalShippingCost = breakdown.shippingCost || 0;
+      clearingFee = breakdown.clearingFee || 0;
+      customsCostEstimate = breakdown.totalCustoms || 0;
+      importDutyRate = breakdown.dutyRate || 0;
+      localDeliveryCostFromBreakdown = breakdown.localDeliveryFee || 0;
+      landedCost = breakdown.landedCost || 0;
+
+      // Snapshot breakdown for audit & admin tools
+      internationalCustomsMetadata = {
+        cif: breakdown.cif,
+        importDuty: breakdown.importDuty,
+        vat: breakdown.vat,
+        nhil: breakdown.nhil,
+        getFund: breakdown.getFund,
+        exim: breakdown.exim,
+        totalCustoms: breakdown.totalCustoms,
+        clearingFee: breakdown.clearingFee,
+        localDeliveryFee: breakdown.localDeliveryFee,
+        shippingCost: breakdown.shippingCost,
+        landedCost: breakdown.landedCost,
+        country: normalizedSupplierCountry,
+        fromDb: breakdown.fromDb,
+      };
+
+      logger.info('[createOrder] International preorder customs estimate', {
+        orderNumber,
+        supplierCountry: normalizedSupplierCountry,
+        cif: breakdown.cif,
+        importDuty: breakdown.importDuty,
+        totalCustoms: customsCostEstimate,
+        internationalShippingCost,
+        clearingFee,
+        localDeliveryFee: localDeliveryCostFromBreakdown,
+      });
+
+      // Increase order total by international components (shipping + customs + clearing + local delivery)
+      orderTotal += internationalShippingCost + customsCostEstimate + clearingFee + localDeliveryCostFromBreakdown;
+      // Round again after adding international components
+      orderTotal = Math.round(Math.round(orderTotal * 100) / 100);
+    }
+
     // Create main order
     const newOrder = new Order({
       orderNumber,
@@ -870,6 +1067,11 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       discountAmount: totalDiscount,
       appliedCouponBatchId: couponData?.batchId || null,
       appliedCouponId: couponData?.couponId || null,
+      orderType: isInternationalPreorder
+        ? 'preorder_international'
+        : hasPreOrderProduct
+        ? 'preorder_local'
+        : 'normal',
       // Normalize payment method to match enum values
       paymentMethod: (() => {
         const method = req.body.paymentMethod || 'mobile_money';
@@ -894,6 +1096,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       neighborhood: neighborhood,
       weight: orderWeight,
       deliveryEstimate: deliveryEstimate,
+      // Persist international pre‑order cost breakdown when applicable
+      supplierCountry: isInternationalPreorder ? normalizedSupplierCountry : undefined,
+      internationalShippingCost: isInternationalPreorder ? internationalShippingCost : undefined,
+      customsCostEstimate: isInternationalPreorder ? customsCostEstimate : undefined,
+      clearingFee: isInternationalPreorder ? clearingFee : undefined,
+      localDeliveryCost: isInternationalPreorder ? localDeliveryCostFromBreakdown : undefined,
+      landedCost: isInternationalPreorder ? landedCost : undefined,
+      importDutyRate: isInternationalPreorder ? importDutyRate : undefined,
+      metadata: internationalCustomsMetadata
+        ? {
+            internationalCustoms: internationalCustomsMetadata,
+          }
+        : undefined,
       subtotal: overallSubtotal, // VAT-inclusive subtotal
       tax: 0, // Deprecated - use tax breakdown fields
       // Tax breakdown fields (Ghana GRA)
@@ -1667,7 +1882,10 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
       populate: [
         {
           path: 'product', // Populate product details
-          select: 'name price imageCover variants',
+          // Include isPreOrder + pre-order metadata so frontend
+          // can reliably display "Pre-Order" even if orderType
+          // was not set (for older orders)
+          select: 'name price imageCover variants isPreOrder preOrderAvailableDate preOrderNote',
         },
         {
           path: 'variant',

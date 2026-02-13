@@ -246,6 +246,12 @@ const orderSchema = new mongoose.Schema(
       type: Date,
       // Timestamp when payment was completed
     },
+    // High-level order type for business logic (normal vs pre-order)
+    orderType: {
+      type: String,
+      enum: ['normal', 'preorder_local', 'preorder_international'],
+      default: 'normal',
+    },
     status: {
       type: String,
       enum: [
@@ -277,6 +283,13 @@ const orderSchema = new mongoose.Schema(
         'confirmed',
         'preparing',
         'ready_for_dispatch',
+        // International pre-order milestones
+        'supplier_confirmed',
+        'awaiting_dispatch',
+        'international_shipped',
+        'customs_clearance',
+        'arrived_destination',
+        'local_dispatch',
         'out_for_delivery',
         'delivered',
         'cancelled',
@@ -295,6 +308,13 @@ const orderSchema = new mongoose.Schema(
             'confirmed',
             'preparing',
             'ready_for_dispatch',
+            // International pre-order milestones
+            'supplier_confirmed',
+            'awaiting_dispatch',
+            'international_shipped',
+            'customs_clearance',
+            'arrived_destination',
+            'local_dispatch',
             'out_for_delivery',
             'delivered',
             'cancelled',
@@ -309,6 +329,7 @@ const orderSchema = new mongoose.Schema(
           type: String,
           default: '',
         },
+        // Original actor reference (buyer/seller/admin document)
         updatedBy: {
           type: mongoose.Schema.Types.ObjectId,
           refPath: 'updatedByModel',
@@ -317,12 +338,68 @@ const orderSchema = new mongoose.Schema(
           type: String,
           enum: ['User', 'Seller', 'Admin'],
         },
+        // Lightweight role indicator for analytics & APIs
+        updatedByRole: {
+          type: String,
+          enum: ['system', 'seller', 'admin'],
+        },
         timestamp: {
           type: Date,
           default: Date.now,
         },
       },
     ],
+    // International pre-order shipping metadata
+    supplierCountry: {
+      type: String,
+      trim: true,
+    },
+    supplierName: {
+      type: String,
+      trim: true,
+    },
+    internationalTrackingNumber: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    estimatedArrivalDate: {
+      type: Date,
+    },
+    customsClearedAt: {
+      type: Date,
+    },
+    // International pre-order cost breakdown (Ghana customs + logistics)
+    internationalShippingCost: {
+      // Line-haul freight from supplier country to Ghana
+      type: Number,
+      min: 0,
+    },
+    customsCostEstimate: {
+      // Total estimated customs, duties and taxes (buffered)
+      type: Number,
+      min: 0,
+    },
+    clearingFee: {
+      // Local clearing / handling fee at port
+      type: Number,
+      min: 0,
+    },
+    localDeliveryCost: {
+      // Last‑mile delivery inside Ghana (existing shipping fee snapshot)
+      type: Number,
+      min: 0,
+    },
+    landedCost: {
+      // Product cost + international shipping + customs (buffered)
+      type: Number,
+      min: 0,
+    },
+    importDutyRate: {
+      // Effective import duty rate applied for this order (0.25 = 25%)
+      type: Number,
+      min: 0,
+    },
     driverLocation: {
       lat: {
         type: Number,
@@ -479,6 +556,7 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ user: 1, status: 1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ currentStatus: 1 });
+orderSchema.index({ orderType: 1, currentStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 

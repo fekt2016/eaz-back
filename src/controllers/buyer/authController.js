@@ -1367,10 +1367,14 @@ exports.protect = catchAsync(async (req, res, next) => {
     }
   }
 
-  const isAdminRoute = fullPath.startsWith('/api/v1/admin') ||
+  const isAdminRoute =
+    fullPath.startsWith('/api/v1/admin') ||
     fullPath.startsWith('/api/v1/support/admin') ||
     fullPath.startsWith('/api/v1/logs') ||
-    fullPath.startsWith('/api/v1/eazshop');
+    fullPath.startsWith('/api/v1/eazshop') ||
+    // Admin-managed shipping resources (used by eazadmin dashboard)
+    fullPath.startsWith('/api/v1/shipping-zones') ||
+    fullPath.startsWith('/api/v1/shipping-rates');
 
   // Admin-only shared routes (routes that require admin but don't start with /api/v1/admin)
   // GET /api/v1/order - admin only (getAllOrder)

@@ -18,6 +18,7 @@ const adminAuditLogSchema = new mongoose.Schema({
       'COMMISSION_UPDATE',
       'WITHHOLDING_UPDATE',
       'SETTINGS_UPDATE',
+      'INTERNATIONAL_SHIPPING_UPDATE',
     ],
     required: true,
     index: true,

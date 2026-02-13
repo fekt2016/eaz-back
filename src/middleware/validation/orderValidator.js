@@ -162,6 +162,9 @@ exports.validateOrder = [
         'deliverySpeed',
         'shippingType',
         'shippingFee',
+        // International pre‑order metadata (set by checkout explicitly)
+        'orderType',
+        'supplierCountry',
       ];
       const receivedFields = Object.keys(req.body);
       const unknownFields = receivedFields.filter(field => !allowedFields.includes(field));
