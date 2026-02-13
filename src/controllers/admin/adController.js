@@ -6,19 +6,38 @@ const AdvertisementModel = require('../../models/advertisementModel');
 const { AD_TYPES } = AdvertisementModel;
 
 // Helper function to convert relative URLs to absolute URLs using FRONTEND_URL
+// Also replaces localhost URLs with production FRONTEND_URL
 const normalizeAdLink = (link) => {
   if (!link || typeof link !== 'string') return link;
   
-  // If it's already an absolute URL (http:// or https://), return as-is
-  if (/^https?:\/\//i.test(link.trim())) {
-    return link.trim();
+  const trimmedLink = link.trim();
+  
+  // Get production frontend URL
+  const frontendUrl = process.env.FRONTEND_URL || process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || 'https://saiisai.com';
+  const cleanFrontendUrl = frontendUrl.trim().replace(/\/$/, ''); // Remove trailing slash
+  
+  // If it's a localhost URL, replace it with production URL
+  if (/^https?:\/\/localhost/i.test(trimmedLink) || /^https?:\/\/127\.0\.0\.1/i.test(trimmedLink)) {
+    // Extract the path from localhost URL
+    try {
+      const url = new URL(trimmedLink);
+      const path = url.pathname + url.search + url.hash;
+      return `${cleanFrontendUrl}${path}`;
+    } catch (error) {
+      // If URL parsing fails, try to extract path manually
+      const pathMatch = trimmedLink.match(/^https?:\/\/[^\/]+(\/.*)?$/);
+      const path = pathMatch && pathMatch[1] ? pathMatch[1] : '/';
+      return `${cleanFrontendUrl}${path}`;
+    }
+  }
+  
+  // If it's already an absolute URL (and not localhost), return as-is
+  if (/^https?:\/\//i.test(trimmedLink)) {
+    return trimmedLink;
   }
   
   // If it's a relative path, prepend FRONTEND_URL
-  const frontendUrl = process.env.FRONTEND_URL || process.env.MAIN_APP_URL || process.env.EAZMAIN_URL || 'https://saiisai.com';
-  const cleanFrontendUrl = frontendUrl.trim().replace(/\/$/, ''); // Remove trailing slash
-  const cleanLink = link.trim().replace(/^\//, ''); // Remove leading slash from link
-  
+  const cleanLink = trimmedLink.replace(/^\//, ''); // Remove leading slash from link
   return `${cleanFrontendUrl}/${cleanLink}`;
 };
 
