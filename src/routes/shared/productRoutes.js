@@ -1,6 +1,7 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
 const { optionalAuth } = require('../../middleware/auth/optionalAuth');
+const validateVariantAttributes = require('../../middleware/validateVariantAttributes');
 const { getAllProduct,
   deleteProduct,
   createProduct,
@@ -38,6 +39,7 @@ router
     setProductIds,
     uploadProductImage,
     resizeProductImages,
+    validateVariantAttributes,
     createProduct,
   );
 // More specific routes should come before generic :id route
@@ -91,6 +93,7 @@ router
     authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
     conditionalUpload,
     resizeProductImages,
+    validateVariantAttributes,
     updateProduct,
   )
   .delete(

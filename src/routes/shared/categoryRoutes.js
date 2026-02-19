@@ -19,7 +19,7 @@ router
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin'),
     uploadCategoryImage,
     resizeCategoryImages,
     createCategory,
@@ -33,14 +33,14 @@ router
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin'),
     uploadCategoryImage,
     resizeCategoryImages,
     updateCategory,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin'),
     deleteCategory,
   );
 

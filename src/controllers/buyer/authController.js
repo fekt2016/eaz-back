@@ -1401,7 +1401,8 @@ exports.protect = catchAsync(async (req, res, next) => {
       !fullPath.includes('/updateMe') &&
       !fullPath.includes('/reset-password') &&
       !fullPath.includes('/avatar')) || // <-- buyer avatar update should use buyer cookie
-    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) // DELETE /users/:id is admin-only
+    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) || // DELETE /users/:id is admin-only
+    (fullPath.startsWith('/api/v1/categories') && method !== 'GET') // Categories modification is admin-only
   );
 
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
