@@ -1647,7 +1647,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
   if (!productToDelete) {
     return next(new AppError('Product not found', 404));
   }
-console.log(req.user);
+
   // Log user and product info for debugging
   const userRole = req.user?.role || req.user?.userRole || null;
   const userId = req.user?.id || req.user?._id || null;
@@ -1748,6 +1748,15 @@ console.log(req.user);
     userRole: req.user.role,
     isAdminModel: isAdminModel,
   });
+
+  // Only products with no orders can be deleted (protects order history)
+  const orderCount = await OrderItems.countDocuments({ product: req.params.id }).maxTimeMS(10000);
+  if (orderCount > 0) {
+    return next(new AppError(
+      'This product cannot be deleted because it has existing orders. Products with order history must be kept for records.',
+      400
+    ));
+  }
 
   const deleteHandler = handleFactory.deleteOne(Product);
 

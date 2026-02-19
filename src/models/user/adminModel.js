@@ -31,7 +31,7 @@ const adminSchema = new mongoose.Schema(
         message: 'passwords are not the same ',
       },
     },
-    role: { type: String, enum: ['admin'], default: 'admin' },
+    role: { type: String, enum: ['admin', 'superadmin', 'moderator'], default: 'admin' },
     createdAt: { type: Date, default: Date.now() },
     updatedAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now() },
@@ -46,8 +46,8 @@ const adminSchema = new mongoose.Schema(
     },
     lastLogin: { type: Date, default: Date.now },
     // SECURITY FIX #9: Session activity tracking for timeout
-    lastActivity: { 
-      type: Date, 
+    lastActivity: {
+      type: Date,
       default: Date.now,
       select: false, // Don't return in queries by default
     },

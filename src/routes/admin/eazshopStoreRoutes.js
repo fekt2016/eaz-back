@@ -8,7 +8,7 @@ const router = express.Router();
 
 // All routes require admin authentication
 router.use(authController.protect);
-router.use(authController.restrictTo('admin'));
+router.use(authController.restrictTo('admin', 'superadmin'));
 
 // Products routes
 router

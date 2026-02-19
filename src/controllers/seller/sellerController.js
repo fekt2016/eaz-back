@@ -20,7 +20,12 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
   const selectStr = req.query.fields
     ? `${req.query.fields.split(',').map((f) => f.trim()).join(' ')} variants`
     : '-__v';
-  const sellerProducts = await Product.find({ seller: req.user.id })
+  const sellerProducts = await Product.find({
+    seller: req.user.id,
+    isDeleted: { $ne: true },
+    isDeletedBySeller: { $ne: true },
+    isDeletedByAdmin: { $ne: true },
+  })
     .sort(req.query.sort || '-createdAt')
     .select(selectStr)
     .skip(skip)
@@ -111,47 +116,42 @@ exports.getSellerProductById = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { product } });
 });
 exports.SellerDeleteProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id);
+  // Route uses :productId; support both for compatibility
+  const productId = req.params.productId || req.params.id;
+  if (!productId) {
+    return next(new AppError('Product ID is required', 400));
+  }
+
+  const product = await Product.findById(productId);
   if (!product) {
     return next(new AppError('No product found with that ID', 404));
   }
 
   // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  const sellerId = (req.user._id || req.user.id).toString();
+  if (req.user.role !== 'admin' && product.seller.toString() !== sellerId) {
     return next(new AppError('You do not have permission to delete this product', 403));
   }
 
-  // Check if product has orders - if yes, use soft delete; if no, use hard delete
+  // Only products with no orders can be deleted (block if product has orders)
   const OrderItem = require('../../models/order/OrderItemModel');
-  const orderCount = await OrderItem.countDocuments({ product: req.params.id })
-    .maxTimeMS(10000); // 10 seconds max for order count
+  const orderCount = await OrderItem.countDocuments({ product: productId })
+    .maxTimeMS(10000);
 
   if (orderCount > 0) {
-    // Product has orders - use soft delete to preserve order history
-    product.status = 'archived';
-    product.isDeleted = true;
-    product.isDeletedBySeller = true;
-    product.isDeletedByAdmin = false; // Ensure admin flag is false
-    product.deletedAt = new Date();
-    product.deletedBy = req.user.id;
-    product.deletedByRole = 'seller';
-    product.isVisible = false; // Ensure archived products are hidden
-    await product.save();
-    
-    return res.status(200).json({ 
-      status: 'success', 
-      message: 'Product archived (preserved due to order history)',
-      data: { product } 
-    });
-  } else {
-    // No orders - safe to hard delete
-    await Product.findByIdAndDelete(req.params.id);
-    return res.status(200).json({ 
-      status: 'success', 
-      message: 'Product permanently deleted',
-      data: { product } 
-    });
+    return next(new AppError(
+      'This product cannot be deleted because it has existing orders. Products with order history must be kept for records.',
+      400
+    ));
   }
+
+  // No orders - safe to hard delete
+  await Product.findByIdAndDelete(productId);
+  return res.status(200).json({
+    status: 'success',
+    message: 'Product permanently deleted',
+    data: { product },
+  });
 });
 
 // Multer configuration for file uploads

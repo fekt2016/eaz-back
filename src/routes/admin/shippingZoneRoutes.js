@@ -10,18 +10,18 @@ router.use(authController.protect);
 // Admin-only routes
 router
   .route('/')
-  .post(authController.restrictTo('admin'), shippingZoneController.createShippingZone)
-  .get(authController.restrictTo('admin'), shippingZoneController.getAllShippingZones);
+  .post(authController.restrictTo('admin', 'superadmin'), shippingZoneController.createShippingZone)
+  .get(authController.restrictTo('admin', 'superadmin'), shippingZoneController.getAllShippingZones);
 
 router
   .route('/:id')
-  .get(authController.restrictTo('admin'), shippingZoneController.getShippingZone)
-  .patch(authController.restrictTo('admin'), shippingZoneController.updateShippingZone)
-  .delete(authController.restrictTo('admin'), shippingZoneController.deleteShippingZone);
+  .get(authController.restrictTo('admin', 'superadmin'), shippingZoneController.getShippingZone)
+  .patch(authController.restrictTo('admin', 'superadmin'), shippingZoneController.updateShippingZone)
+  .delete(authController.restrictTo('admin', 'superadmin'), shippingZoneController.deleteShippingZone);
 
 router.patch(
   '/:id/toggle',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin'),
   shippingZoneController.toggleShippingZoneActive
 );
 

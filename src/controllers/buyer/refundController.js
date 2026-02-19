@@ -667,9 +667,7 @@ exports.selectReturnShippingMethod = catchAsync(async (req, res, next) => {
     refundRequest.returnShippingSelectedAt = new Date();
     await refundRequest.save({ session });
 
-    await session.commitTransaction();
-
-    // Notify admin that buyer has selected shipping method
+    await session.commitTransaction();    // Notify admin that buyer has selected shipping method
     try {
       const notificationService = require('../../services/notification/notificationService');
       const order = await Order.findById(orderId).select('orderNumber').lean();
@@ -689,17 +687,13 @@ exports.selectReturnShippingMethod = catchAsync(async (req, res, next) => {
     } catch (notificationError) {
       logger.error('[Select Return Shipping] Error creating admin notification:', notificationError);
       // Don't fail the operation if notification fails
-    }
-
-    res.status(200).json({
+    }    res.status(200).json({
       status: 'success',
       message: 'Return shipping method selected successfully',
       data: {
         refund: refundRequest,
       },
-    });
-
-  } catch (error) {
+    });  } catch (error) {
     if (session && typeof session.inTransaction === 'function' && session.inTransaction()) {
       await session.abortTransaction();
     }

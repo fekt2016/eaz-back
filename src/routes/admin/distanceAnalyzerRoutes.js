@@ -6,7 +6,7 @@ const router = express.Router();
 
 // All routes require authentication and admin role
 router.use(authController.protect);
-router.use(authController.restrictTo('admin'));
+router.use(authController.restrictTo('admin', 'superadmin'));
 
 router.get('/all-zones-distance', distanceAnalyzerController.analyzeAllZones);
 router.post('/analyze-and-save', distanceAnalyzerController.analyzeAndSave);

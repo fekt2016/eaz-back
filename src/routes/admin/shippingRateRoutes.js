@@ -18,29 +18,29 @@ router.use(authController.protect);
 // Admin-only routes
 router
   .route('/')
-  .post(authController.restrictTo('admin'), createShippingRate)
-  .get(authController.restrictTo('admin'), getAllShippingRates);
+  .post(authController.restrictTo('admin', 'superadmin'), createShippingRate)
+  .get(authController.restrictTo('admin', 'superadmin'), getAllShippingRates);
 
 router
   .route('/:id')
-  .patch(authController.restrictTo('admin'), updateShippingRate)
-  .delete(authController.restrictTo('admin'), deleteShippingRate);
+  .patch(authController.restrictTo('admin', 'superadmin'), updateShippingRate)
+  .delete(authController.restrictTo('admin', 'superadmin'), deleteShippingRate);
 
-router.get('/zone/:zone', authController.restrictTo('admin'), getRatesByZone);
+router.get('/zone/:zone', authController.restrictTo('admin', 'superadmin'), getRatesByZone);
 
 // Toggle active status
-router.patch('/:id/toggle', authController.restrictTo('admin'), catchAsync(async (req, res, next) => {
+router.patch('/:id/toggle', authController.restrictTo('admin', 'superadmin'), catchAsync(async (req, res, next) => {
   const ShippingRate = require('../../models/shipping/shippingRateModel');
   const AppError = require('../../utils/errors/appError');
-  
+
   const rate = await ShippingRate.findById(req.params.id);
   if (!rate) {
     return next(new AppError('Shipping rate not found', 404));
   }
-  
+
   rate.isActive = !rate.isActive;
   await rate.save();
-  
+
   res.status(200).json({
     status: 'success',
     data: {
