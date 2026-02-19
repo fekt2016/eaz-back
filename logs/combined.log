@@ -10965,3 +10965,56 @@
 {"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 1245.253 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 22:58:01"}
 {"level":"info","message":"\u001b[0mGET /api/v1/order/tax-rates \u001b[36m304\u001b[0m 178.892 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 22:58:01"}
 {"level":"info","message":"\u001b[0mGET /api/v1/promotional-discounts/public \u001b[36m304\u001b[0m 182.757 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 22:58:01"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🕐 Running scheduled cleanup...","service":"backend-api","timestamp":"2026-02-19 23:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...","service":"backend-api","timestamp":"2026-02-19 23:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] Found 0 stuck withdrawals","service":"backend-api","timestamp":"2026-02-19 23:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup complete: 0 refunded, 0 errors","service":"backend-api","timestamp":"2026-02-19 23:00:00"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-19 23:07:33"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-19 23:07:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:39:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:39:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:39:49"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:39:50"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-19 23:39:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 561.237 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:39:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 1505.480 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:39:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2338.361 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:39:52"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-19 23:40:05"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-19 23:40:07"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-19 23:40:07"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-19 23:40:07"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-19 23:40:07"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-19 23:40:07"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"database":"test","host":"ac-oljttxa-shard-00-00.6vcorfz.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-19 23:40:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:41:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:41:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:41:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1135.314 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:41:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/product","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for POST /api/v1/product","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"level":"info","message":"Authenticated as seller: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:43:21"}
+{"0":"h","1":"t","10":"s","100":"j","101":"p","102":"g","11":".","12":"c","13":"l","14":"o","15":"u","16":"d","17":"i","18":"n","19":"a","2":"t","20":"r","21":"y","22":".","23":"c","24":"o","25":"m","26":"/","27":"e","28":"a","29":"z","3":"p","30":"w","31":"o","32":"r","33":"l","34":"d","35":"/","36":"i","37":"m","38":"a","39":"g","4":"s","40":"e","41":"/","42":"u","43":"p","44":"l","45":"o","46":"a","47":"d","48":"/","49":"v","5":":","50":"1","51":"7","52":"7","53":"1","54":"5","55":"4","56":"4","57":"6","58":"0","59":"3","6":"/","60":"/","61":"p","62":"r","63":"o","64":"d","65":"u","66":"c","67":"t","68":"s","69":"/","7":"/","70":"1","71":"7","72":"7","73":"1","74":"5","75":"4","76":"4","77":"6","78":"0","79":"1","8":"r","80":"8","81":"6","82":"8","83":"-","84":"4","85":"5","86":"6","87":"2","88":"1","89":"2","9":"e","90":"6","91":"8","92":"5","93":"-","94":"c","95":"o","96":"v","97":"e","98":"r","99":".","level":"info","message":"Cover image URL:","service":"backend-api","timestamp":"2026-02-19 23:43:25"}
+{"brand":"mary kay","condition":"open_box","description":"Mary kay Spray de colonia oceanica de alta intensidad /men","imageCover":"https://res.cloudinary.com/eazworld/image/upload/v1771544603/products/1771544601868-456212685-cover.jpg","images":["https://res.cloudinary.com/eazworld/image/upload/v1771544608/products/1771544601868-456212685-image-0.jpg","https://res.cloudinary.com/eazworld/image/upload/v1771544607/products/1771544601868-456212685-image-1.jpg","https://res.cloudinary.com/eazworld/image/upload/v1771544607/products/1771544601868-456212685-image-2.jpg","https://res.cloudinary.com/eazworld/image/upload/v1771544607/products/1771544601868-456212685-image-3.jpg","https://res.cloudinary.com/eazworld/image/upload/v1771544609/products/1771544601868-456212685-image-4.jpg"],"isPreOrder":"false","level":"info","manufacturer":"","message":"All images:","name":"Mary kay Spray de colonia oceanica de alta intensidad /men","parentCategory":"699699a6a041f0f0e431f461","price":"250","returnWindowDays":"30","seller":"69969602a9f4f27e15ab1558","service":"backend-api","specifications":"{\"material\":[],\"weight\":null,\"dimension\":\"\"}","subCategory":"699699a7a041f0f0e431f472","timestamp":"2026-02-19 23:43:29","totalStock":"10","variants":"[{\"attributes\":[{\"key\":\"Size\",\"value\":\"75ml\"},{\"key\":\"fragrance type\",\"value\":\"cologne\"}],\"price\":250,\"stock\":10,\"sku\":\"558-699-75M-5376\",\"status\":\"active\",\"condition\":\"open_box\",\"images\":[]}]","warranty":""}
+{"level":"info","message":"[createProduct] Seller creating product: assigned product.seller from current seller","sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","timestamp":"2026-02-19 23:43:30"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/product \u001b[32m201\u001b[0m 9755.643 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 181.208 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[32m200\u001b[0m 525.877 ms - 361\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:43:31"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-19 23:43:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[32m200\u001b[0m 1084.081 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:43:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 1270.738 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:43:32"}

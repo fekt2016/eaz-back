@@ -33,6 +33,12 @@ const validateVariantAttributes = catchAsync(async (req, res, next) => {
     const subCategoryId = req.body.subCategory || req.body.subcategory;
     if (!subCategoryId) return next(); // Can't validate without a subcategory
 
+    // Check if subCategoryId is a valid ObjectId
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(subCategoryId)) {
+        return next(new AppError('Invalid subCategory ID', 400));
+    }
+
     // Fetch the subcategory
     const subcategory = await Category.findById(subCategoryId).lean();
     if (!subcategory) return next(); // Non-existent subcategory will be caught by product controller
