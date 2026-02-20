@@ -11501,3 +11501,504 @@
 {"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 01:28:52"}
 {"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 01:28:52"}
 {"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 02:53:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:20"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 916.101 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 1061.444 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 1360.505 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1585.665 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 175.337 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 534.541 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 181.016 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2501.676 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:23"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 04:06:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 2839.418 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:06:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 552.980 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:29"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 896.502 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 192.242 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:09:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 532.512 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:31"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:09:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1139.068 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:31"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 04:09:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1141.232 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1332.851 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 3322.786 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 4303.706 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:09:34"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 04:19:19"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 04:19:19"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 04:19:29"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 04:19:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 04:20:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:50"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:20:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:51"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 04:20:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:51"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 576.470 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 04:20:52"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2557.480 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 810.176 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 1335.698 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1340.388 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 199.206 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 1692.601 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 2227.355 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1276.201 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 04:20:55"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 05:13:32"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 05:13:32"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 06:07:39"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 06:07:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 06:42:38"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 893.961 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 178.400 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 1638.686 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 221.356 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:41"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:42:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:42"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 1399.760 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:42"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1772.884 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:43"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 3323.568 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:43"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:42:44"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 06:42:44"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 3890.442 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:45"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 06:42:45"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 4057.084 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:42:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:34"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 06:44:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 517.806 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 871.184 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 176.566 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 06:44:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 182.632 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1036.209 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1192.888 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1369.526 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 06:44:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 2019.250 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2457.138 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 06:44:38"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 07:21:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 558.115 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:23:51"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 894.882 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2351.857 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 1331.486 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:52"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1519.358 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1552.968 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 185.696 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:23:53"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2472.000 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:54"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1257.172 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:23:54"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 07:32:19"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 07:32:19"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:27"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 07:32:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 586.377 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:28"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:29"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 3028.453 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 2156.636 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 1087.074 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 07:32:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 1925.766 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 299.991 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 2239.156 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:32"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 07:32:33"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 3512.204 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:33"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 3231.386 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 07:32:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:33"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 2989.407 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/promotional-discounts/public \u001b[36m304\u001b[0m 3035.749 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 3263.732 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 280.695 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-02-20 08:50:36"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"error","message":"Error fetching product reviews: Class constructor ObjectId cannot be invoked without 'new'","service":"backend-api","stack":"TypeError: Class constructor ObjectId cannot be invoked without 'new'\n    at /Users/mac/Desktop/Saiisai/backend/src/controllers/seller/productController.js:848:53\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6997a022735af69c46b8b27d/reviews \u001b[31m500\u001b[0m 765.767 ms - 49\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"buffer":{"data":[105,151,160,34,115,90,246,156,70,184,178,125],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 4205.250 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 945.243 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:37"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"}],"_docs":{"699699a7a041f0f0e431f472":"699699a6a041f0f0e431f461"},"_queryProjection":null,"path":"parentCategory"},"value":"699699a6a041f0f0e431f461"},"subcategories":{"options":{"_childDocs":[],"_docs":{"699699a7a041f0f0e431f472":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":2,"_id":"699699a7a041f0f0e431f472","attributes":[{"_id":"699699a7a041f0f0e431f473","id":"699699a7a041f0f0e431f473","isFilterable":true,"isRequired":true,"isVariant":true,"name":"Size","type":"enum","values":["30ml","50ml","75ml","100ml","200ml"]},{"_id":"699699a7a041f0f0e431f474","id":"699699a7a041f0f0e431f474","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Gender","type":"enum","values":["Men","Women","Unisex"]},{"_id":"6997956d86e0948fbabde282","id":"6997956d86e0948fbabde282","isFilterable":false,"isRequired":true,"isVariant":true,"name":"fragrance type","type":"enum","values":["perfume","cologne"]}],"createdAt":"2026-02-19T05:03:35.970Z","description":"Perfumes, body sprays, and colognes","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","name":"Fragrances","parentCategory":{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"},"products":["6997a022735af69c46b8b27d"],"slug":"fragrances","status":"active","subcategories":[],"updatedAt":"2026-02-19T23:46:05.009Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"}],"_docs":{"699699a7a041f0f0e431f472":"699699a6a041f0f0e431f461"},"_queryProjection":null,"path":"parentCategory"},"value":"699699a6a041f0f0e431f461"},"subcategories":{"options":{"_childDocs":[],"_docs":{"699699a7a041f0f0e431f472":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":2,"_id":"699699a7a041f0f0e431f472","attributes":[{"_id":"699699a7a041f0f0e431f473","id":"699699a7a041f0f0e431f473","isFilterable":true,"isRequired":true,"isVariant":true,"name":"Size","type":"enum","values":["30ml","50ml","75ml","100ml","200ml"]},{"_id":"699699a7a041f0f0e431f474","id":"699699a7a041f0f0e431f474","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Gender","type":"enum","values":["Men","Women","Unisex"]},{"_id":"6997956d86e0948fbabde282","id":"6997956d86e0948fbabde282","isFilterable":false,"isRequired":true,"isVariant":true,"name":"fragrance type","type":"enum","values":["perfume","cologne"]}],"createdAt":"2026-02-19T05:03:35.970Z","description":"Perfumes, body sprays, and colognes","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","name":"Fragrances","parentCategory":{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"},"products":["6997a022735af69c46b8b27d"],"slug":"fragrances","status":"active","subcategories":[],"updatedAt":"2026-02-19T23:46:05.009Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/699699a7a041f0f0e431f472 \u001b[36m304\u001b[0m 589.346 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 4588.455 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/related?limit=10 \u001b[36m304\u001b[0m 390.273 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/ai-similar?limit=10 \u001b[36m304\u001b[0m 360.584 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/also-bought?limit=10 \u001b[36m304\u001b[0m 573.940 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 187.390 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:38"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"deletedBy":null,"deletedByRole":null,"isAdmin":true,"isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isSellerOwnProduct":false,"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6997a022735af69c46b8b27d","sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","status":"active","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=100 \u001b[32m200\u001b[0m 5338.080 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 950.318 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1338.433 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6997a022735af69c46b8b27d \u001b[32m200\u001b[0m 2745.283 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 08:50:39"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:17"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:17"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/me","service":"backend-api","timestamp":"2026-02-20 11:04:17"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/users/profile","service":"backend-api","timestamp":"2026-02-20 11:04:17"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:17"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:18"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/me \u001b[36m304\u001b[0m 4150.421 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/promotional-discounts/public \u001b[36m304\u001b[0m 4044.024 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 340.784 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (main_jwt) for GET /api/v1/cart","service":"backend-api","timestamp":"2026-02-20 11:04:21"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"buffer":{"data":[105,151,160,34,115,90,246,156,70,184,178,125],"type":"Buffer"},"level":"info","message":"productId","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"level":"info","message":"Authenticated as user: benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: user matches required roles","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"deletedBy":null,"deletedByRole":null,"isAdmin":true,"isDeleted":false,"isDeletedByAdmin":false,"isDeletedBySeller":false,"isSellerOwnProduct":false,"level":"info","message":"[getProductById] Product found:","moderationStatus":"approved","productId":"6997a022735af69c46b8b27d","sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","status":"active","timestamp":"2026-02-20 11:04:22"}
+{"level":"info","message":"[getProductById] ✅ Admin access - granted","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=100 \u001b[36m304\u001b[0m 4544.363 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories?page=1&limit=1000 \u001b[36m304\u001b[0m 4860.768 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:22"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 1129.740 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/parents \u001b[36m304\u001b[0m 5325.466 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/users/profile \u001b[36m304\u001b[0m 5944.972 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Allowing known origin: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"}],"_docs":{"699699a7a041f0f0e431f472":"699699a6a041f0f0e431f461"},"_queryProjection":null,"path":"parentCategory"},"value":"699699a6a041f0f0e431f461"},"subcategories":{"options":{"_childDocs":[],"_docs":{"699699a7a041f0f0e431f472":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":2,"_id":"699699a7a041f0f0e431f472","attributes":[{"_id":"699699a7a041f0f0e431f473","id":"699699a7a041f0f0e431f473","isFilterable":true,"isRequired":true,"isVariant":true,"name":"Size","type":"enum","values":["30ml","50ml","75ml","100ml","200ml"]},{"_id":"699699a7a041f0f0e431f474","id":"699699a7a041f0f0e431f474","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Gender","type":"enum","values":["Men","Women","Unisex"]},{"_id":"6997956d86e0948fbabde282","id":"6997956d86e0948fbabde282","isFilterable":false,"isRequired":true,"isVariant":true,"name":"fragrance type","type":"enum","values":["perfume","cologne"]}],"createdAt":"2026-02-19T05:03:35.970Z","description":"Perfumes, body sprays, and colognes","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","name":"Fragrances","parentCategory":{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"},"products":["6997a022735af69c46b8b27d"],"slug":"fragrances","status":"active","subcategories":[],"updatedAt":"2026-02-19T23:46:05.009Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"$__":{"activePaths":{"paths":{"__v":"init","_id":"init","attributes":"init","createdAt":"init","description":"init","image":"init","name":"init","parentCategory":"init","products":"init","slug":"init","status":"init","subcategories":"init","updatedAt":"init"},"states":{"default":{},"init":{"__v":true,"_id":true,"attributes":true,"createdAt":true,"description":true,"image":true,"name":true,"parentCategory":true,"products":true,"slug":true,"status":true,"subcategories":true,"updatedAt":true},"require":{}}},"populated":{"parentCategory":{"options":{"_childDocs":[{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"}],"_docs":{"699699a7a041f0f0e431f472":"699699a6a041f0f0e431f461"},"_queryProjection":null,"path":"parentCategory"},"value":"699699a6a041f0f0e431f461"},"subcategories":{"options":{"_childDocs":[],"_docs":{"699699a7a041f0f0e431f472":[]},"_queryProjection":null,"path":"subcategories"},"value":[]}},"skipId":true},"$isNew":false,"_doc":{"__v":2,"_id":"699699a7a041f0f0e431f472","attributes":[{"_id":"699699a7a041f0f0e431f473","id":"699699a7a041f0f0e431f473","isFilterable":true,"isRequired":true,"isVariant":true,"name":"Size","type":"enum","values":["30ml","50ml","75ml","100ml","200ml"]},{"_id":"699699a7a041f0f0e431f474","id":"699699a7a041f0f0e431f474","isFilterable":true,"isRequired":true,"isVariant":false,"name":"Gender","type":"enum","values":["Men","Women","Unisex"]},{"_id":"6997956d86e0948fbabde282","id":"6997956d86e0948fbabde282","isFilterable":false,"isRequired":true,"isVariant":true,"name":"fragrance type","type":"enum","values":["perfume","cologne"]}],"createdAt":"2026-02-19T05:03:35.970Z","description":"Perfumes, body sprays, and colognes","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","name":"Fragrances","parentCategory":{"__v":0,"_id":"699699a6a041f0f0e431f461","attributes":[],"createdAt":"2026-02-19T05:03:34.718Z","description":"Skincare, haircare, makeup, and personal care products","id":"699699a6a041f0f0e431f461","image":"https://res.cloudinary.com/dz2xqjv8q/image/upload/v1698247967/eazworld/1_1_dk0l6h.jpg","isSubcategory":false,"name":"Health & Beauty","parentCategory":null,"productCount":1,"products":["6997a022735af69c46b8b27d"],"slug":"health-and-beauty","status":"active","subcategories":["699699a6a041f0f0e431f463","699699a7a041f0f0e431f468","699699a7a041f0f0e431f46d","699699a7a041f0f0e431f472","699699a8a041f0f0e431f477"],"updatedAt":"2026-02-19T23:46:05.191Z"},"products":["6997a022735af69c46b8b27d"],"slug":"fragrances","status":"active","subcategories":[],"updatedAt":"2026-02-19T23:46:05.009Z"},"level":"info","message":"doc","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/categories/699699a7a041f0f0e431f472 \u001b[36m304\u001b[0m 466.200 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/6997a022735af69c46b8b27d \u001b[36m304\u001b[0m 1705.090 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/related?limit=10 \u001b[36m304\u001b[0m 394.135 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 201.660 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/ai-similar?limit=10 \u001b[36m304\u001b[0m 401.675 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:23"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:04:24"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 11:04:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 929.269 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1335.562 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:24"}
+{"level":"info","message":"\u001b[0mGET /api/v1/recommendations/products/6997a022735af69c46b8b27d/also-bought?limit=10 \u001b[36m304\u001b[0m 1785.599 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:04:25"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 11:23:38"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 11:23:48"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 11:23:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:33"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 11:25:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:33"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 573.849 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:25:34"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 928.255 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 11:25:35"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 1328.987 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 2563.756 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1691.989 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 1857.253 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 11:25:36"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 179.390 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:37"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:25:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 2396.628 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[36m304\u001b[0m 1269.230 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:25:38"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:36:10"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-20 11:36:11"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-20 11:36:11"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-20 11:36:11"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-20 11:36:11"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-20 11:36:11"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"database":"test","host":"ac-oljttxa-shard-00-01.6vcorfz.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-20 11:36:15"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 11:40:23"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-20 11:40:24"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-20 11:40:24"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-20 11:40:24"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-20 11:40:24"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-20 11:40:24"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"database":"test","host":"ac-oljttxa-shard-00-01.6vcorfz.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-20 11:40:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:30"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:41:31"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:41:31"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1114.025 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:41:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/logout \u001b[32m200\u001b[0m 3.151 ms - 56\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[33m401\u001b[0m 182.362 ms - 376\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[33m401\u001b[0m 186.216 ms - 376\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:41:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:41:53"}
+{"email":"benzflex00@gmail.com","ip":"127.0.0.1","level":"warn","message":"[Seller Login] 401 - Seller not found","origin":"http://localhost:5174","originalEmail":"benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20T11:41:53.583Z"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/login \u001b[33m401\u001b[0m 371.866 ms - 395\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:41:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:00"}
+{"email":"benzflex00@gmail.com","ip":"127.0.0.1","level":"warn","message":"[Seller Login] 401 - Seller not found","origin":"http://localhost:5174","originalEmail":"benzflex00@gmail.com","service":"backend-api","timestamp":"2026-02-20T11:42:00.996Z"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/login \u001b[33m401\u001b[0m 363.932 ms - 395\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:12"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:12"}
+{"email":"easyworldbtc@gmail.com","emailVerified":true,"hasPassword":true,"ip":"127.0.0.1","level":"info","message":"[Seller Login] Seller found - checking authorization","sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","status":"active","timestamp":"2026-02-20T11:42:12.971Z"}
+{"email":"easyworldbtc@gmail.com","hasPassword":true,"ip":"127.0.0.1","level":"info","message":"[Seller Login] Verifying password","passwordLength":60,"sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","timestamp":"2026-02-20T11:42:12.972Z"}
+{"email":"easyworldbtc@gmail.com","ip":"127.0.0.1","level":"info","message":"[Seller Login] Password verification result","passwordValid":true,"sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","timestamp":"2026-02-20T11:42:13.368Z"}
+{"level":"info","message":"[createDeviceSession] Development mode - skipping device limit check","service":"backend-api","timestamp":"2026-02-20 11:42:13"}
+{"0":"L","1":"o","10":"o","11":"r","12":"k","2":"c","3":"a","4":"l","5":" ","6":"N","7":"e","8":"t","9":"w","level":"info","message":"[createDeviceSession] Location detected (async):","service":"backend-api","timestamp":"2026-02-20 11:42:13"}
+{"level":"info","message":"[createDeviceSession] Suspicious device check:","service":"backend-api","timestamp":"2026-02-20 11:42:13"}
+{"deviceId":"12147926-d3ca-4a68-8e23-13cf5428c215","deviceType":"desktop","ipAddress":"127.0.0.1","level":"info","message":"[createDeviceSession] Creating device session with data:","platform":"eazseller","service":"backend-api","timestamp":"2026-02-20 11:42:13","userId":"69969602a9f4f27e15ab1558","userModel":"Seller"}
+{"buffer":{"data":[105,152,72,149,14,238,10,172,152,61,8,81],"type":"Buffer"},"level":"info","message":"[createDeviceSession] ✅ Device session created successfully:","service":"backend-api","timestamp":"2026-02-20 11:42:13"}
+{"cookieDomain":"not set","email":"easyworldbtc@gmail.com","ip":"127.0.0.1","level":"info","message":"[Seller Login] ✅ Login successful","nodeEnv":"development","origin":"http://localhost:5174","sellerId":"69969602a9f4f27e15ab1558","service":"backend-api","status":"active","timestamp":"2026-02-20T11:42:14.680Z"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/seller/login \u001b[32m200\u001b[0m 1891.680 ms - 353\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:14"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:14"}
+{"level":"info","message":"[ActivityLog] Logged: LOGIN (OTHER); by seller (69969602a9f4f27e15ab1558) - Risk: low - Platform: eazseller","service":"backend-api","timestamp":"2026-02-20 11:42:14"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 547.503 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[36m304\u001b[0m 542.919 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 226.833 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"Authenticated as seller: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[36m304\u001b[0m 591.364 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-seller-orders \u001b[36m304\u001b[0m 599.163 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:16"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1116.237 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1083.563 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 1280.723 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 11:42:17"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 698.007 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 11:42:18"}

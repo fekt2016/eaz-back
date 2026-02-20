@@ -28,7 +28,7 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
   // If req is provided, create device session
   let deviceId = null;
   let refreshToken = null;
-  
+
   if (req) {
     try {
       const { createDeviceSession } = require('./createDeviceSession');
@@ -46,7 +46,7 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
 
   const token = signToken(user._id, user.role, deviceId);
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction, // true in production, false in development
@@ -56,14 +56,16 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
     path: '/', // Available on all paths
     expires: new Date(
       Date.now() +
-        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
+      (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000, // 90 days default
     ),
     // Set domain for production to allow cookie sharing across subdomains
-    // IMPORTANT: Use .saiisai.com (with leading dot) to share cookies across all subdomains
-    // Only set in production, leave undefined in development (localhost)
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    // CRITICAL: Default to .saiisai.com so JWT is shared across all subdomains
+    // (seller.saiisai.com, admin.saiisai.com, saiisai.com).
+    // Without this, the cookie is scoped only to api.saiisai.com and
+    // the seller/admin apps won't include it in cross-origin requests.
+    ...(isProduction && { domain: process.env.COOKIE_DOMAIN || '.saiisai.com' }),
   };
-  
+
   // Debug logging for cookie configuration (production only, non-sensitive)
   if (isProduction) {
     logger.info('[createSendToken] Cookie configuration', {
@@ -72,7 +74,7 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
       sameSite: cookieOptions.sameSite,
       domain: cookieOptions.domain || 'not set',
       hasCookieDomainEnv: !!process.env.COOKIE_DOMAIN,
-      cookieDomainEnv: process.env.COOKIE_DOMAIN || 'not set',
+      cookieDomainEnv: process.env.COOKIE_DOMAIN || '.saiisai.com (default)',
     });
   }
 

@@ -20,23 +20,31 @@ const { isPublicRoute } = require('../../utils/helpers/routeUtils');
  */
 exports.generateCSRFToken = (res) => {
   const csrfToken = crypto.randomBytes(32).toString('hex');
-  
+
   const isProduction = process.env.NODE_ENV === 'production';
-  
+
   // CSRF token cookie must be readable by JavaScript (httpOnly: false)
   // This allows the frontend to read it and send it in the X-CSRF-Token header
+  //
+  // CRITICAL: In production, set domain to .saiisai.com so the cookie is shared
+  // across all subdomains (seller.saiisai.com, admin.saiisai.com, saiisai.com).
+  // Without the leading dot, the cookie is scoped only to api.saiisai.com and
+  // seller/admin apps cannot read it — causing CSRF validation to fail (403).
+  const cookieDomain = isProduction
+    ? (process.env.COOKIE_DOMAIN || '.saiisai.com')
+    : undefined;
+
   const cookieOptions = {
     httpOnly: false, // Must be readable by JavaScript
     secure: isProduction, // HTTPS only in production
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
     path: '/',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    // Set domain for production if needed
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    ...(cookieDomain && { domain: cookieDomain }),
   };
 
   res.cookie('csrf-token', csrfToken, cookieOptions);
-  
+
   return csrfToken;
 };
 
@@ -66,15 +74,15 @@ exports.csrfProtection = (req, res, next) => {
   // Allow logout endpoints without CSRF token.
   // CSRF risk here is limited to forced logout, which is acceptable, and
   // avoids blocking users from logging out if the CSRF token is missing.
-  if (fullPath === '/api/v1/users/logout' || 
-      fullPath === '/api/v1/admin/logout' || 
-      fullPath === '/api/v1/seller/logout') {
+  if (fullPath === '/api/v1/users/logout' ||
+    fullPath === '/api/v1/admin/logout' ||
+    fullPath === '/api/v1/seller/logout') {
     return next();
   }
 
   // Get token from header (case-insensitive)
   const tokenFromHeader = req.headers['x-csrf-token'] || req.headers['X-CSRF-Token'] || req.headers['X-Csrf-Token'];
-  
+
   // Get token from cookie
   const tokenFromCookie = req.cookies['csrf-token'];
 
@@ -91,13 +99,13 @@ exports.csrfProtection = (req, res, next) => {
       origin: req.headers['origin'],
       referer: req.headers['referer'],
     });
-    
+
     // If cookie is missing, suggest re-authentication
     // If header is missing, suggest page refresh
-    const errorMessage = !tokenFromCookie 
+    const errorMessage = !tokenFromCookie
       ? 'Session expired. Please log in again.'
       : 'Invalid security token. Please refresh the page and try again.';
-    
+
     return res.status(403).json({
       status: 'error',
       message: errorMessage,
@@ -116,7 +124,7 @@ exports.csrfProtection = (req, res, next) => {
       origin: req.headers['origin'],
       referer: req.headers['referer'],
     });
-    
+
     return res.status(403).json({
       status: 'error',
       message: 'Invalid security token. Please refresh the page and try again.',
@@ -137,14 +145,14 @@ exports.getCsrfToken = (req, res) => {
   try {
     // Get token from cookie (frontend can also read it directly)
     let token = req.cookies['csrf-token'];
-    
+
     // If token not found in cookie, generate a new one
     // This handles cases where cookie expired or wasn't set properly
     if (!token) {
       token = exports.generateCSRFToken(res);
       // Token is now set in cookie via generateCSRFToken, return it in response too
     }
-    
+
     res.status(200).json({
       status: 'success',
       csrfToken: token,
@@ -164,13 +172,16 @@ exports.getCsrfToken = (req, res) => {
  */
 exports.clearCSRFToken = (res) => {
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const cookieDomain = isProduction
+    ? (process.env.COOKIE_DOMAIN || '.saiisai.com')
+    : undefined;
+
   res.clearCookie('csrf-token', {
     httpOnly: false,
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     path: '/',
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    ...(cookieDomain && { domain: cookieDomain }),
   });
 };
 
