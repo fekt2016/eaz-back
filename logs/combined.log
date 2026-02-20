@@ -11460,3 +11460,44 @@
 {"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
 {"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
 {"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (admin_jwt) for GET /api/v1/admin/me","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 594.869 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: superadmin matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/admin/me \u001b[32m200\u001b[0m 936.823 ms - 290\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5174","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 192.685 ms - 192\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:55"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/analytics/seller/69969602a9f4f27e15ab1558/views \u001b[32m200\u001b[0m 563.138 ms - 363\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"[getSellerProducts] returning 3 products (total for seller: 3)","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[32m200\u001b[0m 1093.817 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1124.426 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[36m304\u001b[0m 181.929 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:56"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[32m200\u001b[0m 1291.861 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:57"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-02-20 00:16:57"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product?limit=200&page=1 \u001b[32m200\u001b[0m 1278.705 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-02-20 00:16:58"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 01:02:12"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 01:02:12"}
+{"level":"warn","message":"MongoDB disconnected","service":"backend-api","timestamp":"2026-02-20 01:28:52"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 01:28:52"}
+{"level":"info","message":"MongoDB reconnected","service":"backend-api","timestamp":"2026-02-20 02:53:03"}
