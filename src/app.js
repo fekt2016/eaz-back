@@ -115,22 +115,25 @@ app.use((req, res, next) => {
   const nonceDirective = nonce ? getNonceDirective(nonce) : '';
 
   helmet({
+    // CRITICAL: Disable crossOriginResourcePolicy (defaults to 'same-origin' in Helmet 8)
+    // 'same-origin' strips the CORS headers that the cors() middleware sets, blocking
+    // cross-origin requests from seller.saiisai.com even though CORS is configured correctly.
+    // We handle cross-origin via our cors() middleware below, not CORP.
+    crossOriginResourcePolicy: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          nonceDirective, // SECURITY FIX #8: Use nonce instead of unsafe-inline where possible
-          // Note: Paystack checkout requires unsafe-inline for their embedded scripts
-          // This is acceptable as Paystack is a trusted payment provider
+          nonceDirective,
           "'unsafe-inline'", // Required for Paystack checkout compatibility
           'https://cdnjs.cloudflare.com',
           'https://checkout.paystack.com',
         ],
         styleSrc: [
           "'self'",
-          nonceDirective, // SECURITY FIX #8: Use nonce for inline styles
-          "'unsafe-inline'", // Still needed for some third-party styles
+          nonceDirective,
+          "'unsafe-inline'",
           'https://fonts.googleapis.com',
           'https://cdnjs.cloudflare.com',
         ],
@@ -140,15 +143,15 @@ app.use((req, res, next) => {
           "'self'",
           'https://api.cloudinary.com',
           'https://api.paystack.co',
-          'https://*.paystack.com', // Allow all Paystack subdomains
+          'https://*.paystack.com',
           'https://checkout.paystack.com',
-          'https://nominatim.openstreetmap.org', // OpenStreetMap Nominatim API for reverse geocoding
-          // Development origins - specific ports
+          'https://nominatim.openstreetmap.org',
+          // Development origins
           ...(process.env.NODE_ENV === 'development'
             ? [
-              'http://localhost:5173', // eazmain
-              'http://localhost:5174', // eazadmin
-              'http://localhost:5175', // eazseller
+              'http://localhost:5173',
+              'http://localhost:5174',
+              'http://localhost:5175',
               'http://localhost:3000',
               'http://localhost:3001',
               'http://127.0.0.1:5173',
@@ -157,12 +160,14 @@ app.use((req, res, next) => {
             ]
             : []
           ),
-          // Production origins
+          // Production origins - ALL subdomains that talk to the API
           ...(process.env.NODE_ENV === 'production'
             ? [
               'https://api.saiisai.com',
               'https://saiisai.com',
               'https://www.saiisai.com',
+              'https://seller.saiisai.com',   // Seller dashboard
+              'https://admin.saiisai.com',    // Admin dashboard
             ]
             : []
           ),
@@ -171,21 +176,19 @@ app.use((req, res, next) => {
           "'self'",
           'https://checkout.paystack.com',
         ],
-        // SECURITY FIX #8: Additional CSP directives
         baseUri: ["'self'"],
         formAction: ["'self'", 'https://checkout.paystack.com'],
-        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, // Upgrade HTTP to HTTPS
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
       },
     },
-    // SECURITY: Additional Helmet protections
     hsts: {
-      maxAge: 31536000, // 1 year
+      maxAge: 31536000,
       includeSubDomains: true,
       preload: true,
     },
-    frameguard: { action: 'deny' }, // Prevent clickjacking
-    noSniff: true, // Prevent MIME sniffing
-    xssFilter: true, // XSS protection
+    frameguard: { action: 'deny' },
+    noSniff: true,
+    xssFilter: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   })(req, res, next);
 });
