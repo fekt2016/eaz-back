@@ -113,7 +113,7 @@ app.use(attachNonce);
 app.use((req, res, next) => {
   const nonce = req.cspNonce || res.locals.cspNonce || '';
   const nonceDirective = nonce ? getNonceDirective(nonce) : '';
-  
+
   helmet({
     contentSecurityPolicy: {
       directives: {
@@ -144,26 +144,26 @@ app.use((req, res, next) => {
           'https://checkout.paystack.com',
           'https://nominatim.openstreetmap.org', // OpenStreetMap Nominatim API for reverse geocoding
           // Development origins - specific ports
-          ...(process.env.NODE_ENV === 'development' 
+          ...(process.env.NODE_ENV === 'development'
             ? [
-                'http://localhost:5173', // eazmain
-                'http://localhost:5174', // eazadmin
-                'http://localhost:5175', // eazseller
-                'http://localhost:3000',
-                'http://localhost:3001',
-                'http://127.0.0.1:5173',
-                'http://127.0.0.1:5174',
-                'http://127.0.0.1:5175',
-              ]
+              'http://localhost:5173', // eazmain
+              'http://localhost:5174', // eazadmin
+              'http://localhost:5175', // eazseller
+              'http://localhost:3000',
+              'http://localhost:3001',
+              'http://127.0.0.1:5173',
+              'http://127.0.0.1:5174',
+              'http://127.0.0.1:5175',
+            ]
             : []
           ),
           // Production origins
           ...(process.env.NODE_ENV === 'production'
             ? [
-                'https://api.saiisai.com',
-                'https://saiisai.com',
-                'https://www.saiisai.com',
-              ]
+              'https://api.saiisai.com',
+              'https://saiisai.com',
+              'https://www.saiisai.com',
+            ]
             : []
           ),
         ],
@@ -221,7 +221,14 @@ const corsOptions = {
     // Normalize origin (remove trailing slash, ensure lowercase for comparison)
     const normalizedOrigin = origin.toLowerCase().replace(/\/$/, '');
 
-    // SECURITY FIX #17: Development - restrict to specific localhost ports (no wildcard)
+    // 1. ALWAYS allow listed production origins (regardless of environment)
+    const normalizedAllowedOrigins = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
+    if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
+      logger.debug(`[CORS] Allowing known origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    // 2. Development - restrict to specific localhost ports (no wildcard)
     if (process.env.NODE_ENV === 'development') {
       const devOrigins = [
         'http://localhost:5173', // eazmain
@@ -253,20 +260,11 @@ const corsOptions = {
         }
       }
 
-      if (isDevelopment) {
-        logger.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
-      }
+      logger.warn(`[CORS] Development - blocked unrecognized origin: ${origin}`);
       return callback(new Error(`CORS not allowed for origin: ${origin}`), false);
     }
 
-    // Production: Normalize allowed origins for comparison
-    const normalizedAllowedOrigins = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
-
-    // Check if origin is in allowed list (case-insensitive, trailing slash insensitive)
-    if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
-      logger.debug(`[CORS] Production - allowing origin: ${origin}`);
-      return callback(null, true);
-    }
+    // 3. Production: Additional checks (if not in allowedOrigins)
 
     // Allow localhost origins for local development against production API (optional)
     if (process.env.ALLOW_LOCALHOST === 'true') {
@@ -278,7 +276,7 @@ const corsOptions = {
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
       ].map(o => o.toLowerCase());
-      
+
       if (localhostOrigins.includes(normalizedOrigin)) {
         logger.debug(`[CORS] Allowing localhost origin in production: ${origin}`);
         return callback(null, true);
@@ -382,7 +380,7 @@ app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
 
 // 📦 Body parsing with strict size limits (SECURITY)
-app.use(express.json({ 
+app.use(express.json({
   limit: '20kb',
   // Custom error handler for malformed JSON
   verify: (req, res, buf, encoding) => {

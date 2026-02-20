@@ -11432,3 +11432,31 @@
 {"level":"info","message":"\u001b[0mPOST /api/v1/recommendations/track \u001b[32m200\u001b[0m 599.290 ms - 62\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:55:04"}
 {"level":"error","message":"Error fetching product reviews: Class constructor ObjectId cannot be invoked without 'new'","service":"backend-api","stack":"TypeError: Class constructor ObjectId cannot be invoked without 'new'\n    at /Users/mac/Desktop/Saiisai/backend/src/controllers/seller/productController.js:848:53\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)","timestamp":"2026-02-19 23:55:05"}
 {"level":"info","message":"\u001b[0mGET /api/v1/product/6997a022735af69c46b8b27d/reviews \u001b[31m500\u001b[0m 549.300 ms - 49\u001b[0m","service":"backend-api","timestamp":"2026-02-19 23:55:05"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🕐 Running scheduled cleanup...","service":"backend-api","timestamp":"2026-02-20 00:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...","service":"backend-api","timestamp":"2026-02-20 00:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] Found 0 stuck withdrawals","service":"backend-api","timestamp":"2026-02-20 00:00:00"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup complete: 0 refunded, 0 errors","service":"backend-api","timestamp":"2026-02-20 00:00:00"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 00:08:53"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-20 00:08:54"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-20 00:08:54"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-20 00:08:54"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-20 00:08:54"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-20 00:08:54"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"database":"test","host":"ac-oljttxa-shard-00-01.6vcorfz.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-20 00:08:56"}
+{"level":"info","message":"[EmailService] 📧 Brand: Saiisai | URL: http://localhost:5173","service":"backend-api","timestamp":"2026-02-20 00:09:04"}
+{"level":"info","message":"⚠️  [AI Search] AI-Powered Search is DISABLED","service":"backend-api","timestamp":"2026-02-20 00:09:05"}
+{"level":"info","message":"   Reason: AI_SEARCH_ENABLED is not \"true\"","service":"backend-api","timestamp":"2026-02-20 00:09:05"}
+{"level":"info","message":"   System will use rule-based search fallback","service":"backend-api","timestamp":"2026-02-20 00:09:05"}
+{"level":"info","message":"✅ Loaded environment from: /Users/mac/Desktop/Saiisai/backend/.env","service":"backend-api","timestamp":"2026-02-20 00:09:05"}
+{"level":"info","message":"✅ Environment variables validated successfully for development","service":"backend-api","timestamp":"2026-02-20 00:09:05"}
+{"level":"info","message":"Connected to MongoDB successfully","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"database":"test","host":"ac-oljttxa-shard-00-00.6vcorfz.mongodb.net","level":"info","message":"MongoDB connection details","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"level":"info","message":"[TokenCleanup] ⚠️  Cron job DISABLED in development mode","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"level":"info","message":"[TokenCleanup] To enable, set NODE_ENV=production","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup job scheduled (runs every hour);","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
+{"level":"info","message":"Cron jobs initialized (including withdrawal cleanup)","service":"backend-api","timestamp":"2026-02-20 00:09:07"}
