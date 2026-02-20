@@ -213,7 +213,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       const products = await Product.find({ _id: { $in: productIds } })
         .populate('seller', '_id')
         .populate('category', '_id');
-      
+
       const categoryIds = [...new Set(products.map(p => p.category?._id?.toString()).filter(Boolean))];
       const sellerIds = [...new Set(products.map(p => p.seller?._id?.toString()).filter(Boolean))];
 
@@ -244,7 +244,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       .map((p) => String(p.preOrderOriginCountry).trim())
       .filter((c) => ['China', 'USA'].includes(c)),
   )];
-  
+
   // Use specified origin if available, otherwise default to "China" for pre-orders
   let supplierCountry = null;
   if (hasPreOrderItem) {
@@ -259,7 +259,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       supplierCountry = originCountries.includes('China') ? 'China' : originCountries[0];
     }
   }
-  
+
   const isInternationalPreorder = hasPreOrderItem && supplierCountry;
 
   let shippingFee = 0;
@@ -428,7 +428,27 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // 1. Approved by admin (moderationStatus === 'approved')
     // 2. From sellers that exist in the system (but we no longer block on seller verification status)
     const Seller = require('../../models/user/sellerModel');
+    const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
 
+    // ✅ PERF: Bulk-fetch all sellers + promos + platformSettings in parallel
+    // Previously: Seller.findById() per product (N queries) + 2 sequential awaits
+    const t0 = Date.now();
+    const allSellerRefs = [...new Set(products.map(p => p.seller?.toString()).filter(Boolean))];
+    const [orderPromos, platformSettings, allSellersForOrder] = await Promise.all([
+      getPromosFromAds().catch(e => { logger.warn('[createOrder] Could not load promos:', e?.message); return []; }),
+      require('../../models/platform/platformSettingsModel').getSettings(),
+      Seller.find({ _id: { $in: allSellerRefs } }).select('verificationStatus isVatRegistered').session(session).lean(),
+    ]);
+    logger.info(`[createOrder] ⏱ promos+settings+sellers parallel fetch: ${Date.now() - t0}ms`);
+
+    // Build lookup maps for O(1) seller access (combines validation + VAT into single query)
+    const sellerValidationMap = new Map(allSellersForOrder.map(s => [s._id.toString(), s]));
+    const sellerVatCollectedBy = new Map();
+    allSellersForOrder.forEach((s) => {
+      sellerVatCollectedBy.set(s._id.toString(), s.isVatRegistered === true ? 'seller' : 'platform');
+    });
+
+    // Validate each product using pre-fetched seller map (no per-product DB calls)
     for (const product of products) {
       // Check product approval status
       if (product.moderationStatus !== 'approved') {
@@ -442,10 +462,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       // seller is the raw ObjectId ref from the product document (we did not populate)
       const sellerRef = product.seller;
       if (sellerRef) {
-        const seller = await Seller.findById(sellerRef)
-          .select('verificationStatus')
-          .session(session);
-
+        const seller = sellerValidationMap.get(sellerRef.toString());
         if (!seller) {
           logger.warn(
             `[Order] Seller not found for product ${product._id} (${product.name}). Proceeding with order as per current business rules.`
@@ -461,21 +478,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* ---------------------------------- */
     /* 3. NORMALIZE ORDER ITEMS (SKU ONLY) — Dual VAT: base -> add VAT -> apply promo */
     /* ---------------------------------- */
-    const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
-    let orderPromos = [];
-    try {
-      orderPromos = await getPromosFromAds();
-    } catch (e) {
-      logger.warn('[createOrder] Could not load promos:', e?.message);
-    }
-
-    const platformSettings = await require('../../models/platform/platformSettingsModel').getSettings();
-    const sellerIds = [...new Set(products.map(p => p.seller).filter(Boolean))];
-    const sellers = await Seller.find({ _id: { $in: sellerIds } }).select('isVatRegistered').session(session).lean();
-    const sellerVatCollectedBy = new Map();
-    sellers.forEach((s) => {
-      sellerVatCollectedBy.set(s._id.toString(), s.isVatRegistered === true ? 'seller' : 'platform');
-    });
+    // (platformSettings and orderPromos already loaded above via Promise.all)
 
     const normalizedItems = [];
 
@@ -682,27 +685,27 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       return next(new AppError('Saiisai currently delivers only in Accra and Tema.', 400));
     }
 
-    // Calculate shipping using the shipping quote service (same deliverySpeed as checkout for consistency)
+    // ✅ PERF: Run all shipping/config/weight fetches in parallel (was 3 sequential awaits)
     const { calculateShippingQuote } = require('../../services/shipping/shippingCalculationService');
+    const { getActiveShippingConfig, calculateCartWeight, calculateDeliveryEstimate } = require('../../utils/helpers/shippingHelpers');
 
-    // Prepare items for shipping calculation
     const shippingItems = orderItemDocs.map(item => ({
       productId: item.product,
       sellerId: productSellerMap.get(item.product.toString()),
       quantity: item.quantity,
     }));
 
-    // Calculate shipping quote (pass deliverySpeed so quote matches checkout option)
-    const shippingQuote = await calculateShippingQuote(
-      buyerCity,
-      shippingItems,
-      deliveryMethod,
-      pickupCenterId,
-      deliverySpeed
-    );
+    const t1 = Date.now();
+    const [shippingQuote, shippingConfig, orderWeight] = await Promise.all([
+      calculateShippingQuote(buyerCity, shippingItems, deliveryMethod, pickupCenterId, deliverySpeed),
+      getActiveShippingConfig(),
+      calculateCartWeight(orderItems),
+    ]);
+    logger.info(`[createOrder] ⏱ shipping+config+weight parallel fetch: ${Date.now() - t1}ms`);
 
     // Create SellerOrders (platformSettings already loaded above for order items)
-    const sellerOrders = [];
+    // ✅ PERF: Collect data first, then insertMany in one DB round-trip (replaces N sequential saves)
+    const sellerOrderDocs = [];
     const platformCommissionRate = platformSettings.platformCommissionRate || 0;
     let orderTotal = 0;
     let shippingBreakdown = shippingQuote.perSeller || [];
@@ -808,7 +811,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellerDeliveryMethod = 'eazshop_dispatch';
       }
 
-      const sellerOrder = new SellerOrder({
+      sellerOrderDocs.push({
         seller: sellerId,
         items: group.items,
         subtotal: sellerSubtotal,
@@ -837,10 +840,13 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         dispatchType: deliveryMethod === 'dispatch' ? 'EAZSHOP' :
           (deliveryMethod === 'seller_delivery' && !isEazShopProduct) ? 'SELLER' : null,
       });
-
-      await sellerOrder.save({ session });
-      sellerOrders.push(sellerOrder._id);
     }
+
+    // ✅ PERF: Single DB round-trip for all seller orders (was N sequential saves)
+    const t2 = Date.now();
+    const insertedSellerOrders = await SellerOrder.insertMany(sellerOrderDocs, { session });
+    const sellerOrders = insertedSellerOrders.map(so => so._id);
+    logger.info(`[createOrder] ⏱ SellerOrder insertMany (${sellerOrderDocs.length} docs): ${Date.now() - t2}ms`);
 
     // Total shipping: use checkout-selected amount when provided, else sum from breakdown
     const totalShippingFee = checkoutShipping != null
@@ -927,9 +933,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Calculate delivery estimate from shipping options.
     // IMPORTANT: for pre‑orders we base the estimate on the product's
     // preOrderAvailableDate (when stock is expected), not the order date.
-    const { calculateDeliveryEstimate } = require('../../utils/helpers/shippingHelpers');
-    const { getActiveShippingConfig } = require('../../utils/helpers/shippingHelpers');
-    const shippingConfig = await getActiveShippingConfig();
+    // ✅ PERF: shippingConfig, orderWeight, calculateDeliveryEstimate already loaded via parallel fetch above
     const orderDate = new Date();
     const deliveryBaseDate = preOrderBaseDate || orderDate;
 
@@ -956,13 +960,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       }
     }
 
-    // Calculate weight for order
-    const { calculateCartWeight } = require('../../utils/helpers/shippingHelpers');
-    const orderWeight = await calculateCartWeight(orderItems);
-
     // Calculate order-level tax totals (aggregate from all seller orders)
-    // We need to fetch the saved seller orders to get their tax breakdowns
-    const savedSellerOrders = await SellerOrder.find({ _id: { $in: sellerOrders } }).session(session);
+    // ✅ PERF: insertedSellerOrders already in memory from insertMany — no extra DB query needed
+    const savedSellerOrders = insertedSellerOrders;
 
     let orderTotalBasePrice = 0;
     let orderTotalVAT = 0;
@@ -1070,8 +1070,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderType: isInternationalPreorder
         ? 'preorder_international'
         : hasPreOrderProduct
-        ? 'preorder_local'
-        : 'normal',
+          ? 'preorder_local'
+          : 'normal',
       // Normalize payment method to match enum values
       paymentMethod: (() => {
         const method = req.body.paymentMethod || 'mobile_money';
@@ -1106,8 +1106,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       importDutyRate: isInternationalPreorder ? importDutyRate : undefined,
       metadata: internationalCustomsMetadata
         ? {
-            internationalCustoms: internationalCustomsMetadata,
-          }
+          internationalCustoms: internationalCustomsMetadata,
+        }
         : undefined,
       subtotal: overallSubtotal, // VAT-inclusive subtotal
       tax: 0, // Deprecated - use tax breakdown fields
@@ -1289,22 +1289,22 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Handle wallet payment (credit_balance) - legacy path (currently disabled)
     if (isWalletPayment) {
       console.log('[createOrder] 💰 Processing wallet payment deduction...');
-      
+
       // Get wallet (within same session)
       const wallet = await Creditbalance.findOne({ user: req.user.id }).session(session);
-      
+
       if (!wallet) {
         await session.abortTransaction();
         return next(new AppError('Wallet not found. Please contact support.', 500));
       }
-      
+
       const balanceBefore = wallet.balance || 0;
       // Use availableBalance (balance - holdAmount) for validation
-      const availableBalanceBefore = wallet.availableBalance !== undefined 
-        ? wallet.availableBalance 
+      const availableBalanceBefore = wallet.availableBalance !== undefined
+        ? wallet.availableBalance
         : Math.max(0, balanceBefore - (wallet.holdAmount || 0));
       const balanceAfter = balanceBefore - totalPrice;
-      
+
       // Double-check available balance (race condition protection - final check before deduction)
       if (availableBalanceBefore < totalPrice) {
         await session.abortTransaction();
@@ -1313,16 +1313,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           400
         ));
       }
-      
+
       // Update wallet balance atomically using $inc to prevent race conditions
       const updatedWallet = await Creditbalance.findOneAndUpdate(
-        { 
+        {
           _id: wallet._id,
           balance: { $gte: totalPrice } // Ensure balance is still sufficient
         },
-        { 
+        {
           $inc: { balance: -totalPrice },
-          $set: { 
+          $set: {
             availableBalance: Math.max(0, balanceAfter - (wallet.holdAmount || 0)), // Recalculate availableBalance
             lastUpdated: new Date(),
           },
@@ -1336,12 +1336,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             }
           }
         },
-        { 
+        {
           new: true,
-          session 
+          session
         }
       );
-      
+
       if (!updatedWallet) {
         // Balance check failed (insufficient or race condition)
         await session.abortTransaction();
@@ -1350,7 +1350,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           400
         ));
       }
-      
+
       // Create wallet transaction record
       const walletTransactionReference = `ORDER-${newOrder._id}-${Date.now()}`;
       await WalletTransaction.create([{
@@ -1367,16 +1367,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           orderId: newOrder._id.toString(),
         },
       }], { session });
-      
+
       // Mark order as paid
       newOrder.paymentStatus = 'paid';
       newOrder.status = 'confirmed'; // Use 'status' field (has 'confirmed' in enum), not 'orderStatus'
       newOrder.currentStatus = 'confirmed'; // Also update currentStatus for tracking
       newOrder.paidAt = new Date();
-      
+
       // Update order with payment status
       await newOrder.save({ session });
-      
+
       console.log('[createOrder] ✅ Wallet payment processed:', {
         orderId: newOrder._id,
         orderNumber,
@@ -1385,7 +1385,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         balanceAfter,
         transactionReference: walletTransactionReference,
       });
-      
+
       // Log to wallet history (non-blocking - don't fail if logging fails)
       logBuyerWallet({
         userId: req.user.id,
@@ -1401,10 +1401,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       }).catch(err => {
         console.error('[createOrder] Failed to log wallet history (non-critical):', err);
       });
-      
+
       // 🔐 Reduce stock for wallet-paid orders
       await exports.reduceOrderStock(newOrder, session);
-      
+
     } else if (req.body.paymentStatus === 'completed') {
       // Handle other payment methods (e.g., Paystack webhook)
       newOrder.paymentStatus = 'paid';
@@ -1537,8 +1537,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       },
     });
     // Return the error message from AppError if it exists, otherwise generic message
-    const errorMessage = error instanceof AppError 
-      ? error.message 
+    const errorMessage = error instanceof AppError
+      ? error.message
       : (error.message || 'Failed to create order');
     return next(new AppError(errorMessage, 400));
   } finally {
@@ -1567,15 +1567,17 @@ exports.getCount = catchAsync(async (req, res, next) => {
  */
 exports.getOrderStats = catchAsync(async (req, res, next) => {
   const stats = await Order.aggregate([
-    { $facet: {
-      total: [{ $count: 'count' }],
-      pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
-      processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
-      confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
-      shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
-      delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
-      cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
-    } },
+    {
+      $facet: {
+        total: [{ $count: 'count' }],
+        pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
+        processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
+        confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
+        shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
+        delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
+        cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
+      }
+    },
   ]);
   const facet = (stats && stats[0]) ? stats[0] : {};
   const getCount = (key) => (facet[key] && facet[key][0] && facet[key][0].count) ? facet[key][0].count : 0;
@@ -1635,38 +1637,38 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
   }
 
   const validSellerOrders = sellerOrders.filter((so) => so.order);
-  
+
   // Return empty array instead of 404 - having no orders is a valid state
-  const formattedOrders = validSellerOrders.length === 0 
-    ? [] 
+  const formattedOrders = validSellerOrders.length === 0
+    ? []
     : validSellerOrders.map((so) => ({
-    // SellerOrder fields
-    _id: so._id,
-    status: so.status,
-    items: so.items,
-    subtotal: so.subtotal,
-    total: so.total,
-    shippingCost: so.shippingCost,
-    tax: so.tax,
-    commissionRate: so.commissionRate,
-    payoutStatus: so.payoutStatus,
+      // SellerOrder fields
+      _id: so._id,
+      status: so.status,
+      items: so.items,
+      subtotal: so.subtotal,
+      total: so.total,
+      shippingCost: so.shippingCost,
+      tax: so.tax,
+      commissionRate: so.commissionRate,
+      payoutStatus: so.payoutStatus,
 
-    // Parent Order fields
-    orderNumber: so.order.orderNumber,
-    trackingNumber: so.order.trackingNumber,
-    user: so.order.user,
-    createdAt: so.order.createdAt,
-    paymentMethod: so.order.paymentMethod,
-    paymentStatus: so.order.paymentStatus,
-    paidAt: so.order.paidAt,
-    shippingAddress: so.order.shippingAddress,
-    // Parent order status (source of truth for "completed" / delivered)
-    currentStatus: so.order.currentStatus,
-    orderStatus: so.order.status,
+      // Parent Order fields
+      orderNumber: so.order.orderNumber,
+      trackingNumber: so.order.trackingNumber,
+      user: so.order.user,
+      createdAt: so.order.createdAt,
+      paymentMethod: so.order.paymentMethod,
+      paymentStatus: so.order.paymentStatus,
+      paidAt: so.order.paidAt,
+      shippingAddress: so.order.shippingAddress,
+      // Parent order status (source of truth for "completed" / delivered)
+      currentStatus: so.order.currentStatus,
+      orderStatus: so.order.status,
 
-    // Parent order ID
-    parentOrderId: so.order._id || null,
-  }));
+      // Parent order ID
+      parentOrderId: so.order._id || null,
+    }));
 
   res.status(200).json({
     status: 'success',
@@ -1964,11 +1966,11 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   if (!order) {
     console.error(`[getUserOrder] Order not found with ID: ${orderId} for user: ${req.user.id}`);
     console.error(`[getUserOrder] Searched both _id and orderNumber`);
-    
+
     // Additional debugging: Check if any orders exist for this user
     const userOrdersCount = await Order.countDocuments({ user: req.user.id });
     console.error(`[getUserOrder] User has ${userOrdersCount} total orders`);
-    
+
     return next(new AppError(`Order not found with ID: ${orderId}`, 404));
   }
 
@@ -2856,7 +2858,7 @@ exports.payShippingDifference = catchAsync(async (req, res, next) => {
 
   // Initialize Paystack payment using payment controller
   const axios = require('axios');
-const logger = require('../../utils/logger');
+  const logger = require('../../utils/logger');
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 
   try {
