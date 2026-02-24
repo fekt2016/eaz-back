@@ -6,6 +6,7 @@ const cloudinary = require('cloudinary');
 const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
 const logger = require('../../utils/logger');
+const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -43,40 +44,23 @@ exports.resizeImage = async (req, res, next) => {
 
   try {
     const cloudinary = req.app.get('cloudinary');
-    if (req.file) {
+    if (req.file && req.file.buffer) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
       logger.info(uniqueSuffix);
 
-      const uploadFromBuffer = (buffer, options) => {
-        return new Promise((resolve, reject) => {
-          const writeStream = cloudinary.uploader.upload_stream(
-            options,
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            },
-          );
+      // Process cover image using central utility (handles duplicates)
+      const coverResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'products',
+        public_id: `${uniqueSuffix}-cover`,
+        transformation: [
+          { width: 2000, height: 1333, crop: 'scale' },
+          { quality: 'auto', fetch_format: 'auto' },
+        ],
+        uploadedBy: req.user?._id || req.user?.id
+      });
 
-          const bufferStream = new stream.PassThrough();
-          bufferStream.end(buffer);
-          bufferStream.pipe(writeStream);
-        });
-      };
-      if (req.file.buffer) {
-        const coverFile = req.file.buffer;
-        // Process cover image
-        const coverResult = await uploadFromBuffer(coverFile, {
-          folder: 'products',
-          public_id: `${uniqueSuffix}-cover`,
-          transformation: [
-            { width: 2000, height: 1333, crop: 'scale' },
-            { quality: 'auto', fetch_format: 'auto' },
-          ],
-        });
-
-        req.body.avatar = coverResult.secure_url;
-        logger.info('Cover image URL:', req.body.avatar);
-      }
+      req.body.avatar = coverResult.secure_url;
+      logger.info('Cover image URL:', req.body.avatar);
     }
   } catch (err) {
     logger.error(`Upload Failed: ${err.message}`);

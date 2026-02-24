@@ -9,7 +9,7 @@ router
   .post(newsletterController.subscribeToNewsletter)
   .get(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     newsletterController.getAllSubscribers,
   )
   .delete(newsletterController.unsubscribeFromNewsletter);

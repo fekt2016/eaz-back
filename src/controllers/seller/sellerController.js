@@ -1231,6 +1231,8 @@ exports.getSeller = catchAsync(async (req, res, next) => {
   sellerData.isSetupComplete = isAggregateResult
     ? false
     : computeIsSetupCompleteFromData(seller);
+  // Ensure connectedAccounts is always sent (for Security tab); may be missing on older documents
+  sellerData.connectedAccounts = sellerData.connectedAccounts || { google: false, facebook: false };
 
   if (process.env.NODE_ENV === 'production') {
     logger.info('[getSeller] Sending seller data response', {

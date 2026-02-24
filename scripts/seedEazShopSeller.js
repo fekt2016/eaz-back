@@ -22,17 +22,17 @@ async function seedEazShopSeller() {
 
     // Check if EazShop seller already exists
     const existingSeller = await Seller.findById(EAZSHOP_SELLER_ID);
-    
+
     if (existingSeller) {
       console.log('ℹ️  EazShop seller already exists. Updating...');
-      
+
       // Update existing seller
-      existingSeller.role = 'eazshop_store';
-      existingSeller.shopName = 'EazShop Official Store';
+      existingSeller.role = 'official_store';
+      existingSeller.shopName = 'Saiisai Official Store';
       existingSeller.verificationStatus = 'verified';
       existingSeller.status = 'active';
       existingSeller.active = true;
-      
+
       // Add ownerType and canBeDeleted fields if they don't exist
       if (!existingSeller.ownerType) {
         existingSeller.ownerType = 'system';
@@ -40,21 +40,21 @@ async function seedEazShopSeller() {
       if (existingSeller.canBeDeleted === undefined) {
         existingSeller.canBeDeleted = false;
       }
-      
+
       await existingSeller.save();
       console.log('✅ EazShop seller updated successfully');
     } else {
       // Create new EazShop seller
       const hashedPassword = await bcrypt.hash('EazShop@2024!', 12);
-      
+
       const eazshopSeller = await Seller.create({
         _id: EAZSHOP_SELLER_ID,
-        name: 'EazShop Official',
-        shopName: 'EazShop Official Store',
-        email: 'store@eazshop.com',
+        name: 'Saiisai Official',
+        shopName: 'Saiisai Official Store',
+        email: 'store@saiisai.com',
         password: hashedPassword,
         passwordConfirm: hashedPassword,
-        role: 'eazshop_store',
+        role: 'official_store',
         verificationStatus: 'verified',
         status: 'active',
         active: true,
@@ -65,7 +65,7 @@ async function seedEazShopSeller() {
           region: 'Greater Accra',
         },
         location: 'ACCRA',
-        shopDescription: 'Official EazShop store - Trusted • Verified • Fast Delivery',
+        shopDescription: 'Official Saiisai store - Trusted • Verified • Fast Delivery',
       });
 
       console.log('✅ EazShop seller created successfully');

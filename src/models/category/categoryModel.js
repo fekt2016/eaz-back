@@ -43,6 +43,16 @@ const categorySchema = new mongoose.Schema(
       enum: ['active', 'inactive'],
       default: 'active',
     },
+    // Shipping Engine Refactor Additions
+    shippingTierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ShippingTier',
+      default: null, // Logic defaults to Tier 2 if missing
+    },
+    shippingContribution: {
+      dropship: { type: Number, default: 0 }, // Flat rate GHS for dropshipping
+      express: { type: Number, default: 0 }   // Flat rate GHS for Jumia Express
+    }
     // Removed isSubcategory field since we can derive it from parentCategory
     // Removed variantStructure and options fields since we're using attributes
   },

@@ -23,7 +23,6 @@ const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 const router = express.Router();
 
 router.post('/signup', authAdminController.signupAdmin);
-router.post('/register', authAdminController.signupAdmin); // Alias for frontend compatibility
 router.post('/login', authAdminController.adminLogin);
 
 // ==================================================
@@ -37,7 +36,7 @@ router.post('/reset-password', resetLimiter, authAdminController.resetPasswordWi
 router.post('/forgotPassword', resetLimiter, authAdminController.forgetPassword);
 router.patch('/resetPassword/:token', authAdminController.resetPassword);
 
-router.use(authController.protect, authController.restrictTo('admin', 'superadmin'));
+router.use(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'));
 
 // Admin-only order tracking/status update (avoid buyer-route auth ambiguity)
 router.post(
@@ -72,7 +71,7 @@ router
   .route('/')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     adminController.getAllAdmins,
   );
 
@@ -81,7 +80,7 @@ router
   .route('/stats')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     statsController.getPlatformStats
   );
 
@@ -90,7 +89,7 @@ router
   .route('/tax/vat-summary')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     taxController.getVATSummary
   );
 
@@ -98,7 +97,7 @@ router
   .route('/tax/unremitted')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     taxController.getUnremittedVAT
   );
 
@@ -106,7 +105,7 @@ router
   .route('/tax/rates')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     taxController.getTaxRates
   );
 
@@ -114,7 +113,7 @@ router
   .route('/tax/withholding')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     taxController.getWithholdingTax
   );
 
@@ -122,7 +121,7 @@ router
   .route('/tax/mark-remitted')
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     taxController.markTaxRemitted
   );
 
@@ -131,12 +130,12 @@ router
   .route('/settings/platform')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     platformSettingsController.getPlatformSettings
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     platformSettingsController.updatePlatformSettings
   );
 
@@ -144,7 +143,7 @@ router
   .route('/settings/audit-logs')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     platformSettingsController.getAuditLogs
   );
 
@@ -152,7 +151,7 @@ router
   .route('/stats/reset-revenue')
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     statsController.resetRevenue
   );
 
@@ -160,7 +159,7 @@ router
   .route('/stats/reset-revenue-only')
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     statsController.resetRevenueOnly
   );
 
@@ -251,17 +250,17 @@ router
   .route('/shipping-config')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     shippingConfigController.getShippingConfig
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     shippingConfigController.createShippingConfig
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     shippingConfigController.updateShippingConfig
   );
 
@@ -269,7 +268,7 @@ router
 router.get(
   '/international-shipping/matrix',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   internationalShippingController.getInternationalShippingMatrix,
 );
 
@@ -278,12 +277,12 @@ router
   .route('/international-shipping/configs')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.getInternationalShippingConfigs
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.createInternationalShippingConfig
   );
 
@@ -291,17 +290,17 @@ router
   .route('/international-shipping/configs/:country')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.getInternationalShippingConfigByCountry
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.updateInternationalShippingConfig
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.deleteInternationalShippingConfig
   );
 
@@ -309,12 +308,12 @@ router
   .route('/international-shipping/duty-by-category')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.getImportDutyByCategory
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.createImportDutyByCategory
   );
 
@@ -322,12 +321,12 @@ router
   .route('/international-shipping/duty-by-category/:id')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.updateImportDutyByCategory
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     internationalShippingManagementController.deleteImportDutyByCategory
   );
 
@@ -336,7 +335,7 @@ router
   .route('/seller/:id/balance')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     sellerController.getSellerBalance
   );
 
@@ -344,7 +343,7 @@ router
   .route('/seller/:id/reset-balance')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     sellerController.resetSellerBalance
   );
 
@@ -352,7 +351,7 @@ router
   .route('/seller/:id/reset-locked-balance')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     sellerController.resetLockedBalance
   );
 
@@ -360,7 +359,7 @@ router
   .route('/seller/:id/lock-funds')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     sellerController.lockSellerFunds
   );
 
@@ -368,7 +367,7 @@ router
   .route('/seller/:id/unlock-funds')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     sellerController.unlockSellerFunds
   );
 
@@ -377,7 +376,7 @@ router
   .route('/sellers/:id/payout')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     payoutVerificationController.getPayoutVerificationDetails
   );
 
@@ -385,7 +384,7 @@ router
   .route('/sellers/:id/payout/approve')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     payoutVerificationController.approvePayoutVerification
   );
 
@@ -393,7 +392,7 @@ router
   .route('/sellers/:id/payout/reject')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     payoutVerificationController.rejectPayoutVerification
   );
 
@@ -499,7 +498,7 @@ router
   .route('/wallet-history')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     historyController.getAllWalletHistory
   );
 
@@ -507,7 +506,7 @@ router
   .route('/wallet-history/:userId')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     historyController.getUserWalletHistory
   );
 
@@ -515,7 +514,7 @@ router
   .route('/revenue-history')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     historyController.getAllSellerRevenueHistory
   );
 
@@ -523,7 +522,7 @@ router
   .route('/revenue-history/:sellerId')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     historyController.getSellerRevenueHistory
   );
 
@@ -540,7 +539,7 @@ router
   .route('/history/stats')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     historyController.getHistoryStats
   );
 
@@ -549,7 +548,7 @@ router
   .route('/products/pending')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     productController.getPendingProducts
   );
 
@@ -573,7 +572,7 @@ router
   .route('/products/:id/approve')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     productController.approveProduct
   );
 
@@ -581,7 +580,7 @@ router
   .route('/products/:id/reject')
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     productController.rejectProduct
   );
 
@@ -599,17 +598,17 @@ router
   .route('/:id')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     adminController.getAdmin,
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     adminController.updateAdmin,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     adminController.deleteAdmin,
   );
 

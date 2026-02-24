@@ -3,812 +3,1044 @@
     "name": "Nima",
     "municipality": "Ayawaso East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5820038,
+    "lng": -0.1984173,
+    "formattedAddress": "Nima, Accra, Ghana",
+    "placeId": "ChIJzdBvd0Ka3w8RjVf4Plpsebg"
   },
   {
     "name": "Maamobi",
     "municipality": "Ayawaso East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5945193,
+    "lng": -0.1975081,
+    "formattedAddress": "Maamobi, Accra, Ghana",
+    "placeId": "ChIJ81Ks6E-a3w8Rew_dULpQPnE"
   },
   {
     "name": "Pig Farm",
     "municipality": "Ayawaso East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6037379,
+    "lng": -0.1869579,
+    "formattedAddress": "Accra, Ghana",
+    "placeId": "ChIJDfa4oW2b3w8RTwpipxmZJAA"
   },
   {
     "name": "Kanda",
     "municipality": "Ayawaso East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5756302,
+    "lng": -0.1885389,
+    "formattedAddress": "Kanda Road, Accra, Ghana",
+    "placeId": "ChIJG2PyWmKa3w8RGDTsTIeb3t8"
   },
   {
     "name": "Kawukudi",
     "municipality": "Ayawaso Central",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5923644,
+    "lng": -0.1887658,
+    "formattedAddress": "HRR6+WFX, 2nd Maamobi link, Accra, Ghana",
+    "placeId": "ChIJySWPMFia3w8RInfv1Y1vIjc"
   },
   {
     "name": "Alajo",
     "municipality": "Ayawaso Central",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.598731100000001,
+    "lng": -0.2170443,
+    "formattedAddress": "Alajo, Accra, Ghana",
+    "placeId": "ChIJSeLH5S2a3w8Rzn3bv3kj1_0"
   },
   {
     "name": "Kotobabi",
     "municipality": "Ayawaso Central",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5997705,
+    "lng": -0.2045388,
+    "formattedAddress": "Kotobabi, Accra, Ghana",
+    "placeId": "ChIJY_Q5Jkqa3w8R0UgMdLlNCCs"
   },
   {
     "name": "New Town",
     "municipality": "Ayawaso East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.578177999999999,
+    "lng": -0.2158249,
+    "formattedAddress": "Accra New Town, Accra, Ghana",
+    "placeId": "ChIJU5woMzya3w8RTt_xOmRCLik"
   },
   {
     "name": "Kokomlemle",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5758396,
+    "lng": -0.2086447,
+    "formattedAddress": "Kokomlemle, Accra, Ghana",
+    "placeId": "ChIJy_x-oxOa3w8RfqF1K_f0Oog"
   },
   {
     "name": "Roman Ridge",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6024006,
+    "lng": -0.1951648,
+    "formattedAddress": "Roman Ridge, Accra, Ghana",
+    "placeId": "ChIJfYHkXE2a3w8R17MC4zeyh4o"
   },
   {
     "name": "Dzorwulu",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6141232,
+    "lng": -0.1956471,
+    "formattedAddress": "Dzorwulu, Accra, Ghana",
+    "placeId": "ChIJCXl_j6-b3w8RsPoKKUHcnM4"
   },
   {
     "name": "Airport Residential",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.606104699999999,
+    "lng": -0.1860362,
+    "formattedAddress": "Airport Residential Area, Accra, Ghana",
+    "placeId": "ChIJaciCHgCb3w8RJF8KVMGULwg"
   },
   {
     "name": "Ridge",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5679,
+    "lng": -0.1925238,
+    "formattedAddress": "North Ridge, Accra, Ghana",
+    "placeId": "ChIJ3Xbhgn-a3w8RdJh7R__PN7Q"
   },
   {
     "name": "Asylum Down",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5682553,
+    "lng": -0.2068827,
+    "formattedAddress": "Asylum Down, Accra, Ghana",
+    "placeId": "ChIJYd3DKw2a3w8RqokiV6-wpr8"
   },
   {
     "name": "Adabraka",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5630028,
+    "lng": -0.2115709,
+    "formattedAddress": "Adabraka, Accra, Ghana",
+    "placeId": "ChIJUYAjq3Oa3w8RhvOmmsDCkX8"
   },
   {
     "name": "Tudu",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.552504400000001,
+    "lng": -0.2068827,
+    "formattedAddress": "Tudu, Accra, Ghana",
+    "placeId": "ChIJu4xpe5CQ3w8RQEDyZYNWljc"
   },
   {
     "name": "Osu",
     "municipality": "Klottey Korle",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5570305,
+    "lng": -0.1762717,
+    "formattedAddress": "Osu, Accra, Ghana",
+    "placeId": "ChIJE2UQB3qQ3w8RcTeJcT1XXUw"
   },
   {
     "name": "Labone",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5682665,
+    "lng": -0.1717396,
+    "formattedAddress": "Labone, Accra, Ghana",
+    "placeId": "ChIJTaeRV5ma3w8RKROOnuLnwJU"
   },
   {
     "name": "Cantonments",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5767652,
+    "lng": -0.1784836,
+    "formattedAddress": "Cantonments, Accra, Ghana",
+    "placeId": "ChIJ5f1_35Ga3w8RT3AiP826O_I"
   },
   {
     "name": "Accra Central",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5533546,
+    "lng": -0.2082526,
+    "formattedAddress": "HQ3R+8MX, Tudu Rd, Accra, Ghana",
+    "placeId": "ChIJI-Ku-6KQ3w8RTFT2rvw-tTc"
   },
   {
     "name": "Arena",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5454813,
+    "lng": -0.2142241,
+    "formattedAddress": "Arena Rd, Accra, Ghana",
+    "placeId": "ChIJC0ZXV7eQ3w8RmFLInUpFeeE"
   },
   {
     "name": "Okaishie",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5479748,
+    "lng": -0.2094126,
+    "formattedAddress": "11a Kimberly Ave, Accra, Ghana",
+    "placeId": "ChIJcVk5ZryQ3w8RGbY6vPCAZso"
   },
   {
     "name": "Agbogbloshie",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.545657299999999,
+    "lng": -0.2241375,
+    "formattedAddress": "Accra, Ghana",
+    "placeId": "ChIJNSQA-1KX3w8R7Sn77TWpzqA"
   },
   {
     "name": "Fadama",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5577073,
+    "lng": -0.2249207,
+    "formattedAddress": "Fadama St, Accra, Ghana",
+    "placeId": "ChIJmcvRt1SX3w8RdSayXPfCv3I"
   },
   {
     "name": "Dansoman",
     "municipality": "Ablekuma West",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5427477,
+    "lng": -0.2565425,
+    "formattedAddress": "Dansoman, Accra, Ghana",
+    "placeId": "ChIJmbISG3GX3w8R8Sf7Bd3X1P8"
   },
   {
     "name": "Mamprobi",
     "municipality": "Ablekuma South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5367445,
+    "lng": -0.2420576,
+    "formattedAddress": "Mamprobi, Accra, Ghana",
+    "placeId": "ChIJX83-QxSX3w8RteW7kTnE0_I"
   },
   {
     "name": "Chorkor",
     "municipality": "Ablekuma South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.532299099999999,
+    "lng": -0.2475401,
+    "formattedAddress": "Chorkor, Accra, Ghana",
+    "placeId": "ChIJGbkW1BmX3w8RXio22xUSXtU"
   },
   {
     "name": "Korle Gonno",
     "municipality": "Klottey Korle",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5328145,
+    "lng": -0.2268113,
+    "formattedAddress": "Korle Gonno, Accra, Ghana",
+    "placeId": "ChIJ46tqjDGX3w8RjxV05VK39wM"
   },
   {
     "name": "Kaneshie",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.576118,
+    "lng": -0.2444038,
+    "formattedAddress": "Kaneshie, Accra, Ghana",
+    "placeId": "ChIJpeKH4-eZ3w8RiggRrpBQ_rU"
   },
   {
     "name": "North Kaneshie",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.586297300000001,
+    "lng": -0.2419606,
+    "formattedAddress": "North Kaneshi, Accra, Ghana",
+    "placeId": "ChIJcV4fq5WZ3w8R4gTACvt58PA"
   },
   {
     "name": "Abbosey Okai",
     "municipality": "Ablekuma Central",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5603679,
+    "lng": -0.2373658,
+    "formattedAddress": "Abosseyokai, Accra, Ghana",
+    "placeId": "ChIJs6VHBeKZ3w8R_mxS5jI-eQs"
   },
   {
     "name": "Odorkor",
     "municipality": "Ablekuma West",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5804557,
+    "lng": -0.2633237,
+    "formattedAddress": "Odorkor, Accra, Ghana",
+    "placeId": "ChIJXwkBny6Y3w8RsF7SblBXPVg"
   },
   {
     "name": "Laterbiokoshie",
     "municipality": "Ablekuma North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.553278199999999,
+    "lng": -0.24014,
+    "formattedAddress": "Lartebiokorshie, Accra, Ghana",
+    "placeId": "ChIJQxq3CUOX3w8R5s8X4gw2-no"
   },
   {
     "name": "La",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.564659199999999,
+    "lng": -0.1565747,
+    "formattedAddress": "La, Accra, Ghana",
+    "placeId": "ChIJvVrw6q-a3w8RkyLtnVFb2a4"
   },
   {
     "name": "Labadi",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.564659199999999,
+    "lng": -0.1565747,
+    "formattedAddress": "La, Accra, Ghana",
+    "placeId": "ChIJvVrw6q-a3w8RkyLtnVFb2a4"
   },
   {
     "name": "Trade Fair",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5702427,
+    "lng": -0.1472205,
+    "formattedAddress": "La Rd, Accra, Ghana",
+    "placeId": "ChIJS37IblKF3w8RT9RqElqr_Tw"
   },
   {
     "name": "Tse Addo",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5842984,
+    "lng": -0.144952,
+    "formattedAddress": "Tse Addo High St, Accra, Ghana",
+    "placeId": "ChIJJQPwZUiF3w8ReXFvGu-m6ss"
   },
   {
     "name": "Burma Camp",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5958462,
+    "lng": -0.1518394,
+    "formattedAddress": "Burma Camp, Accra, Ghana",
+    "placeId": "ChIJN9Hv8NGa3w8RThKHrBu8ors"
   },
   {
     "name": "Achimota",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.612781,
+    "lng": -0.234345,
+    "formattedAddress": "Achimota, Ghana",
+    "placeId": "ChIJvZ7KeWWZ3w8RL9h-7zglgpk"
   },
   {
     "name": "Circle",
     "municipality": "Okaikwei South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5706507,
+    "lng": -0.2178203,
+    "formattedAddress": "HQCJ+6RW, Accra, Ghana",
+    "placeId": "ChIJhxoH90qb3w8RVdEzBMEdvKY"
   },
   {
     "name": "Taifa",
     "municipality": "Ga East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.652502699999999,
+    "lng": -0.2506834,
+    "formattedAddress": "Taifa, Ghana",
+    "placeId": "ChIJkecBDsWe3w8RNDOuPa1C9Ik"
   },
   {
     "name": "Spintex",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6376136,
+    "lng": -0.1266064,
+    "formattedAddress": "Spintex Road, Accra, Ghana",
+    "placeId": "ChIJQUNog5mE3w8Ry5P7JtcCKWw"
   },
   {
     "name": "Airport Hills",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6163571,
+    "lng": -0.1432588,
+    "formattedAddress": "Airport Hills, Accra, Ghana",
+    "placeId": "ChIJexKtvMuE3w8Ry0hsjD8yVTk"
   },
   {
     "name": "East Legon",
     "municipality": "La Nkwantanang Madina",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6358281,
+    "lng": -0.1613592,
+    "formattedAddress": "East Legon, Accra, Ghana",
+    "placeId": "ChIJpfR4ElCb3w8R_Q_CoEgVCMo"
   },
   {
     "name": "Adjiringanor",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6510376,
+    "lng": -0.1354586,
+    "formattedAddress": "Adjiringanor, Madina, Ghana",
+    "placeId": "ChIJacBEal6D3w8R7ylCzeva9CE"
   },
   {
     "name": "Trasacco Area",
     "municipality": "La Nkwantanang Madina",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6469172,
+    "lng": -0.1788309,
+    "formattedAddress": "JRWC+QF7, Accra, Ghana",
+    "placeId": "ChIJB41LCn-c3w8R2OZDZrxZzJM"
   },
   {
     "name": "Westlands",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.653658,
+    "lng": -0.2087533,
+    "formattedAddress": "Westlands Blvd, Accra, Ghana",
+    "placeId": "ChIJA6Eg-gyc3w8R30ymxmadpYI"
   },
   {
     "name": "Dome",
     "municipality": "Ga East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6562651,
+    "lng": -0.2338473,
+    "formattedAddress": "Dome, Ghana",
+    "placeId": "ChIJC8f7IbOe3w8RDoVbfpCQh2w"
   },
   {
     "name": "Lapaz",
     "municipality": "Okaikwei North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.609507499999999,
+    "lng": -0.2507539,
+    "formattedAddress": "Lapaz, Ghana",
+    "placeId": "ChIJzRd1bQaZ3w8RLjD20rdm8ZY"
   },
   {
     "name": "Sowutuom",
     "municipality": "Ablekuma North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.625094300000001,
+    "lng": -0.2724254,
+    "formattedAddress": "Sowutoum, Ghana",
+    "placeId": "ChIJFwpUmsKY3w8R5nSUKp5tB3s"
   },
   {
     "name": "Ablekuma North",
     "municipality": "Ablekuma North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5774295,
+    "lng": -0.2479232,
+    "formattedAddress": "Ablekuma North Municipal, Ghana",
+    "placeId": "ChIJK7G63cCZ3w8RJgLSQhMw1I0"
   },
   {
     "name": "Abeka",
     "municipality": "Ablekuma North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.595464799999999,
+    "lng": -0.2426031,
+    "formattedAddress": "Abeka, Accra, Ghana",
+    "placeId": "ChIJCRGGTLuZ3w8RENDnD2C_eYo"
   },
   {
     "name": "Caprice",
     "municipality": "Ablekuma North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5845604,
+    "lng": -0.2168975,
+    "formattedAddress": "HQMM+R6H, S G. Akyeampong St, Accra, Ghana",
+    "placeId": "ChIJGZEU_Aub3w8RoShUxFlZStE"
   },
   {
     "name": "East Legon Hills",
     "municipality": "La Nkwantanang Madina",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6986468,
+    "lng": -0.0968835,
+    "formattedAddress": "East legon Hills, 312 Audu Rd, Accra, Ghana",
+    "placeId": "ChIJE2rDIUaC3w8Rhzei_UXbVIE"
   },
   {
     "name": "Ashaley Botwe",
     "municipality": "La Nkwantanang Madina",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6560023,
+    "lng": -0.134845,
+    "formattedAddress": "Ashley Botwe, Accra, Ghana",
+    "placeId": "ChIJaT9z6VyD3w8R_ddGg82icZ8"
   },
   {
     "name": "Lakeside Estate",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.7093226,
+    "lng": -0.1306883,
+    "formattedAddress": "lakeside estate, Adenta Municipality, Ghana",
+    "placeId": "ChIJT0XcoeaC3w8RL4I5ZZYgYVY"
   },
   {
     "name": "Haatso",
     "municipality": "Ga East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6694251,
+    "lng": -0.203367,
+    "formattedAddress": "Haatso, Ghana",
+    "placeId": "ChIJG_Xa0kac3w8RiBy77UYIthk"
   },
   {
     "name": "Kwabenya",
     "municipality": "Ga East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6844172,
+    "lng": -0.2537157,
+    "formattedAddress": "Kwabenya, Ghana",
+    "placeId": "ChIJhx7q5Vqe3w8R7aqImtXWh0s"
   },
   {
     "name": "Pokuase",
     "municipality": "Ga North",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.700273,
+    "lng": -0.302078,
+    "formattedAddress": "Pokuase, Ghana",
+    "placeId": "ChIJ8faBTSag3w8R_i6sNNgxeig"
   },
   {
     "name": "Amasaman",
     "municipality": "Ga West",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.7062137,
+    "lng": -0.3019281,
+    "formattedAddress": "Amasaman, Ghana",
+    "placeId": "ChIJqUeKXCCg3w8R3MfTGaw1aAk"
   },
   {
     "name": "Amrahia",
     "municipality": "Adenta",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.764173899999999,
+    "lng": -0.139333,
+    "formattedAddress": "Amrahia, Ghana",
+    "placeId": "ChIJY4HBUjB43w8RUUWrwpvjMcw"
   },
   {
     "name": "Adenta",
     "municipality": "Adenta",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.7141674,
+    "lng": -0.15418,
+    "formattedAddress": "Adenta Municipality, Ghana",
+    "placeId": "ChIJBSff80ud3w8RCcLnPLCgs6s"
   },
   {
     "name": "West Trassacco",
     "municipality": "La Nkwantanang Madina",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6037168,
+    "lng": -0.1869644,
+    "formattedAddress": "Mary B Hotel , West Trasacco GD-218-1143, Accra, Ghana",
+    "placeId": "ChIJG8mtopKb3w8Rx--EkKB1NO8"
   },
   {
     "name": "Oyarifa",
     "municipality": "Adenta",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.755537899999999,
+    "lng": -0.1740052,
+    "formattedAddress": "Oyarifa, Ghana",
+    "placeId": "ChIJiT_VTr933w8R-9E8mclptyQ"
   },
   {
     "name": "Oyibi",
     "municipality": "Adenta",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.812958099999999,
+    "lng": -0.1179155,
+    "formattedAddress": "Oyibi, Ghana",
+    "placeId": "ChIJjw6CaYd53w8RTUOjAN5fXyw"
   },
   {
     "name": "Dodowa Road",
     "municipality": "Adenta",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.7373782,
+    "lng": -0.1559171,
+    "formattedAddress": "Adenta - Dodowa Rd, Ghana",
+    "placeId": "ChIJ83tc0hSd3w8RL6Wb3poVnV8"
   },
   {
     "name": "Spintex East",
     "municipality": "La Dadekotopon",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6376136,
+    "lng": -0.1266064,
+    "formattedAddress": "Spintex Road, Accra, Ghana",
+    "placeId": "ChIJQUNog5mE3w8Ry5P7JtcCKWw"
   },
   {
     "name": "Baatsona Estate East",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7348119,
+    "lng": 0.0302354,
+    "formattedAddress": "Tema, Ghana",
+    "placeId": "ChIJKT4NQKV4IBARi0gmQF1L38w"
   },
   {
     "name": "Teshie-Nungua Estates",
     "municipality": "Ledzokuku",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.6020609,
+    "lng": -0.0953171,
+    "formattedAddress": "Dar-Es-Salaam, JW23+RVF, Accra, Ghana",
+    "placeId": "ChIJX3zfVTmF3w8RM8Jd9bcWlY0"
   },
   {
     "name": "Kokrobite",
     "municipality": "Ga South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5361405,
+    "lng": -0.2466402,
+    "formattedAddress": "Kokrobite St, Accra, Ghana",
+    "placeId": "ChIJp0LgPBSX3w8RivuY80f-4mk"
   },
   {
     "name": "Weija",
     "municipality": "Ga South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5666403,
+    "lng": -0.3334778,
+    "formattedAddress": "Weija, Ghana",
+    "placeId": "ChIJ8_3nHtSi3w8REkhGUjF1i7o"
   },
   {
     "name": "Kasoa",
     "municipality": "Awutu Senya East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5344155,
+    "lng": -0.4252737,
+    "formattedAddress": "Kasoa, Ghana",
+    "placeId": "ChIJ91SN2u263w8RmoJAw8YWjtQ"
   },
   {
     "name": "Afienya",
     "municipality": "Ningo Prampram",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.795836299999999,
+    "lng": 0.0023314,
+    "formattedAddress": "Afienya, Ghana",
+    "placeId": "ChIJq8E1_d2BIBARrtd1BHoTlxY"
   },
   {
     "name": "Dawhenya",
     "municipality": "Ningo Prampram",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.75544,
+    "lng": 0.03368,
+    "formattedAddress": "Q24M+9J, Tema, Ghana",
+    "placeId": "ChIJd6HXLQCBIBAR6lDHiINmBL0"
   },
   {
     "name": "Prampram",
     "municipality": "Ningo Prampram",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7348119,
+    "lng": 0.0302354,
+    "formattedAddress": "Tema, Ghana",
+    "placeId": "ChIJKT4NQKV4IBARi0gmQF1L38w"
   },
   {
     "name": "Ningo",
     "municipality": "Ningo Prampram",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7562831,
+    "lng": 0.1916501,
+    "formattedAddress": "Old Ningo, Ghana",
+    "placeId": "ChIJ31b-urGJIBARGWlbXTdM81Q"
   },
   {
     "name": "Kasoa Central",
     "municipality": "Awutu Senya East",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.5344155,
+    "lng": -0.4252737,
+    "formattedAddress": "Kasoa, Ghana",
+    "placeId": "ChIJ91SN2u263w8RmoJAw8YWjtQ"
   },
   {
     "name": "Shai Hills",
     "municipality": "Shai Osudoku",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.9083333,
+    "lng": 0.0613889,
+    "formattedAddress": "Shai Hills, Ghana",
+    "placeId": "ChIJ_98yurCcIBAREubv9K8e3GY"
   },
   {
     "name": "Dodowa Township",
     "municipality": "Shai Osudoku",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.8828665,
+    "lng": -0.098043,
+    "formattedAddress": "Dodowa, Ghana",
+    "placeId": "ChIJIfTMjDl73w8R2_Jw5v54YTA"
   },
   {
     "name": "McCarthy Hill",
     "municipality": "Ga South",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.564278799999999,
+    "lng": -0.297229,
+    "formattedAddress": "McCarthy Hill, Mallam, Ghana",
+    "placeId": "ChIJu-d1iRqY3w8RRM-smHJI1MQ"
   },
   {
     "name": "Amansaman Outskirts",
     "municipality": "Ga West",
     "city": "Accra",
-    "lat": null,
-    "lng": null
+    "lat": 5.7062137,
+    "lng": -0.3019281,
+    "formattedAddress": "Amasaman, Ghana",
+    "placeId": "ChIJqUeKXCCg3w8R3MfTGaw1aAk"
   },
   {
     "name": "Tema Community 1",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6352363,
+    "lng": 0.0028931,
+    "formattedAddress": "J2P3+456, Tema, Ghana",
+    "placeId": "ChIJFdtUQwB5IBAR-2J8R7vRPjk"
   },
   {
     "name": "Tema Community 2",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6326515,
+    "lng": -0.0116586,
+    "formattedAddress": "Podoku, Tema, Ghana",
+    "placeId": "ChIJ0ZndSUSH3w8RsKEPjDy31K0"
   },
   {
     "name": "Tema Community 3",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6221385,
+    "lng": -0.0256537,
+    "formattedAddress": "Community Three, Tema, Ghana",
+    "placeId": "ChIJER1R-xeH3w8RYWWA35XLd5s"
   },
   {
     "name": "Tema Community 4",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6549971,
+    "lng": -0.0081607,
+    "formattedAddress": "Community Four, Tema, Ghana",
+    "placeId": "ChIJk2wD4K-A3w8RXNS186ZBFDg"
   },
   {
     "name": "Tema Community 5",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.643165900000001,
+    "lng": -0.0163231,
+    "formattedAddress": "Akorley-dzor, Tema, Ghana",
+    "placeId": "ChIJ_QnJDEqH3w8R_bBu2tWQxHU"
   },
   {
     "name": "Tema Community 6",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6520502,
+    "lng": -0.0161593,
+    "formattedAddress": "Obetsebi Lamptey St, Ghana",
+    "placeId": "ChIJaVOC_p-A3w8Rkx4Xi1J91CM"
   },
   {
     "name": "Tema Community 7",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6628858,
+    "lng": -0.0104926,
+    "formattedAddress": "Community Seven, Tema, Ghana",
+    "placeId": "ChIJXT9BlLyA3w8R4lT-5vAPqNs"
   },
   {
     "name": "Tema Community 8",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6707755,
+    "lng": -0.0128247,
+    "formattedAddress": "Community Eight, Tema, Ghana",
+    "placeId": "ChIJLVI-h5aA3w8R8eC1UcQIsiw"
   },
   {
     "name": "Tema Community 9",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6760396,
+    "lng": -0.0175138,
+    "formattedAddress": "Community 9, Tema, Ghana",
+    "placeId": "ChIJm_ZrP42A3w8Ru7eKyLL-vV8"
   },
   {
     "name": "Tema Community 10",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6576261,
+    "lng": -0.0244872,
+    "formattedAddress": "Community Ten, Tema, Ghana",
+    "placeId": "ChIJG1rs7cWA3w8RmfeK21lSrbg"
   },
   {
     "name": "Tema Community 11",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6642002,
+    "lng": -0.0256537,
+    "formattedAddress": "Obenyade, Tema, Ghana",
+    "placeId": "ChIJj0_cneqA3w8RmaJ9y1_V_RM"
   },
   {
     "name": "Tema Community 12",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6758391,
+    "lng": -0.0217444,
+    "formattedAddress": "MXGH+88J, Tema, Ghana",
+    "placeId": "ChIJUf4Jck-B3w8RPeQvumcMp4w"
   },
   {
     "name": "Tema Community 13",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.685265900000001,
+    "lng": -0.05866130000000001,
+    "formattedAddress": "Tema Community Center Comm. 1, Tema, Ghana",
+    "placeId": "ChIJo3xOCwOB3w8RbdBNIVYDtic"
   },
   {
     "name": "Tema Community 14",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7348119,
+    "lng": 0.0302354,
+    "formattedAddress": "Tema, Ghana",
+    "placeId": "ChIJKT4NQKV4IBARi0gmQF1L38w"
   },
   {
     "name": "Tema Community 15",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.639628699999999,
+    "lng": -0.0016025,
+    "formattedAddress": "JXQX+V92, Tema, Ghana",
+    "placeId": "ChIJv8hHjsSH3w8R4bVPBtAWqT4"
   },
   {
     "name": "Tema Community 16",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6354416,
+    "lng": -0.0763334,
+    "formattedAddress": "Community 16 Tema Junction Bus Stop, Ezra Rd, Accra, Ghana",
+    "placeId": "ChIJpzrgygKE3w8RT45MkcjU4uU"
   },
   {
     "name": "Tema Community 17",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6423125,
+    "lng": -0.0106875,
+    "formattedAddress": "JXRQ+WPG, Tema, Ghana",
+    "placeId": "ChIJo-5avE2H3w8RyjMAG-rI5sE"
   },
   {
     "name": "Tema Community 18",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.647105199999999,
+    "lng": -0.071173,
+    "formattedAddress": "Community Eighteen, Tema New Town, Ghana",
+    "placeId": "ChIJLd24plSB3w8RblYoo08iP9A"
   },
   {
     "name": "Tema Community 19",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6641983,
+    "lng": -0.0536592,
+    "formattedAddress": "MW7W+MGG Plot 30A, Ghana",
+    "placeId": "ChIJpxJWGwCB3w8RSUb1yWWeZcc"
   },
   {
     "name": "Tema Community 20",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.653677999999999,
+    "lng": -0.0723408,
+    "formattedAddress": "Community Twenty, Tema New Town, Ghana",
+    "placeId": "ChIJdWYSSVeB3w8Rk9JRv0SDuIk"
   },
   {
     "name": "Tema Community 21",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7076367,
+    "lng": -0.0203545,
+    "formattedAddress": "E793 Promise Rd, Tema, Ghana",
+    "placeId": "ChIJ1b9TtvuB3w8RxRuwQAzuwd4"
   },
   {
     "name": "Tema Community 22",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7081595,
+    "lng": -0.028723,
+    "formattedAddress": "Tema, Ghana",
+    "placeId": "ChIJPwmWo0OB3w8Rx1TroOwLJo4"
   },
   {
     "name": "Tema Community 23",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.683415999999999,
+    "lng": -0.0650004,
+    "formattedAddress": "MWMM+9X9, Unnamed Road, Santeo, Ghana",
+    "placeId": "ChIJzUqZUoKB3w8RillNCO7Ob7k"
   },
   {
     "name": "Tema Community 24",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7348119,
+    "lng": 0.0302354,
+    "formattedAddress": "P2MJ+W3H, Tema, Ghana",
+    "placeId": "ChIJFYRt-DeBIBARCJpB_X4KIDE"
   },
   {
     "name": "Tema Community 25",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7273492,
+    "lng": 0.0163231,
+    "formattedAddress": "Community 25, Tema, Tema, Ghana",
+    "placeId": "ChIJQfOoWOB_IBARFMyDhXgsxVk"
   },
   {
     "name": "Sakumono",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.614910699999999,
+    "lng": -0.0484066,
+    "formattedAddress": "Sakumono, Ghana",
+    "placeId": "ChIJHQ0-KfCG3w8R4FU9_4SW-RI"
   },
   {
     "name": "Lashibi",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6847539,
+    "lng": -0.0379152,
+    "formattedAddress": "Lashibi, Ghana",
+    "placeId": "ChIJQzZU9_-A3w8RPotnEFKTo3k"
   },
   {
     "name": "Klagon",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6641983,
+    "lng": -0.0536592,
+    "formattedAddress": "Klagon, Tema New Town, Ghana",
+    "placeId": "ChIJQwIrWT6B3w8R-kSSsLywBq4"
   },
   {
     "name": "Baatsona",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.7348119,
+    "lng": 0.0302354,
+    "formattedAddress": "Tema, Ghana",
+    "placeId": "ChIJKT4NQKV4IBARi0gmQF1L38w"
   },
   {
     "name": "Kpone",
     "municipality": "Kpone Katamanso",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6931333,
+    "lng": 0.0513246,
+    "formattedAddress": "Kpone, Tema, Ghana",
+    "placeId": "ChIJ2TjJWVl-IBARMBy2Ly3x_lU"
   },
   {
     "name": "Tema Newtown",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6577017,
+    "lng": 0.0260691,
+    "formattedAddress": "Tema New Town, Tema, Ghana",
+    "placeId": "ChIJCf5TdiN_IBAR0VYhc02GRLw"
   },
   {
     "name": "Greenwich Meridian",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6440246,
+    "lng": -0.0001903,
+    "formattedAddress": "Greenwich Meridian Rd, Tema, Ghana",
+    "placeId": "ChIJSe3wBVWH3w8RhqDdAtpxMuk"
   },
   {
     "name": "Heavy Industrial Area",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.677350499999999,
+    "lng": 0.0279867,
+    "formattedAddress": "Heavy Industrial Area, Tema, Ghana",
+    "placeId": "ChIJD2AxhW1_IBAR3HPqSNGMHxc"
   },
   {
     "name": "Free Zone Enclave",
     "municipality": "Tema West",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6998042,
+    "lng": 0.0042697,
+    "formattedAddress": "M2X3+WPC, Tema, Ghana",
+    "placeId": "ChIJF4pqNY9_IBARAnG6p1TBfS8"
   },
   {
     "name": "Ashaiman",
     "municipality": "Ashaiman",
     "city": "Tema",
-    "lat": null,
-    "lng": null
+    "lat": 5.6930008,
+    "lng": -0.0337718,
+    "formattedAddress": "Ashaiman, Tema, Ghana",
+    "placeId": "ChIJAZ5aoFeA3w8RCqjzJQWlM9o"
   }
 ]

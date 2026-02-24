@@ -2,6 +2,9 @@
 const stream = require('stream');
 const cloudinaryPackage = require('cloudinary');
 const resolveFilePath = require('../helpers/resolveFilePath');
+const Media = require('../../models/mediaModel');
+const { generateHash } = require('./hashGenerator');
+const AppError = require('../errors/appError');
 
 const cloudinary = cloudinaryPackage.v2;
 
@@ -11,7 +14,63 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-function uploadToCloudinary(fileOrBuffer, options = {}) {
+async function uploadToCloudinary(fileOrBuffer, options = {}) {
+  const { uploadedBy } = options;
+  let fileHash = null;
+
+  // Process hashing if we have a buffer
+  if (fileOrBuffer instanceof Buffer) {
+    fileHash = generateHash(fileOrBuffer);
+  } else if (fileOrBuffer && typeof fileOrBuffer === 'object' && fileOrBuffer.buffer) {
+    fileHash = generateHash(fileOrBuffer.buffer);
+  }
+
+  // Check for global duplicates if we have a hash
+  if (fileHash) {
+    const existingMedia = await Media.findOne({ hash: fileHash });
+    if (existingMedia) {
+      throw new AppError('This image has already been uploaded. Please upload a new image.', 400);
+    }
+  }
+
+  const performUpload = async (source, uploadOptions) => {
+    const result = await (source instanceof Buffer
+      ? new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          uploadOptions,
+          (err, res) => {
+            if (err) return reject(err);
+            resolve(res);
+          },
+        );
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(source);
+        bufferStream.pipe(uploadStream);
+      })
+      : cloudinary.uploader.upload(source, uploadOptions));
+
+    // Create Media record after successful upload
+    if (fileHash || result.secure_url) {
+      // If we didn't have a hash before (e.g. uploaded via path), we might not have one now
+      // but usually we want to ensure everything is hashed eventually.
+      // For now, only save if we generated a hash (buffer uploads)
+      if (fileHash) {
+        await Media.create({
+          url: result.secure_url,
+          public_id: result.public_id,
+          hash: fileHash,
+          uploadedBy: uploadedBy || '000000000000000000000000',
+          format: result.format,
+          resource_type: result.resource_type || 'image',
+          bytes: result.bytes,
+          width: result.width,
+          height: result.height,
+        });
+      }
+    }
+    return result;
+  };
+
   // 🔍 DEBUG: Log what we received
   console.log('[uploadToCloudinary] DEBUG:');
   console.log('  Input:', fileOrBuffer);
@@ -108,6 +167,18 @@ function uploadToCloudinary(fileOrBuffer, options = {}) {
       `Invalid file object: must have either .buffer (memory storage) or .path (disk storage). ` +
       `Received object with keys: ${Object.keys(fileOrBuffer).join(', ')}`
     );
+  }
+
+  // Use the new helper to perform the upload and save media
+  if (typeof fileOrBuffer === 'string') {
+    return performUpload(String(fileOrBuffer).trim(), options);
+  } else if (fileOrBuffer instanceof Buffer) {
+    return performUpload(fileOrBuffer, options);
+  } else if (fileOrBuffer && typeof fileOrBuffer === 'object' && fileOrBuffer.buffer) {
+    return performUpload(fileOrBuffer.buffer, options);
+  } else if (fileOrBuffer && typeof fileOrBuffer === 'object' && fileOrBuffer.path) {
+    const filePath = resolveFilePath(fileOrBuffer, 'cloudinary upload');
+    return performUpload(filePath, options);
   }
 
   // Invalid input

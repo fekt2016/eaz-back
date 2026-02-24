@@ -38,6 +38,8 @@
 const stream = require('stream');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
+const Media = require('../../models/mediaModel');
+const { generateHash } = require('../../utils/storage/hashGenerator');
 
 /**
  * Upload a single file buffer to Cloudinary
@@ -56,7 +58,7 @@ const uploadFileToCloudinary = (fileBuffer, options, cloudinary) => {
   // If it's already a Buffer, use it directly
   if (fileBuffer instanceof Buffer) {
     // Buffer is valid, proceed
-  } 
+  }
   // If it's an object with a buffer property, extract it
   else if (fileBuffer && typeof fileBuffer === 'object' && fileBuffer.buffer) {
     if (!(fileBuffer.buffer instanceof Buffer)) {
@@ -124,10 +126,10 @@ const uploadMultipleFiles = async (files, options, cloudinary) => {
       );
     }
 
-    const fileOptions = typeof options === 'function' 
-      ? options(file, index) 
+    const fileOptions = typeof options === 'function'
+      ? options(file, index)
       : { ...options, public_id: `${options.public_id || 'file'}-${index}` };
-    
+
     return uploadFileToCloudinary(file.buffer, fileOptions, cloudinary);
   });
 
@@ -149,7 +151,7 @@ const cloudinaryUpload = (config = {}) => {
   return catchAsync(async (req, res, next) => {
     // Get Cloudinary instance from app
     const cloudinary = req.app.get('cloudinary');
-    
+
     if (!cloudinary) {
       return next(new AppError('Cloudinary is not configured', 500));
     }
@@ -167,9 +169,9 @@ const cloudinaryUpload = (config = {}) => {
       if (!files || files.length === 0) continue;
 
       const file = files[0]; // Get first file if multiple
-      
+
       // Generate folder name
-      const folderName = typeof config.folder === 'function' 
+      const folderName = typeof config.folder === 'function'
         ? config.folder(req, fieldName)
         : config.folder || 'uploads';
 
@@ -184,7 +186,7 @@ const cloudinaryUpload = (config = {}) => {
         public_id: publicIdPrefix,
         resource_type: config.resourceType || 'auto',
         ...(config.transformations && { transformation: config.transformations }),
-        ...(typeof config.options === 'function' 
+        ...(typeof config.options === 'function'
           ? config.options(req, fieldName, file)
           : config.options || {}
         ),
@@ -205,9 +207,17 @@ const cloudinaryUpload = (config = {}) => {
           ));
         }
 
+        // Generate hash and check for duplicates
+        const fileHash = generateHash(file.buffer);
+        const existingMedia = await Media.findOne({ hash: fileHash });
+
+        if (existingMedia) {
+          return next(new AppError('This image has already been uploaded. Please upload a new image.', 400));
+        }
+
         // Upload file
         const result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
-        
+
         // Store result
         uploadResults[fieldName] = {
           url: result.secure_url,
@@ -216,7 +226,21 @@ const cloudinaryUpload = (config = {}) => {
           width: result.width,
           height: result.height,
           bytes: result.bytes,
+          hash: fileHash,
         };
+
+        // Create Media record
+        await Media.create({
+          url: result.secure_url,
+          public_id: result.public_id,
+          hash: fileHash,
+          uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000', // Fallback for system uploads
+          format: result.format,
+          resource_type: result.resource_type || 'image',
+          bytes: result.bytes,
+          width: result.width,
+          height: result.height,
+        });
 
         // Add URL to request body for easy access
         req.body[fieldName] = result.secure_url;
@@ -274,7 +298,7 @@ const uploadSingleFile = (fieldName, options = {}) => {
 const uploadMultipleFields = (fieldConfigs, defaultOptions = {}) => {
   return catchAsync(async (req, res, next) => {
     const cloudinary = req.app.get('cloudinary');
-    
+
     if (!cloudinary) {
       return next(new AppError('Cloudinary is not configured', 500));
     }
@@ -319,17 +343,48 @@ const uploadMultipleFields = (fieldConfigs, defaultOptions = {}) => {
           ));
         }
 
-        const result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
-        
+        // Generate hash and check for duplicates
+        const fileHash = generateHash(file.buffer);
+        const existingMedia = await Media.findOne({ hash: fileHash });
+
+        if (existingMedia) {
+          return next(
+            new AppError(
+              'This image has already been uploaded. Please upload a new image.',
+              400
+            )
+          );
+        }
+
+        const result = await uploadFileToCloudinary(
+          file.buffer,
+          uploadOptions,
+          cloudinary
+        );
+
         uploadResults[fieldName] = {
           url: result.secure_url,
           publicId: result.public_id,
+          hash: fileHash,
         };
+
+        // Create Media record
+        await Media.create({
+          url: result.secure_url,
+          public_id: result.public_id,
+          hash: fileHash,
+          uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000',
+          format: result.format,
+          resource_type: result.resource_type || 'image',
+          bytes: result.bytes,
+          width: result.width,
+          height: result.height,
+        });
 
         // Store URL in request body
         // Use fieldMapping if provided, otherwise use fieldName
         const storageFieldName = options.fieldMapping || fieldName;
-        
+
         if (options.storeIn) {
           if (!req.body[options.storeIn]) {
             req.body[options.storeIn] = {};

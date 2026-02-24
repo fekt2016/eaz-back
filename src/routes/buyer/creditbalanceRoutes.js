@@ -13,7 +13,7 @@ router.get(
 );
 router.post(
   '/add',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   creditbalanceController.addCredit,
 );
 router.get(

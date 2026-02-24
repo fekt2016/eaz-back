@@ -102,7 +102,7 @@ const sellerSchema = new mongoose.Schema(
           maxlength: 15,
           default: null,
           validate: {
-            validator: function(v) {
+            validator: function (v) {
               if (!v) return true; // Optional field
               return /^[A-Z]{2}-\d{3}-\d{4}$/.test(v.toUpperCase());
             },
@@ -167,18 +167,22 @@ const sellerSchema = new mongoose.Schema(
       default: null,
     },
     verificationDocuments: {
-      businessCert: { 
+      businessCert: {
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
-      idProof: { 
+      idProof: {
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
-      addresProof: { 
+      addresProof: {
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
+    },
+    connectedAccounts: {
+      google: { type: Boolean, default: false },
+      facebook: { type: Boolean, default: false },
     },
     password: {
       type: String,
@@ -207,13 +211,13 @@ const sellerSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Pending balance cannot be negative'],
       validate: {
-        validator: function(value) {
+        validator: function (value) {
           return value >= 0;
         },
         message: 'Pending balance cannot be negative'
       }
     },
-  lockedReason: {
+    lockedReason: {
       type: String,
       default: null,
       comment: 'Reason for admin locking funds',
@@ -367,7 +371,7 @@ const sellerSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    role: { type: String, enum: ['seller', 'eazshop_store'], default: 'seller' },
+    role: { type: String, enum: ['seller', 'official_store'], default: 'seller' },
     passwordResetToken: String,
     passwordResetExpires: Date,
     active: { type: Boolean, default: true, select: false },
@@ -487,8 +491,8 @@ const sellerSchema = new mongoose.Schema(
     },
     lastLogin: { type: Date, default: Date.now() },
     // SECURITY FIX #9: Session activity tracking for timeout
-    lastActivity: { 
-      type: Date, 
+    lastActivity: {
+      type: Date,
       default: Date.now,
       select: false, // Don't return in queries by default
     },
@@ -518,7 +522,7 @@ sellerSchema.virtual('orders', {
  * 2. At least one payment method exists AND is verified
  * 3. Email is verified OR phone exists
  */
-sellerSchema.methods.computeIsSetupComplete = function() {
+sellerSchema.methods.computeIsSetupComplete = function () {
   // Helper function to get document status
   const getDocumentStatus = (document) => {
     if (!document) return null;
@@ -531,18 +535,18 @@ sellerSchema.methods.computeIsSetupComplete = function() {
   const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
   const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
 
-  const allDocumentsUploaded = 
-    (this.verificationDocuments?.businessCert && 
-     (typeof this.verificationDocuments.businessCert === 'string' || 
-      this.verificationDocuments.businessCert.url)) &&
-    (this.verificationDocuments?.idProof && 
-     (typeof this.verificationDocuments.idProof === 'string' || 
-      this.verificationDocuments.idProof.url)) &&
-    (this.verificationDocuments?.addresProof && 
-     (typeof this.verificationDocuments.addresProof === 'string' || 
-      this.verificationDocuments.addresProof.url));
+  const allDocumentsUploaded =
+    (this.verificationDocuments?.businessCert &&
+      (typeof this.verificationDocuments.businessCert === 'string' ||
+        this.verificationDocuments.businessCert.url)) &&
+    (this.verificationDocuments?.idProof &&
+      (typeof this.verificationDocuments.idProof === 'string' ||
+        this.verificationDocuments.idProof.url)) &&
+    (this.verificationDocuments?.addresProof &&
+      (typeof this.verificationDocuments.addresProof === 'string' ||
+        this.verificationDocuments.addresProof.url));
 
-  const allDocumentsVerified = 
+  const allDocumentsVerified =
     businessCertStatus === 'verified' &&
     idProofStatus === 'verified' &&
     addresProofStatus === 'verified';
@@ -552,8 +556,8 @@ sellerSchema.methods.computeIsSetupComplete = function() {
   // 2. Check payment method: At least one exists AND is verified
   const bankAccountPayoutStatus = this.paymentMethods?.bankAccount?.payoutStatus;
   const mobileMoneyPayoutStatus = this.paymentMethods?.mobileMoney?.payoutStatus;
-  const hasPaymentMethodVerified = 
-    bankAccountPayoutStatus === 'verified' || 
+  const hasPaymentMethodVerified =
+    bankAccountPayoutStatus === 'verified' ||
     mobileMoneyPayoutStatus === 'verified';
 
   // 3. Check contact: Email verified OR phone exists
@@ -597,14 +601,14 @@ sellerSchema.pre('save', function (next) {
         this.paymentMethods.bankAccount.bankName = undefined;
       }
       // Remove bankAccount if all fields are empty
-      const hasBankData = this.paymentMethods.bankAccount.bankName || 
-                         this.paymentMethods.bankAccount.accountNumber || 
-                         this.paymentMethods.bankAccount.accountName;
+      const hasBankData = this.paymentMethods.bankAccount.bankName ||
+        this.paymentMethods.bankAccount.accountNumber ||
+        this.paymentMethods.bankAccount.accountName;
       if (!hasBankData) {
         this.paymentMethods.bankAccount = undefined;
       }
     }
-    
+
     // Clean up mobileMoney if it has empty enum fields
     if (this.paymentMethods.mobileMoney) {
       if (!this.paymentMethods.mobileMoney.phone || this.paymentMethods.mobileMoney.phone === '') {
@@ -614,14 +618,14 @@ sellerSchema.pre('save', function (next) {
         this.paymentMethods.mobileMoney.network = undefined;
       }
       // Remove mobileMoney if all fields are empty
-      const hasMobileData = this.paymentMethods.mobileMoney.phone || 
-                           this.paymentMethods.mobileMoney.network || 
-                           this.paymentMethods.mobileMoney.accountName;
+      const hasMobileData = this.paymentMethods.mobileMoney.phone ||
+        this.paymentMethods.mobileMoney.network ||
+        this.paymentMethods.mobileMoney.accountName;
       if (!hasMobileData) {
         this.paymentMethods.mobileMoney = undefined;
       }
     }
-    
+
     // Remove paymentMethods entirely if both bankAccount and mobileMoney are empty
     if (!this.paymentMethods.bankAccount && !this.paymentMethods.mobileMoney) {
       this.paymentMethods = undefined;
@@ -638,11 +642,11 @@ sellerSchema.pre('save', function (next) {
 sellerSchema.pre('save', async function (next) {
   // Check if verificationDocuments, verification fields, paymentMethods, or phone have been modified
   const documentsModified = this.isModified('verificationDocuments');
-  const emailVerifiedModified = this.isModified('verification.emailVerified') || 
-                               (this.isModified('verification') && this.verification?.emailVerified);
+  const emailVerifiedModified = this.isModified('verification.emailVerified') ||
+    (this.isModified('verification') && this.verification?.emailVerified);
   const paymentMethodsModified = this.isModified('paymentMethods');
   const phoneModified = this.isModified('phone');
-  
+
   // Only run if relevant fields have been modified
   if (!documentsModified && !emailVerifiedModified && !paymentMethodsModified && !phoneModified) {
     return next();
@@ -670,22 +674,22 @@ sellerSchema.pre('save', async function (next) {
   const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
 
   // Check if all documents are verified
-  const allDocumentsVerified = 
+  const allDocumentsVerified =
     businessCertStatus === 'verified' &&
     idProofStatus === 'verified' &&
     addresProofStatus === 'verified';
 
   // Also check if documents have URLs (they must be uploaded)
-  const allDocumentsUploaded = 
-    (this.verificationDocuments?.businessCert && 
-     (typeof this.verificationDocuments.businessCert === 'string' || 
-      this.verificationDocuments.businessCert.url)) &&
-    (this.verificationDocuments?.idProof && 
-     (typeof this.verificationDocuments.idProof === 'string' || 
-      this.verificationDocuments.idProof.url)) &&
-    (this.verificationDocuments?.addresProof && 
-     (typeof this.verificationDocuments.addresProof === 'string' || 
-      this.verificationDocuments.addresProof.url));
+  const allDocumentsUploaded =
+    (this.verificationDocuments?.businessCert &&
+      (typeof this.verificationDocuments.businessCert === 'string' ||
+        this.verificationDocuments.businessCert.url)) &&
+    (this.verificationDocuments?.idProof &&
+      (typeof this.verificationDocuments.idProof === 'string' ||
+        this.verificationDocuments.idProof.url)) &&
+    (this.verificationDocuments?.addresProof &&
+      (typeof this.verificationDocuments.addresProof === 'string' ||
+        this.verificationDocuments.addresProof.url));
 
   // 4. Check if payment method is verified (at least one payment method is verified)
   // Use the shared helper for embedded paymentMethods first, then PaymentMethod collection fallback
@@ -721,8 +725,8 @@ sellerSchema.pre('save', async function (next) {
   // - All 3 documents verified and uploaded
   // - At least ONE contact is verified (email OR phone)
   // - Payment method verified (at least one payment method is verified)
-  const allRequirementsMet = 
-    allDocumentsVerified && 
+  const allRequirementsMet =
+    allDocumentsVerified &&
     allDocumentsUploaded &&
     hasVerifiedContact &&
     hasPaymentMethodVerified;
@@ -738,7 +742,7 @@ sellerSchema.pre('save', async function (next) {
       }
       this.verification = this.verification || {};
       this.verification.businessVerified = true;
-      
+
       // Set verifiedBy and verifiedAt if not already set
       // Use the most recent document's verifiedBy as the seller's verifiedBy
       if (!this.verifiedBy) {
@@ -746,28 +750,28 @@ sellerSchema.pre('save', async function (next) {
           if (typeof doc === 'string') return null;
           return doc?.verifiedBy || null;
         };
-        
+
         const businessCertAdmin = getVerifiedBy(this.verificationDocuments.businessCert);
         const idProofAdmin = getVerifiedBy(this.verificationDocuments.idProof);
         const addresProofAdmin = getVerifiedBy(this.verificationDocuments.addresProof);
-        
+
         // Use the most recent admin who verified (prefer the last one verified)
         this.verifiedBy = addresProofAdmin || idProofAdmin || businessCertAdmin;
       }
-      
+
       if (!this.verifiedAt) {
         // Use the most recent document's verifiedAt as the seller's verifiedAt
         const getVerifiedAt = (doc) => {
           if (typeof doc === 'string') return null;
           return doc?.verifiedAt ? new Date(doc.verifiedAt) : null;
         };
-        
+
         const dates = [
           getVerifiedAt(this.verificationDocuments.businessCert),
           getVerifiedAt(this.verificationDocuments.idProof),
           getVerifiedAt(this.verificationDocuments.addresProof),
         ].filter(Boolean);
-        
+
         if (dates.length > 0) {
           // Use the most recent date
           this.verifiedAt = new Date(Math.max(...dates.map(d => d.getTime())));
@@ -795,7 +799,7 @@ sellerSchema.pre('save', async function (next) {
         this.verification = this.verification || {};
         this.verification.businessVerified = false;
         // Don't clear verifiedBy and verifiedAt - keep history
-        
+
         console.log('[Seller Pre-Save Hook] ⚠️ Requirements not met - reverting to pending_verification:', {
           sellerId: this._id,
           emailVerified: isEmailVerified,
@@ -846,18 +850,18 @@ sellerSchema.methods.createPasswordResetToken = function () {
 sellerSchema.methods.createOtp = function () {
   // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   // Hash OTP before storing (SHA-256)
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-  
+
   // Store hashed OTP
   this.otp = hashedOtp;
   this.otpExpires = Date.now() + (process.env.OTP_EXPIRES_IN || 10) * 60 * 1000; // 10 minutes default
   this.otpAttempts = 0; // Reset attempts on new OTP
   this.otpLockedUntil = null; // Clear lockout
-  
+
   logger.info('[Seller createOtp] Generated OTP (hashed);');
-  
+
   // Return plain OTP for sending (not hashed)
   return otp;
 };
@@ -869,37 +873,37 @@ sellerSchema.methods.verifyOtp = function (candidateOtp) {
     logger.info('[Seller verifyOtp] Account locked:', { minutesRemaining });
     return { valid: false, locked: true, minutesRemaining };
   }
-  
+
   // Check if OTP exists
   if (!this.otp || !this.otpExpires) {
     return { valid: false, reason: 'no_otp' };
   }
-  
+
   // Check if expired
   if (new Date(this.otpExpires).getTime() <= Date.now()) {
     const minutesExpired = Math.floor((Date.now() - new Date(this.otpExpires).getTime()) / (1000 * 60));
     return { valid: false, reason: 'expired', minutesExpired };
   }
-  
+
   // Normalize candidate OTP
   const providedOtp = String(candidateOtp || '').trim().replace(/\D/g, '');
-  
+
   if (providedOtp.length === 0 || providedOtp.length !== 6) {
     return { valid: false, reason: 'invalid_format' };
   }
-  
+
   // Hash candidate OTP and compare
   const hashedCandidate = crypto.createHash('sha256').update(providedOtp).digest('hex');
   const otpMatch = this.otp === hashedCandidate;
-  
+
   if (!otpMatch) {
     return { valid: false, reason: 'mismatch' };
   }
-  
+
   // OTP is valid - reset attempts and lockout
   this.otpAttempts = 0;
   this.otpLockedUntil = null;
-  
+
   return { valid: true };
 };
 sellerSchema.methods.hasSufficientBalance = function (amount) {
@@ -933,7 +937,7 @@ sellerSchema.methods.calculateWithdrawableBalance = function () {
     logger.warn(`[Seller Model] ⚠️ Negative pendingBalance detected for seller ${this._id}: ${this.pendingBalance}. Resetting to 0.`);
     this.pendingBalance = 0;
   }
-  
+
   this.withdrawableBalance = Math.max(0, this.balance - this.lockedBalance - safePendingBalance);
   return this.withdrawableBalance;
 };
@@ -965,7 +969,7 @@ sellerSchema.pre('save', async function (next) {
     }
 
     // Compare bank account details
-    const bankAccountChanged = 
+    const bankAccountChanged =
       (this.paymentMethods?.bankAccount?.accountNumber || '') !== (originalSeller.paymentMethods?.bankAccount?.accountNumber || '') ||
       (this.paymentMethods?.bankAccount?.accountName || '') !== (originalSeller.paymentMethods?.bankAccount?.accountName || '') ||
       (this.paymentMethods?.bankAccount?.bankName || '') !== (originalSeller.paymentMethods?.bankAccount?.bankName || '');
@@ -1005,13 +1009,13 @@ sellerSchema.pre('save', async function (next) {
     try {
       const PaymentMethod = mongoose.model('PaymentMethod');
       const User = mongoose.model('User');
-      
+
       // Find User account for this seller (if exists)
       const userAccount = await User.findOne({ email: this.email });
       if (userAccount) {
         // Find matching PaymentMethod records and reset their verification status
         let matchingPaymentMethods = [];
-        
+
         // Check bank account changes
         if (bankAccountChanged && this.paymentMethods?.bankAccount?.accountNumber) {
           const accountNumber = this.paymentMethods.bankAccount.accountNumber.replace(/\s+/g, '');
@@ -1022,7 +1026,7 @@ sellerSchema.pre('save', async function (next) {
           });
           matchingPaymentMethods.push(...bankMethods);
         }
-        
+
         // Check mobile money changes
         if (mobileMoneyChanged && this.paymentMethods?.mobileMoney?.phone) {
           const normalizedPhone = this.paymentMethods.mobileMoney.phone.replace(/\D/g, '');
@@ -1033,7 +1037,7 @@ sellerSchema.pre('save', async function (next) {
           });
           matchingPaymentMethods.push(...mobileMethods);
         }
-        
+
         // Reset verification status for all matching PaymentMethod records
         if (matchingPaymentMethods.length > 0) {
           for (const pm of matchingPaymentMethods) {
@@ -1041,7 +1045,7 @@ sellerSchema.pre('save', async function (next) {
             pm.verifiedAt = null;
             pm.verifiedBy = null;
             pm.rejectionReason = null;
-            
+
             // Add to verification history
             if (!pm.verificationHistory) {
               pm.verificationHistory = [];
@@ -1052,7 +1056,7 @@ sellerSchema.pre('save', async function (next) {
               reason: 'Payment details changed - verification reset',
               timestamp: new Date(),
             });
-            
+
             await pm.save({ validateBeforeSave: false });
           }
           console.log(`[Seller Model] Reset ${matchingPaymentMethods.length} PaymentMethod verification status(es) for seller ${this._id}`);
@@ -1073,11 +1077,11 @@ sellerSchema.pre('save', async function (next) {
         adminId: null, // System-initiated
         reason: 'Payout details changed - verification reset',
         timestamp: new Date(),
-        paymentMethod: this.paymentMethods?.bankAccount ? 'bank' : 
-                      this.paymentMethods?.mobileMoney ? 
-                        (this.paymentMethods.mobileMoney.network === 'MTN' ? 'mtn_momo' :
-                         this.paymentMethods.mobileMoney.network === 'Vodafone' ? 'vodafone_cash' :
-                         'airtel_tigo_money') : null,
+        paymentMethod: this.paymentMethods?.bankAccount ? 'bank' :
+          this.paymentMethods?.mobileMoney ?
+            (this.paymentMethods.mobileMoney.network === 'MTN' ? 'mtn_momo' :
+              this.paymentMethods.mobileMoney.network === 'Vodafone' ? 'vodafone_cash' :
+                'airtel_tigo_money') : null,
         paymentDetails: this.paymentMethods?.bankAccount || this.paymentMethods?.mobileMoney,
       });
 

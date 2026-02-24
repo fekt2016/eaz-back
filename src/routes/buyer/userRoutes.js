@@ -96,20 +96,20 @@ router.get(
 router.get(
   '/get/count',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   userCount,
 );
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin'), getAllUsers)
+  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllUsers)
   .post(createUser);
 router
   .route('/:id')
-  .get(authController.protect, authController.restrictTo('admin'), getUser)
-  .patch(authController.protect, authController.restrictTo('admin'), updateUser)
+  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getUser)
+  .patch(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), updateUser)
   .delete(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     deleteUser,
   );
 

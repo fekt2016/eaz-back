@@ -41,11 +41,11 @@ router
 
 // Admin-only cart access
 router.route('/:id').get(
-  authController.restrictTo('admin'), // Only admins can view any cart
+  authController.restrictTo('admin', 'superadmin', 'moderator'), // Only admins can view any cart
   cartController.getCart,
 );
 // .patch(
-//   authController.restrictTo('admin'), // Only admins can modify any cart
+//   authController.restrictTo('admin', 'superadmin', 'moderator'), // Only admins can modify any cart
 //   cartController.updateCart,
 // );
 

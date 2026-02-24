@@ -7,6 +7,7 @@ const sharp = require('sharp');
 const stream = require('stream');
 const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
 
 const multerStorage = multer.memoryStorage();
 
@@ -34,7 +35,7 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
 
   // Get Cloudinary instance from app
   const cloudinary = req.app.get('cloudinary');
-  
+
   if (!cloudinary) {
     // Fallback to local storage if Cloudinary is not configured
     req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
@@ -56,36 +57,22 @@ exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  // Upload to Cloudinary
-  const result = await new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: 'user-avatars',
-        public_id: `user-${req.user.id}-${Date.now()}`,
-        transformation: [
-          { width: 500, height: 500, crop: 'fill', gravity: 'face' },
-          { quality: 'auto', fetch_format: 'auto' },
-        ],
-        resource_type: 'image',
-      },
-      (error, result) => {
-        if (error) {
-          return reject(new AppError(`Image upload failed: ${error.message}`, 500));
-        }
-        resolve(result);
-      },
-    );
-
-    // Create buffer stream from optimized image
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(optimizedBuffer);
-    bufferStream.pipe(uploadStream);
+  // Upload to Cloudinary using central utility (handles duplicates)
+  const result = await uploadToCloudinary(optimizedBuffer, {
+    folder: 'user-avatars',
+    public_id: `user-${req.user.id}-${Date.now()}`,
+    transformation: [
+      { width: 500, height: 500, crop: 'fill', gravity: 'face' },
+      { quality: 'auto', fetch_format: 'auto' },
+    ],
+    resourceType: 'image',
+    uploadedBy: req.user.id
   });
 
   // Store Cloudinary URL in req.file for use in controller
   req.file.cloudinaryUrl = result.secure_url;
   req.file.publicId = result.public_id;
-  
+
   next();
 });
 
@@ -182,15 +169,15 @@ exports.getMe = catchAsync(async (req, res, next) => {
   if (!req.user) {
     return next(new AppError('You are not authenticated', 401));
   }
-  
+
   // Optionally refresh from database to get latest data
   const data = await User.findById(req.user.id);
-  
+
   if (!data) {
     // User was deleted after authentication - clear the session
     return next(new AppError('Your account no longer exists. Please contact support.', 404));
   }
-  
+
   res.status(200).json({ status: 'success', data });
 });
 

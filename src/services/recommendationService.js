@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Product = require('../models/product/productModel');
 const UserActivity = require('../models/analytics/userActivityModel');
 const ProductRelations = require('../models/analytics/productRelationsModel');
@@ -16,17 +17,17 @@ const AI_ENABLED = process.env.AI_SEARCH_ENABLED === 'true' && !!OPENAI_API_KEY;
  */
 function cosineSimilarity(vecA, vecB) {
   if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-  
+
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
-  
+
   for (let i = 0; i < vecA.length; i++) {
     dotProduct += vecA[i] * vecB[i];
     normA += vecA[i] * vecA[i];
     normB += vecB[i] * vecB[i];
   }
-  
+
   if (normA === 0 || normB === 0) return 0;
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
@@ -39,7 +40,7 @@ async function generateProductEmbedding(product) {
 
   try {
     const text = `${product.name} ${product.description || ''} ${product.brand || ''} ${(product.tags || []).join(' ')} ${(product.keywords || []).join(' ')}`.trim();
-    
+
     const response = await axios.post(
       OPENAI_EMBEDDING_URL,
       {
@@ -68,15 +69,15 @@ async function generateProductEmbedding(product) {
  */
 async function getRelatedProducts(productId, limit = 10) {
   try {
-    const product = await Product.findById(productId).select('parentCategory subCategory brand price minPrice maxPrice attributes tags status');
-    
+    const product = await Product.findById(productId).select('name parentCategory subCategory brand price minPrice maxPrice attributes tags status');
+
     if (!product || product.status !== 'active') {
       return [];
     }
 
     // Build similarity query
     const matchCriteria = {
-      _id: { $ne: productId },
+      _id: { $ne: new mongoose.Types.ObjectId(productId) },
       status: 'active',
       $or: [],
     };
@@ -111,32 +112,32 @@ async function getRelatedProducts(productId, limit = 10) {
     }
 
     const relatedProducts = await Product.find(matchCriteria)
-      .select('name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
+      .select('name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .limit(limit * 2) // Get more to score and filter
       .lean();
 
     // Score products by similarity
     const scoredProducts = relatedProducts.map((p) => {
       let score = 0;
-      
+
       // Category match (40 points)
       if (p.parentCategory?.toString() === product.parentCategory?.toString()) score += 40;
       if (p.subCategory?.toString() === product.subCategory?.toString()) score += 30;
-      
+
       // Brand match (20 points)
       if (p.brand === product.brand) score += 20;
-      
+
       // Price similarity (10 points)
       if (product.price && p.price) {
         const priceDiff = Math.abs(p.price - product.price) / product.price;
         if (priceDiff <= 0.1) score += 10;
         else if (priceDiff <= 0.3) score += 5;
       }
-      
+
       // Popularity boost (ratings + sales)
       score += (p.ratingsAverage || 0) * 2;
       score += Math.min(p.totalSold || 0, 100) * 0.1;
-      
+
       return { ...p, _similarityScore: score };
     });
 
@@ -153,76 +154,11 @@ async function getRelatedProducts(productId, limit = 10) {
 
 /**
  * B. Customers Also Bought
- * Build analytics from orders and recommend co-purchased items
+ * Simplified to return category/brand related products directly from the database
  */
 async function getAlsoBoughtProducts(productId, limit = 10) {
   try {
-    // Find all order items containing this product
-    const orderItemsWithProduct = await OrderItems.find({
-      product: productId,
-    })
-      .select('order')
-      .lean();
-
-    const orderIds = [...new Set(orderItemsWithProduct.map(item => item.order.toString()))];
-
-    if (orderIds.length === 0) {
-      // Fallback to related products if no purchase data
-      return await getRelatedProducts(productId, limit);
-    }
-
-    // Get all products from those orders (excluding the current product)
-    const allOrderItems = await OrderItems.find({
-      order: { $in: orderIds },
-      product: { $ne: productId },
-    })
-      .populate('product', 'name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
-      .lean();
-
-    // Count frequency of co-purchased products
-    const productFrequency = {};
-    allOrderItems.forEach((item) => {
-      if (item.product && item.product.status === 'active') {
-        const prodId = item.product._id.toString();
-        productFrequency[prodId] = (productFrequency[prodId] || 0) + item.quantity;
-      }
-    });
-
-    // Convert to array and sort by frequency
-    const alsoBought = Object.entries(productFrequency)
-      .map(([id, frequency]) => {
-        const item = allOrderItems.find(oi => oi.product?._id.toString() === id);
-        return item ? { ...item.product, _frequency: frequency } : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => b._frequency - a._frequency)
-      .slice(0, limit)
-      .map(({ _frequency, ...product }) => product);
-
-    // Update ProductRelations for future use
-    for (const product of alsoBought) {
-      const prodId = product._id?.toString() || product.id?.toString();
-      if (prodId && productFrequency[prodId]) {
-        await ProductRelations.findOneAndUpdate(
-          {
-            productId,
-            relatedProductId: prodId,
-            relationType: 'also_bought',
-          },
-          {
-            productId,
-            relatedProductId: prodId,
-            relationType: 'also_bought',
-            frequency: productFrequency[prodId],
-            score: Math.min(productFrequency[prodId] / 10, 1),
-            lastUpdated: new Date(),
-          },
-          { upsert: true, new: true }
-        );
-      }
-    }
-
-    return alsoBought.length > 0 ? alsoBought : await getRelatedProducts(productId, limit);
+    return await getRelatedProducts(productId, limit);
   } catch (error) {
     logger.error('[Recommendation] Error getting also bought products:', error);
     return await getRelatedProducts(productId, limit);
@@ -305,7 +241,7 @@ async function getPersonalizedRecommendations(userId, limit = 10) {
 
     // Build recommendation query
     const matchCriteria = {
-      _id: { $nin: Array.from(viewedProducts).map(id => require('mongoose').Types.ObjectId(id)) },
+      _id: { $nin: Array.from(viewedProducts).map(id => new mongoose.Types.ObjectId(id)) },
       status: 'active',
       $or: [],
     };
@@ -338,7 +274,7 @@ async function getPersonalizedRecommendations(userId, limit = 10) {
     }
 
     const recommendations = await Product.find(matchCriteria)
-      .select('name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
+      .select('name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .limit(limit * 2)
       .lean();
 
@@ -399,7 +335,7 @@ async function getRecentlyViewed(userId, limit = 10) {
     })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('productId', 'name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
+      .populate('productId', 'name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .lean();
 
     return recentViews
@@ -425,7 +361,7 @@ async function getTrendingProducts(limit = 10) {
     })
       .sort({ trendingScore: -1 })
       .limit(limit)
-      .populate('productId', 'name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
+      .populate('productId', 'name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .lean();
 
     // If no cached data or stale, compute fresh
@@ -527,7 +463,7 @@ async function computeTrendingProducts(limit = 10) {
 
     // Combine stats
     const productStats = {};
-    
+
     viewStats.forEach(stat => {
       if (!productStats[stat._id]) productStats[stat._id] = {};
       productStats[stat._id].views24h = stat.views24h;
@@ -575,7 +511,7 @@ async function computeTrendingProducts(limit = 10) {
     })
       .sort({ trendingScore: -1 })
       .limit(limit)
-      .populate('productId')
+      .populate('productId', 'name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .lean();
 
     return topTrending;
@@ -597,15 +533,15 @@ async function getAISimilarProducts(productId, limit = 10) {
     }
 
     const product = await Product.findById(productId).select('+embedding name description brand tags keywords embeddingUpdatedAt');
-    
+
     if (!product || product.status !== 'active') {
       return [];
     }
 
     // Generate or update embedding if needed
     let embedding = product.embedding;
-    const shouldUpdateEmbedding = !embedding || 
-      !product.embeddingUpdatedAt || 
+    const shouldUpdateEmbedding = !embedding ||
+      !product.embeddingUpdatedAt ||
       (Date.now() - new Date(product.embeddingUpdatedAt).getTime() > 30 * 24 * 60 * 60 * 1000); // 30 days
 
     if (shouldUpdateEmbedding || !embedding) {
@@ -624,11 +560,11 @@ async function getAISimilarProducts(productId, limit = 10) {
 
     // Find products with embeddings
     const allProducts = await Product.find({
-      _id: { $ne: productId },
+      _id: { $ne: new mongoose.Types.ObjectId(productId) },
       status: 'active',
       embedding: { $exists: true, $ne: null },
     })
-      .select('+embedding name imageCover price minPrice maxPrice brand ratingsAverage totalSold status slug')
+      .select('+embedding name imageCover images variants price minPrice maxPrice brand ratingsAverage totalSold status slug')
       .limit(100) // Limit for performance
       .lean();
 

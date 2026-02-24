@@ -26,7 +26,7 @@ router.get(
 
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin'), getAllReview)
+  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllReview)
   .post(
     authController.protect,
     authController.restrictTo('user', 'buyer'),

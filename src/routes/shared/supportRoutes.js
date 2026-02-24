@@ -27,19 +27,19 @@ router.post(
 // Admin routes
 router.patch(
   '/tickets/:id/status',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   supportController.updateTicketStatus
 );
 
 router.get(
   '/admin/tickets',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   supportController.getAllTickets
 );
 
 router.get(
   '/admin/stats',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   supportController.getSupportStats
 );
 

@@ -84,6 +84,11 @@ const sellerOrderSchema = new mongoose.Schema({
     default: 0,
     comment: 'VAT on platform commission (stored separately for payouts)',
   },
+  sellerShippingContribution: {
+    type: Number,
+    default: 0,
+    comment: 'Amount deducted from seller payout to cover logistics',
+  },
   /** Dual VAT (Ghana): seller = payout includes VAT (base+VAT-commission); platform = VAT withheld (base-commission only) */
   vatCollectedBy: {
     type: String,
@@ -157,12 +162,14 @@ sellerOrderSchema.virtual('payoutAmount').get(function () {
     ? this.commissionAmount
     : (this.subtotal + this.shippingCost) * (this.commissionRate ?? 0);
   const vatOnComm = this.vatOnCommission != null && this.vatOnCommission >= 0 ? this.vatOnCommission : 0;
+  const contribution = this.sellerShippingContribution || 0;
+
   if (this.vatCollectedBy === 'seller') {
     const total = this.subtotal + this.shippingCost;
-    return Math.max(0, total - commission - vatOnComm);
+    return Math.max(0, total - commission - vatOnComm - contribution);
   }
   const baseAndShipping = (this.totalBasePrice || 0) + (this.shippingCost || 0);
-  return Math.max(0, baseAndShipping - commission - vatOnComm);
+  return Math.max(0, baseAndShipping - commission - vatOnComm - contribution);
 });
 
 // Indexes for seller orders list, payout, and order lookup

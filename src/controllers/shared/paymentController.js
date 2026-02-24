@@ -23,17 +23,24 @@ exports.updatePayment = handleFactory.updateOne(Payment);
 
 // Initialize Paystack payment for mobile money
 exports.initializePaystack = catchAsync(async (req, res, next) => {
+  // 🔍 DEBUG: Log the entire request body to see what we received
+  console.log('[initializePaystack] 🔍 DEBUG - Request received:');
+  console.log('[initializePaystack] Request body:', JSON.stringify(req.body, null, 2));
+  console.log('[initializePaystack] Request body keys:', Object.keys(req.body || {}));
+  console.log('[initializePaystack] orderId:', req.body?.orderId, '(type:', typeof req.body?.orderId, ')');
+  console.log('[initializePaystack] amount:', req.body?.amount, '(type:', typeof req.body?.amount, ')');
+  console.log('[initializePaystack] email:', req.body?.email, '(type:', typeof req.body?.email, ')');
+
   const { orderId, email } = req.body;
 
-  logger.info('[initializePaystack] Request received', { orderId, env: process.env.NODE_ENV });
-
+  // SECURITY: Do NOT accept amount from request body - always calculate from order
   // Enhanced validation
   const missingFields = [];
   if (!orderId) missingFields.push('orderId');
   if (!email || email.trim() === '') missingFields.push('email');
 
   if (missingFields.length > 0) {
-    logger.error('[initializePaystack] ❌ Missing required fields:', missingFields);
+    console.error('[initializePaystack] ❌ Missing required fields:', missingFields);
     return next(
       new AppError(
         'Invalid request. Please provide all required information.',
@@ -42,7 +49,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     );
   }
 
-  // Verify order exists and belongs to the user; fetch order to verify amount
+  // Verify order exists and belongs  // Fetch order to verify amount
   const order = await Order.findById(orderId).populate('user', 'email name');
 
   if (!order) {
@@ -51,43 +58,103 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
   // SECURITY FIX: Verify order is unpaid before allowing payment initialization
   if (order.paymentStatus !== 'pending') {
-    logger.error(`[Payment Init] ❌ Order ${orderId} payment status is not pending:`, order.paymentStatus);
+    console.error(`[Payment Init] ❌ Order ${orderId} payment status is not pending:`, order.paymentStatus);
     if (order.paymentStatus === 'paid') {
       return next(new AppError('This action cannot be completed', 400));
     }
     return next(new AppError('This action cannot be completed at this time', 400));
   }
 
-  // SECURITY: Always use server-side order total
+  // SECURITY FIX #15: Server-side amount validation
+  // NEVER trust frontend amount - always use server-side order total
   const serverAmount = order.totalPrice;
 
-  if (!serverAmount || isNaN(serverAmount) || serverAmount <= 0) {
-    logger.error(`[Payment Init] ❌ Order ${orderId} has invalid totalPrice:`, serverAmount);
+  // CRITICAL: Log order details for debugging
+  console.log(`[Payment Init] 🔍 Order ${orderId} details:`, {
+    totalPrice: order.totalPrice,
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    shippingFee: order.shippingFee,
+    discountAmount: order.discountAmount,
+    tax: order.tax,
+    orderItemsCount: order.orderItems?.length || 0,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+  });
+
+  // CRITICAL: Validate that order has a valid totalPrice
+  if (!serverAmount || serverAmount === null || serverAmount === undefined || isNaN(serverAmount)) {
+    console.error(`[Payment Init] ❌ Order ${orderId} has invalid totalPrice:`, serverAmount);
+    console.error(`[Payment Init] Order details:`, {
+      totalPrice: order.totalPrice,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      orderItems: order.orderItems?.length || 0,
+    });
     return next(new AppError('Invalid request. Please try again or contact support.', 400));
   }
 
+  if (serverAmount <= 0) {
+    console.error(`[Payment Init] ❌ Order ${orderId} has zero or negative totalPrice:`, serverAmount);
+    console.error(`[Payment Init] Order details:`, {
+      totalPrice: order.totalPrice,
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
+      discountAmount: order.discountAmount,
+      orderItems: order.orderItems?.length || 0,
+    });
+    return next(new AppError('Invalid request. Please try again or contact support.', 400));
+  }
+
+  // SECURITY: Ignore any amount sent in request body - always use server-calculated amount
+  // Frontend should not send amount at all, but if it does, we ignore it for security
+
+  // SECURITY: Use server amount for Paystack, not frontend amount
   const paystackAmount = Math.round(serverAmount * 100); // Convert to kobo/pesewas
 
+  // CRITICAL: Validate Paystack amount is valid (must be > 0 after conversion)
   if (!paystackAmount || paystackAmount <= 0 || isNaN(paystackAmount)) {
-    logger.error(`[Payment Init] ❌ Invalid Paystack amount:`, { serverAmount, paystackAmount, orderId });
+    console.error(`[Payment Init] ❌ Invalid Paystack amount calculated:`, {
+      serverAmount,
+      paystackAmount,
+      orderId,
+    });
     return next(new AppError('Invalid request. Please try again or contact support.', 400));
   }
 
-  // Authorization check: ensure requester owns the order
-  const orderUserId = order.user?._id
-    ? order.user._id.toString()
-    : order.user?.id
-      ? order.user.id.toString()
-      : order.user?.toString() || String(order.user);
+  // DEBUG: Log user IDs to identify authorization issue
+  console.log('[Payment Init] 🔍 DEBUG - User Authorization Check:');
+  console.log('[Payment Init] ORDER USER:', order.user.toString(), 'Type:', typeof order.user);
+  console.log('[Payment Init] REQUEST USER:', req.user.id.toString(), 'Type:', typeof req.user.id);
+  console.log('[Payment Init] Order User ID (raw):', order.user);
+  console.log('[Payment Init] Request User ID (raw):', req.user.id);
+  console.log('[Payment Init] Are they equal?', order.user.toString() === req.user.id.toString());
+  console.log('[Payment Init] Order ID:', orderId);
+  console.log('[Payment Init] Request headers:', {
+    authorization: req.headers.authorization ? 'Bearer ***' : 'MISSING',
+    cookie: req.headers.cookie ? 'Present' : 'MISSING',
+  });
 
-  const requestUserId = req.user?._id
+  // Handle populated user object (from .populate('user'))
+  const orderUserId = order.user?._id 
+    ? order.user._id.toString() 
+    : order.user?.id 
+    ? order.user.id.toString()
+    : order.user?.toString() || String(order.user);
+  
+  const requestUserId = req.user?._id 
     ? req.user._id.toString()
     : req.user?.id?.toString() || String(req.user.id);
 
   if (orderUserId !== requestUserId) {
-    logger.error('[Payment Init] ❌ Authorization failed', { orderUserId, requestUserId, orderId });
+    console.error('[Payment Init] ❌ AUTHORIZATION FAILED:');
+    console.error('[Payment Init] Order belongs to user:', orderUserId);
+    console.error('[Payment Init] Request is from user:', requestUserId);
+    console.error('[Payment Init] These do not match!');
     return next(new AppError('You do not have permission to perform this action', 403));
   }
+
+  console.log('[Payment Init] ✅ Authorization check passed');
 
   // Get Paystack secret key from environment
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -822,7 +889,7 @@ exports.createPaymentRequest = catchAsync(async (req, res, next) => {
   try {
     // Use shared service function
     const paymentRequestService = require('../../services/paymentRequestService');
-    const logger = require('../../utils/logger');
+const logger = require('../../utils/logger');
     const paymentRequest = await paymentRequestService.createPaymentRequest(
       seller,
       amount,

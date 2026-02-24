@@ -40,21 +40,21 @@ router.delete(
 router.get(
   '/admin/pending',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   paymentController.getPendingRequests,
 );
 
 router.get(
   '/admin/:id',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   paymentController.getPaymentRequestByIdAdmin,
 );
 
 router.put(
   '/admin/:id/process',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   paymentController.processPaymentRequest,
 );
 

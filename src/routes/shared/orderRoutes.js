@@ -36,7 +36,7 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin'), getAllOrder)
+  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllOrder)
   // SECURITY FIX #5: Add input validation middleware before order creation
   .post(
     authController.protect,
@@ -48,7 +48,7 @@ router
 
 router.get('/get/totalsales', authController.protect, totalSales);
 router.get('/get/count', authController.protect, getCount);
-router.get('/get/stats', authController.protect, authController.restrictTo('admin'), getOrderStats);
+router.get('/get/stats', authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getOrderStats);
 // router.get('/get/userorders', authController.protect, getUserOrder);
 
 // Cart validation endpoint (must be before /:id route)
@@ -98,7 +98,7 @@ router
 router.post(
   '/backfill-seller-credits',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   require('../../controllers/admin/orderController').backfillSellerCredits
 );
 
@@ -139,7 +139,7 @@ router.post(
 router.patch(
   '/:orderId/confirm-payment',
   authController.protect,
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   require('../../controllers/admin/orderController').confirmPayment
 );
 
@@ -202,10 +202,10 @@ router.patch(
 
 router
   .route('/:id')
-  .get(authController.protect, authController.restrictTo('admin'), getOrder)
+  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getOrder)
   .patch(
     authController.protect,
-    authController.restrictTo('admin'),
+    authController.restrictTo('admin', 'superadmin', 'moderator'),
     updateOrder,
   )
   .delete(

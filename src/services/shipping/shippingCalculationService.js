@@ -1,304 +1,122 @@
-const SellerShippingSettings = require('../../models/shipping/sellerShippingSettingsModel');
 const Product = require('../../models/product/productModel');
 const Seller = require('../../models/user/sellerModel');
-const DispatchFees = require('../../models/shipping/dispatchFeesModel');
 const PickupCenter = require('../../models/shipping/pickupCenterModel');
-const EazShopShippingFees = require('../../models/shipping/eazshopShippingFeesModel');
+const CacheService = require('./shippingCacheService');
 const logger = require('../../utils/logger');
-const {
-  calculateCartWeight,
-  detectZone,
-  isSameDayAvailable,
-  calculateDeliveryEstimate,
-  calculateShippingFee,
-  getActiveShippingConfig,
-} = require('../../utils/helpers/shippingHelpers');
+const { getZoneFromNeighborhoodId } = require('../../utils/getZoneFromNeighborhood');
 
-// EazShop Seller ID constant
 const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 
 /**
- * Calculate shipping fee for a group of items from the same seller
- * @param {Array} items - Array of items with productId, quantity
- * @param {String} sellerId - Seller ID
- * @param {String} buyerCity - Buyer's city (ACCRA or TEMA)
- * @returns {Object} - { shippingFee, reason, hasHeavyItems }
+ * Get products populated with categories for tier comparison
  */
-async function calculateSellerShipping(items, sellerId, buyerCity) {
-  // Check if this is EazShop store
-  const sellerIdStr = sellerId.toString();
-  const isEazShopStore = sellerIdStr === EAZSHOP_SELLER_ID;
-  
-  // Get all products to check if they are EazShop products
-  const productIds = items.map(item => item.productId);
-  const products = await Product.find({ _id: { $in: productIds } })
-    .select('shippingType isEazShopProduct seller');
-  
-  // Check if any product is EazShop product
-  const hasEazShopProducts = products.some(product => 
-    product.isEazShopProduct || product.seller?.toString() === EAZSHOP_SELLER_ID
-  );
-
-  // If EazShop store or EazShop products, use EazShop shipping fees
-  if (isEazShopStore || hasEazShopProducts) {
-    const eazshopFees = await EazShopShippingFees.getOrCreate();
-    
-    // Get seller's city (default to ACCRA for EazShop)
-    let sellerCity = 'ACCRA';
-    if (isEazShopStore) {
-      const seller = await Seller.findById(sellerId).select('shopAddress location');
-      if (seller?.shopAddress?.city) {
-        sellerCity = seller.shopAddress.city.toUpperCase();
-      } else if (seller?.location) {
-        const locationUpper = seller.location.toUpperCase();
-        if (locationUpper.includes('ACCRA')) {
-          sellerCity = 'ACCRA';
-        } else if (locationUpper.includes('TEMA')) {
-          sellerCity = 'TEMA';
-        }
-      }
-    } else {
-      // For EazShop products, get seller city from products
-      const seller = await Seller.findById(products[0]?.seller).select('shopAddress location');
-      if (seller?.shopAddress?.city) {
-        sellerCity = seller.shopAddress.city.toUpperCase();
-      } else if (seller?.location) {
-        const locationUpper = seller.location.toUpperCase();
-        if (locationUpper.includes('ACCRA')) {
-          sellerCity = 'ACCRA';
-        } else if (locationUpper.includes('TEMA')) {
-          sellerCity = 'TEMA';
-        }
-      }
-    }
-    
-    // Ensure sellerCity is valid
-    if (!['ACCRA', 'TEMA'].includes(sellerCity)) {
-      sellerCity = 'ACCRA';
-    }
-
-    // Check if any item is heavy
-    const hasHeavyItems = products.some(product => product.shippingType === 'heavy');
-
-    let shippingFee;
-    let reason;
-
-    if (hasHeavyItems) {
-      shippingFee = eazshopFees.heavyItem;
-      reason = 'heavyItem';
-    } else if (buyerCity.toUpperCase() === sellerCity.toUpperCase()) {
-      shippingFee = eazshopFees.sameCity;
-      reason = 'sameCity';
-    } else {
-      shippingFee = eazshopFees.crossCity;
-      reason = 'crossCity';
-    }
-
-    return {
-      shippingFee,
-      reason,
-      hasHeavyItems,
-      sellerCity,
-      isEazShop: true,
-    };
-  }
-
-  // Regular seller shipping calculation
-  // Get seller's city from seller model
-  const seller = await Seller.findById(sellerId).select('shopAddress location');
-  // Try to get city from shopAddress.city, or location, or default to ACCRA
-  let sellerCity = 'ACCRA'; // Default
-  if (seller?.shopAddress?.city) {
-    sellerCity = seller.shopAddress.city.toUpperCase();
-  } else if (seller?.location) {
-    // Try to extract city from location string
-    const locationUpper = seller.location.toUpperCase();
-    if (locationUpper.includes('ACCRA')) {
-      sellerCity = 'ACCRA';
-    } else if (locationUpper.includes('TEMA')) {
-      sellerCity = 'TEMA';
-    }
-  }
-  
-  // Ensure sellerCity is valid
-  if (!['ACCRA', 'TEMA'].includes(sellerCity)) {
-    sellerCity = 'ACCRA'; // Default fallback
-  }
-
-  // Get seller shipping settings (create default if doesn't exist)
-  const shippingSettings = await SellerShippingSettings.getOrCreateDefault(sellerId);
-
-  // Check if any item is heavy
-  const hasHeavyItems = products.some(product => product.shippingType === 'heavy');
-
-  let shippingFee;
-  let reason;
-
-  if (hasHeavyItems) {
-    // Use heavy item shipping fee
-    shippingFee = shippingSettings.heavyItemShippingFee;
-    reason = 'heavyItem';
-  } else if (buyerCity.toUpperCase() === sellerCity.toUpperCase()) {
-    // Same city
-    shippingFee = shippingSettings.sameCityShippingFee;
-    reason = 'sameCity';
-  } else {
-    // Cross city (Accra <-> Tema)
-    shippingFee = shippingSettings.crossCityShippingFee;
-    reason = 'crossCity';
-  }
-
-  return {
-    shippingFee,
-    reason,
-    hasHeavyItems,
-    sellerCity,
-    isEazShop: false,
-  };
+async function getProductsWithCategories(items) {
+  const productIds = items.map(item => item.productId).filter(Boolean);
+  return Product.find({ _id: { $in: productIds } })
+    .populate('category')
+    .select('shipping specifications weight category isEazShopProduct seller name shippingType');
 }
 
 /**
- * Calculate shipping fee using EazShop dispatch fees
- * @param {Array} items - Array of items with productId, quantity
- * @param {String} buyerCity - Buyer's city (ACCRA or TEMA)
- * @returns {Object} - { shippingFee, reason, hasHeavyItems }
+ * Unified Shipping Calculation Logc
+ * Computes fee based on Zone rates * Tier Multipliers + Surcharges
  */
-async function calculateDispatchShipping(items, buyerCity) {
-  // Get all products to check shippingType and if they are EazShop products
-  const productIds = items.map(item => item.productId);
-  const products = await Product.find({ _id: { $in: productIds } })
-    .populate('seller', 'shopAddress location role')
-    .select('shippingType seller isEazShopProduct');
+async function calculateUnifiedShipping(items, buyerCity, buyerNeighborhoodId, shippingType = 'standard') {
+  let zone;
 
-  // Check if any products are EazShop products
-  const hasEazShopProducts = products.some(product => 
-    product.isEazShopProduct || 
-    product.seller?.role === 'eazshop_store' ||
-    product.seller?._id?.toString() === EAZSHOP_SELLER_ID
-  );
-
-  // Use EazShop shipping fees if products are EazShop products, otherwise use regular dispatch fees
-  let fees;
-  if (hasEazShopProducts) {
-    fees = await EazShopShippingFees.getOrCreate();
-  } else {
-    fees = await DispatchFees.getOrCreate();
-  }
-
-  // Check if any item is heavy
-  const hasHeavyItems = products.some(product => product.shippingType === 'heavy');
-
-  // Get seller cities
-  const sellerCities = new Set();
-  products.forEach(product => {
-    if (product.seller) {
-      let sellerCity = 'ACCRA';
-      if (product.seller.shopAddress?.city) {
-        sellerCity = product.seller.shopAddress.city.toUpperCase();
-      } else if (product.seller.location) {
-        const locationUpper = product.seller.location.toUpperCase();
-        if (locationUpper.includes('ACCRA')) sellerCity = 'ACCRA';
-        else if (locationUpper.includes('TEMA')) sellerCity = 'TEMA';
+  // 1. Try to get zone from neighborhood exact match
+  if (buyerNeighborhoodId) {
+    try {
+      const zoneData = await getZoneFromNeighborhoodId(buyerNeighborhoodId);
+      if (zoneData && zoneData.name) {
+        zone = await CacheService.getZone(zoneData.name);
       }
-      sellerCities.add(sellerCity);
+    } catch (e) {
+      logger.warn('[UnifiedShipping] neighborhood lookup failed:', e.message);
     }
-  });
-
-  // Determine if same city or cross city
-  // If all sellers are in the same city as buyer, it's same city
-  // Otherwise, it's cross city
-  const buyerCityUpper = buyerCity.toUpperCase();
-  const isSameCity = sellerCities.size === 1 && sellerCities.has(buyerCityUpper);
-
-  let shippingFee;
-  let reason;
-
-  if (hasHeavyItems) {
-    shippingFee = fees.heavyItem;
-    reason = 'heavyItem';
-  } else if (isSameCity) {
-    shippingFee = fees.sameCity;
-    reason = 'sameCity';
-  } else {
-    shippingFee = fees.crossCity;
-    reason = 'crossCity';
   }
+
+  // 2. Fallback to city defaults if neighborhood doesn't resolve a zone
+  if (!zone) {
+    const defaultZoneName = (buyerCity && buyerCity.toUpperCase() === 'TEMA') ? 'B' : 'A';
+    zone = await CacheService.getZone(defaultZoneName);
+  }
+
+  if (!zone) {
+    logger.error('[UnifiedShipping] Critical: No valid timezone found even after fallback.');
+    throw new Error('Could not resolve shipping zone. Service unavailable.');
+  }
+
+  // 3. Get Products and Categories for highest tier
+  const products = await getProductsWithCategories(items);
+  let maxTier = await CacheService.getDefaultTier() || { multiplier: 1, name: 'Fallback', fragileSurcharge: 0, weightThreshold: 5, weightSurchargePerKg: 2 };
+  let totalWeight = 0;
+
+  for (const product of products) {
+    const itemReq = items.find(i => i.productId.toString() === product._id.toString());
+    const qty = itemReq ? itemReq.quantity : 1;
+
+    // Weight resolution (backwards compatibility with existing old formats)
+    let itemWeight = 0;
+    if (product.shipping && product.shipping.weight && product.shipping.weight.value) {
+      itemWeight = product.shipping.weight.value;
+      if (product.shipping.weight.unit === 'g') itemWeight /= 1000;
+      if (product.shipping.weight.unit === 'lb') itemWeight *= 0.453592;
+    } else if (product.specifications && product.specifications.weight && product.specifications.weight.value) {
+      itemWeight = product.specifications.weight.value;
+    } else if (product.weight) {
+      itemWeight = product.weight;
+    }
+
+    totalWeight += ((itemWeight || 0.5) * qty); // Default 0.5kg
+
+    // Tier comparison
+    if (product.category && product.category.shippingTierId) {
+      const productTier = await CacheService.getTier(product.category.shippingTierId);
+      if (productTier && productTier.multiplier > maxTier.multiplier) {
+        maxTier = productTier;
+      }
+    }
+  }
+
+  // 4. Base Fee Calculation
+  let baseFee = (zone.baseRate || 20) * (maxTier.multiplier || 1);
+
+  if (shippingType === 'same_day') {
+    baseFee = baseFee * (zone.sameDayMultiplier || 1.2);
+  } else if (shippingType === 'express') {
+    baseFee = baseFee * (zone.expressMultiplier || 1.4);
+  }
+
+  // 5. Weight and Fragile Surcharges
+  if (totalWeight > (maxTier.weightThreshold || 5)) {
+    const extraWeight = Math.ceil(totalWeight - (maxTier.weightThreshold || 5));
+    baseFee += extraWeight * (maxTier.weightSurchargePerKg || 0);
+  }
+
+  baseFee += (maxTier.fragileSurcharge || 0);
 
   return {
-    shippingFee,
-    reason,
-    hasHeavyItems,
-    dispatchType: 'EAZSHOP',
+    shippingFee: Math.round(baseFee * 100) / 100,
+    reason: `zone_${zone.name}_tier_${maxTier.name}`,
+    hasHeavyItems: totalWeight > (maxTier.weightThreshold || 5),
+    zone: zone.name,
+    weight: totalWeight
   };
 }
+
 
 /**
  * Calculate shipping quote for multiple sellers
- * @param {String} buyerCity - Buyer's city (ACCRA or TEMA)
- * @param {Array} items - Array of items with productId, sellerId, quantity
- * @param {String} method - Delivery method: 'pickup_center', 'dispatch', 'seller_delivery'
- * @param {String} pickupCenterId - Pickup center ID (if method is pickup_center)
- * @param {String} deliverySpeed - Delivery speed: 'next_day' or 'same_day' (for dispatch method)
- * @returns {Object} - Shipping quote with per-seller breakdown and total
+ * Maintains the exact previous external API response structure.
  */
-async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pickupCenterId = null, deliverySpeed = 'standard') {
-  logger.info('[calculateShippingQuote] Starting calculation:', {
-    buyerCity,
-    itemsCount: items.length,
-    method,
-    pickupCenterId,
-  });
+async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pickupCenterId = null, deliverySpeed = 'standard', neighborhoodId = null) {
+  logger.info('[calculateShippingQuote] Unified Engine starting:', { buyerCity, method, deliverySpeed });
 
-  // Validate buyer city
-  const validCities = ['ACCRA', 'TEMA'];
-  if (!buyerCity || !validCities.includes(buyerCity.toUpperCase())) {
-    throw new Error('Saiisai currently delivers only in Accra and Tema.');
-  }
-
-  // Validate method
-  const validMethods = ['pickup_center', 'dispatch', 'seller_delivery'];
-  if (!validMethods.includes(method)) {
-    throw new Error(`Invalid delivery method. Must be one of: ${validMethods.join(', ')}`);
-  }
-
-  // Validate items
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    throw new Error('Items array is required and must not be empty');
-  }
-
-  // Group items by sellerId and check for EazShop products
+  // Group items by sellerId
   const sellerGroups = new Map();
-  const productIds = items.map(item => item.productId).filter(Boolean);
-  
-  if (productIds.length === 0) {
-    throw new Error('No valid product IDs found in items');
-  }
-
-  const products = await Product.find({ _id: { $in: productIds } })
-    .select('isEazShopProduct seller')
-    .populate('seller', 'role');
-  
-  if (products.length !== productIds.length) {
-    logger.warn(`[calculateShippingQuote] Some products not found. Expected ${productIds.length}, found ${products.length}`);
-  }
-  
-  // Check if cart has EazShop products
-  const hasEazShopProducts = products.some(product => 
-    product.isEazShopProduct || 
-    product.seller?.role === 'eazshop_store' ||
-    product.seller?._id?.toString() === EAZSHOP_SELLER_ID
-  );
-  
-  // For EazShop products, only allow pickup_center and dispatch
-  if (hasEazShopProducts && method === 'seller_delivery') {
-    throw new Error('Saiisai products only support pickup center or Saiisai dispatch delivery. Seller delivery is not available.');
-  }
-  
   items.forEach(item => {
-    if (!item.sellerId) {
-      logger.warn('[calculateShippingQuote] Item missing sellerId:', item);
-      return;
-    }
+    if (!item.sellerId) return;
     const sellerId = item.sellerId.toString();
     if (!sellerGroups.has(sellerId)) {
       sellerGroups.set(sellerId, []);
@@ -318,163 +136,74 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
   let pickupCenter = null;
   let dispatchType = null;
 
+  const shippingTypeMap = deliverySpeed === 'same_day' ? 'same_day' : 'standard';
+
   if (method === 'pickup_center') {
-    // Pickup from center - fee is 0 or small fee (can be configured)
     if (pickupCenterId) {
       pickupCenter = await PickupCenter.findById(pickupCenterId);
-      if (!pickupCenter || !pickupCenter.isActive) {
-        throw new Error('Pickup center not found or inactive');
-      }
     }
-
-    // Pickup is free or minimal fee (e.g., 5 GHS)
-    totalShippingFee = 0; // Can be changed to a small fee if needed
+    totalShippingFee = 0;
     dispatchType = null;
 
-    // Still calculate per-seller for breakdown (all 0 for pickup)
     for (const [sellerId, sellerItems] of sellerGroups) {
       const seller = await Seller.findById(sellerId).select('name shopName');
-      const sellerName = seller?.shopName || seller?.name || 'Unknown Seller';
-
       perSeller.push({
         sellerId,
-        sellerName,
+        sellerName: seller?.shopName || seller?.name || 'Unknown Seller',
         shippingFee: 0,
         reason: 'pickup_center',
         hasHeavyItems: false,
       });
     }
   } else if (method === 'dispatch') {
-    // EazShop dispatch rider - use new shipping calculation system if deliverySpeed provided
+    // Dispatch groups everything into ONE calculation and zeroes out the per-seller fees
     const allItems = [];
     sellerGroups.forEach((sellerItems) => {
       allItems.push(...sellerItems);
     });
 
-    // Use new shipping calculation system if deliverySpeed is provided
-    if (deliverySpeed && (deliverySpeed === 'same_day' || deliverySpeed === 'standard')) {
-      try {
-        const config = await getActiveShippingConfig();
-        const totalWeight = await calculateCartWeight(allItems);
-        const zoneInfo = detectZone(buyerCity, config);
-        
-        // Determine shipping type based on delivery speed
-        const shippingType = deliverySpeed === 'same_day' ? 'same_day' : 'standard';
-        
-        // Check same-day availability
-        if (shippingType === 'same_day') {
-          const available = isSameDayAvailable(new Date().toISOString(), config.sameDayCutOff);
-          if (!available) {
-            throw new Error(`Same-day delivery is only available for orders placed before ${config.sameDayCutOff}. Please select next-day delivery.`);
-          }
-        }
-        
-        // Calculate shipping fee using new system
-        const calculation = calculateShippingFee({
-          weight: totalWeight || 0.5, // Default to 0.5kg if weight is 0
-          zoneId: zoneInfo.zoneId,
-          shippingType,
-          config,
-        });
-        
-        totalShippingFee = calculation.shippingFee;
-        dispatchType = 'EAZSHOP';
-        
-        // For dispatch, we calculate one fee for all items
-        for (const [sellerId] of sellerGroups) {
-          const seller = await Seller.findById(sellerId).select('name shopName');
-          const sellerName = seller?.shopName || seller?.name || 'Unknown Seller';
+    const unifiedResult = await calculateUnifiedShipping(allItems, buyerCity, neighborhoodId, shippingTypeMap);
+    totalShippingFee = unifiedResult.shippingFee;
+    dispatchType = 'OFFICIAL_STORE';
 
-          perSeller.push({
-            sellerId,
-            sellerName,
-            shippingFee: 0, // Fee is calculated at order level, not per seller
-            reason: `dispatch_${shippingType}`,
-            hasHeavyItems: false,
-            weight: totalWeight,
-            zone: zoneInfo.zoneId,
-          });
-        }
-      } catch (error) {
-        // Fallback to old system if new system fails
-        logger.warn('[calculateShippingQuote] New shipping system failed, falling back to old system:', error.message);
-        const dispatchInfo = await calculateDispatchShipping(allItems, buyerCity);
-        totalShippingFee = dispatchInfo.shippingFee;
-        dispatchType = 'EAZSHOP';
-
-        for (const [sellerId] of sellerGroups) {
-          const seller = await Seller.findById(sellerId).select('name shopName');
-          const sellerName = seller?.shopName || seller?.name || 'Unknown Seller';
-
-          perSeller.push({
-            sellerId,
-            sellerName,
-            shippingFee: 0,
-            reason: dispatchInfo.reason,
-            hasHeavyItems: dispatchInfo.hasHeavyItems,
-          });
-        }
-      }
-    } else {
-      // Use old dispatch calculation system
-      const dispatchInfo = await calculateDispatchShipping(allItems, buyerCity);
-      totalShippingFee = dispatchInfo.shippingFee;
-      dispatchType = 'EAZSHOP';
-
-      // For dispatch, we calculate one fee for all items
-      for (const [sellerId] of sellerGroups) {
-        const seller = await Seller.findById(sellerId).select('name shopName');
-        const sellerName = seller?.shopName || seller?.name || 'Unknown Seller';
-
-        perSeller.push({
-          sellerId,
-          sellerName,
-          shippingFee: 0, // Fee is calculated at order level, not per seller
-          reason: dispatchInfo.reason,
-          hasHeavyItems: dispatchInfo.hasHeavyItems,
-        });
-      }
+    for (const [sellerId] of sellerGroups) {
+      const seller = await Seller.findById(sellerId).select('name shopName');
+      perSeller.push({
+        sellerId,
+        sellerName: seller?.shopName || seller?.name || 'Unknown Seller',
+        shippingFee: 0,
+        reason: unifiedResult.reason,
+        hasHeavyItems: unifiedResult.hasHeavyItems,
+        weight: unifiedResult.weight,
+        zone: unifiedResult.zone,
+      });
     }
   } else {
-    // Seller delivery (default)
+    // Seller delivery calculates individually per seller
     for (const [sellerId, sellerItems] of sellerGroups) {
       const seller = await Seller.findById(sellerId).select('name shopName role');
-      const sellerName = seller?.shopName || seller?.name || 'Unknown Seller';
-      const isEazShopStore = sellerId === EAZSHOP_SELLER_ID || seller?.role === 'eazshop_store';
+      const isOfficialStore = sellerId === EAZSHOP_SELLER_ID || seller?.role === 'official_store';
 
-      // For EazShop store, seller delivery is NOT allowed
-      if (isEazShopStore) {
+      if (isOfficialStore) {
         throw new Error('Saiisai Official Store does not offer seller delivery. Please use pickup center or Saiisai dispatch.');
       }
 
-      // Check if seller has delivery available
-      const shippingSettings = await SellerShippingSettings.getOrCreateDefault(sellerId);
-      if (!shippingSettings.sellerDeliveryAvailable) {
-        throw new Error(`Seller ${sellerName} does not offer delivery service`);
-      }
-
-      const shippingInfo = await calculateSellerShipping(
-        sellerItems,
-        sellerId,
-        buyerCity
-      );
+      const unifiedResult = await calculateUnifiedShipping(sellerItems, buyerCity, neighborhoodId, shippingTypeMap);
 
       perSeller.push({
         sellerId,
-        sellerName,
-        shippingFee: shippingInfo.shippingFee,
-        reason: shippingInfo.reason,
-        hasHeavyItems: shippingInfo.hasHeavyItems,
-        sellerCity: shippingInfo.sellerCity,
-        isEazShop: shippingInfo.isEazShop || false,
+        sellerName: seller?.shopName || seller?.name || 'Unknown Seller',
+        shippingFee: unifiedResult.shippingFee,
+        reason: unifiedResult.reason,
+        hasHeavyItems: unifiedResult.hasHeavyItems,
       });
 
-      totalShippingFee += shippingInfo.shippingFee;
+      totalShippingFee += unifiedResult.shippingFee;
     }
     dispatchType = 'SELLER';
   }
 
-  const result = {
+  return {
     buyerCity: buyerCity.toUpperCase(),
     deliveryMethod: method,
     perSeller,
@@ -491,19 +220,11 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
     } : null,
     dispatchType,
   };
-
-  logger.info('[calculateShippingQuote] Calculation complete:', {
-    totalShippingFee: result.totalShippingFee,
-    perSellerCount: result.perSeller.length,
-    deliveryMethod: result.deliveryMethod,
-  });
-
-  return result;
 }
 
 module.exports = {
-  calculateSellerShipping,
-  calculateDispatchShipping,
+  // calculateSellerShipping & calculateDispatchShipping exported for backward compatibility 
+  // if some very old endpoint hits them directly, though calculateShippingQuote is the main entry.
+  calculateUnifiedShipping,
   calculateShippingQuote,
 };
-

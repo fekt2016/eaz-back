@@ -7,6 +7,7 @@ const stream = require('stream');
 const cloudinary = require('cloudinary');
 const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
 const APIFeature = require('../../utils/helpers/apiFeatures');
 
 const multerStorage = multer.memoryStorage();
@@ -43,30 +44,15 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
           : Buffer.from(req.file.buffer);
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
-      const uploadFromBuffer = (buffer, options) => {
-        return new Promise((resolve, reject) => {
-          const writeStream = cloudinary.uploader.upload_stream(
-            options,
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            },
-          );
-
-          const bufferStream = new stream.PassThrough();
-          bufferStream.end(buffer);
-          bufferStream.pipe(writeStream);
-        });
-      };
-
-      // Process cover image
-      const coverResult = await uploadFromBuffer(imageBuffer, {
+      // Process cover image using central utility (handles duplicates)
+      const coverResult = await uploadToCloudinary(imageBuffer, {
         folder: 'categories',
         public_id: `${uniqueSuffix}-image`,
         transformation: [
           { width: 2000, height: 1333, crop: 'scale' },
           { quality: 'auto', fetch_format: 'auto' },
         ],
+        uploadedBy: req.user?._id || req.user?.id
       });
 
       req.body.image = coverResult.secure_url;
@@ -114,26 +100,26 @@ exports.getAllCategories = catchAsync(async (req, res, next) => {
       ],
     };
   }
-  
+
   let query = Category.find(filter).populate('parentCategory', 'name slug _id');
-  
+
   // Handle pagination - allow higher limits for categories to fetch all
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 100;
   // For categories, allow up to 1000 per page to fetch all categories
   const effectiveLimit = limit > 1000 ? 1000 : limit;
   const skip = (page - 1) * effectiveLimit;
-  
+
   // Apply sorting
   const sortBy = req.query.sort || '-createdAt';
   query = query.sort(sortBy);
-  
+
   // Apply pagination
   query = query.skip(skip).limit(effectiveLimit);
-  
+
   // Get total count for meta
   const total = await Category.countDocuments(filter);
-  
+
   const results = await query;
 
   const meta = {
@@ -153,22 +139,22 @@ exports.getCategory = handleFactory.getOne(Category, { path: 'subcategories' });
 // Wrapper functions with activity logging
 exports.createCategory = catchAsync(async (req, res, next) => {
   const createHandler = handleFactory.createOne(Category);
-  
+
   // Store original json method
   const originalJson = res.json.bind(res);
   let categoryCreated = null;
-  
+
   // Override res.json to intercept response
-  res.json = function(data) {
+  res.json = function (data) {
     if (data?.doc) {
       categoryCreated = data.doc;
     }
     originalJson(data);
   };
-  
+
   // Call the factory handler
   await createHandler(req, res, next);
-  
+
   // Log activity after creation
   if (categoryCreated && req.user) {
     const role = req.user.role === 'admin' ? 'admin' : 'seller';
@@ -185,28 +171,28 @@ exports.createCategory = catchAsync(async (req, res, next) => {
 
 exports.updateCategory = catchAsync(async (req, res, next) => {
   const updateHandler = handleFactory.updateOne(Category);
-  
+
   // Store original json method
   const originalJson = res.json.bind(res);
   let categoryUpdated = null;
   let oldCategory = null;
-  
+
   // Get old category data before update
   if (req.params.id) {
     oldCategory = await Category.findById(req.params.id);
   }
-  
+
   // Override res.json to intercept response
-  res.json = function(data) {
+  res.json = function (data) {
     if (data?.doc) {
       categoryUpdated = data.doc;
     }
     originalJson(data);
   };
-  
+
   // Call the factory handler
   await updateHandler(req, res, next);
-  
+
   // Log activity after update
   if (categoryUpdated && req.user) {
     const role = req.user.role === 'admin' ? 'admin' : 'seller';
@@ -215,7 +201,7 @@ exports.updateCategory = catchAsync(async (req, res, next) => {
       changes.push(`name from "${oldCategory.name}" to "${categoryUpdated.name}"`);
     }
     const changeDesc = changes.length > 0 ? ` (${changes.join(', ')})` : '';
-    
+
     logActivityAsync({
       userId: req.user.id,
       role,
@@ -230,24 +216,24 @@ exports.updateCategory = catchAsync(async (req, res, next) => {
 exports.deleteCategory = catchAsync(async (req, res, next) => {
   // Get category before deletion
   const categoryToDelete = await Category.findById(req.params.id);
-  
+
   const deleteHandler = handleFactory.deleteOne(Category);
-  
+
   // Store original json method
   const originalJson = res.json.bind(res);
   let deleted = false;
-  
+
   // Override res.json to intercept response
-  res.json = function(data) {
+  res.json = function (data) {
     if (data?.status === 'success') {
       deleted = true;
     }
     originalJson(data);
   };
-  
+
   // Call the factory handler
   await deleteHandler(req, res, next);
-  
+
   // Log activity after deletion
   if (deleted && categoryToDelete && req.user) {
     const role = req.user.role === 'admin' ? 'admin' : 'seller';

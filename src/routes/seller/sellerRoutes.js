@@ -491,18 +491,18 @@ router.patch(
 // Admin: Approve/Reject seller verification
 router.patch(
   '/:id/approve-verification',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   onboardingController.approveSellerVerification
 );
 router.patch(
   '/:id/reject-verification',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   onboardingController.rejectSellerVerification
 );
 // Admin: Update individual document status
 router.patch(
   '/:id/document-status',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   onboardingController.updateDocumentStatus
 );
 // NOTE: Payout verification routes have been moved to /api/v1/admin/sellers/:id/payout/*

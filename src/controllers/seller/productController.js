@@ -314,17 +314,20 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       }
 
       // Handle variant images
-      // Variant images are uploaded with field names like: variantImages[0], variantImages[1], etc.
-      if (req.body.variants && Array.isArray(req.body.variants)) {
-        // Parse variants if it's a string
+      // Variant data may arrive as a JSON string from multipart forms – normalize to an array first
+      if (req.body.variants) {
         if (typeof req.body.variants === 'string') {
           try {
             req.body.variants = JSON.parse(req.body.variants);
           } catch (err) {
             console.error('Error parsing variants:', err);
+            req.body.variants = [];
           }
         }
+      }
 
+      // Variant images are uploaded with field names like: variantImages[0], variantImages[1], etc.
+      if (Array.isArray(req.body.variants) && req.body.variants.length > 0) {
         // Process variant images
         for (let i = 0; i < req.body.variants.length; i++) {
           const variantKey = `variantImages[${i}]`;
@@ -1043,7 +1046,22 @@ exports.getProductById = catchAsync(async (req, res, next) => {
       path: 'seller',
       select: '_id name shopName avatar role ratings shopLocation',
     })
+    .populate({
+      path: 'moderatedBy',
+      select: 'name email',
+      model: 'Admin',
+    })
     .lean();
+
+  // totalStock is a virtual; with .lean() it's not included – compute it for the response
+  if (productResponse?.variants?.length) {
+    productResponse.totalStock = productResponse.variants.reduce(
+      (sum, v) => sum + (Number(v.stock) || 0),
+      0
+    );
+  } else {
+    productResponse.totalStock = 0;
+  }
 
   productResponse.promoPrice = 0;
   // Promotional discounts = Ads (link + discountPercent). Seller discounts are separate.

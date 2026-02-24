@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
       sparse: true, // Allow multiple documents with null/undefined email
       lowercase: true,
       validate: {
-        validator: function(value) {
+        validator: function (value) {
           // If email is provided, it must be valid
           if (value) {
             return validator.isEmail(value);
@@ -75,7 +75,7 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
     },
-    role: { type: String, enum: ['user', 'seller', 'admin', 'driver', 'eazshop_store'], default: 'user' },
+    role: { type: String, enum: ['user', 'seller', 'admin', 'driver', 'official_store'], default: 'user' },
     address: String,
 
     passwordChangedAt: { type: Date, default: Date.now() },
@@ -181,8 +181,8 @@ const userSchema = new mongoose.Schema(
     createdAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now },
     // SECURITY FIX #9: Session activity tracking for timeout
-    lastActivity: { 
-      type: Date, 
+    lastActivity: {
+      type: Date,
       default: Date.now,
       select: false, // Don't return in queries by default
     },
@@ -309,7 +309,7 @@ userSchema.pre('save', function (next) {
 userSchema.pre('save', function (next) {
   // Skip for new documents (they'll set it when PIN is first created)
   if (this.isNew) return next();
-  
+
   // If PIN is being set or modified, update timestamp
   if (this.isModified('pin') && this.pin) {
     // If pinChangedAt doesn't exist, this is the first time setting PIN
@@ -374,21 +374,21 @@ userSchema.methods.createPasswordResetToken = function () {
 userSchema.methods.createOtp = function () {
   // Generate 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   // Hash OTP before storing (SHA-256)
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-  
+
   // Store hashed OTP
   this.otp = hashedOtp;
   this.otpExpires = Date.now() + (process.env.OTP_EXPIRES_IN || 10) * 60 * 1000; // 10 minutes default
   this.otpAttempts = 0; // Reset attempts on new OTP
   this.otpLockedUntil = null; // Clear lockout
-  
-  logger.info('[createOtp] Generated OTP (hashed);:', { 
+
+  logger.info('[createOtp] Generated OTP (hashed);:', {
     expires: new Date(this.otpExpires).toISOString(),
-    expiresIn: process.env.OTP_EXPIRES_IN || 10 
+    expiresIn: process.env.OTP_EXPIRES_IN || 10
   });
-  
+
   // Return plain OTP for sending (not hashed)
   return otp;
 };
@@ -401,49 +401,49 @@ userSchema.methods.verifyOtp = function (candidateOtp) {
     logger.info('[verifyOtp] Account locked:', { minutesRemaining });
     return { valid: false, locked: true, minutesRemaining };
   }
-  
+
   // Check if OTP exists
   if (!this.otp) {
     logger.info('[verifyOtp] No OTP stored for user');
     return { valid: false, reason: 'no_otp' };
   }
-  
+
   // Check if OTP has expired
   if (!this.otpExpires) {
     logger.info('[verifyOtp] No expiration time set for OTP');
     return { valid: false, reason: 'no_expiry' };
   }
-  
+
   const now = Date.now();
   const expiresAt = new Date(this.otpExpires).getTime();
-  
+
   if (expiresAt <= now) {
     const minutesExpired = Math.floor((now - expiresAt) / (1000 * 60));
     logger.info('[verifyOtp] OTP expired:', { minutesExpired });
     return { valid: false, reason: 'expired', minutesExpired };
   }
-  
+
   // Normalize candidate OTP (remove non-digits)
   const providedOtp = String(candidateOtp || '').trim().replace(/\D/g, '');
-  
+
   if (providedOtp.length === 0 || providedOtp.length !== 6) {
     logger.info('[verifyOtp] Invalid OTP format:', { length: providedOtp.length });
     return { valid: false, reason: 'invalid_format' };
   }
-  
+
   // Hash candidate OTP and compare with stored hash
   const hashedCandidate = crypto.createHash('sha256').update(providedOtp).digest('hex');
   const otpMatch = this.otp === hashedCandidate;
-  
+
   if (!otpMatch) {
     logger.info('[verifyOtp] OTP mismatch');
     return { valid: false, reason: 'mismatch' };
   }
-  
+
   // OTP is valid - reset attempts and lockout
   this.otpAttempts = 0;
   this.otpLockedUntil = null;
-  
+
   logger.info('[verifyOtp] OTP verified successfully');
   return { valid: true };
 };
@@ -532,7 +532,7 @@ userSchema.post('save', async function (doc, next) {
       }
       return next(); // Don't fail user creation
     }
-    
+
     // For other errors, log but don't fail user creation
     // Permission creation is not critical - user can still function without it
     logger.error(`[User Model] Permission creation failed for user ${doc._id}:`, {
@@ -540,7 +540,7 @@ userSchema.post('save', async function (doc, next) {
       message: error.message,
       code: error.code,
     });
-    
+
     // Continue without failing - user creation should succeed even if permission creation fails
     next();
   }

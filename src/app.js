@@ -42,6 +42,7 @@ const configureCloudinary = require('./config/cloudinary');
 const AppError = require('./utils/errors/appError');
 const globalErrorHandler = require('./controllers/shared/errorController');
 const logger = require('./utils/logger');
+const authController = require('./controllers/buyer/authController');
 
 // Import routers by role
 const userRoutes = require('./routes/buyer/userRoutes');
@@ -69,7 +70,7 @@ const adminCouponRoutes = require('./routes/admin/couponRoutes');
 const analyticsRoutes = require('./routes/admin/analyticsRoutes');
 const pickupCenterRoutes = require('./routes/admin/pickupCenterRoutes');
 const dispatchFeesRoutes = require('./routes/admin/dispatchFeesRoutes');
-const eazshopStoreRoutes = require('./routes/admin/eazshopStoreRoutes');
+const saiisaiStoreRoutes = require('./routes/admin/saiisaiStoreRoutes');
 const shippingRateRoutes = require('./routes/admin/shippingRateRoutes');
 const shippingZoneRoutes = require('./routes/admin/shippingZoneRoutes');
 const distanceAnalyzerRoutes = require('./routes/admin/distanceAnalyzerRoutes');
@@ -95,6 +96,7 @@ const neighborhoodRoutes = require('./routes/shared/neighborhoodRoutes');
 const deviceSessionRoutes = require('./routes/shared/deviceSessionRoutes');
 const recommendationRoutes = require('./routes/shared/recommendationRoutes');
 const supportRoutes = require('./routes/shared/supportRoutes');
+const seoRoutes = require('./routes/shared/seoRoutes');
 
 const app = express();
 
@@ -482,6 +484,9 @@ app.use(express.static(path.join(__dirname, '../../public')));
 
 // 4. Routes - Organized by role
 // Buyer routes
+// Shared auth routes (Google OAuth etc.)
+app.post('/api/v1/auth/google', authController.googleOAuth);
+
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
@@ -520,7 +525,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/pickup-centers', pickupCenterRoutes);
 app.use('/api/v1/dispatch-fees', dispatchFeesRoutes);
-app.use('/api/v1/eazshop', eazshopStoreRoutes);
+app.use('/api/v1/eazshop', saiisaiStoreRoutes);
 app.use('/api/v1/shipping-rates', shippingRateRoutes);
 app.use('/api/v1/shipping-zones', shippingZoneRoutes);
 app.use('/api/v1/shipping-analysis', distanceAnalyzerRoutes);
@@ -542,6 +547,7 @@ app.use('/api/v1/neighborhoods', neighborhoodRoutes);
 app.use('/api/v1/sessions', deviceSessionRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/support', supportRoutes);
+app.use('/api/v1/seo', seoRoutes);
 
 // Health check endpoint (improved for Docker/K8s)
 app.get('/health', (req, res) => {

@@ -1,6 +1,7 @@
 const { promisify } = require('util');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const validator = require('validator');
 const NodeCache = require('node-cache');
 const User = require('../../models/user/userModel');
@@ -27,9 +28,18 @@ const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 const securityMonitor = require('../../services/securityMonitor');
 const ActivityLog = require('../../models/activityLog/activityLogModel');
 const logger = require('../../utils/logger');
+const axios = require('axios');
 // Shared helpers for standardized auth
 const { normalizeEmail, normalizePhone } = require('../../utils/helpers/authHelpers');
 const { generateOtp, OTP_TYPES } = require('../../utils/helpers/otpHelpers');
+
+// Google OAuth client (backend) - used for buyer/seller Google sign-in
+// Supports multiple client IDs via GOOGLE_CLIENT_IDS (comma-separated) or single GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
+const googleClient = GOOGLE_CLIENT_IDS.length ? new OAuth2Client(GOOGLE_CLIENT_IDS[0]) : null;
 
 // Initialize route cache (5 minutes TTL)
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
@@ -132,7 +142,7 @@ exports.signup = catchAsync(async (req, res, next) => {
       emailVerified: false, // Always false on signup - requires OTP verification
       phoneVerified: false,
     };
-
+    
     // Only add phone if provided and valid
     if (normalizedPhone) {
       const phoneNumber = parseInt(normalizedPhone, 10);
@@ -143,7 +153,7 @@ exports.signup = catchAsync(async (req, res, next) => {
       userData.phone = phoneNumber;
     }
     // If phone not provided, omit it entirely (allows null/undefined in DB)
-
+    
     const newUser = await User.create(userData);
 
     // Generate OTP for signup verification using shared helper
@@ -170,11 +180,11 @@ exports.signup = catchAsync(async (req, res, next) => {
       try {
         logger.info(`[Buyer Signup] 📧 Sending OTP email to ${newUser.email} via email provider...`);
         const { data: emailData, error: emailError } = await sendLoginOtpEmail(newUser.email, otp, newUser.name);
-
+        
         if (emailError) {
           throw new Error(emailError.message || 'Failed to send OTP email');
         }
-
+        
         logger.info(`[Buyer Signup] ✅ OTP email sent successfully to ${newUser.email}`);
         if (emailData?.id) {
           logger.info(`[Buyer Signup] 📨 Email ID: ${emailData.id}`);
@@ -251,7 +261,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     if (normalizedEmail) {
       await User.findOneAndDelete({ email: normalizedEmail });
     }
-
+    
     // Log detailed error for debugging
     console.error('Signup Error:', err);
     console.error('Signup Error Details:', {
@@ -448,7 +458,7 @@ exports.login = catchAsync(async (req, res, next) => {
       emailVerified: user.emailVerified,
       ip: req.ip,
     });
-
+    
     return next(
       new AppError(
         'Account not verified. Please verify your email address first. Check your inbox for the verification email, or request a new verification code.',
@@ -500,7 +510,7 @@ exports.login = catchAsync(async (req, res, next) => {
     // 2FA is enabled - require Google Authenticator code
     // Generate temporary session ID for 2FA verification
     const loginSessionId = crypto.randomBytes(32).toString('hex');
-
+    
     // Store session in shared cache (5 minutes TTL)
     loginSessionCache.set(loginSessionId, {
       userId: user._id.toString(),
@@ -523,7 +533,7 @@ exports.login = catchAsync(async (req, res, next) => {
   // 2FA is disabled - issue token immediately
   // Use standardized login helper
   const { handleSuccessfulLogin } = require('../../utils/helpers/authHelpers');
-
+  
   try {
     const response = await handleSuccessfulLogin(req, res, user, 'buyer');
     res.status(200).json(response);
@@ -537,7 +547,7 @@ exports.login = catchAsync(async (req, res, next) => {
         error: deviceError.message,
         ip: req.ip,
       });
-
+      
       // In production, enforce device limit strictly
       if (process.env.NODE_ENV === 'production') {
         return next(
@@ -547,7 +557,7 @@ exports.login = catchAsync(async (req, res, next) => {
           )
         );
       }
-
+      
       // In development, allow bypassing device session
       console.warn('[Login] Dev mode: Bypassing device session limit');
       const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
@@ -560,7 +570,7 @@ exports.login = catchAsync(async (req, res, next) => {
         error: deviceError.message,
         stack: deviceError.stack,
       });
-
+      
       // In production, fail securely
       if (process.env.NODE_ENV === 'production') {
         return next(
@@ -570,7 +580,7 @@ exports.login = catchAsync(async (req, res, next) => {
           )
         );
       }
-
+      
       // In development, continue without device session for debugging
       console.warn('[Login] Dev mode: Continuing without device session due to error');
       const response = await handleSuccessfulLogin(req, res, user, 'buyer', { skipDeviceSession: true });
@@ -624,7 +634,7 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
     const backupCodeIndex = user.twoFactorBackupCodes.findIndex(
       (code) => code === twoFactorCode.toUpperCase()
     );
-
+    
     if (backupCodeIndex !== -1) {
       user.twoFactorBackupCodes.splice(backupCodeIndex, 1);
       await user.save({ validateBeforeSave: false });
@@ -753,7 +763,7 @@ exports.sendOtp = catchAsync(async (req, res, next) => {
 
   const otp = user.createOtp();
   await user.save({ validateBeforeSave: false });
-
+  
   // SECURITY FIX #11 (Phase 3 Enhancement): Secure logging (masks sensitive data)
   const { secureLog, logOtpGeneration } = require('../../utils/helpers/secureLogger');
   logOtpGeneration(user._id, loginId, 'login');
@@ -950,7 +960,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     const userWith2FA = await User.findById(user._id).select('+twoFactorSecret');
     if (userWith2FA.twoFactorEnabled) {
       const { twoFactorCode } = req.body;
-
+      
       if (!twoFactorCode) {
         return res.status(200).json({
           status: '2fa_required',
@@ -977,7 +987,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         const backupCodeIndex = userWith2FA.twoFactorBackupCodes.findIndex(
           (code) => code === twoFactorCode.toUpperCase()
         );
-
+        
         if (backupCodeIndex !== -1) {
           // Remove used backup code
           userWith2FA.twoFactorBackupCodes.splice(backupCodeIndex, 1);
@@ -1163,11 +1173,11 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     };
 
     res.cookie('main_jwt', token, cookieOptions);
-
+    
     // Generate CSRF token on successful authentication
     const { generateCSRFToken } = require('../../middleware/csrf/csrfProtection');
     generateCSRFToken(res);
-
+    
     console.log(`[Auth] JWT cookie set (main_jwt): httpOnly=true, secure=${cookieOptions.secure}, sameSite=${cookieOptions.sameSite}, path=${cookieOptions.path}`);
 
     // Remove sensitive data
@@ -1262,7 +1272,7 @@ exports.logout = catchAsync(async (req, res, next) => {
   // Clear JWT cookie using standardized helper
   const { clearAuthCookie } = require('../../utils/helpers/authHelpers');
   clearAuthCookie(res, 'buyer');
-
+  
   res.status(200).json({ status: 'success', message: 'Logged out successfully' });
 });
 //protect auth
@@ -1348,7 +1358,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     // Product PATCH/DELETE: Allow both seller_jwt and admin_jwt (shared route)
     (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
   );
-
+  
   // Shared product routes that can be accessed by both sellers and admins
   // These routes should check both seller_jwt and admin_jwt cookies
   // IMPORTANT: These routes are NOT seller-only - they allow admins too
@@ -1357,7 +1367,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE')) ||
     (fullPath.includes('/product/') && fullPath.includes('/variants'))
   );
-
+  
   // CRITICAL: Ensure /api/v1/seller/coupon is detected as seller route
   // This route is mounted at /api/v1/seller/coupon, so it should match the startsWith check above
   // Adding explicit check for coupon routes to ensure they're detected
@@ -1401,14 +1411,13 @@ exports.protect = catchAsync(async (req, res, next) => {
       !fullPath.includes('/updateMe') &&
       !fullPath.includes('/reset-password') &&
       !fullPath.includes('/avatar')) || // <-- buyer avatar update should use buyer cookie
-    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) || // DELETE /users/:id is admin-only
-    (fullPath.startsWith('/api/v1/categories') && method !== 'GET') // Categories modification is admin-only
+    (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) // DELETE /users/:id is admin-only
   );
 
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
   // Check for support ticket creation - can be used by any authenticated user
   const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
-
+  
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
   const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
@@ -1438,7 +1447,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   // #region agent log
   if (fullPath.includes('/review') && !fullPath.includes('/admin/')) {
     const hasToken = !!(req.cookies && req.cookies[cookieName]);
-    fetch('http://127.0.0.1:7242/ingest/8853a92f-8faa-4d51-b197-e8e74c838dc7', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'authController.js:protect:review', message: 'protect review route cookie', data: { fullPath, method, cookieName, hasToken, hasAdminJwt: !!(req.cookies && req.cookies.admin_jwt), hasMainJwt: !!(req.cookies && req.cookies.main_jwt) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => { });
+    fetch('http://127.0.0.1:7242/ingest/8853a92f-8faa-4d51-b197-e8e74c838dc7', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'authController.js:protect:review', message: 'protect review route cookie', data: { fullPath, method, cookieName, hasToken, hasAdminJwt: !!(req.cookies && req.cookies.admin_jwt), hasMainJwt: !!(req.cookies && req.cookies.main_jwt) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H1' }) }).catch(() => {});
   }
   // #endregion
 
@@ -1490,7 +1499,7 @@ exports.protect = catchAsync(async (req, res, next) => {
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
       }
     }
-
+    
     // For shared notification routes, check multiple cookies (seller, buyer, admin)
     if (isSharedNotificationRoute && req.cookies && !token) {
       // Try seller_jwt first (sellers accessing notifications)
@@ -1526,7 +1535,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       token = req.cookies[cookieName];
       logger.info(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
     }
-
+    
     // Enhanced logging for payment method routes
     if (fullPath.includes('/paymentmethod') && !token) {
       logger.warn(`[Auth] ⚠️ Payment method route - no token found:`, {
@@ -1539,7 +1548,7 @@ exports.protect = catchAsync(async (req, res, next) => {
         hasExpectedCookie: req.cookies?.[cookieName] ? 'YES' : 'NO'
       });
     }
-
+    
     // For admin-only shared routes, also try admin_jwt if main_jwt was defaulted
     if (!token && isAdminOnlySharedRoute && req.cookies && req.cookies.admin_jwt) {
       token = req.cookies.admin_jwt;
@@ -1555,7 +1564,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       console.error('═══════════════════════════════════════════════════════════');
       console.error(`[Auth] ❌ CRITICAL: No token found for ${isVerifyOtpRoute ? 'verify-otp' : isSellerCouponRoute ? 'seller coupon' : 'protected'} route`);
       console.error('═══════════════════════════════════════════════════════════');
-
+      
       // Enhanced logging for seller coupon routes
       if (isSellerCouponRoute) {
         console.error(`[Auth] 🔍 SELLER COUPON ROUTE DEBUG:`);
@@ -1718,7 +1727,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   // PATCH /api/v1/seller/:id/approve-payout - approve payout (admin-only)
   // PATCH /api/v1/seller/:id/reject-payout - reject payout (admin-only)
   // GET /api/v1/seller/:id - getSeller (admin-only, unless seller accessing their own)
-  const isAdminOnlySellerRouteCheck =
+  const isAdminOnlySellerRouteCheck = 
     (fullPath === '/api/v1/seller' && method === 'GET') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/status$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-verification$/) && method === 'PATCH') ||
@@ -1727,7 +1736,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/approve-payout$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+\/reject-payout$/) && method === 'PATCH') ||
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET'); // GET /seller/:id is admin-only
-
+  
   // Use isSharedProductRoute that was already declared earlier (line 1352)
   // Shared product routes should NOT be restricted to sellers only - they allow admins too
   const isSellerRouteCheck = !isAdminOnlySellerRouteCheck && !isSharedProductRoute && (
@@ -1763,9 +1772,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     // GET /seller/:id is admin-only, BUT /seller/me and /seller/reviews are seller-only
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews') || // GET /seller/:id is admin-only
     ((fullPath === '/api/v1/order' && method === 'GET') ||
-      (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
-      (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
-      (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status'))) ||
+     (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
+     (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
+     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status'))) ||
     // Admin-only user routes: GET /api/v1/users (getAllUsers), GET/PATCH/DELETE /api/v1/users/:id
     // BUT explicitly exclude self-service buyer routes like /profile, /me, /get/count, /reset-password, /personalized, /recently-viewed, /avatar
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
@@ -1797,7 +1806,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
       console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);
       return next(
-        new AppError(`You do not have permission to perform this action. Required role: admin, Your role: ${currentUser.role}`, 403)
+        new AppError(`You do not have permission to perform this action. Required role: admin, superadmin, or moderator. Your role: ${currentUser.role}`, 403)
       );
     }
   }
@@ -1956,27 +1965,27 @@ exports.verifyResetOtp = catchAsync(async (req, res, next) => {
 
     // SECURITY FIX #4 (Phase 2 Enhancement): Track failed attempts
     const { trackFailedAttempt, clearFailedAttempts } = require('../../middleware/security/otpVerificationSecurity');
-
+    
     // Verify OTP using secure method (compares hashed OTP)
     const otpVerification = user.verifyOtp(otp);
-
+    
     // SECURITY FIX #2: Generic error message (don't reveal if OTP format is wrong vs expired)
     if (!otpVerification || !otpVerification.valid) {
       // SECURITY FIX #4: Track failed attempt for lockout
       trackFailedAttempt(req);
-
+      
       // Log failed attempt for security monitoring
       console.warn(`[Security] Failed OTP verification attempt for ${loginId}`, {
         reason: otpVerification?.reason || 'unknown',
         locked: otpVerification?.locked || false,
         ip: req.ip,
       });
-
+      
       // Add small delay to prevent timing attacks
       await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
       return next(new AppError('Invalid or expired OTP', 400));
     }
-
+    
     // SECURITY FIX #4: Clear failed attempts on successful verification
     clearFailedAttempts(req);
 
@@ -2021,7 +2030,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 
     // SECURITY FIX: Get reset token from httpOnly cookie (not from request body)
     const resetToken = req.cookies['reset-token'];
-
+    
     if (!resetToken) {
       return next(new AppError('Reset token expired or invalid. Please verify OTP again.', 403));
     }
@@ -2064,10 +2073,11 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
       return next(new AppError('Reset token expired or invalid', 403));
     }
 
-    // FIX: Don't hash password here - let the pre-save hook handle it
-    // This prevents double hashing which causes invalid credentials
-    user.password = newPassword;
-    user.passwordConfirm = newPassword; // Required for model validation if present
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update user password and clear reset fields
+    user.password = hashedPassword;
     user.otp = undefined;
     user.otpExpires = undefined;
     user.otpType = undefined;
@@ -2186,7 +2196,7 @@ exports.requestPasswordReset = catchAsync(async (req, res, next) => {
   try {
     // Send password reset email
     await sendPasswordResetEmail(user.email, resetToken, user.name || 'User');
-
+    
     console.log(`[Password Reset] Reset email sent to ${user.email}`);
   } catch (err) {
     // If email fails, clear the reset token
@@ -2257,10 +2267,11 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid or expired reset token', 400));
   }
 
-  // FIX: Don't hash password here - let the pre-save hook handle it
-  // This prevents double hashing which causes invalid credentials
-  user.password = newPassword;
-  user.passwordConfirm = confirmPassword;
+  // Hash new password
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  // Update user password and clear reset fields
+  user.password = hashedPassword;
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
   user.passwordChangedAt = Date.now();
@@ -2645,7 +2656,7 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
 
   // Get base32 secret (this is what we store and use)
   const base32Secret = secretData.base32;
-
+  
   // Store temporary secret (will be moved to twoFactorSecret after verification)
   // IMPORTANT: Do NOT set twoFactorEnabled = true here (only after verification)
   user.twoFactorTempSecret = base32Secret;
@@ -2665,7 +2676,7 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
   const otpAuthUrl = secretData.otpauth_url;
 
   // Mask secret for response (show only last 4 characters)
-  const base32SecretMasked = base32Secret.length > 4
+  const base32SecretMasked = base32Secret.length > 4 
     ? `${'*'.repeat(base32Secret.length - 4)}${base32Secret.slice(-4)}`
     : '****';
 
@@ -2721,7 +2732,7 @@ exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
   });
 
   // Mask secret for response
-  const base32SecretMasked = user.twoFactorTempSecret.length > 4
+  const base32SecretMasked = user.twoFactorTempSecret.length > 4 
     ? `${'*'.repeat(user.twoFactorTempSecret.length - 4)}${user.twoFactorTempSecret.slice(-4)}`
     : '****';
 
@@ -2832,4 +2843,128 @@ exports.disableTwoFactor = catchAsync(async (req, res, next) => {
       twoFactorEnabled: false,
     },
   });
+});
+
+// -----------------------------------------------------------------------------
+// Google OAuth 2.0 login/signup (buyers and sellers)
+// -----------------------------------------------------------------------------
+exports.googleOAuth = catchAsync(async (req, res, next) => {
+  const { token, appType } = req.body || {};
+
+  if (!token) {
+    return next(new AppError('Google token is required', 400));
+  }
+
+  if (!googleClient || !GOOGLE_CLIENT_IDS.length) {
+    return next(
+      new AppError(
+        'Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID in backend .env.',
+        500,
+      ),
+    );
+  }
+
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: GOOGLE_CLIENT_IDS,
+    });
+  } catch (err) {
+    console.error('[Google OAuth] Failed to verify ID token:', err.message);
+    return next(new AppError('Invalid Google token', 401));
+  }
+
+  const payload = ticket.getPayload() || {};
+  const { sub, email, name, picture } = payload;
+
+  if (!email) {
+    return next(new AppError('Your Google account does not have a public email address.', 400));
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return next(new AppError('Google email address is invalid', 400));
+  }
+
+  // appType: 'buyer' | 'seller' (default to buyer)
+  const targetAppType = appType === 'seller' ? 'seller' : 'buyer';
+
+  // Buyer Google auth ---------------------------------------------------------
+  if (targetAppType === 'buyer') {
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      // Create a new buyer account with a random password (not used directly)
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+      user = await User.create({
+        name: name || email.split('@')[0],
+        email: normalizedEmail,
+        password: randomPassword,
+        passwordConfirm: randomPassword,
+        role: 'user',
+        emailVerified: true, // Google has already verified the email
+        connectedAccounts: {
+          google: true,
+          facebook: false,
+        },
+      });
+    } else {
+      // Link Google account and mark email as verified
+      user.emailVerified = true;
+      user.connectedAccounts = user.connectedAccounts || {};
+      user.connectedAccounts.google = true;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    const { handleSuccessfulLogin } = require('../../utils/helpers/authHelpers');
+    const response = await handleSuccessfulLogin(req, res, user, 'buyer');
+    return res.status(200).json(response);
+  }
+
+  // Seller Google auth --------------------------------------------------------
+  // NOTE: For sellers we currently support Google login ONLY for existing sellers.
+  // New seller registration still goes through the normal signup flow so they can
+  // provide required business details.
+  let seller = await Seller.findOne({ email: normalizedEmail });
+
+  if (!seller) {
+    return next(
+      new AppError(
+        'No seller account found for this Google email. Please sign up as a seller first.',
+        404,
+      ),
+    );
+  }
+
+  // Basic safety checks similar to login
+  if (seller.active === false) {
+    return next(new AppError('Your seller account has been deactivated. Please contact support.', 401));
+  }
+
+  // Link Google account (same pattern as buyer)
+  seller.connectedAccounts = seller.connectedAccounts || {};
+  seller.connectedAccounts.google = true;
+  await seller.save({ validateBeforeSave: false });
+
+  const { handleSuccessfulLogin } = require('../../utils/helpers/authHelpers');
+  try {
+    const loginResponse = await handleSuccessfulLogin(req, res, seller, 'seller');
+    return res.status(200).json(loginResponse);
+  } catch (deviceError) {
+    if (deviceError.message?.includes('Too many devices')) {
+      return next(
+        new AppError(
+          'Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.',
+          403,
+        ),
+      );
+    }
+    console.error('[Google OAuth] Seller device session error:', deviceError.message);
+    // In dev, fall back to login without device session
+    const fallbackResponse = await handleSuccessfulLogin(req, res, seller, 'seller', {
+      skipDeviceSession: true,
+    });
+    return res.status(200).json(fallbackResponse);
+  }
 });

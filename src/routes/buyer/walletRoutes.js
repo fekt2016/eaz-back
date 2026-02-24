@@ -27,13 +27,13 @@ router.post('/verify', paymentVerificationLimiter, validateTopupVerification, ha
 // Admin adjustment route
 router.post(
   '/adjust',
-  authController.restrictTo('admin'),
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
   walletController.adjustWallet
 );
 
 // Keep old routes for backward compatibility
 router.get('/old/balance', authController.restrictTo('user'), creditbalanceController.getCreditBalance);
-router.post('/old/add', authController.restrictTo('admin'), creditbalanceController.addCredit);
+router.post('/old/add', authController.restrictTo('admin', 'superadmin', 'moderator'), creditbalanceController.addCredit);
 router.get('/old/transactions', authController.restrictTo('user'), creditbalanceController.getTransactions);
 
 module.exports = router;

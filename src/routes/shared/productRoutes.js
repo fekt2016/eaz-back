@@ -20,7 +20,7 @@ const { getAllProduct,
   createProductVariant,
   updateProductVariant,
   deleteProductVariant, } = require('../../controllers/seller/productController');
-const { getPublicEazShopProducts } = require('../../controllers/admin/eazshopStoreController');
+const { getPublicOfficialStoreProducts } = require('../../controllers/admin/saiisaiStoreController');
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.route('/category-counts').get(getProductCountByCategory);
 router.get('/category/:categoryId', getProductsByCategory); ///category/${categoryId})
 
 // Public EazShop products endpoint (for homepage) - must be before /:id route
-router.get('/eazshop', getPublicEazShopProducts);
+router.get('/eazshop', getPublicOfficialStoreProducts);
 
 router
   .route('/')

@@ -6,7 +6,7 @@ const { validateObjectId } = require('../../middleware/validateObjectId');
 
 // All activity log routes require authentication and admin role
 router.use(authController.protect);
-router.use(authController.restrictTo('admin'));
+router.use(authController.restrictTo('admin', 'superadmin', 'moderator'));
 
 // IMPORTANT: Specific routes must come BEFORE parameterized routes (/:id)
 // Otherwise /stats, /cleanup, etc. will be matched by /:id
