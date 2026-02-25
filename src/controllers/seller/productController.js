@@ -1040,7 +1040,11 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   const productResponse = await Product.findById(productId)
     .populate({
       path: 'parentCategory',
-      select: 'name slug',
+      select: 'name slug _id',
+    })
+    .populate({
+      path: 'subCategory',
+      select: 'name slug _id attributes parentCategory',
     })
     .populate({
       path: 'seller',

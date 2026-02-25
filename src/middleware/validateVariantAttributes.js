@@ -77,11 +77,9 @@ const validateVariantAttributes = catchAsync(async (req, res, next) => {
 
             const def = attrMap[va.key.toLowerCase()];
             if (!def) {
-                errors.push(
-                    `Variant ${i + 1}: unknown attribute "${va.key}". Allowed: ${allowedAttributes
-                        .map((a) => a.name)
-                        .join(', ')}`
-                );
+                // Allow custom / extra attributes that are not defined
+                // in the subcategory schema. We only enforce that
+                // required attributes exist; unknown ones are ignored.
                 continue;
             }
 
