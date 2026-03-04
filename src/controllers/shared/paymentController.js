@@ -13,6 +13,7 @@ const { sendPaymentNotification } = require('../../utils/helpers/notificationSer
 const axios = require('axios');
 const mongoose = require('mongoose');
 const { logSellerRevenue } = require('../../services/historyLogger');
+const payoutService = require('../../services/payoutService');
 const logger = require('../../utils/logger');
 
 exports.getAllPayment = handleFactory.getAll(Payment);
@@ -136,13 +137,13 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   });
 
   // Handle populated user object (from .populate('user'))
-  const orderUserId = order.user?._id 
-    ? order.user._id.toString() 
-    : order.user?.id 
-    ? order.user.id.toString()
-    : order.user?.toString() || String(order.user);
-  
-  const requestUserId = req.user?._id 
+  const orderUserId = order.user?._id
+    ? order.user._id.toString()
+    : order.user?.id
+      ? order.user.id.toString()
+      : order.user?.toString() || String(order.user);
+
+  const requestUserId = req.user?._id
     ? req.user._id.toString()
     : req.user?.id?.toString() || String(req.user.id);
 
@@ -535,15 +536,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       await order.save({ validateBeforeSave: false });
       logger.info(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
 
-      // Reduce product stock after payment is confirmed
-      const stockService = require('../../services/stock/stockService');
-      try {
-        await stockService.reduceOrderStock(order);
-      } catch (stockError) {
-        // Log error but don't fail payment - stock reduction is critical but payment should still succeed
-        console.error('[Payment Verification] Error reducing stock:', stockError);
-        // Optionally, you could send an alert to admins here
-      }
+      // Stock was already reduced at order creation.
 
       // Update product totalSold count after payment is confirmed
       const orderController = require('./orderController');
@@ -591,6 +584,35 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
         .populate('user', 'name email')
         .populate('orderItems')
         .lean();
+
+      // Capture snapshot for post-response email (populated before res.json)
+      const orderForEmail = fullOrder;
+      const savedOrderId = order._id;
+      const wasEmailSent = order.confirmationEmailSent;
+      const orderUser = order.user;
+
+      // Fire email AFTER the response is sent (after confirmation page renders)
+      res.on('finish', () => {
+        if (!wasEmailSent) {
+          setImmediate(async () => {
+            try {
+              const emailDispatcher = require('../../emails/emailDispatcher');
+              const emailUser = await User.findById(orderUser).select('name email').lean();
+              if (emailUser && emailUser.email) {
+                await emailDispatcher.sendOrderConfirmation(orderForEmail || { _id: savedOrderId }, emailUser, 'paystack');
+                logger.info(`[Payment Verification] ✅ Order confirmation email sent to ${emailUser.email}`);
+                // Mark as sent to prevent duplicate from webhook
+                Order.findByIdAndUpdate(savedOrderId, { $set: { confirmationEmailSent: true } })
+                  .catch(err => logger.error('[Payment Verification] Failed to set confirmationEmailSent:', err.message));
+              }
+            } catch (emailErr) {
+              logger.error('[Payment Verification] Post-response email failed:', emailErr.message);
+            }
+          });
+        } else {
+          logger.info(`[Payment Verification] Email already sent for order ${savedOrderId}, skipping.`);
+        }
+      });
 
       res.status(200).json({
         success: true,
@@ -815,15 +837,12 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         await order.save({ validateBeforeSave: false });
         logger.info(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
 
-        // Reduce product stock after payment is confirmed
-        const stockService = require('../../services/stock/stockService');
-        try {
-          await stockService.reduceOrderStock(order);
-        } catch (stockError) {
-          // Log error but don't fail webhook - stock reduction is critical but payment should still succeed
-          console.error('[Paystack Webhook] Error reducing stock:', stockError);
-          // Optionally, you could send an alert to admins here
-        }
+        // Capture email data for post-response sending
+        const webhookOrderId = order._id;
+        const webhookOrderUser = order.user;
+        const webhookEmailAlreadySent = order.confirmationEmailSent;
+
+        // Stock was already reduced at order creation.
 
         // Update product totalSold count after payment is confirmed
         const orderController = require('./orderController');
@@ -869,7 +888,87 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Handle transfer events (payouts)
+  if (event && (event.event === 'transfer.success' || event.event === 'transfer.failed' || event.event === 'transfer.reversed')) {
+    const transfer = event.data;
+    if (transfer) {
+      const transferCode = transfer.transfer_code;
+      const reference = transfer.reference;
+
+      logger.info(`[Paystack Webhook] Processing transfer event: ${event.event}, reference: ${reference}, code: ${transferCode}`);
+
+      try {
+        const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
+        const PaymentRequest = require('../../models/payment/paymentRequestModel');
+
+        // Find withdrawal request by transfer code or reference
+        let withdrawalRequest = await WithdrawalRequest.findOne({
+          $or: [
+            { paystackTransferCode: transferCode },
+            { paystackReference: reference },
+            { _id: mongoose.isValidObjectId(reference) ? reference : new mongoose.Types.ObjectId() }
+          ]
+        });
+
+        if (!withdrawalRequest) {
+          withdrawalRequest = await PaymentRequest.findOne({
+            $or: [
+              { paystackTransferCode: transferCode },
+              { paystackReference: reference },
+              { _id: mongoose.isValidObjectId(reference) ? reference : new mongoose.Types.ObjectId() }
+            ]
+          });
+        }
+
+        if (withdrawalRequest) {
+          logger.info(`[Paystack Webhook] Found withdrawal/payout request: ${withdrawalRequest._id}`);
+
+          const transferStatus = {
+            status: event.event === 'transfer.success' ? 'success' :
+              event.event === 'transfer.failed' ? 'failed' : 'reversed',
+            transfer_code: transferCode,
+            reference: reference,
+            requires_pin: false // Webhook success/fail means PIN stage is over
+          };
+
+          await payoutService.updateWithdrawalStatusFromPaystack(withdrawalRequest._id, transferStatus);
+          logger.info(`[Paystack Webhook] Successfully updated withdrawal ${withdrawalRequest._id} status to ${transferStatus.status}`);
+        } else {
+          logger.warn(`[Paystack Webhook] Could not find withdrawal request for transfer ${transferCode} / ${reference}`);
+        }
+      } catch (error) {
+        logger.error('[Paystack Webhook] Error processing transfer event:', error);
+      }
+
+      return res.status(200).json({ received: true });
+    }
+  }
+
   // Always return 200 to acknowledge receipt (even if processing failed)
+  // Fire any pending email AFTER the response, not before
+  res.on('finish', () => {
+    if (typeof webhookOrderId !== 'undefined' && !webhookEmailAlreadySent) {
+      setImmediate(async () => {
+        try {
+          const emailDispatcher = require('../../emails/emailDispatcher');
+          const emailUser = await User.findById(webhookOrderUser).select('name email').lean();
+          if (emailUser && emailUser.email) {
+            await emailDispatcher.sendOrderConfirmation(
+              { _id: webhookOrderId },
+              emailUser,
+              'paystack'
+            );
+            logger.info(`[Paystack Webhook] ✅ Order confirmation email sent to ${emailUser.email}`);
+            Order.findByIdAndUpdate(webhookOrderId, { $set: { confirmationEmailSent: true } })
+              .catch(err => logger.error('[Paystack Webhook] Failed to set confirmationEmailSent:', err.message));
+          }
+        } catch (emailErr) {
+          logger.error('[Paystack Webhook] Post-response email failed:', emailErr.message);
+        }
+      });
+    }
+  });
+
   res.status(200).json({ received: true });
 });
 
@@ -889,7 +988,7 @@ exports.createPaymentRequest = catchAsync(async (req, res, next) => {
   try {
     // Use shared service function
     const paymentRequestService = require('../../services/paymentRequestService');
-const logger = require('../../utils/logger');
+    const logger = require('../../utils/logger');
     const paymentRequest = await paymentRequestService.createPaymentRequest(
       seller,
       amount,
@@ -1052,14 +1151,18 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
     // Deduct from locked balance (unlock the funds)
     seller.lockedBalance = Math.max(0, oldLockedBalance - paymentRequest.amount);
 
+    // CRITICAL: Deduct from pendingBalance as well (it was moved there on creation)
+    const oldPendingBalance = seller.pendingBalance || 0;
+    seller.pendingBalance = Math.max(0, oldPendingBalance - paymentRequest.amount);
+
     // Recalculate withdrawableBalance
     seller.calculateWithdrawableBalance();
-    const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
+    const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance - seller.pendingBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
 
-    logger.info(`[processPaymentRequest] Withdrawal approved for seller ${seller._id}:`);
+    logger.info(`[processPaymentRequest] Withdrawal approved and paid for seller ${seller._id}:`);
     logger.info(`  Total Balance: ${oldBalance} - ${paymentRequest.amount} = ${seller.balance}`);
-    logger.info(`  Locked Balance: ${oldLockedBalance} - ${paymentRequest.amount} = ${seller.lockedBalance}`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${paymentRequest.amount} = ${seller.pendingBalance}`);
     logger.info(`  Available Balance: ${newWithdrawableBalance}`);
 
     // Log seller revenue history for approved payout
@@ -1079,11 +1182,13 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
           paymentMethod: paymentRequest.paymentMethod,
           status: 'paid',
           transactionId,
+          pendingBalanceBefore: oldPendingBalance,
+          pendingBalanceAfter: seller.pendingBalance
         },
       });
       logger.info(`[processPaymentRequest] ✅ Seller revenue history logged for approved payout - seller ${seller._id}`);
     } catch (historyError) {
-      logger.error(`[processPaymentRequest] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
+      logger.error(`[processPaymentRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
@@ -1101,16 +1206,98 @@ exports.processPaymentRequest = catchAsync(async (req, res, next) => {
       paymentRequest.paymentDetails,
       netAmount,
     );
+
+    // Update or create a transaction record for the withdrawal (debit)
+    // Avoid duplicate transactions if one was already created as 'pending'
+    const existingTx = await Transaction.findOne({
+      seller: seller._id,
+      payoutRequest: paymentRequest._id,
+      type: 'debit'
+    });
+
+    if (existingTx) {
+      existingTx.status = 'completed';
+      existingTx.description = `Withdrawal Paid: GH₵${paymentRequest.amount.toFixed(2)} (${paymentRequest.paymentMethod})`;
+      if (!existingTx.metadata) existingTx.metadata = {};
+      existingTx.metadata.transactionId = transactionId;
+      existingTx.metadata.processedAt = new Date();
+      await existingTx.save();
+      logger.info(`[processPaymentRequest] Updated existing transaction ${existingTx._id} to completed`);
+    } else {
+      await Transaction.create({
+        seller: seller._id,
+        amount: paymentRequest.amount,
+        type: 'debit',
+        description: `Withdrawal Paid: GH₵${paymentRequest.amount.toFixed(2)} (${paymentRequest.paymentMethod})`,
+        status: 'completed',
+        payoutRequest: paymentRequest._id, // Set the link
+        metadata: {
+          paymentRequestId: paymentRequest._id,
+          transactionId: transactionId,
+          paymentMethod: paymentRequest.paymentMethod,
+          processedAt: new Date(),
+        },
+      });
+      logger.info(`[processPaymentRequest] Created new transaction for withdrawal ${paymentRequest._id}`);
+    }
   } else if (status === 'rejected') {
-    // When withdrawal is rejected, only unlock funds (do NOT add to balance)
-    // Balance was never deducted when creating the request, so we don't add it back
+    // When withdrawal is rejected, unlock funds AND refund pendingBalance
+    const oldBalance = seller.balance || 0;
     const oldLockedBalance = seller.lockedBalance || 0;
+    const oldPendingBalance = seller.pendingBalance || 0;
+
+    // Unlock balance (if it was locked)
     seller.lockedBalance = Math.max(0, oldLockedBalance - paymentRequest.amount);
+
+    // Refund from pendingBalance back to available (it was moved to pending on creation)
+    seller.pendingBalance = Math.max(0, oldPendingBalance - paymentRequest.amount);
 
     // Recalculate withdrawableBalance
     seller.calculateWithdrawableBalance();
-    const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance);
+    const newWithdrawableBalance = Math.max(0, seller.balance - seller.lockedBalance - seller.pendingBalance);
     seller.withdrawableBalance = newWithdrawableBalance;
+
+    logger.info(`[processPaymentRequest] Withdrawal rejected for seller ${seller._id}:`);
+    logger.info(`  Pending Balance: ${oldPendingBalance} - ${paymentRequest.amount} = ${seller.pendingBalance}`);
+    logger.info(`  Available Balance: ${newWithdrawableBalance} (refunded)`);
+
+    // Log the rejection reversal in revenue history
+    try {
+      await logSellerRevenue({
+        sellerId: seller._id,
+        amount: 0, // No balance change
+        type: 'REVERSAL',
+        description: `Withdrawal rejected - PendingBalance refund: GH₵${paymentRequest.amount.toFixed(2)}`,
+        reference: `PAYOUT-REJECTED-${paymentRequest._id}-${Date.now()}`,
+        payoutRequestId: paymentRequest._id,
+        balanceBefore: oldBalance,
+        balanceAfter: seller.balance,
+        metadata: {
+          paymentRequestId: paymentRequest._id.toString(),
+          rejectionReason: rejectionReason || 'Rejected by admin',
+          pendingBalanceBefore: oldPendingBalance,
+          pendingBalanceAfter: seller.pendingBalance
+        },
+      });
+    } catch (err) {
+      logger.error(`[processPaymentRequest] Failed to log rejection history: ${err.message}`);
+    }
+
+    // Update or create a transaction record for the rejection
+    const existingTx = await Transaction.findOne({
+      seller: seller._id,
+      payoutRequest: paymentRequest._id,
+      type: 'debit'
+    });
+
+    if (existingTx) {
+      existingTx.status = 'failed';
+      existingTx.description = `Withdrawal Rejected: ${rejectionReason || 'No reason provided'}`;
+      await existingTx.save();
+    } else {
+      // Typically we don't create a Debit transaction for a rejection if it was never approved,
+      // but if a pending transaction exists, we fail it.
+    }
 
     logger.info(`[processPaymentRequest] Withdrawal rejected for seller ${seller._id}:`);
     logger.info(`  Total Balance: ${seller.balance} (unchanged);`);

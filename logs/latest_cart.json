@@ -1,0 +1,204 @@
+{
+  "_id": "6994b7079fefd5bb279c4dce",
+  "user": "69918f95ad07e105f3d6cb35",
+  "products": [
+    {
+      "product": {
+        "_id": "699f15c3b93a46feede77dd4",
+        "seller": {
+          "_id": "69969602a9f4f27e15ab1558",
+          "name": "yussif faisal",
+          "shopName": "eazworld",
+          "role": "seller",
+          "id": "69969602a9f4f27e15ab1558"
+        },
+        "isEazShopProduct": false,
+        "name": "flgugi;hio",
+        "imageCover": "https://res.cloudinary.com/eazworld/image/upload/v1772033468/products/1772033467472-624349017-cover.jpg",
+        "variants": [
+          {
+            "weight": {
+              "unit": "g"
+            },
+            "dimensions": {
+              "unit": "cm"
+            },
+            "name": "iphone gold",
+            "attributes": [
+              {
+                "key": "Size",
+                "value": "73"
+              },
+              {
+                "key": "Gender",
+                "value": "men"
+              },
+              {
+                "key": "Type",
+                "value": "cologne"
+              },
+              {
+                "key": "color",
+                "value": "gold"
+              }
+            ],
+            "price": 2000,
+            "priceInclVat": 2350,
+            "priceExVat": 2000,
+            "vatAmount": 350,
+            "vatRate": 0.175,
+            "discount": 0,
+            "stock": 8,
+            "sku": "558-FRA-73--6830",
+            "status": "active",
+            "images": [
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033470/products/variants/1772033467472-624349017-variant-0-image-0.jpg",
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033470/products/variants/1772033467472-624349017-variant-0-image-1.jpg",
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033471/products/variants/1772033467472-624349017-variant-0-image-2.jpg"
+            ],
+            "lowStockThreshold": 5,
+            "condition": "new",
+            "_id": "699f15c3b93a46feede77dd5",
+            "createdAt": "2026-02-25T15:31:15.738Z",
+            "updatedAt": "2026-02-25T15:33:56.846Z",
+            "id": "699f15c3b93a46feede77dd5"
+          },
+          {
+            "weight": {
+              "unit": "g"
+            },
+            "dimensions": {
+              "unit": "cm"
+            },
+            "name": "iphone silver",
+            "attributes": [
+              {
+                "key": "Size",
+                "value": "73"
+              },
+              {
+                "key": "Gender",
+                "value": "men"
+              },
+              {
+                "key": "Type",
+                "value": "cologne"
+              },
+              {
+                "key": "color",
+                "value": "silver"
+              }
+            ],
+            "price": 2500,
+            "priceInclVat": 2937.5,
+            "priceExVat": 2500,
+            "vatAmount": 437.5,
+            "vatRate": 0.175,
+            "discount": 0,
+            "stock": 10,
+            "sku": "558-FRA-73--2103",
+            "status": "active",
+            "images": [
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033473/products/variants/1772033467472-624349017-variant-1-image-0.jpg",
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033474/products/variants/1772033467472-624349017-variant-1-image-1.jpg",
+              "https://res.cloudinary.com/eazworld/image/upload/v1772033473/products/variants/1772033467472-624349017-variant-1-image-2.jpg"
+            ],
+            "lowStockThreshold": 5,
+            "condition": "new",
+            "_id": "699f15c3b93a46feede77dd6",
+            "createdAt": "2026-02-25T15:31:15.739Z",
+            "updatedAt": "2026-02-25T15:33:56.846Z",
+            "id": "699f15c3b93a46feede77dd6"
+          }
+        ],
+        "price": 2000,
+        "priceInclVat": 2350,
+        "isPreOrder": false,
+        "preOrderOriginCountry": null,
+        "preOrderAvailableDate": null,
+        "preOrderNote": null,
+        "id": "699f15c3b93a46feede77dd4",
+        "totalStock": 18,
+        "defaultPrice": 2000,
+        "defaultStock": 8,
+        "defaultSku": "558-FRA-73--6830",
+        "defaultAttributes": [
+          {
+            "key": "Size",
+            "value": "73"
+          },
+          {
+            "key": "Gender",
+            "value": "men"
+          },
+          {
+            "key": "Type",
+            "value": "cologne"
+          },
+          {
+            "key": "color",
+            "value": "gold"
+          }
+        ],
+        "hasStock": true,
+        "isOnSale": false,
+        "salePercentage": 0,
+        "taxBreakdown": {}
+      },
+      "quantity": 1,
+      "variant": {
+        "weight": {
+          "unit": "g"
+        },
+        "dimensions": {
+          "unit": "cm"
+        },
+        "name": "iphone silver",
+        "attributes": [
+          {
+            "key": "Size",
+            "value": "73"
+          },
+          {
+            "key": "Gender",
+            "value": "men"
+          },
+          {
+            "key": "Type",
+            "value": "cologne"
+          },
+          {
+            "key": "color",
+            "value": "silver"
+          }
+        ],
+        "price": 2500,
+        "priceInclVat": 2937.5,
+        "priceExVat": 2500,
+        "vatAmount": 437.5,
+        "vatRate": 0.175,
+        "discount": 0,
+        "stock": 10,
+        "sku": "558-FRA-73--2103",
+        "status": "active",
+        "images": [
+          "https://res.cloudinary.com/eazworld/image/upload/v1772033473/products/variants/1772033467472-624349017-variant-1-image-0.jpg",
+          "https://res.cloudinary.com/eazworld/image/upload/v1772033474/products/variants/1772033467472-624349017-variant-1-image-1.jpg",
+          "https://res.cloudinary.com/eazworld/image/upload/v1772033473/products/variants/1772033467472-624349017-variant-1-image-2.jpg"
+        ],
+        "lowStockThreshold": 5,
+        "condition": "new",
+        "_id": "699f15c3b93a46feede77dd6",
+        "createdAt": "2026-02-25T15:31:15.739Z",
+        "updatedAt": "2026-02-25T15:33:56.846Z",
+        "id": "699f15c3b93a46feede77dd6"
+      },
+      "_id": "69a4e3c0afad4cc217223025",
+      "unitPrice": 2937.5
+    }
+  ],
+  "totalPrice": 2000,
+  "createdAt": "2026-02-17T18:44:23.968Z",
+  "updatedAt": "2026-03-02T01:11:28.010Z",
+  "__v": 17
+}

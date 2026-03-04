@@ -8680,7 +8680,8 @@
           "Blue",
           "Red",
           "Gold",
-          "Silver"
+          "Silver",
+          "Gray"
         ],
         "isRequired": false,
         "isFilterable": true,

@@ -1,0 +1,353 @@
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Subtotal of all items (VAT-inclusive)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    shippingCost: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    tax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Deprecated - use tax breakdown fields below',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Grand total including all taxes and shipping',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    // Tax breakdown fields (Ghana GRA)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Total base price before VAT',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    totalVAT: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Total VAT (12.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    totalTax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Total of all taxes',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    isVATInclusive: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      comment: 'Prices include 15% VAT',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:        shippingFee: Number,
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    shippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    oldShippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    newShippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    platformFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    // International pre-order cost breakdown (Ghana customs + logistics)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    internationalShippingCost: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    customsCostEstimate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      // Total estimated customs, duties and taxes (buffered)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    clearingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      // Local clearing / handling fee at port
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    localDeliveryCost: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      // Last‑mile delivery inside Ghana (existing shipping fee snapshot)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    landedCost: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      // Product cost + international shipping + customs (buffered)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:    importDutyRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/orderModel.js:      // Effective import duty rate applied for this order (0.25 = 25%)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js: * order history remains accurate even if products are later modified or deleted.
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:   * These fields ensure order history remains accurate even if products change
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'VAT-inclusive price per unit at time of order (snapshot)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  priceInclVat: { type: Number, min: 0, comment: 'Snapshot: same as price (VAT-inclusive)' },
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  priceExVat: { type: Number, min: 0, comment: 'Snapshot: price before VAT (base)' },
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  vatAmount: { type: Number, min: 0, comment: 'Snapshot: VAT amount per unit' },
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  vatRate: { type: Number, default: 0.15, comment: 'Snapshot: VAT rate used' },
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  /** Dual VAT (Ghana): who is responsible for VAT on this line — seller (registered) or platform (withheld) */
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  vatCollectedBy: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'seller = VAT paid to seller; platform = VAT withheld by Saiisai',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  // Tax breakdown fields (computed from price)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'Price before VAT (seller revenue)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  vat: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'VAT amount (12.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  totalTaxes: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'Total of all taxes (VAT + NHIL + GETFund + COVID levy)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  isVATInclusive: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:    comment: 'Price includes 15% VAT (VAT + NHIL + GETFund)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  // Unified Pricing and Tax Logic (P2-FIX 2)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  // Ensure taxes are calculated if missing or if price changed
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:  if (this.isNew || this.isModified('price') || this.isModified('priceExVat')) {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      // Use priceExVat if available (seller entered), otherwise derive from price (VAT inclusive)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      // Note: 1.15 is the standard factor for Ghana's 12.5% + 2.5% taxes
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      const basePriceToUse = this.priceExVat || (this.price / 1.15);
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.priceExVat = pricing.netBasePrice;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.priceInclVat = pricing.priceInclVat;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.vat = pricing.vat;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.totalTaxes = pricing.totalTax;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.vatAmount = pricing.vat; // Matching vatAmount field
+/Users/mac/Desktop/Saiisai/backend/src/models/order/OrderItemModel.js:      this.vatRate = 0.15; // Standard platform rate
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  shippingCost: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  tax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Deprecated - use tax breakdown fields below',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  // Tax breakdown fields (Ghana GRA)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Total base price before VAT (seller revenue)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  totalVAT: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Total VAT (12.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  totalTax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Total of all taxes',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  isVATInclusive: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Prices include 15% VAT',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  commissionRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    default: 0, // Default to 0% platform commission
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  commissionAmount: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Platform commission amount (before VAT on commission)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  vatOnCommission: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'VAT on platform commission (stored separately for payouts)',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  /** Dual VAT (Ghana): seller = payout includes VAT (base+VAT-commission); platform = VAT withheld (base-commission only) */
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  vatCollectedBy: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'seller = VAT paid to seller; platform = VAT withheld by Saiisai for GRA',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  /** Total VAT amount on this seller order (for audit / withheld amount when vatCollectedBy=platform) */
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  totalVatAmount: {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    comment: 'Sum of VAT on items; when vatCollectedBy=platform this amount is withheld',
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:// Dual VAT: seller registered => payout = (base+VAT) - commission; platform => payout = base - commission (VAT withheld)
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  const commission = this.commissionAmount != null && this.commissionAmount >= 0
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    ? this.commissionAmount
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    : (this.subtotal + this.shippingCost) * (this.commissionRate ?? 0);
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  const vatOnComm = this.vatOnCommission != null && this.vatOnCommission >= 0 ? this.vatOnCommission : 0;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  if (this.vatCollectedBy === 'seller') {
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    const total = this.subtotal + this.shippingCost;
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:    return Math.max(0, total - commission - vatOnComm - contribution);
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  const baseAndShipping = (this.totalBasePrice || 0) + (this.shippingCost || 0);
+/Users/mac/Desktop/Saiisai/backend/src/models/order/sellerOrderModel.js:  return Math.max(0, baseAndShipping - commission - vatOnComm - contribution);
+/Users/mac/Desktop/Saiisai/backend/src/models/category/categoryModel.js:      dropship: { type: Number, default: 0 }, // Flat rate GHS for dropshipping
+/Users/mac/Desktop/Saiisai/backend/src/models/category/categoryModel.js:      express: { type: Number, default: 0 }   // Flat rate GHS for Jumia Express
+/Users/mac/Desktop/Saiisai/backend/src/models/category/categoryModel.js:// Generate slug before saving
+/Users/mac/Desktop/Saiisai/backend/src/models/notification/deviceTokenModel.js:      // Token belongs to different user - deactivate old one and create new
+/Users/mac/Desktop/Saiisai/backend/src/models/notification/deviceTokenModel.js:// Static method to deactivate token
+/Users/mac/Desktop/Saiisai/backend/src/models/notification/deviceTokenModel.js:deviceTokenSchema.statics.deactivateToken = async function (userId, expoPushToken) {
+/Users/mac/Desktop/Saiisai/backend/src/models/notification/deviceTokenModel.js:// Static method to deactivate all tokens for a user
+/Users/mac/Desktop/Saiisai/backend/src/models/notification/deviceTokenModel.js:deviceTokenSchema.statics.deactivateAllUserTokens = async function (userId) {
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:  // Withholding tax fields
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:  withholdingTax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:    comment: 'Withholding tax amount deducted from withdrawal',
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:  withholdingTaxRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:    comment: 'Withholding tax rate applied (0.03 for individual, 0.15 for company)',
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:    comment: 'Final amount paid to seller after withholding tax deduction',
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:  // Deactivation flag - when seller "deletes" a withdrawal, it's deactivated instead of deleted
+/Users/mac/Desktop/Saiisai/backend/src/models/payment/paymentRequestModel.js:  deactivatedAt: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/adminAuditLogModel.js:      'TAX_UPDATE',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/adminAuditLogModel.js:      'COMMISSION_UPDATE',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/adminAuditLogModel.js:    comment: 'Name of the field that was updated (e.g., vatRate, platformCommissionRate)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js: * Stores all tax rates and platform fee settings
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  // VAT Components (Ghana GRA)
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  vatRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'VAT rate (12.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  nhilRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'NHIL rate (2.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  getfundRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'GETFund rate (2.5%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  covidLevyRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'COVID levy rate (1%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  // Withholding Tax Rates
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'Withholding tax rate for individual sellers (3%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'Withholding tax rate for company sellers (15%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  // Product-level VAT (Ghana): single rate for VAT-inclusive product prices. Default 15%.
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  productVatRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'VAT rate applied to product prices (inclusive). Used to compute priceExVat/vatAmount from seller-entered price.',
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  // Platform Fees
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:  platformCommissionRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/platform/platformSettingsModel.js:    comment: 'Platform commission rate (0%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/admin/adminActionLogModel.js:      'SHIPPING_RATE_UPDATE',
+/Users/mac/Desktop/Saiisai/backend/src/models/admin/adminActionLogModel.js:    comment: 'Amount paid to seller (after withholding tax)',
+/Users/mac/Desktop/Saiisai/backend/src/models/admin/adminActionLogModel.js:  withholdingTax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js: * Tax Collection Model
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js: * Tracks withholding tax collected from seller withdrawals
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:const taxCollectionSchema = new mongoose.Schema({
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:    min: [0, 'Tax amount cannot be negative'],
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:  rate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:    min: [0, 'Tax rate cannot be negative'],
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:    max: [1, 'Tax rate cannot exceed 100%'],
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:    comment: 'Withholding tax rate applied (0.03 for individual, 0.15 for company)',
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:  taxCategory: {
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:    comment: 'Additional information about the tax collection',
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:const TaxCollection = mongoose.model('TaxCollection', taxCollectionSchema);
+/Users/mac/Desktop/Saiisai/backend/src/models/tax/taxCollectionModel.js:module.exports = TaxCollection;
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    avatar: String,
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    taxCategory: {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      comment: 'Tax category for withholding tax: individual (3%) or company (15%)',
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    // Dual VAT responsibility (Ghana): seller vs platform VAT collection. NEVER expose vatNumber to buyers.
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    isVatRegistered: {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      comment: 'If true: seller declares VAT (payout = base+VAT - commission). If false: platform collects VAT (payout = base - commission, VAT withheld).',
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    vatNumber: {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      comment: 'GRA VAT registration number. Required when isVatRegistered is true. NEVER expose to buyers.',
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    // Alias for API clarity (same as vatNumber; required when isVatRegistered)
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    vatRegistrationNumber: {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      comment: 'Same as vatNumber. Required if isVatRegistered. Use vatNumber in code.',
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    onboardingStage: {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:// Dual VAT: require vatNumber when isVatRegistered is true (Ghana compliance)
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:  if (this.isVatRegistered === true) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    const vatNum = (this.vatNumber || this.vatRegistrationNumber || '').trim();
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    if (!vatNum) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      return next(new Error('VAT registration number is required when seller is VAT registered'));
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:  if (this.vatNumber !== undefined && this.vatNumber !== null) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    this.vatRegistrationNumber = this.vatNumber;
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:  } else if (this.vatRegistrationNumber !== undefined && this.vatRegistrationNumber !== null) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    this.vatNumber = this.vatRegistrationNumber;
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    if (this.verificationStatus !== 'verified' || this.onboardingStage !== 'verified') {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:      this.onboardingStage = 'verified';
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:    if (this.verificationStatus === 'verified' || this.onboardingStage === 'verified') {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:        this.onboardingStage = 'pending_verification';
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:  // Generate 6-digit OTP
+/Users/mac/Desktop/Saiisai/backend/src/models/user/sellerModel.js:  logger.info('[Seller createOtp] Generated OTP (hashed);');
+/Users/mac/Desktop/Saiisai/backend/src/models/user/deviceSessionModel.js:// Static method to deactivate all sessions except current
+/Users/mac/Desktop/Saiisai/backend/src/models/user/deviceSessionModel.js:deviceSessionSchema.statics.deactivateOthers = function (userId, currentDeviceId) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/deviceSessionModel.js:// Static method to deactivate all sessions
+/Users/mac/Desktop/Saiisai/backend/src/models/user/deviceSessionModel.js:deviceSessionSchema.statics.deactivateAll = function (userId) {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/userModel.js:  // Generate 6-digit OTP
+/Users/mac/Desktop/Saiisai/backend/src/models/user/userModel.js:  logger.info('[createOtp] Generated OTP (hashed);:', {
+/Users/mac/Desktop/Saiisai/backend/src/models/user/permissionModel.js:      enum: ['standard', 'private', 'hidden'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:const saiisaiShippingFeesSchema = new mongoose.Schema(
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:      min: [0, 'Same city fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:      min: [0, 'Cross city fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:      min: [0, 'Heavy item fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:saiisaiShippingFeesSchema.statics.getOrCreate = async function () {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:  let fees = await this.findOne();
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:  if (!fees) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:    fees = await this.create({
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:  return fees;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:// Keeping 'EazShopShippingFees' as the collection name to avoid data loss/migration
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/saiisaiShippingFeesModel.js:module.exports = mongoose.model('SaiisaiShippingFees', saiisaiShippingFeesSchema, 'eazshop_shipping_fees');
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js: * ShippingRate Model
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js: * Stores granular shipping rates based on shipping type, zone, and weight ranges
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:const shippingRateSchema = new mongoose.Schema(
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    baseFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    perKgFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:      // Additional fee per weight unit (alternative to perKgFee)
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    fragileSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    weekendSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    nightSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:shippingRateSchema.pre('save', function(next) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:shippingRateSchema.statics.findRate = async function(weight, shippingType, zone) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:shippingRateSchema.statics.calculateFee = async function(weight, shippingType, zone) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  // Find rate - use 'standard' as base type since multipliers are applied per shippingType
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  const rate = await this.findRate(weight, 'standard', zone);
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  if (!rate) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:      `No shipping rate found for weight ${weight}kg, zone ${zone}`
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  // Calculate base cost: baseFee + (weight * perKgFee) + weightAddOn
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  const baseCost = rate.baseFee + (weight * rate.perKgFee) + (rate.weightAddOn || 0);
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    multiplier = rate.standardMultiplier || 1.0;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    multiplier = rate.sameDayMultiplier || 1.2;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    multiplier = rate.expressMultiplier || 1.4;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:  const fee = baseCost * multiplier;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    fee: Math.round(fee * 100) / 100, // Round to 2 decimal places
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    estimatedDays: rate.estimatedDays,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    baseFee: rate.baseFee,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    perKgFee: rate.perKgFee,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    weightAddOn: rate.weightAddOn || 0,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    baseCost: Math.round(baseCost * 100) / 100,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:    rateId: rate._id,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingRateModel.js:module.exports = mongoose.model('ShippingRate', shippingRateSchema);
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingZoneModel.js: * Each zone has distance ranges, base rates, and multipliers for different shipping types
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingZoneModel.js:    baseRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingZoneModel.js:    perKgRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingZoneModel.js:    fragileSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:const dispatchFeesSchema = new mongoose.Schema(
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:      min: [0, 'Same city fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:      min: [0, 'Cross city fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:      min: [0, 'Heavy item fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:dispatchFeesSchema.statics.getOrCreate = async function() {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:  let fees = await this.findOne();
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:  if (!fees) {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:    fees = await this.create({
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:  return fees;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/dispatchFeesModel.js:module.exports = mongoose.model('DispatchFees', dispatchFeesSchema);
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js: * Stores shipping configuration including zones, weight multipliers, and cut-off times
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:        baseSameDayRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:        baseStandardRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:    // Same-day delivery cut-off time (24-hour format, e.g., "15:00" for 3pm Ghana time)
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:    sameDayCutOff: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:        message: 'Cut-off time must be in HH:MM format (24-hour)',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseSameDayRate: 30,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseStandardRate: 16,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseSameDayRate: 30,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseStandardRate: 16,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseSameDayRate: 30,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:          baseStandardRate: 16,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingConfigModel.js:      sameDayCutOff: '15:00',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/importDutyByCategoryModel.js: * Category-specific import duty rates for international shipping.
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/importDutyByCategoryModel.js: * Used when product category matches; otherwise defaultImportDutyRate from InternationalShippingConfig.
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/importDutyByCategoryModel.js:    dutyRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/importDutyByCategoryModel.js:  return doc ? doc.dutyRate : null;
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/importDutyByCategoryModel.js:importDutyByCategorySchema.statics.getAllRates = async function () {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/internationalShippingConfigModel.js: * Weight-based shipping pricing, fees, and customs buffer.
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/internationalShippingConfigModel.js:        shippingCost: { type: Number, required: true, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/internationalShippingConfigModel.js:    defaultImportDutyRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/internationalShippingConfigModel.js:    clearingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/internationalShippingConfigModel.js:    localDeliveryFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:            comment: 'Base rate multiplier for this tier',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:        fragileSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:            comment: 'Flat surcharge for fragile items in this tier',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:            comment: 'Weight threshold in kg before per-kg surcharge applies',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:        weightSurchargePerKg: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/shippingTierModel.js:            comment: 'Added fee per kg over the weightThreshold',
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:    sameCityShippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      min: [0, 'Shipping fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:    crossCityShippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      min: [0, 'Shipping fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:    heavyItemShippingFee: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      min: [0, 'Shipping fee must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:    expressSurcharge: {
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      default: 15, // additional fee if express is chosen
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      min: [0, 'Express surcharge must be positive'],
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      sameCityShippingFee: 20,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      crossCityShippingFee: 30,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      heavyItemShippingFee: 50,
+/Users/mac/Desktop/Saiisai/backend/src/models/shipping/sellerShippingSettingsModel.js:      expressSurcharge: 15,
+/Users/mac/Desktop/Saiisai/backend/src/models/product/cartModel.js:        unitPrice = variant.priceInclVat ?? variant.price ?? 0;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/cartModel.js:        unitPrice = product.priceInclVat ?? product.price ?? 0;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/cartModel.js:      unitPrice = product.priceInclVat ?? product.price ?? 0;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/sellerReview.js: * - Order completion rate (20%)
+/Users/mac/Desktop/Saiisai/backend/src/models/product/sellerReview.js: * - Dispute/return rate (10%)
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:        priceInclVat: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:        priceExVat: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:        vatAmount: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:        vatRate: { type: Number, default: 0.15 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    // VAT-inclusive: server-computed only (never trust seller input)
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    priceInclVat: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    priceExVat: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    vatAmount: { type: Number, min: 0 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    vatRate: { type: Number, default: 0.15 },
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    moderatedBy: {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    moderatedAt: {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    // Soft delete fields - track deletion by admin or seller separately
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    tax: {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      taxable: {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      taxClass: {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  // Generate slug
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  // Generate category path for better filtering
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Dual VAT (Ghana): sellers enter BASE price (VAT exclusive). Server adds VAT and stores priceInclVat for display.
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Never trust client-submitted priceExVat or vatAmount.
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  const taxService = require('../../services/tax/taxService');
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    const settings = await taxService.getPlatformSettings();
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      const computed = await taxService.addVatToBase(this.price, settings);
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      this.priceExVat = computed.basePrice;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      this.priceInclVat = computed.priceInclVat;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      this.vatAmount = computed.vatAmount;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:      this.vatRate = computed.vatRate;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:          const computed = await taxService.addVatToBase(v.price, settings);
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:          v.priceExVat = computed.basePrice;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:          v.priceInclVat = computed.priceInclVat;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:          v.vatAmount = computed.vatAmount;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:          v.vatRate = computed.vatRate;
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    console.error('[Product Pre-Save] VAT computation failed:', err?.message);
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Tax calculation virtuals (Ghana GRA VAT-inclusive pricing)
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Price entered by seller is VAT-inclusive (includes 15% VAT)
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:productSchema.virtual('taxBreakdown').get(function () {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  const taxService = require('../../services/tax/taxService');
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  return taxService.extractTaxFromPrice(price);
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Get base price before VAT for a specific variant
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  const taxService = require('../../services/tax/taxService');
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  return taxService.extractTaxFromPrice(variant.price || 0);
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Add a pre-save middleware to automatically generate tags
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:  // Only generate tags if the product is new or name/description changed
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:    await this.generateTags();
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:// Add a method to generate tags
+/Users/mac/Desktop/Saiisai/backend/src/models/product/productModel.js:productSchema.methods.generateTags = function () {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:const shippingRateSchema = new mongoose.Schema({
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:    platformCutPercentage: {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:// Enforce only one active rate
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:shippingRateSchema.pre('save', async function (next) {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:    // If this rate is being set to active, deactivate all others
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:// Note: Named PlatformShippingRate to avoid collision with the existing ShippingRate model
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:// located in src/models/shipping/shippingRateModel.js that serves a different purpose
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:const PlatformShippingRate = mongoose.models.PlatformShippingRate || mongoose.model('PlatformShippingRate', shippingRateSchema);
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingRate.js:module.exports = PlatformShippingRate;
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:const shippingChargeSchema = new mongoose.Schema({
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:    platformCut: {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:    platformCutRate: {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:shippingChargeSchema.index({ orderId: 1 }, { unique: true });
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:shippingChargeSchema.index({ status: 1 });
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:shippingChargeSchema.index({ dispatcherId: 1 });
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:shippingChargeSchema.index({ createdAt: -1 });
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:shippingChargeSchema.pre('save', function (next) {
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:const ShippingCharge = mongoose.models.ShippingCharge || mongoose.model('ShippingCharge', shippingChargeSchema);
+/Users/mac/Desktop/Saiisai/backend/src/models/ShippingCharge.js:module.exports = ShippingCharge;
+/Users/mac/Desktop/Saiisai/backend/src/models/history/sellerRevenueHistoryModel.js:        'REFUND_DEDUCTION',
+/Users/mac/Desktop/Saiisai/backend/src/models/history/sellerRevenueHistoryModel.js:      comment: 'Additional metadata (commission details, etc.)',
+/Users/mac/Desktop/Saiisai/backend/src/models/history/sellerRevenueHistoryModel.js:  return ['REFUND_DEDUCTION', 'PAYOUT', 'REVERSAL'].includes(this.type);
+/Users/mac/Desktop/Saiisai/backend/src/models/analytics/searchAnalyticsModel.js:  const cutoffDate = new Date();
+/Users/mac/Desktop/Saiisai/backend/src/models/analytics/searchAnalyticsModel.js:  cutoffDate.setDate(cutoffDate.getDate() - days);
+/Users/mac/Desktop/Saiisai/backend/src/models/analytics/searchAnalyticsModel.js:    lastSearched: { $gte: cutoffDate },

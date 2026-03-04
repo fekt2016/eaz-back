@@ -15,7 +15,7 @@ const logger = require('../../utils/logger');
  */
 exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
   const logPrefix = '[getAllWalletHistory]';
-  
+
   try {
     // ========== STEP 1: Initial Logging ==========
     logger.info(`${logPrefix} ========== START ==========`);
@@ -23,7 +23,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     logger.info(`${logPrefix} Method: ${req.method}`);
     logger.info(`${logPrefix} URL: ${req.originalUrl || req.url}`);
     logger.info(`${logPrefix} Query params:`, JSON.stringify(req.query, null, 2));
-    
+
     // Log user info (sanitized)
     try {
       const userInfo = req.user ? {
@@ -39,9 +39,10 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     }
 
     // ========== STEP 2: Authentication Check ==========
+    const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
     try {
       logger.info(`${logPrefix} [STEP 2] Checking authentication...`);
-      if (!req.user || !req.user.id || req.user.role !== 'admin') {
+      if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
         logger.error(`${logPrefix} [STEP 2] Authentication failed:`, {
           hasUser: !!req.user,
           userId: req.user?.id || req.user?._id || 'N/A',
@@ -60,7 +61,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
 
     // ========== STEP 3: Helper Functions ==========
     logger.info(`${logPrefix} [STEP 3] Setting up helper functions...`);
-    
+
     // Enhanced normalization function for query parameters
     const normalizeParam = (value) => {
       if (value === null || value === undefined) return null;
@@ -91,14 +92,14 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         return null;
       }
     };
-    
+
     logger.info(`${logPrefix} [STEP 3] Helper functions ready`);
 
     // ========== STEP 4: Extract Query Parameters ==========
     let rawParams, normalizedParams;
     try {
       logger.info(`${logPrefix} [STEP 4] Extracting query parameters...`);
-      
+
       const {
         page = 1,
         limit = 20,
@@ -128,9 +129,9 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         sortBy,
         sortOrder,
       };
-      
+
       logger.info(`${logPrefix} [STEP 4] Raw params:`, JSON.stringify(rawParams, null, 2));
-      
+
       // Normalize all parameters
       const normalizedUserId = normalizeParam(userId);
       const normalizedType = normalizeParam(type);
@@ -153,7 +154,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         sortBy,
         sortOrder,
       };
-      
+
       logger.info(`${logPrefix} [STEP 4] Normalized params:`, JSON.stringify(normalizedParams, null, 2));
     } catch (paramError) {
       logger.error(`${logPrefix} [STEP 4] Error extracting/normalizing params:`, {
@@ -167,7 +168,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     let pageNum, limitNum, skip, sort;
     try {
       logger.info(`${logPrefix} [STEP 5] Validating pagination and sort...`);
-      
+
       // Validate and parse pagination parameters
       pageNum = Math.max(1, parseInt(rawParams.page, 10) || 1);
       limitNum = Math.min(100, Math.max(1, parseInt(rawParams.limit, 10) || 20)); // Cap at 100
@@ -346,7 +347,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       const searchConditions = [];
       try {
         logger.info(`${logPrefix} [STEP 7] Building search query...`);
-        
+
         // Search by reference and description
         if (normalizedParams.search) {
           logger.info(`${logPrefix} [STEP 7] Processing search term: ${normalizedParams.search}`);
@@ -365,9 +366,9 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
                   { name: { $regex: normalizedParams.search, $options: 'i' } },
                 ],
               }).select('_id').limit(100).lean(); // Limit to prevent performance issues
-              
+
               logger.info(`${logPrefix} [STEP 7.1] Found ${users.length} matching users`);
-              
+
               if (users.length > 0) {
                 const userIds = users.map(u => u._id).filter(id => id); // Filter out nulls
                 if (userIds.length > 0) {
@@ -403,7 +404,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         });
         return next(new AppError('Failed to build search query', 500));
       }
-      
+
       logger.info(`${logPrefix} [STEP 6] Final query object:`, JSON.stringify(query, null, 2));
     } catch (queryBuildError) {
       logger.error(`${logPrefix} [STEP 6] Error building query:`, {
@@ -420,7 +421,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
       logger.info(`${logPrefix} [STEP 8] Query:`, JSON.stringify(query, null, 2));
       logger.info(`${logPrefix} [STEP 8] Sort:`, JSON.stringify(sort, null, 2));
       logger.info(`${logPrefix} [STEP 8] Pagination: skip=${skip}, limit=${limitNum}`);
-      
+
       const queryStartTime = Date.now();
       [history, total] = await Promise.all([
         WalletHistory.find(query)
@@ -435,7 +436,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         WalletHistory.countDocuments(query),
       ]);
       const queryDuration = Date.now() - queryStartTime;
-      
+
       logger.info(`${logPrefix} [STEP 8] Query completed in ${queryDuration}ms`);
       logger.info(`${logPrefix} [STEP 8] Results: Found ${history.length} records, Total: ${total}`);
     } catch (dbError) {
@@ -445,7 +446,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
         errorStack: dbError.stack,
         query: JSON.stringify(query, null, 2),
       });
-      
+
       // Handle CastError and other MongoDB errors gracefully
       if (dbError.name === 'CastError' || dbError.name === 'BSONTypeError') {
         logger.error(`${logPrefix} [STEP 8] Cast/BSON error - invalid query parameters`);
@@ -457,7 +458,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     // ========== STEP 9: Build Response ==========
     try {
       logger.info(`${logPrefix} [STEP 9] Building response...`);
-      
+
       // Calculate pagination metadata
       const totalPages = Math.ceil(total / limitNum);
 
@@ -476,7 +477,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
           history,
         },
       };
-      
+
       logger.info(`${logPrefix} [STEP 9] Response built:`, {
         status: response.status,
         results: response.results,
@@ -515,7 +516,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     } catch (stringifyError) {
       logger.error(`${logPrefix} Error serialization failed:`, stringifyError.message);
     }
-    
+
     // This prevents small errors from bubbling into "Invalid ID Format"
     if (error instanceof AppError) {
       logger.info(`${logPrefix} Error is AppError, passing to error handler`);
@@ -605,9 +606,10 @@ exports.getUserWalletHistory = catchAsync(async (req, res, next) => {
  * Admin view all seller revenue history with filters
  */
 exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
+  const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
   try {
     // Ensure admin is authenticated
-    if (!req.user || !req.user.id || req.user.role !== 'admin') {
+    if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
       return next(new AppError('Admin authentication required', 401));
     }
 
@@ -736,7 +738,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
 
     // Build search query - properly combine with other filters
     const searchConditions = [];
-    
+
     // Search by reference and description
     if (normalizedSearch) {
       searchConditions.push(
@@ -754,7 +756,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
               { email: { $regex: normalizedSearch, $options: 'i' } },
             ],
           }).select('_id').limit(100).lean(); // Limit to prevent performance issues
-          
+
           if (sellers.length > 0) {
             const sellerIds = sellers.map(s => s._id).filter(id => id); // Filter out nulls
             if (sellerIds.length > 0) {
@@ -794,7 +796,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
           .lean(),
         SellerRevenueHistory.countDocuments(query),
       ]);
-      
+
       logger.info(`SellerRevenueHistory Query Results: Found ${history.length} records, Total: ${total}`);
     } catch (dbError) {
       // Handle CastError and other MongoDB errors gracefully
@@ -841,7 +843,8 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
  * filtering by sellerId and viewing all sellers in one place.
  */
 exports.getAllSellerTransactions = catchAsync(async (req, res, next) => {
-  if (!req.user || !req.user.id || req.user.role !== 'admin') {
+  const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+  if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
     return next(new AppError('Admin authentication required', 401));
   }
 
@@ -923,7 +926,7 @@ exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
     sortOrder = 'desc',
   } = req.query;
 
-    // Safe ObjectId validation
+  // Safe ObjectId validation
   const isValidObjectId = mongoose.isValidObjectId || mongoose.Types.ObjectId.isValid;
   if (!sellerId || !isValidObjectId(sellerId)) {
     return next(new AppError('Invalid seller ID format', 400));
@@ -932,7 +935,7 @@ exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
   const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    const query = { sellerId: new mongoose.Types.ObjectId(sellerId) };
+  const query = { sellerId: new mongoose.Types.ObjectId(sellerId) };
 
   if (type) {
     query.type = type;

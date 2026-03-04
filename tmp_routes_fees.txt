@@ -1,0 +1,64 @@
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/payoutRoutes.js:8:const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:14:const { otpLimiter, resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:104:// Admin: Reactivate seller (set active: true). Uses updateOne so inactive sellers can be found.
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:106:  '/:id/reactivate',
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:109:  sellerControllor.reactivateSeller
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:222:  '/2fa/regenerate-backup-codes',
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:224:  authSellerController.regenerateBackupCodes
+/Users/mac/Desktop/Saiisai/backend/src/routes/seller/sellerRoutes.js:348:  '/analytics/tax',
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:13: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:21: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:28: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:35: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:42: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:49: * @access  Private (Admin or System)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:61: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:68: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:75: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:82: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/notification/notificationRoutes.js:89: * @access  Private (Buyer/Seller/Admin)
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:36:  const rate = await ShippingRate.findById(req.params.id);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:37:  if (!rate) {
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:38:    return next(new AppError('Shipping rate not found', 404));
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:41:  rate.isActive = !rate.isActive;
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:42:  await rate.save();
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:47:      shippingRate: rate,
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRateRoutes.js:52:// Public route for calculating fees (authenticated users)
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:20:router.get('/charges/summary', getShippingChargesSummary);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:21:router.get('/charges', getAllShippingCharges);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:22:router.get('/charges/order/:orderId', getShippingChargeByOrder);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:23:router.patch('/charges/:id/settle', settleShippingCharge);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:25:router.get('/rate', getShippingRate);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/shippingRoutes.js:26:router.put('/rate', updateShippingRate);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/saiisaiStoreRoutes.js:40:// Shipping fees routes
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/saiisaiStoreRoutes.js:42:  .route('/shipping-fees')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/couponRoutes.js:19:router.patch('/:id/deactivate', couponController.deactivateCoupon);
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:8:const taxController = require('../../controllers/admin/taxController');
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:21:const { resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:89:  .route('/tax/vat-summary')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:93:    taxController.getVATSummary
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:97:  .route('/tax/unremitted')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:101:    taxController.getUnremittedVAT
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:105:  .route('/tax/rates')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:109:    taxController.getTaxRates
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:113:  .route('/tax/withholding')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:117:    taxController.getWithholdingTax
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:121:  .route('/tax/mark-remitted')
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:125:    taxController.markTaxRemitted
+/Users/mac/Desktop/Saiisai/backend/src/routes/admin/adminRoutes.js:457:  .route('/analytics/tax')
+/Users/mac/Desktop/Saiisai/backend/src/routes/shared/orderRoutes.js:62:// Platform tax rates for checkout (from admin platform settings) – public so checkout always gets current VAT/NHIL/GETFund
+/Users/mac/Desktop/Saiisai/backend/src/routes/shared/orderRoutes.js:63:router.get('/tax-rates', platformSettingsController.getTaxRates);
+/Users/mac/Desktop/Saiisai/backend/src/routes/shared/paymentRoutes.js:12:const { paymentInitLimiter, paymentVerificationLimiter } = require('../../middleware/rateLimiting/paymentLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/shared/paymentMethodRoutes.js:11:const { paymentMethodCreationLimiter, verificationRequestLimiter, paymentMethodUpdateLimiter } = require('../../middleware/rateLimiting/paymentMethodLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/shared/reviewRoutes.js:5:const { reviewSubmissionLimiter } = require('../../middleware/rateLimiting/reviewLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/walletRoutes.js:7:const { walletTopupLimiter } = require('../../middleware/rateLimiting/walletLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/walletRoutes.js:8:const { paymentVerificationLimiter } = require('../../middleware/rateLimiting/paymentLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:15:  upLoadUserAvatar, } = require('../../controllers/buyer/userController');
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:20:const { otpLimiter, resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:39:// SECURITY FIX #6: Use OTP rate limiter (5 requests per hour) for forgot-password
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:46:// router.post('/forgot-password', otpLimiter, authController.sendPasswordResetOtp); // ✅ Uses OTP rate limiter (5 per hour)
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:73:  '/avatar',
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:75:  // Avatar upload is a buyer-only route (role: 'user')
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:79:  upLoadUserAvatar,
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/userRoutes.js:82://user deactivation his account
+/Users/mac/Desktop/Saiisai/backend/src/routes/buyer/couponRoutes.js:8:const { couponValidationLimiter, couponApplicationLimiter } = require('../../middleware/coupon/rateLimiter');

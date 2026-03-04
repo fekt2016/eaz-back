@@ -2,6 +2,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
+const Seller = require('../../models/user/sellerModel');
 const SearchAnalytics = require('../../models/analytics/searchAnalyticsModel');
 const aiSearchService = require('../../services/aiSearchService');
 const logger = require('../../utils/logger');
@@ -11,6 +12,7 @@ const {
   buildTextSearchQuery,
   buildFallbackQuery,
   buildSearchRegex,
+  buildFuzzyRegexes,
   escapeRegex,
   calculateRelevanceScore,
   expandKeywords,
@@ -33,7 +35,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
   }
 
   const searchTerm = decodeURIComponent(query);
-  
+
   // Enhance query with AI if available
   let enhancedQuery = searchTerm;
   if (aiSearchService.isAIEnabled()) {
@@ -43,7 +45,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
       logger.warn('[Search] AI query enhancement failed, using original:', error.message);
     }
   }
-  
+
   const normalized = normalizeQuery(enhancedQuery);
 
   if (!normalized || normalized.length < 2) {
@@ -76,12 +78,13 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
     }
 
     // Parallel queries for better performance
-    const [productResults, categoryResults, brandResults, tagResults, trendingSearches] =
+    const [productResults, categoryResults, brandResults, tagResults, sellerResults, trendingSearches] =
       await Promise.all([
-        // Product name matches (optimized with limit)
+        // Product name matches (optimized with limit, using fuzzy logic for typo tolerance)
         Product.find({
-          name: buildSearchRegex(searchTerm, false),
+          name: { $in: buildFuzzyRegexes(searchTerm) },
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
           isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
           isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
@@ -92,7 +95,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
 
         // Categories
         Category.find({
-          name: buildSearchRegex(searchTerm, false),
+          name: { $in: buildFuzzyRegexes(searchTerm) },
         })
           .select('name slug')
           .limit(5),
@@ -101,6 +104,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
         Product.distinct('brand', {
           brand: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
         }),
 
@@ -108,10 +112,19 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
         Product.distinct('tags', {
           tags: { $in: tokens },
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
           isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
           isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         }),
+
+        // Sellers
+        Seller.find({
+          shopName: { $in: buildFuzzyRegexes(searchTerm) },
+          status: 'active',
+        })
+          .select('shopName avatar')
+          .limit(3),
 
         // Trending searches (optional)
         SearchAnalytics.getSimilarKeywords(normalized, 3).catch(() => []),
@@ -160,6 +173,16 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
           url: `/products/search?type=tag&q=${encodeURIComponent(tag)}`,
         });
       });
+
+    // Add seller suggestions
+    sellerResults.forEach((seller) => {
+      suggestions.push({
+        type: 'seller',
+        text: seller.shopName,
+        url: `/sellers/${seller._id}`,
+        image: seller.avatar,
+      });
+    });
 
     // Add trending searches
     trendingSearches.forEach((trend) => {
@@ -218,7 +241,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
     }
 
     let searchTerm = decodeURIComponent(q);
-    
+
     // Enhance query with AI if available
     if (aiSearchService.isAIEnabled()) {
       try {
@@ -227,7 +250,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         logger.warn('[Search] AI query enhancement failed, using original:', error.message);
       }
     }
-    
+
     const normalized = normalizeQuery(searchTerm);
 
     if (!normalized || normalized.length < 2) {
@@ -237,11 +260,12 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
     const tokens = tokenizeQuery(normalized);
 
     // Parallel queries for suggestions
-    const [productResults, categoryResults, brandResults, tagResults] =
+    const [productResults, categoryResults, brandResults, tagResults, sellerResults] =
       await Promise.all([
         Product.find({
-          name: buildSearchRegex(searchTerm, false),
+          name: { $in: buildFuzzyRegexes(searchTerm) },
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
           isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
           isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
@@ -251,7 +275,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
           .lean(),
 
         Category.find({
-          name: buildSearchRegex(searchTerm, false),
+          name: { $in: buildFuzzyRegexes(searchTerm) },
         })
           .select('name slug')
           .limit(5)
@@ -260,16 +284,26 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         Product.distinct('brand', {
           brand: buildSearchRegex(searchTerm, false),
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
         }),
 
         Product.distinct('tags', {
           tags: { $in: tokens },
           status: 'active',
+          isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
           isDeletedByAdmin: { $ne: true }, // Exclude admin-deleted products
           isDeletedBySeller: { $ne: true }, // Exclude seller-deleted products
         }),
+
+        Seller.find({
+          shopName: { $in: buildFuzzyRegexes(searchTerm) },
+          status: 'active',
+        })
+          .select('shopName avatar')
+          .limit(3)
+          .lean(),
       ]);
 
     const suggestions = [];
@@ -315,6 +349,16 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
           url: `/products/search?type=tag&q=${encodeURIComponent(tag)}`,
         });
       });
+
+    // Sellers
+    sellerResults.forEach((seller) => {
+      suggestions.push({
+        type: 'seller',
+        text: seller.shopName,
+        url: `/sellers/${seller._id}`,
+        image: seller.avatar,
+      });
+    });
 
     // Deduplicate + limit
     const uniqueSuggestions = suggestions
@@ -366,7 +410,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
 
   // Normalize search query
   let searchQuery = q ? decodeURIComponent(q) : '';
-  
+
   // Enhance query with AI if available
   if (searchQuery && aiSearchService.isAIEnabled()) {
     try {
@@ -375,14 +419,14 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
       logger.warn('[Search] AI query enhancement failed, using original:', error.message);
     }
   }
-  
+
   const normalized = normalizeQuery(searchQuery);
-  
+
   // Classify query intent with AI if available
   let queryIntent = null;
   let finalCategoryId = categoryId;
   let finalBrand = brand;
-  
+
   if (normalized && aiSearchService.isAIEnabled()) {
     try {
       queryIntent = await aiSearchService.classifyQueryIntent(normalized);
@@ -483,6 +527,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     if (textQuery) {
       // Merge text query with buyer-safe query
       const query = { ...buyerSafeQuery, ...textQuery };
+      logger.info('[SEARCH] Text Query Executing:', JSON.stringify(query));
       const countQuery = Product.countDocuments(query);
       const findQuery = Product.find(query)
         .select('-__v')
@@ -527,6 +572,7 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
         if (fallbackQuery) {
           // Merge fallback query with buyer-safe query
           const safeFallbackQuery = { ...buyerSafeQuery, ...fallbackQuery };
+          logger.info('[SEARCH] Fallback Query Executing:', JSON.stringify(safeFallbackQuery));
           const fallbackFindQuery = Product.find(safeFallbackQuery)
             .select('-__v')
             .populate('parentCategory', 'name slug')
@@ -645,6 +691,48 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     const query = {
       ...buyerSafeQuery,
       tags: { $in: tokens },
+    };
+
+    const countQuery = Product.countDocuments(query);
+    const findQuery = Product.find(query)
+      .select('-__v')
+      .populate('parentCategory', 'name slug')
+      .populate('subCategory', 'name slug');
+
+    switch (sortBy) {
+      case 'price-low':
+        findQuery.sort({ minPrice: 1 });
+        break;
+      case 'price-high':
+        findQuery.sort({ minPrice: -1 });
+        break;
+      case 'rating':
+        findQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
+        break;
+      case 'newest':
+        findQuery.sort({ createdAt: -1 });
+        break;
+      default:
+        findQuery.sort({ totalSold: -1, ratingsAverage: -1 });
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    findQuery.skip(skip).limit(parseInt(limit));
+
+    [totalProducts, products] = await Promise.all([countQuery, findQuery]);
+  } else if ((type === 'seller' || type === 'store') && (normalized || q)) {
+    // Seller/Store search: Find matching sellers, then return their products
+    const Seller = require('../../models/user/sellerModel');
+    const matchedSellers = await Seller.find({
+      shopName: { $in: buildFuzzyRegexes(q ? decodeURIComponent(q) : normalized) },
+      status: 'active',
+    }).select('_id');
+
+    const sellerIds = matchedSellers.map(s => s._id);
+
+    const query = {
+      ...buyerSafeQuery,
+      seller: { $in: sellerIds },
     };
 
     const countQuery = Product.countDocuments(query);
@@ -824,6 +912,24 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     maxVisible: 5,
   });
 
+  // Fetch matching stores/sellers
+  let matchingSellers = [];
+  if (normalized && page === 1) { // Only fetch on first page
+    try {
+      const Seller = require('../../models/user/sellerModel');
+      const searchTerm = q ? decodeURIComponent(q) : '';
+      matchingSellers = await Seller.find({
+        shopName: { $in: buildFuzzyRegexes(searchTerm) },
+        status: 'active',
+      })
+        .select('shopName avatar rating')
+        .limit(3)
+        .lean();
+    } catch (err) {
+      logger.error('Failed to fetch matching sellers:', err);
+    }
+  }
+
   res.status(200).json({
     success: true,
     results: products.length,
@@ -832,11 +938,12 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
     totalPages: pagination.totalPages,
     pagination, // Include full pagination metadata
     data: products,
+    sellers: matchingSellers, // Add matching sellers for frontend display
     aiEnabled: aiSearchService.isAIEnabled(),
     aiUsed: queryIntent !== null,
     _meta: {
       originalQuery: q || '',
-      enhancedQuery: searchQuery !== (q || '') ? searchQuery : undefined,
+      enhancedQuery: searchQuery !== (q ? decodeURIComponent(q) : '') ? searchQuery : undefined,
       intent: queryIntent ? {
         type: queryIntent.intent,
         confidence: queryIntent.confidence,

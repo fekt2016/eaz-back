@@ -10,6 +10,7 @@ const {
   validateStatusTransition,
   mapRoleToUpdatedByRole,
 } = require('../../utils/helpers/orderStatusTransitions');
+const stockService = require('../../services/stock/stockService');
 
 /**
  * Update order status
@@ -18,401 +19,440 @@ const {
  */
 exports.updateOrderStatus = catchAsync(async (req, res, next) => {
   const { orderId } = req.params;
-  const { status, message, location } = req.body;
+  const { status, message, location, statusVersion: clientStatusVersion } = req.body;
   const user = req.user;
 
-  // Validate status (generic tracking system)
-  const validStatuses = [
-    'pending_payment',
-    'payment_completed',
-    'processing',
-    'confirmed',
-    'preparing',
-    'ready_for_dispatch',
-    // International pre-order specific statuses
-    'supplier_confirmed',
-    'awaiting_dispatch',
-    'international_shipped',
-    'customs_clearance',
-    'arrived_destination',
-    'local_dispatch',
-    'out_for_delivery',
-    'delivered',
-    'cancelled',
-    'refunded',
-  ];
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!status || !validStatuses.includes(status)) {
-    return next(new AppError('Invalid status', 400));
-  }
-
-  // Find order
-  const order = await Order.findById(orderId);
-
-  if (!order) {
-    return next(new AppError('Order not found', 404));
-  }
-
-  // Check authorization: admin or seller (who owns items in the order)
-  const isAdmin = user.role === 'admin';
-  const isSeller = user.role === 'seller';
-
-  if (!isAdmin && !isSeller) {
-    return next(new AppError('You are not authorized to update order status', 403));
-  }
-
-  // If seller, verify they have items in this order
-  if (isSeller && !isAdmin) {
-    const sellerOrders = await Order.findById(orderId)
-      .populate({
-        path: 'sellerOrder',
-        populate: { path: 'seller' },
-      })
-      .lean();
-
-    const hasItems = sellerOrders.sellerOrder?.some(
-      (so) => so.seller?._id?.toString() === user.id
-    );
-
-    if (!hasItems) {
-      return next(
-        new AppError('You can only update status for orders containing your products', 403)
-      );
-    }
-  }
-
-  // Determine updatedByModel
-  let updatedByModel = 'Admin';
-  if (user.role === 'seller') {
-    updatedByModel = 'Seller';
-  } else if (user.role === 'user') {
-    updatedByModel = 'User';
-  }
-
-  // Enforce safe status flow & order-type specific rules
-  const transitionCheck = validateStatusTransition(order, status, user.role);
-  if (!transitionCheck.allowed) {
-    return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
-  }
-
-  // Do not allow progressing unpaid orders beyond cancellation.
-  const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
-  const isPaid =
-    rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
-  if (!isPaid && status !== order.currentStatus && status !== 'cancelled') {
-    return next(
-      new AppError(
-        'Cannot update order status while payment is pending. You may only cancel unpaid orders.',
-        400,
-      ),
-    );
-  }
-
-  // For international pre-orders, certain steps are admin-only
-  const isInternational = order.orderType === 'preorder_international';
-  const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
-
-  if (
-    isInternational &&
-    isSeller &&
-    !isAdminLike &&
-    ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
-  ) {
-    return next(
-      new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
-    );
-  }
-
-  // Add to tracking history
-  const trackingEntry = {
-    status,
-    message: message || '',
-    location: location || '',
-    updatedBy: user.id,
-    updatedByModel,
-    updatedByRole: mapRoleToUpdatedByRole(user.role),
-    timestamp: new Date(),
-  };
-
-  // Store previous status to check if we're transitioning to completed
-  const previousStatus = order.currentStatus;
-  const wasCompleted = order.currentStatus === 'delivered' || order.status === 'completed';
-
-  // Update order - currentStatus is the single source of truth
-  order.currentStatus = status;
-  order.trackingHistory.push(trackingEntry);
-
-  // Attach international pre-order metadata when relevant
-  if (isInternational) {
-    if (status === 'supplier_confirmed') {
-      if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
-      if (req.body.supplierName) order.supplierName = req.body.supplierName;
-      if (req.body.estimatedArrivalDate) {
-        order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
-      }
-    }
-
-    if (status === 'awaiting_dispatch' || status === 'international_shipped') {
-      if (req.body.internationalTrackingNumber) {
-        order.internationalTrackingNumber = req.body.internationalTrackingNumber;
-      }
-    }
-
-    if (status === 'customs_clearance' && !order.customsClearedAt) {
-      order.customsClearedAt = new Date();
-    }
-  }
-
-  // Sync legacy status fields for backward compatibility (but currentStatus is primary)
-  if (status === 'delivered') {
-    order.orderStatus = 'delievered';
-    order.FulfillmentStatus = 'delievered';
-    order.status = 'completed';
-  } else if (status === 'cancelled') {
-    order.orderStatus = 'cancelled';
-    order.FulfillmentStatus = 'cancelled';
-    order.status = 'cancelled';
-  } else if (status === 'refunded') {
-    order.status = 'cancelled';
-    order.orderStatus = 'cancelled';
-    order.FulfillmentStatus = 'cancelled';
-  } else if (status === 'out_for_delivery') {
-    order.orderStatus = 'shipped';
-    order.FulfillmentStatus = 'shipped';
-    order.status = 'processing';
-  } else if (status === 'confirmed' || status === 'payment_completed') {
-    // Confirmed status means payment is complete - set status to confirmed
-    order.status = 'confirmed';
-    order.paymentStatus = 'completed';
-    order.orderStatus = 'confirmed';
-    order.FulfillmentStatus = 'confirmed';
-  } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
-    order.status = 'processing';
-  }
-
-  await order.save();
-
-  // Send push notification to buyer for important status changes
   try {
-    const pushNotificationService = require('../../services/pushNotificationService');
-    const orderPopulated = await Order.findById(orderId).populate('user', 'id').lean();
-    
-    if (orderPopulated?.user?.id && ['out_for_delivery', 'delivered'].includes(status)) {
-      let title, body;
-      
-      if (status === 'out_for_delivery') {
-        title = 'Order Out for Delivery';
-        body = `Your order #${order.orderNumber} is out for delivery and will arrive soon!`;
-      } else if (status === 'delivered') {
-        title = 'Order Delivered';
-        body = `Your order #${order.orderNumber} has been delivered. Thank you for shopping with us!`;
-      }
-      
-      await pushNotificationService.sendOrderNotification(
-        orderPopulated.user.id,
-        orderId,
-        title,
-        body,
-        status
-      );
-      console.log(`[updateOrderStatus] ✅ Push notification sent for order ${orderId} status: ${status}`);
-    }
-  } catch (pushError) {
-    console.error('[updateOrderStatus] Error sending push notification:', pushError.message);
-    // Don't fail the order update if push notification fails
-  }
+    // Find order
+    const order = await Order.findById(orderId).session(session);
 
-  // Create notifications for order status change
-  try {
-    const notificationService = require('../../services/notification/notificationService');
-    
-    // Notify buyer
-    await notificationService.createOrderNotification(
-      order.user,
-      order._id,
-      order.orderNumber,
-      status
-    );
-
-    // Notify sellers if order is confirmed or delivered
-    if (status === 'confirmed' || status === 'delivered') {
-      const SellerOrder = require('../../models/order/sellerOrderModel');
-      const sellerOrders = await SellerOrder.find({ order: order._id }).populate('seller');
-      
-      for (const sellerOrder of sellerOrders) {
-        if (sellerOrder.seller && sellerOrder.seller._id) {
-          await notificationService.createSellerOrderNotification(
-            sellerOrder.seller._id,
-            order._id,
-            order.orderNumber,
-            status
-          );
-        }
-      }
+    if (!order) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Order not found', 404));
     }
 
-    // Create delivery notification if status is out_for_delivery or delivered
-    if (status === 'out_for_delivery' || status === 'delivered') {
-      await notificationService.createDeliveryNotification(
-        order.user,
-        order._id,
-        order.trackingNumber || order.orderNumber,
-        status
-      );
-    }
-  } catch (notificationError) {
-    // Don't fail the order update if notification creation fails
-    logger.error('[updateOrderStatus] Error creating notifications:', notificationError);
-  }
+    // Check authorization: admin, superadmin, moderator or seller (who owns items in the order)
+    const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
+    const isSeller = user.role === 'seller';
 
-  // Send email notifications for order status changes (buyer + seller)
-  try {
-    const emailDispatcher = require('../../emails/emailDispatcher');
-    const User = require('../../models/user/userModel');
-    const SellerOrder = require('../../models/order/sellerOrderModel');
-    
-    // Populate buyer for email
-    const buyer = await User.findById(order.user).select('name email').lean();
-    
-    if (buyer && buyer.email) {
-      // Buyer: shipped email
-      if (status === 'out_for_delivery') {
-        await emailDispatcher.sendOrderShipped(order, buyer);
-        logger.info('[updateOrderStatus] ✅ Order shipped email sent to buyer %s', buyer.email);
-      }
-      
-      // Buyer: delivered email
-      if (status === 'delivered') {
-        await emailDispatcher.sendOrderDelivered(order, buyer);
-        logger.info('[updateOrderStatus] ✅ Order delivered email sent to buyer %s', buyer.email);
-      }
+    if (!isAdmin && !isSeller) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('You are not authorized to update order status', 403));
     }
 
-    // Sellers: status update email (for key milestones)
-    if (['out_for_delivery', 'delivered', 'cancelled', 'refunded', 'confirmed'].includes(status)) {
-      const sellerOrders = await SellerOrder.find({ order: order._id })
-        .populate('seller', 'email name shopName')
+    // If seller, verify they have items in this order
+    if (isSeller && !isAdmin) {
+      const sellerOrders = await Order.findById(orderId)
+        .populate({
+          path: 'sellerOrder',
+          populate: { path: 'seller' },
+        })
+        .session(session)
         .lean();
 
-      for (const so of sellerOrders) {
-        const seller = so.seller;
-        if (seller && seller.email) {
-          await emailDispatcher.sendSellerOrderStatusUpdate(seller, order, status);
-          logger.info(
-            '[updateOrderStatus] ✅ Seller order status email sent to %s for order %s (status=%s)',
-            seller.email,
-            order.orderNumber || order._id,
-            status
-          );
+      const hasItems = sellerOrders.sellerOrder?.some(
+        (so) => so.seller?._id?.toString() === user.id
+      );
+
+      if (!hasItems) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(
+          new AppError('You can only update status for orders containing your products', 403)
+        );
+      }
+    }
+
+    // Determine updatedByModel
+    let updatedByModel = 'Admin';
+    if (user.role === 'seller') {
+      updatedByModel = 'Seller';
+    } else if (user.role === 'user') {
+      updatedByModel = 'User';
+    }
+
+    // Enforce safe status flow & order-type specific rules
+    const transitionCheck = validateStatusTransition(order, status, user.role);
+    if (!transitionCheck.allowed) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
+    }
+
+    // Do not allow progressing unpaid orders beyond cancellation.
+    const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+    const isPaid =
+      rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
+    if (!isPaid && status !== order.currentStatus && status !== 'cancelled') {
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new AppError(
+          'Cannot update order status while payment is pending. You may only cancel unpaid orders.',
+          400,
+        ),
+      );
+    }
+
+    // For international pre-orders, certain steps are admin-only
+    const isInternational = order.orderType === 'preorder_international';
+    const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
+
+    if (
+      isInternational &&
+      isSeller &&
+      !isAdminLike &&
+      ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
+    ) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
+      );
+    }
+
+    // P4-FIX 2: Optimistic concurrency check for order status updates.
+    // If client provides a statusVersion, validate it matches the DB version.
+    // This prevents two concurrent updates from silently overwriting each other.
+    if (clientStatusVersion !== undefined && clientStatusVersion !== null) {
+      const dbVersion = order.statusVersion ?? 0;
+      if (Number(clientStatusVersion) !== dbVersion) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(new AppError(
+          `Order status conflict: it was updated by another user. ` +
+          `Your version (${clientStatusVersion}) is out of date (current: ${dbVersion}). ` +
+          `Please refresh and try again.`,
+          409
+        ));
+      }
+    }
+
+    // Add to tracking history
+    const trackingEntry = {
+      status,
+      message: message || '',
+      location: location || '',
+      updatedBy: user.id,
+      updatedByModel,
+      updatedByRole: mapRoleToUpdatedByRole(user.role),
+      timestamp: new Date(),
+    };
+
+    // Store previous status to check if we're transitioning to completed
+    const previousStatus = order.currentStatus;
+    const wasCompleted = order.currentStatus === 'delivered' || order.status === 'completed';
+
+    // Update order - currentStatus is the single source of truth
+    order.currentStatus = status;
+    // P4-FIX 2: Increment version so concurrent callers with a stale version get a 409
+    order.statusVersion = (order.statusVersion ?? 0) + 1;
+    order.trackingHistory.push(trackingEntry);
+
+    // Attach international pre-order metadata when relevant
+    if (isInternational) {
+      if (status === 'supplier_confirmed') {
+        if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
+        if (req.body.supplierName) order.supplierName = req.body.supplierName;
+        if (req.body.estimatedArrivalDate) {
+          order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
         }
       }
-    }
-  } catch (emailError) {
-    logger.error('[updateOrderStatus] Error sending order status emails:', emailError.message || emailError);
-    // Don't fail the order update if email fails
-  }
 
-  // Sync SellerOrder status with Order status
-  try {
-    const syncResult = await syncSellerOrderStatus(orderId, status);
-    logger.info('[updateOrderStatus] SellerOrder sync result:', syncResult);
-  } catch (error) {
-    logger.error('[updateOrderStatus] Error syncing SellerOrder status:', error);
-    // Don't fail the order update if SellerOrder sync fails
-  }
-
-  // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-  // This is the ONLY place where sellers should be credited
-  if (status === 'delivered' && !wasCompleted) {
-    try {
-      const balanceUpdateResult = await orderService.creditSellerForOrder(
-        orderId,
-        user.id
-      );
-      logger.info('[updateOrderStatus] Seller balance credit result:', balanceUpdateResult);
-      if (!balanceUpdateResult.success) {
-        logger.warn('[updateOrderStatus] Seller credit failed:', balanceUpdateResult.message);
+      if (status === 'awaiting_dispatch' || status === 'international_shipped') {
+        if (req.body.internationalTrackingNumber) {
+          order.internationalTrackingNumber = req.body.internationalTrackingNumber;
+        }
       }
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[updateOrderStatus] Error crediting seller balances:', error);
+
+      if (status === 'customs_clearance' && !order.customsClearedAt) {
+        order.customsClearedAt = new Date();
+      }
     }
-  }
 
-  // If order is being refunded, revert seller balances and refund buyer wallet
-  if (status === 'refunded' && wasCompleted) {
+    // Sync legacy status fields for backward compatibility (but currentStatus is primary)
+    if (status === 'delivered') {
+      order.orderStatus = 'delievered';
+      order.FulfillmentStatus = 'delievered';
+      order.status = 'completed';
+    } else if (status === 'cancelled') {
+      order.orderStatus = 'cancelled';
+      order.FulfillmentStatus = 'cancelled';
+      order.status = 'cancelled';
+    } else if (status === 'refunded') {
+      order.status = 'cancelled';
+      order.orderStatus = 'cancelled';
+      order.FulfillmentStatus = 'cancelled';
+    } else if (status === 'out_for_delivery') {
+      order.orderStatus = 'shipped';
+      order.FulfillmentStatus = 'shipped';
+      order.status = 'processing';
+    } else if (status === 'confirmed' || status === 'payment_completed') {
+      // Confirmed status means payment is complete - set status to confirmed
+      order.status = 'confirmed';
+      order.paymentStatus = 'completed';
+      order.orderStatus = 'confirmed';
+      order.FulfillmentStatus = 'confirmed';
+    } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
+      order.status = 'processing';
+    }
+
+    // Handle stock restoration on cancellation/refund
+    if (['cancelled', 'refunded'].includes(status) && !['cancelled', 'refunded'].includes(previousStatus)) {
+      // Ensure orderItems are populated for restoration
+      await order.populate('orderItems');
+      await stockService.restoreOrderStock(order.orderItems, session);
+      logger.info(`[updateOrderStatus] Stock restored for order ${orderId} (Status: ${status})`);
+    }
+
+    await order.save({ session });
+    await session.commitTransaction();
+
+    // POST-TRANSACTION ACTIONS (Notifications, Emails, Syncs)
+    // We do these after commit to avoid blocking the transaction on external services
+
+    // (Existing notification/email logic remains same but without session)
+    // ... (rest of the code will be in the next chunk if needed)
+
+    // Send push notification to buyer for important status changes
     try {
-      // Revert seller balances
-      const reversalResult = await orderService.revertSellerBalancesOnRefund(
-        orderId,
-        'Order Refunded'
+      const pushNotificationService = require('../../services/pushNotificationService');
+      const orderPopulated = await Order.findById(orderId).populate('user', 'id').lean();
+
+      if (orderPopulated?.user?.id && ['out_for_delivery', 'delivered'].includes(status)) {
+        let title, body;
+
+        if (status === 'out_for_delivery') {
+          title = 'Order Out for Delivery';
+          body = `Your order #${order.orderNumber} is out for delivery and will arrive soon!`;
+        } else if (status === 'delivered') {
+          title = 'Order Delivered';
+          body = `Your order #${order.orderNumber} has been delivered. Thank you for shopping with us!`;
+        }
+
+        await pushNotificationService.sendOrderNotification(
+          orderPopulated.user.id,
+          orderId,
+          title,
+          body,
+          status
+        );
+        console.log(`[updateOrderStatus] ✅ Push notification sent for order ${orderId} status: ${status}`);
+      }
+    } catch (pushError) {
+      console.error('[updateOrderStatus] Error sending push notification:', pushError.message);
+      // Don't fail the order update if push notification fails
+    }
+
+    // Create notifications for order status change
+    try {
+      const notificationService = require('../../services/notification/notificationService');
+
+      // Notify buyer
+      await notificationService.createOrderNotification(
+        order.user,
+        order._id,
+        order.orderNumber,
+        status
       );
-      logger.info('[updateOrderStatus] Seller balance reversal result:', reversalResult);
 
-      // Refund buyer wallet if order was paid with wallet
-      if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
-        try {
-          const walletService = require('../../services/walletService');
-          const refundAmount = order.totalPrice || 0;
-          const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+      // Notify sellers if order is confirmed or delivered
+      if (status === 'confirmed' || status === 'delivered') {
+        const SellerOrder = require('../../models/order/sellerOrderModel');
+        const sellerOrders = await SellerOrder.find({ order: order._id }).populate('seller');
 
-          if (refundAmount > 0) {
-            const refundResult = await walletService.creditWallet(
-              order.user,
-              refundAmount,
-              'CREDIT_REFUND',
-              `Refund for Order #${order.orderNumber}`,
-              reference,
-              {
-                orderId: order._id.toString(),
-                orderNumber: order.orderNumber,
-                refundedBy: user.id,
-                refundedByRole: user.role,
-              },
-              order._id
+        for (const sellerOrder of sellerOrders) {
+          if (sellerOrder.seller && sellerOrder.seller._id) {
+            await notificationService.createSellerOrderNotification(
+              sellerOrder.seller._id,
+              order._id,
+              order.orderNumber,
+              status
             );
-
-            logger.info(`[updateOrderStatus] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
           }
-        } catch (walletError) {
-          logger.error('[updateOrderStatus] Error refunding wallet:', walletError);
-          // Don't fail the order update if wallet refund fails
         }
       }
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[updateOrderStatus] Error reverting seller balances:', error);
+
+      // Create delivery notification if status is out_for_delivery or delivered
+      if (status === 'out_for_delivery' || status === 'delivered') {
+        await notificationService.createDeliveryNotification(
+          order.user,
+          order._id,
+          order.trackingNumber || order.orderNumber,
+          status
+        );
+      }
+    } catch (notificationError) {
+      // Don't fail the order update if notification creation fails
+      logger.error('[updateOrderStatus] Error creating notifications:', notificationError);
     }
-  }
 
-  // Log activity
-  const role = user.role === 'admin' ? 'admin' : 'seller';
-  logActivityAsync({
-    userId: user.id,
-    role,
-    action: 'UPDATE_ORDER_STATUS',
-    description: `${role === 'admin' ? 'Admin' : 'Seller'} updated order #${order.orderNumber} status to ${status}`,
-    req,
-    metadata: {
-      orderId: order._id,
-      orderNumber: order.orderNumber,
-      oldStatus: wasCompleted ? 'delivered' : order.currentStatus,
-      newStatus: status,
-    },
-  });
+    // Send email notifications for order status changes (buyer + seller)
+    setImmediate(async () => {
+      try {
+        const emailDispatcher = require('../../emails/emailDispatcher');
+        const User = require('../../models/user/userModel');
+        const SellerOrder = require('../../models/order/sellerOrderModel');
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Order status updated successfully',
-    data: {
-      order: {
-        _id: order._id,
+        // Populate buyer for email
+        const buyer = await User.findById(order.user).select('name email').lean();
+        const cancelReason = req.body.message || req.body.reason || null;
+
+        if (buyer && buyer.email) {
+          if (status === 'out_for_delivery') {
+            await emailDispatcher.sendOrderShipped(order, buyer);
+            logger.info('[updateOrderStatus] ✅ Order shipped email sent to buyer %s', buyer.email);
+          }
+          if (status === 'delivered') {
+            await emailDispatcher.sendOrderDelivered(order, buyer);
+            logger.info('[updateOrderStatus] ✅ Order delivered email sent to buyer %s', buyer.email);
+          }
+          // Dedicated cancellation email to buyer
+          if (status === 'cancelled') {
+            await emailDispatcher.sendOrderCancelledBuyer(order, buyer, user.role, cancelReason);
+            logger.info('[updateOrderStatus] ✅ Order cancelled email sent to buyer %s', buyer.email);
+          }
+        }
+
+        // Sellers: status update email (for key milestones excl. cancelled — handled separately)
+        const sellerStatusStatuses = ['out_for_delivery', 'delivered', 'refunded', 'confirmed'];
+        const sellerOrders = await SellerOrder.find({ order: order._id })
+          .populate('seller', 'email name shopName')
+          .lean();
+
+        for (const so of sellerOrders) {
+          const seller = so.seller;
+          if (!seller || !seller.email) continue;
+
+          if (status === 'cancelled') {
+            // Dedicated cancellation email to seller
+            await emailDispatcher.sendOrderCancelledSeller(order, seller, cancelReason);
+            logger.info('[updateOrderStatus] ✅ Order cancelled email sent to seller %s', seller.email);
+          } else if (sellerStatusStatuses.includes(status)) {
+            await emailDispatcher.sendSellerOrderStatusUpdate(seller, order, status);
+            logger.info('[updateOrderStatus] ✅ Seller order status email sent to %s (status=%s)', seller.email, status);
+          }
+        }
+      } catch (emailError) {
+        logger.error('[updateOrderStatus] Error sending order status emails:', emailError.message || emailError);
+      }
+    });
+
+    // Sync SellerOrder status with Order status
+    try {
+      const syncResult = await syncSellerOrderStatus(orderId, status);
+      logger.info('[updateOrderStatus] SellerOrder sync result:', syncResult);
+    } catch (error) {
+      logger.error('[updateOrderStatus] Error syncing SellerOrder status:', error);
+      // Don't fail the order update if SellerOrder sync fails
+    }
+
+    // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
+    // This is the ONLY place where sellers should be credited
+    if (status === 'delivered' && !wasCompleted) {
+      try {
+        const balanceUpdateResult = await orderService.creditSellerForOrder(
+          orderId,
+          user.id
+        );
+        logger.info('[updateOrderStatus] Seller balance credit result:', balanceUpdateResult);
+        if (!balanceUpdateResult.success) {
+          logger.warn('[updateOrderStatus] Seller credit failed:', balanceUpdateResult.message);
+        }
+      } catch (error) {
+        // Log error but don't fail the status update
+        logger.error('[updateOrderStatus] Error crediting seller balances:', error);
+      }
+    }
+
+    // If order is being refunded, revert seller balances and refund buyer wallet
+    if (status === 'refunded' && wasCompleted) {
+      try {
+        // Revert seller balances
+        const reversalResult = await orderService.revertSellerBalancesOnRefund(
+          orderId,
+          'Order Refunded'
+        );
+        logger.info('[updateOrderStatus] Seller balance reversal result:', reversalResult);
+
+        // Refund buyer wallet if order was paid with wallet
+        if (order.paymentMethod === 'credit_balance' && order.paymentStatus === 'paid') {
+          try {
+            const walletService = require('../../services/walletService');
+            const refundAmount = order.totalPrice || 0;
+            const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+
+            if (refundAmount > 0) {
+              const refundResult = await walletService.creditWallet(
+                order.user,
+                refundAmount,
+                'CREDIT_REFUND',
+                `Refund for Order #${order.orderNumber}`,
+                reference,
+                {
+                  orderId: order._id.toString(),
+                  orderNumber: order.orderNumber,
+                  refundedBy: user.id,
+                  refundedByRole: user.role,
+                },
+                order._id
+              );
+
+              logger.info(`[updateOrderStatus] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+            }
+          } catch (walletError) {
+            logger.error('[updateOrderStatus] Error refunding wallet:', walletError);
+            // Don't fail the order update if wallet refund fails
+          }
+        }
+      } catch (error) {
+        // Log error but don't fail the status update
+        logger.error('[updateOrderStatus] Error reverting seller balances:', error);
+      }
+    }
+
+    // Log activity
+    const role = user.role === 'admin' ? 'admin' : 'seller';
+    logActivityAsync({
+      userId: user.id,
+      role,
+      action: 'UPDATE_ORDER_STATUS',
+      description: `${role === 'admin' ? 'Admin' : 'Seller'} updated order #${order.orderNumber} status to ${status}`,
+      req,
+      metadata: {
+        orderId: order._id,
         orderNumber: order.orderNumber,
-        currentStatus: order.currentStatus,
-        trackingHistory: order.trackingHistory,
+        oldStatus: wasCompleted ? 'delivered' : order.currentStatus,
+        newStatus: status,
       },
-    },
-  });
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Order status updated successfully',
+      data: {
+        order: {
+          _id: order._id,
+          orderNumber: order.orderNumber,
+          currentStatus: order.currentStatus,
+          statusVersion: order.statusVersion,
+          trackingHistory: order.trackingHistory,
+        },
+      },
+    });
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
 });
 
 /**
@@ -551,7 +591,7 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
 
   // Handle shippingAddress - check if it's a reference (ObjectId string) or embedded object
   let shippingAddress = order.shippingAddress;
-  
+
   // Check if shippingAddress is an ObjectId (string or ObjectId instance) rather than an embedded object
   if (shippingAddress && (typeof shippingAddress === 'string' || mongoose.Types.ObjectId.isValid(shippingAddress))) {
     // If it's a string/ObjectId (reference to Address model), populate from Address model
@@ -577,16 +617,16 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
     const hasConfirmed = (order.trackingHistory || []).some(
       entry => entry.status === 'confirmed'
     );
-    
+
     if (!hasConfirmed) {
       // Insert confirmed entry after order_placed (pending_payment)
       order.trackingHistory = order.trackingHistory || [];
-      
+
       // Find the index of the first entry (should be pending_payment/order_placed)
       const firstEntryIndex = order.trackingHistory.findIndex(
         entry => entry.status === 'pending_payment'
       );
-      
+
       if (firstEntryIndex !== -1) {
         // Insert confirmed right after pending_payment
         order.trackingHistory.splice(firstEntryIndex + 1, 0, {
@@ -617,7 +657,7 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
   );
 
   // Get latest update
-  const latestUpdate = sortedHistory.length > 0 
+  const latestUpdate = sortedHistory.length > 0
     ? sortedHistory[sortedHistory.length - 1]
     : null;
 
@@ -670,257 +710,295 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
   const { status, message } = req.body;
   const user = req.user;
 
-  // Validate input
-  if (!status || !message) {
-    return next(new AppError('Status and message are required', 400));
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // Validate status
-  const validStatuses = [
-    'pending_payment',
-    'payment_completed',
-    'processing',
-    'confirmed',
-    'preparing',
-    'ready_for_dispatch',
-    // International pre-order specific statuses
-    'supplier_confirmed',
-    'awaiting_dispatch',
-    'international_shipped',
-    'customs_clearance',
-    'arrived_destination',
-    'local_dispatch',
-    'out_for_delivery',
-    'delivered',
-    'cancelled',
-    'refunded',
-  ];
-
-  if (!validStatuses.includes(status)) {
-    return next(new AppError('Invalid status', 400));
-  }
-
-  // Check authorization: admin (admin, superadmin, moderator) or seller
-  const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
-  const isSeller = user.role === 'seller';
-
-  if (!isAdmin && !isSeller) {
-    return next(new AppError('You are not authorized to add tracking updates', 403));
-  }
-
-  // Find order
-  const order = await Order.findById(id);
-
-  if (!order) {
-    return next(new AppError('Order not found', 404));
-  }
-
-  // If seller, verify they have items in this order
-  if (isSeller && !isAdmin) {
-    const SellerOrder = require('../../models/order/sellerOrderModel');
-    const sellerOrders = await Order.findById(id)
-      .populate({
-        path: 'sellerOrder',
-        populate: { path: 'seller' },
-      })
-      .lean();
-
-    const hasItems = sellerOrders.sellerOrder?.some(
-      (so) => so.seller?._id?.toString() === user.id
-    );
-
-    if (!hasItems) {
-      return next(
-        new AppError('You can only add tracking updates for orders containing your products', 403)
-      );
-    }
-  }
-
-  // Determine updatedByModel
-  let updatedByModel = 'Admin';
-  if (user.role === 'seller') {
-    updatedByModel = 'Seller';
-  }
-
-  // Ensure updatedBy is ObjectId (schema expects ObjectId; user may be Admin/Seller doc)
-  const updatedById = user._id || (mongoose.Types.ObjectId.isValid(user.id) ? new mongoose.Types.ObjectId(user.id) : user.id);
-
-  // Enforce safe status flow & order-type specific rules
-  const transitionCheck = validateStatusTransition(order, status, user.role);
-  if (!transitionCheck.allowed) {
-    return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
-  }
-
-  const isInternational = order.orderType === 'preorder_international';
-  const isAdminLike = isAdmin;
-
-  if (
-    isInternational &&
-    isSeller &&
-    !isAdminLike &&
-    ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
-  ) {
-    return next(
-      new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
-    );
-  }
-
-  // Add to tracking history
-  const trackingEntry = {
-    status,
-    message: message.trim(),
-    location: '',
-    updatedBy: updatedById,
-    updatedByModel,
-    updatedByRole: mapRoleToUpdatedByRole(user.role),
-    timestamp: new Date(),
-  };
-
-  // Store previous status to check if we're transitioning to completed
-  const previousStatus = order.currentStatus;
-  const wasCompleted = order.currentStatus === 'delivered' || order.status === 'completed';
-
-  // Update order - currentStatus is the single source of truth
-  order.currentStatus = status;
-  if (!Array.isArray(order.trackingHistory)) {
-    order.trackingHistory = [];
-  }
-  order.trackingHistory.push(trackingEntry);
-
-  // Attach international pre-order metadata when relevant
-  if (isInternational) {
-    if (status === 'supplier_confirmed') {
-      if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
-      if (req.body.supplierName) order.supplierName = req.body.supplierName;
-      if (req.body.estimatedArrivalDate) {
-        order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
-      }
-    }
-
-    if (status === 'awaiting_dispatch' || status === 'international_shipped') {
-      if (req.body.internationalTrackingNumber) {
-        order.internationalTrackingNumber = req.body.internationalTrackingNumber;
-      }
-    }
-
-    if (status === 'customs_clearance' && !order.customsClearedAt) {
-      order.customsClearedAt = new Date();
-    }
-  }
-
-  // Sync legacy status fields for backward compatibility (but currentStatus is primary)
-  if (status === 'delivered') {
-    order.orderStatus = 'delievered';
-    order.FulfillmentStatus = 'delievered';
-    order.status = 'completed';
-  } else if (status === 'cancelled') {
-    order.orderStatus = 'cancelled';
-    order.FulfillmentStatus = 'cancelled';
-    order.status = 'cancelled';
-  } else if (status === 'refunded') {
-    order.status = 'cancelled';
-    order.orderStatus = 'cancelled';
-    order.FulfillmentStatus = 'cancelled';
-  } else if (status === 'out_for_delivery') {
-    order.orderStatus = 'shipped';
-    order.FulfillmentStatus = 'shipped';
-    order.status = 'processing';
-  } else if (status === 'confirmed' || status === 'payment_completed') {
-    // Confirmed status means payment is complete - set status to confirmed
-    order.status = 'confirmed';
-    order.paymentStatus = 'completed';
-    order.orderStatus = 'confirmed';
-    order.FulfillmentStatus = 'confirmed';
-  } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
-    order.status = 'processing';
-  }
-
-  await order.save();
-
-  // Sync SellerOrder status with Order status
   try {
-    const syncResult = await syncSellerOrderStatus(id, status);
-    logger.info('[addTrackingUpdate] SellerOrder sync result:', syncResult);
-  } catch (error) {
-    logger.error('[addTrackingUpdate] Error syncing SellerOrder status:', error);
-    // Don't fail the order update if SellerOrder sync fails
-  }
-
-  // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-  // This is the ONLY place where sellers should be credited
-  if (status === 'delivered' && !wasCompleted) {
-    try {
-      const balanceUpdateResult = await orderService.creditSellerForOrder(
-        id,
-        user.id
-      );
-      logger.info('[addTrackingUpdate] Seller balance credit result:', balanceUpdateResult);
-      if (!balanceUpdateResult.success) {
-        logger.warn('[addTrackingUpdate] Seller credit failed:', balanceUpdateResult.message);
-      }
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[addTrackingUpdate] Error crediting seller balances:', error);
+    // Validate input
+    if (!status || !message) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Status and message are required', 400));
     }
-  }
 
-  // If order is being refunded, revert seller balances and refund buyer wallet
-  if (status === 'refunded' && wasCompleted) {
-    try {
-      // Revert seller balances
-      const reversalResult = await orderService.revertSellerBalancesOnRefund(
-        id,
-        'Order Refunded'
+    // Validate status
+    const validStatuses = [
+      'pending_payment',
+      'payment_completed',
+      'processing',
+      'confirmed',
+      'preparing',
+      'ready_for_dispatch',
+      // International pre-order specific statuses
+      'supplier_confirmed',
+      'awaiting_dispatch',
+      'international_shipped',
+      'customs_clearance',
+      'arrived_destination',
+      'local_dispatch',
+      'out_for_delivery',
+      'delivered',
+      'cancelled',
+      'refunded',
+    ];
+
+    if (!validStatuses.includes(status)) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Invalid status', 400));
+    }
+
+    // Check authorization: admin (admin, superadmin, moderator) or seller
+    const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
+    const isSeller = user.role === 'seller';
+
+    if (!isAdmin && !isSeller) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('You are not authorized to add tracking updates', 403));
+    }
+
+    // Find order
+    const order = await Order.findById(id).session(session);
+
+    if (!order) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Order not found', 404));
+    }
+
+    // If seller, verify they have items in this order
+    if (isSeller && !isAdmin) {
+      const sellerOrders = await Order.findById(id)
+        .populate({
+          path: 'sellerOrder',
+          populate: { path: 'seller' },
+        })
+        .session(session)
+        .lean();
+
+      const hasItems = sellerOrders.sellerOrder?.some(
+        (so) => so.seller?._id?.toString() === user.id
       );
-      logger.info('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
 
-      // Refund buyer wallet if order was paid with wallet
-      if (order.paymentMethod === 'credit_balance' && (order.paymentStatus === 'paid' || order.paymentStatus === 'completed')) {
-        try {
-          const walletService = require('../../services/walletService');
-          const refundAmount = order.totalPrice || 0;
-          const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+      if (!hasItems) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(
+          new AppError('You can only add tracking updates for orders containing your products', 403)
+        );
+      }
+    }
 
-          if (refundAmount > 0) {
-            const refundResult = await walletService.creditWallet(
-              order.user,
-              refundAmount,
-              'CREDIT_REFUND',
-              `Refund for Order #${order.orderNumber}`,
-              reference,
-              {
-                orderId: order._id.toString(),
-                orderNumber: order.orderNumber,
-                refundedBy: user.id,
-                refundedByRole: user.role,
-              },
-              order._id
-            );
+    // Determine updatedByModel
+    let updatedByModel = 'Admin';
+    if (user.role === 'seller') {
+      updatedByModel = 'Seller';
+    }
 
-            logger.info(`[addTrackingUpdate] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
-          }
-        } catch (walletError) {
-          logger.error('[addTrackingUpdate] Error refunding wallet:', walletError);
-          // Don't fail the order update if wallet refund fails
+    // Ensure updatedBy is ObjectId (schema expects ObjectId; user may be Admin/Seller doc)
+    const updatedById = user._id || (mongoose.Types.ObjectId.isValid(user.id) ? new mongoose.Types.ObjectId(user.id) : user.id);
+
+    // Enforce safe status flow & order-type specific rules
+    const transitionCheck = validateStatusTransition(order, status, user.role);
+    if (!transitionCheck.allowed) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
+    }
+
+    const isInternational = order.orderType === 'preorder_international';
+    const isAdminLike = isAdmin;
+
+    if (
+      isInternational &&
+      isSeller &&
+      !isAdminLike &&
+      ['customs_clearance', 'arrived_destination', 'delivered'].includes(status)
+    ) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new AppError('Only admin can update customs, arrival, or delivered status for international pre-orders', 403),
+      );
+    }
+
+    // Add to tracking history
+    const trackingEntry = {
+      status,
+      message: message.trim(),
+      location: '',
+      updatedBy: updatedById,
+      updatedByModel,
+      updatedByRole: mapRoleToUpdatedByRole(user.role),
+      timestamp: new Date(),
+    };
+
+    // Store previous status to check if we're transitioning to completed
+    const previousStatus = order.currentStatus;
+    const wasCompleted = order.currentStatus === 'delivered' || order.status === 'completed';
+
+    // Update order - currentStatus is the single source of truth
+    order.currentStatus = status;
+    if (!Array.isArray(order.trackingHistory)) {
+      order.trackingHistory = [];
+    }
+    order.trackingHistory.push(trackingEntry);
+
+    // Attach international pre-order metadata when relevant
+    if (isInternational) {
+      if (status === 'supplier_confirmed') {
+        if (req.body.supplierCountry) order.supplierCountry = req.body.supplierCountry;
+        if (req.body.supplierName) order.supplierName = req.body.supplierName;
+        if (req.body.estimatedArrivalDate) {
+          order.estimatedArrivalDate = new Date(req.body.estimatedArrivalDate);
         }
       }
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[addTrackingUpdate] Error reverting seller balances:', error);
-    }
-  }
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Tracking update added successfully',
-    data: {
-      order: {
-        _id: order._id,
-        orderNumber: order.orderNumber,
-        trackingNumber: order.trackingNumber,
-        currentStatus: order.currentStatus,
-        trackingHistory: order.trackingHistory,
+      if (status === 'awaiting_dispatch' || status === 'international_shipped') {
+        if (req.body.internationalTrackingNumber) {
+          order.internationalTrackingNumber = req.body.internationalTrackingNumber;
+        }
+      }
+
+      if (status === 'customs_clearance' && !order.customsClearedAt) {
+        order.customsClearedAt = new Date();
+      }
+    }
+
+    // Sync legacy status fields for backward compatibility (but currentStatus is primary)
+    if (status === 'delivered') {
+      order.orderStatus = 'delievered';
+      order.FulfillmentStatus = 'delievered';
+      order.status = 'completed';
+    } else if (status === 'cancelled') {
+      order.orderStatus = 'cancelled';
+      order.FulfillmentStatus = 'cancelled';
+      order.status = 'cancelled';
+    } else if (status === 'refunded') {
+      order.status = 'cancelled';
+      order.orderStatus = 'cancelled';
+      order.FulfillmentStatus = 'cancelled';
+    } else if (status === 'out_for_delivery') {
+      order.orderStatus = 'shipped';
+      order.FulfillmentStatus = 'shipped';
+      order.status = 'processing';
+    } else if (status === 'confirmed' || status === 'payment_completed') {
+      // Confirmed status means payment is complete - set status to confirmed
+      order.status = 'confirmed';
+      order.paymentStatus = 'completed';
+      order.orderStatus = 'confirmed';
+      order.FulfillmentStatus = 'confirmed';
+    } else if (status === 'processing' || status === 'preparing' || status === 'ready_for_dispatch') {
+      order.status = 'processing';
+    }
+
+    // Handle stock restoration on cancellation/refund
+    if (['cancelled', 'refunded'].includes(status) && !['cancelled', 'refunded'].includes(previousStatus)) {
+      // Ensure orderItems are populated for restoration
+      await order.populate('orderItems');
+      await stockService.restoreOrderStock(order.orderItems, session);
+      logger.info(`[addTrackingUpdate] Stock restored for order ${id} (Status: ${status})`);
+    }
+
+    await order.save({ session });
+    await session.commitTransaction();
+
+    // POST-TRANSACTION ACTIONS
+    // ... rest of the code for notifications, emails, etc.
+
+    // Sync SellerOrder status with Order status
+    try {
+      const syncResult = await syncSellerOrderStatus(id, status);
+      logger.info('[addTrackingUpdate] SellerOrder sync result:', syncResult);
+    } catch (error) {
+      logger.error('[addTrackingUpdate] Error syncing SellerOrder status:', error);
+      // Don't fail the order update if SellerOrder sync fails
+    }
+
+    // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
+    // This is the ONLY place where sellers should be credited
+    if (status === 'delivered' && !wasCompleted) {
+      try {
+        const balanceUpdateResult = await orderService.creditSellerForOrder(
+          id,
+          user.id
+        );
+        logger.info('[addTrackingUpdate] Seller balance credit result:', balanceUpdateResult);
+        if (!balanceUpdateResult.success) {
+          logger.warn('[addTrackingUpdate] Seller credit failed:', balanceUpdateResult.message);
+        }
+      } catch (error) {
+        // Log error but don't fail the status update
+        logger.error('[addTrackingUpdate] Error crediting seller balances:', error);
+      }
+    }
+
+    // If order is being refunded, revert seller balances and refund buyer wallet
+    if (status === 'refunded' && wasCompleted) {
+      try {
+        // Revert seller balances
+        const reversalResult = await orderService.revertSellerBalancesOnRefund(
+          id,
+          'Order Refunded'
+        );
+        logger.info('[addTrackingUpdate] Seller balance reversal result:', reversalResult);
+
+        // Refund buyer wallet if order was paid with wallet
+        if (order.paymentMethod === 'credit_balance' && (order.paymentStatus === 'paid' || order.paymentStatus === 'completed')) {
+          try {
+            const walletService = require('../../services/walletService');
+            const refundAmount = order.totalPrice || 0;
+            const reference = `REFUND-${order.orderNumber}-${Date.now()}`;
+
+            if (refundAmount > 0) {
+              const refundResult = await walletService.creditWallet(
+                order.user,
+                refundAmount,
+                'CREDIT_REFUND',
+                `Refund for Order #${order.orderNumber}`,
+                reference,
+                {
+                  orderId: order._id.toString(),
+                  orderNumber: order.orderNumber,
+                  refundedBy: user.id,
+                  refundedByRole: user.role,
+                },
+                order._id
+              );
+
+              logger.info(`[addTrackingUpdate] Wallet refund successful: GH₵${refundAmount} credited to user ${order.user}`);
+            }
+          } catch (walletError) {
+            logger.error('[addTrackingUpdate] Error refunding wallet:', walletError);
+            // Don't fail the order update if wallet refund fails
+          }
+        }
+      } catch (error) {
+        // Log error but don't fail the status update
+        logger.error('[addTrackingUpdate] Error reverting seller balances:', error);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Tracking update added successfully',
+      data: {
+        order: {
+          _id: order._id,
+          orderNumber: order.orderNumber,
+          trackingNumber: order.trackingNumber,
+          currentStatus: order.currentStatus,
+          trackingHistory: order.trackingHistory,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
 });

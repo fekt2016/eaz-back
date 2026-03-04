@@ -6,6 +6,12 @@
 const { paystackApi, PAYSTACK_ENDPOINTS } = require('../config/paystack');
 const AppError = require('../utils/errors/appError');
 const logger = require('../utils/logger');
+const mongoose = require('mongoose');
+const Seller = require('../models/user/sellerModel');
+const WithdrawalRequest = require('../models/payout/withdrawalRequestModel');
+const PaymentRequest = require('../models/payment/paymentRequestModel');
+const Transaction = require('../models/transaction/transactionModel');
+const { logSellerRevenue } = require('./historyLogger');
 
 /**
  * Map bank name to Paystack bank code
@@ -16,70 +22,70 @@ exports.getBankCodeFromName = function getBankCodeFromName(bankName) {
   if (!bankName || typeof bankName !== 'string') {
     return null;
   }
-  
+
   // Normalize bank name: trim, lowercase, remove extra spaces
   const normalized = bankName.trim().toLowerCase().replace(/\s+/g, ' ');
-  
+
   // Comprehensive bank code mapping with multiple variations
   const bankCodeMap = {
     // GCB Bank variations
     'gcb bank': '044',
     'gcb': '044',
     'ghana commercial bank': '044',
-    
+
     // Absa Ghana variations
     'absa ghana': '050',
     'absa': '050',
     'barclays bank ghana': '050',
     'barclays': '050',
-    
+
     // Stanbic Bank variations
     'stanbic bank': '001',
     'stanbic': '001',
     'stanbic bank ghana': '001',
-    
+
     // Ecobank variations
     'ecobank ghana': '019',
     'ecobank': '019',
-    
+
     // Fidelity Bank variations
     'fidelity bank': '070',
     'fidelity': '070',
     'fidelity bank ghana': '070',
-    
+
     // CalBank variations
     'calbank': '140',
     'cal bank': '140',
     'cal': '140',
-    
+
     // Zenith Bank variations
     'zenith bank': '057',
     'zenith': '057',
     'zenith bank ghana': '057',
-    
+
     // GT Bank variations
     'gt bank': '058',
     'gtbank': '058',
     'guaranty trust bank': '058',
     'guaranty trust': '058',
-    
+
     // Republic Bank variations
     'republic bank': '032',
     'republic': '032',
     'republic bank ghana': '032',
     'hfc bank': '032', // Republic Bank was formerly HFC Bank
-    
+
     // Standard Chartered variations
     'standard chartered': '021',
     'standard chartered bank': '021',
     'standard chartered ghana': '021',
     'stanchart': '021',
-    
+
     // First National Bank variations
     'first national bank': '011',
     'fnb': '011',
     'fnb ghana': '011',
-    
+
     // Additional banks
     'access bank': '044', // May need to verify
     'united bank for africa': '066',
@@ -88,19 +94,19 @@ exports.getBankCodeFromName = function getBankCodeFromName(bankName) {
     'agricultural development bank': '001', // May need to verify
     'adb': '001',
   };
-  
+
   // Try exact match first
   if (bankCodeMap[normalized]) {
     return bankCodeMap[normalized];
   }
-  
+
   // Try partial match (contains)
   for (const [key, code] of Object.entries(bankCodeMap)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return code;
     }
   }
-  
+
   logger.warn(`[PayoutService] Bank code not found for: "${bankName}" (normalized: "${normalized}");`);
   return null;
 }
@@ -119,34 +125,34 @@ exports.createRecipientForSeller = async (seller) => {
     if (paymentMethod.bankAccount) {
       // Bank transfer recipient
       const bank = paymentMethod.bankAccount;
-      
+
       // Get bank code - use stored bankCode or map from bankName
       let bankCode = bank.bankCode;
       if (!bankCode && bank.bankName) {
         bankCode = exports.getBankCodeFromName(bank.bankName);
         logger.info(`[PayoutService] Mapped bank name "${bank.bankName}" to code: ${bankCode}`);
       }
-      
+
       if (!bankCode) {
-        const errorMsg = bank.bankName 
+        const errorMsg = bank.bankName
           ? `Invalid bank name: "${bank.bankName}". Please provide a valid bank code or use a supported bank name.`
           : 'Bank code is required. Please ensure the seller has a valid bank code configured.';
         throw new AppError(errorMsg, 400);
       }
-      
+
       // Validate bank code format (should be 3 digits)
       if (!/^\d{3}$/.test(bankCode)) {
         logger.warn(`[PayoutService] Bank code format may be invalid: ${bankCode}`);
       }
-      
+
       if (!bank.accountNumber) {
         throw new AppError('Bank account number is required', 400);
       }
-      
+
       if (!bank.accountName) {
         throw new AppError('Bank account name is required', 400);
       }
-      
+
       recipientData = {
         type: 'nuban',
         name: bank.accountName || seller.name || seller.shopName,
@@ -154,7 +160,7 @@ exports.createRecipientForSeller = async (seller) => {
         bank_code: bankCode,
         currency: 'GHS',
       };
-      
+
       logger.info(`[PayoutService] Creating bank recipient:`, {
         name: recipientData.name,
         account_number: recipientData.account_number,
@@ -164,20 +170,20 @@ exports.createRecipientForSeller = async (seller) => {
     } else if (paymentMethod.mobileMoney) {
       // Mobile money recipient
       const mobile = paymentMethod.mobileMoney;
-      
+
       if (!mobile.phone) {
         throw new AppError('Mobile money phone number is required', 400);
       }
-      
+
       if (!mobile.network) {
         throw new AppError('Mobile money network is required', 400);
       }
-      
+
       const mobileBankCode = exports.getMobileMoneyBankCode(mobile.network);
       if (!mobileBankCode) {
         throw new AppError('Invalid mobile money network. Supported networks: MTN, Vodafone, AirtelTigo', 400);
       }
-      
+
       recipientData = {
         type: 'mobile_money',
         name: mobile.accountName || seller.name || seller.shopName,
@@ -206,31 +212,31 @@ exports.createRecipientForSeller = async (seller) => {
       status: error.response?.status,
       recipientData,
     });
-    
+
     // Handle specific Paystack errors
     if (error.response?.data?.message) {
       const paystackMessage = error.response.data.message;
-      
+
       // Provide helpful error messages for common issues
-      if (paystackMessage.toLowerCase().includes('bank is invalid') || 
-          paystackMessage.toLowerCase().includes('invalid bank')) {
+      if (paystackMessage.toLowerCase().includes('bank is invalid') ||
+        paystackMessage.toLowerCase().includes('invalid bank')) {
         const bankInfo = paymentMethod.bankAccount || {};
         const errorDetails = [
           `Bank code "${bankInfo.bankCode || 'N/A'}" is invalid.`,
           bankInfo.bankName ? `Bank name: "${bankInfo.bankName}"` : '',
           'Please verify the bank code is correct. You can use the Paystack API to list valid bank codes for Ghana.',
         ].filter(Boolean).join(' ');
-        
+
         throw new AppError(`Paystack error: ${paystackMessage}. ${errorDetails}`, error.response.status || 400);
       }
-      
+
       throw new AppError(`Paystack error: ${paystackMessage}`, error.response.status || 500);
     }
-    
+
     if (error instanceof AppError) {
       throw error;
     }
-    
+
     throw new AppError('Failed to create transfer recipient', 500);
   }
 };
@@ -249,7 +255,7 @@ exports.getMobileMoneyBankCode = function getMobileMoneyBankCode(network) {
     'vodafone': 'VOD',
     'airteltigo': 'ATL',
   };
-  
+
   return networkMap[network] || 'MTN'; // Default to MTN
 }
 
@@ -293,7 +299,7 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
 
     if (response.data.status && response.data.data) {
       const transferStatus = response.data.data.status;
-      
+
       // Log OTP generation info
       if (transferStatus === 'otp' || response.data.data.requires_approval === 1) {
         logger.info('🔐 [PayoutService] ⚠️ PAYSTACK WILL GENERATE AND SEND OTP AUTOMATICALLY');
@@ -302,7 +308,7 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
         logger.info('🔐 [PayoutService] Transfer status:', transferStatus);
         logger.info('🔐 [PayoutService] Transfer code:', response.data.data.transfer_code);
       }
-      
+
       return {
         transfer_code: response.data.data.transfer_code,
         reference: response.data.data.reference,
@@ -315,15 +321,15 @@ exports.initiatePayout = async (amount, recipientCode, reason = 'Seller payout')
     throw new AppError('Failed to initiate Paystack transfer', 500);
   } catch (error) {
     logger.error('[PayoutService] Error initiating transfer:', error.response?.data || error.message);
-    
+
     if (error.response?.data?.message) {
       throw new AppError(`Paystack error: ${error.response.data.message}`, error.response.status || 500);
     }
-    
+
     if (error instanceof AppError) {
       throw error;
     }
-    
+
     throw new AppError('Failed to initiate transfer', 500);
   }
 };
@@ -384,33 +390,33 @@ exports.finalizeTransferOtp = async (transferCode, otp) => {
 
     if (error.response?.data?.message) {
       const paystackMessage = error.response.data.message;
-      
+
       // Provide more helpful error messages for common Paystack errors
       if (paystackMessage.toLowerCase().includes('not currently awaiting otp') ||
-          paystackMessage.toLowerCase().includes('transfer is not') ||
-          paystackMessage.toLowerCase().includes('not awaiting otp')) {
+        paystackMessage.toLowerCase().includes('transfer is not') ||
+        paystackMessage.toLowerCase().includes('not awaiting otp')) {
         throw new AppError(
           `Paystack OTP error: Transfer is not currently awaiting OTP. ` +
           `The transfer status may have changed. Please check the transfer status or resend OTP if needed.`,
           400
         );
       }
-      
+
       if (paystackMessage.toLowerCase().includes('invalid otp') ||
-          paystackMessage.toLowerCase().includes('incorrect otp')) {
+        paystackMessage.toLowerCase().includes('incorrect otp')) {
         throw new AppError(
           `Paystack OTP error: Invalid OTP. Please check the OTP and try again.`,
           400
         );
       }
-      
+
       if (paystackMessage.toLowerCase().includes('expired')) {
         throw new AppError(
           `Paystack OTP error: OTP has expired. Please resend OTP and try again.`,
           400
         );
       }
-      
+
       throw new AppError(
         `Paystack OTP error: ${paystackMessage}`,
         error.response.status || 400
@@ -513,12 +519,12 @@ exports.submitTransferPin = async (transferCode, pin) => {
     throw new AppError('Failed to submit PIN', 500);
   } catch (error) {
     logger.error('[PayoutService] Error submitting PIN:', error.response?.data || error.message);
-    
+
     if (error.response?.data?.message) {
       // Provide user-friendly error messages
       const paystackMessage = error.response.data.message;
-      if (paystackMessage.toLowerCase().includes('invalid pin') || 
-          paystackMessage.toLowerCase().includes('incorrect pin')) {
+      if (paystackMessage.toLowerCase().includes('invalid pin') ||
+        paystackMessage.toLowerCase().includes('incorrect pin')) {
         throw new AppError('Invalid PIN. Please check and try again.', 400);
       }
       if (paystackMessage.toLowerCase().includes('expired')) {
@@ -526,11 +532,11 @@ exports.submitTransferPin = async (transferCode, pin) => {
       }
       throw new AppError(`Paystack error: ${paystackMessage}`, error.response.status || 500);
     }
-    
+
     if (error instanceof AppError) {
       throw error;
     }
-    
+
     throw new AppError('Failed to submit transfer PIN', 500);
   }
 };
@@ -560,15 +566,15 @@ exports.verifyTransferStatus = async (transferId) => {
     throw new AppError('Transfer not found', 404);
   } catch (error) {
     logger.error('[PayoutService] Error verifying transfer:', error.response?.data || error.message);
-    
+
     if (error.response?.status === 404) {
       throw new AppError('Transfer not found', 404);
     }
-    
+
     if (error.response?.data?.message) {
       throw new AppError(`Paystack error: ${error.response.data.message}`, error.response.status || 500);
     }
-    
+
     throw new AppError('Failed to verify transfer status', 500);
   }
 };
@@ -623,12 +629,248 @@ exports.resolveBankAccount = async (accountNumber, bankCode) => {
     throw new AppError('Failed to resolve bank account', 400);
   } catch (error) {
     logger.error('[PayoutService] Error resolving bank:', error.response?.data || error.message);
-    
+
     if (error.response?.data?.message) {
       throw new AppError(`Paystack error: ${error.response.data.message}`, error.response.status || 400);
     }
-    
+
     throw new AppError('Failed to resolve bank account', 400);
   }
 };
 
+
+/**
+ * Helper function to update withdrawal status from Paystack transfer status
+ * @param {String} withdrawalRequestId - Withdrawal request ID
+ * @param {Object} transferStatus - Transfer status from Paystack
+ * @param {Boolean} requiresPin - Whether PIN is required (prevents auto-update to 'paid')
+ */
+exports.updateWithdrawalStatusFromPaystack = async function (withdrawalRequestId, transferStatus, requiresPin = false) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const originalId = withdrawalRequestId;
+    const objectId = mongoose.isValidObjectId(originalId) ? new mongoose.Types.ObjectId(originalId) : null;
+
+    let withdrawalRequest = await WithdrawalRequest.findById(originalId).session(session);
+    let isPaymentRequest = false;
+
+    if (!withdrawalRequest) {
+      withdrawalRequest = await PaymentRequest.findById(originalId).session(session);
+      isPaymentRequest = true;
+    }
+
+    if (!withdrawalRequest) {
+      await session.abortTransaction();
+      return;
+    }
+
+    const seller = await Seller.findById(withdrawalRequest.seller).session(session);
+    if (!seller) {
+      await session.abortTransaction();
+      return;
+    }
+
+    let newStatus = withdrawalRequest.status;
+    let shouldUpdateTransaction = false;
+
+    // Check if PIN is required from transfer status or withdrawal request
+    const pinRequired = requiresPin ||
+      withdrawalRequest.requiresPin ||
+      transferStatus.requires_pin ||
+      transferStatus.status === 'otp';
+
+    // Map Paystack status to our status
+    // IMPORTANT: Don't change to 'paid' if PIN is required and not submitted
+    if (transferStatus.status === 'success') {
+      // Only mark as 'paid' if PIN is not required OR PIN has been submitted
+      if (!pinRequired || withdrawalRequest.pinSubmitted) {
+        newStatus = 'paid';
+        shouldUpdateTransaction = true;
+        // Remove amount from pendingBalance and balance now that payout is complete
+        const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+        const oldPendingBalance = seller.pendingBalance || 0;
+        const oldBalance = seller.balance || 0;
+        if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+          seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+          seller.balance = Math.max(0, oldBalance - amountRequested);
+          seller.calculateWithdrawableBalance();
+          await seller.save({ session });
+          logger.info(`[updateWithdrawalStatusFromPaystack] Deducted from pendingBalance and balance (paid): seller ${seller._id}, amount: ${amountRequested}`);
+        }
+      } else {
+        // PIN required but not submitted - keep as processing
+        newStatus = 'processing';
+        // Update requiresPin flag if not already set
+        if (!withdrawalRequest.requiresPin) {
+          withdrawalRequest.requiresPin = true;
+        }
+      }
+    } else if (transferStatus.status === 'failed') {
+      newStatus = 'failed';
+      shouldUpdateTransaction = true;
+      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
+      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+      const oldPendingBalance = seller.pendingBalance || 0;
+      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+        seller.calculateWithdrawableBalance();
+        await seller.save({ session });
+        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (failed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
+      }
+      try {
+        await logSellerRevenue({
+          sellerId: seller._id,
+          amount: amountRequested,
+          type: 'REVERSAL',
+          description: `Transfer failed - Refund: GH₵${amountRequested.toFixed(2)}`,
+          reference: `TRANSFER-FAILED-${withdrawalRequest._id}-${Date.now()}`,
+          payoutRequestId: withdrawalRequest._id,
+          balanceBefore: seller.balance,
+          balanceAfter: seller.balance,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest._id.toString(),
+            transferStatus: 'failed',
+            paystackTransferId: withdrawalRequest.paystackTransferId,
+            reason: 'Transfer failed on Paystack',
+            pendingBalanceRefund: true,
+          },
+        });
+        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for failed transfer refund - seller ${seller._id}`);
+      } catch (historyError) {
+        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
+    } else if (transferStatus.status === 'abandoned') {
+      newStatus = 'failed';
+      shouldUpdateTransaction = true;
+      if (withdrawalRequest.otpSessionStatus !== undefined) {
+        withdrawalRequest.otpSessionStatus = 'abandoned';
+      }
+      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
+      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+      const oldPendingBalance = seller.pendingBalance || 0;
+      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+        seller.calculateWithdrawableBalance();
+        await seller.save({ session });
+        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (abandoned) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
+      }
+    } else if (transferStatus.status === 'pending' || transferStatus.status === 'otp') {
+      newStatus = 'processing';
+      // Update requiresPin flag if status is 'otp'
+      if (transferStatus.status === 'otp' && !withdrawalRequest.requiresPin) {
+        withdrawalRequest.requiresPin = true;
+      }
+    } else if (transferStatus.status === 'reversed') {
+      newStatus = 'failed';
+      shouldUpdateTransaction = true;
+      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
+      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+      const oldPendingBalance = seller.pendingBalance || 0;
+      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+        seller.calculateWithdrawableBalance();
+        await seller.save({ session });
+        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (reversed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
+      }
+      try {
+        await logSellerRevenue({
+          sellerId: seller._id,
+          amount: amountRequested,
+          type: 'REVERSAL',
+          description: `Transfer reversed - Refund: GH₵${amountRequested.toFixed(2)}`,
+          reference: `TRANSFER-REVERSED-${withdrawalRequest._id}-${Date.now()}`,
+          payoutRequestId: withdrawalRequest._id,
+          balanceBefore: seller.balance,
+          balanceAfter: seller.balance,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest._id.toString(),
+            transferStatus: 'reversed',
+            paystackTransferId: withdrawalRequest.paystackTransferId,
+            reason: 'Transfer reversed on Paystack',
+            pendingBalanceRefund: true,
+          },
+        });
+        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for reversed transfer refund - seller ${seller._id}`);
+      } catch (historyError) {
+        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
+          error: historyError.message,
+          stack: historyError.stack,
+        });
+      }
+    }
+
+    // Update withdrawal request
+    const statusChanged = newStatus !== withdrawalRequest.status;
+    const pinFlagChanged = pinRequired && !withdrawalRequest.requiresPin;
+
+    if (statusChanged || pinFlagChanged) {
+      withdrawalRequest.status = newStatus;
+      if (pinFlagChanged) {
+        withdrawalRequest.requiresPin = true;
+      }
+      await withdrawalRequest.save({ session, validateBeforeSave: false });
+    }
+
+    // Update transaction status
+    if (shouldUpdateTransaction) {
+      let transaction = null;
+      if (withdrawalRequest.transaction) {
+        transaction = await Transaction.findById(withdrawalRequest.transaction).session(session);
+      } else {
+        // Find transaction by payoutRequest link or metadata fallback
+        const query = {
+          $or: [
+            { payoutRequest: withdrawalRequest._id },
+            { 'metadata.withdrawalRequestId': withdrawalRequest._id }
+          ],
+          type: 'debit'
+        };
+
+        // Also check with the original ID if it was a string
+        if (objectId && !objectId.equals(withdrawalRequest._id)) {
+          query.$or.push({ 'metadata.withdrawalRequestId': objectId });
+        }
+        if (typeof originalId === 'string' && originalId !== withdrawalRequest._id.toString()) {
+          query.$or.push({ 'metadata.withdrawalRequestId': originalId });
+        }
+
+        transaction = await Transaction.findOne(query).session(session);
+      }
+
+      if (transaction) {
+        transaction.status = newStatus === 'paid' ? 'completed' : 'failed';
+        if (newStatus === 'paid') {
+          transaction.description = `Withdrawal Paid: GH₵${withdrawalRequest.amount.toFixed(2)}`;
+        } else {
+          transaction.description = `Withdrawal Failed: Request #${withdrawalRequest._id}`;
+        }
+        await transaction.save({ session });
+        logger.info(`[updateWithdrawalStatusFromPaystack] Updated transaction ${transaction._id} to ${transaction.status}`);
+      }
+    }
+
+    // Send transfer-success email to seller when marked paid
+    if (newStatus === 'paid' && seller && seller.email) {
+      try {
+        const emailDispatcher = require('../emails/emailDispatcher');
+        await emailDispatcher.sendWithdrawalApproved(seller, withdrawalRequest);
+        logger.info('[updateWithdrawalStatusFromPaystack] ✅ Transfer success email sent to seller %s', seller.email);
+      } catch (emailError) {
+        logger.error('[updateWithdrawalStatusFromPaystack] Error sending transfer success email:', emailError.message);
+      }
+    }
+
+    await session.commitTransaction();
+  } catch (error) {
+    if (session) await session.abortTransaction();
+    logger.error('[updateWithdrawalStatusFromPaystack] Error:', error);
+    throw error;
+  } finally {
+    if (session) session.endSession();
+  }
+}

@@ -33,7 +33,8 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
   }
 
   // Fetch seller with required fields for payout verification
-  const seller = await Seller.findById(id).select('name shopName email paymentMethods payoutStatus');
+  // Fetch seller with all fields needed for pre-save auto-verification hook
+  const seller = await Seller.findById(id).select('name shopName email paymentMethods payoutStatus verificationDocuments verification phone onboardingStage verificationStatus');
   if (!seller) {
     return next(new AppError('Seller not found', 404));
   }
@@ -66,7 +67,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
   // First try seller.paymentMethods, then check PaymentMethod records
   let paymentDetails = null;
   let paymentMethodRecord = null;
-  
+
   // Check seller.paymentMethods, but only use it if it has actual data
   if (paymentMethod === 'bank' && seller.paymentMethods?.bankAccount) {
     const bankAccount = seller.paymentMethods.bankAccount;
@@ -100,7 +101,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
     try {
       const PaymentMethod = require('../../models/payment/PaymentMethodModel');
       const User = require('../../models/user/userModel');
-      
+
       const userAccount = await User.findOne({ email: seller.email });
       console.log('[Approve Payout Verification] Looking for PaymentMethod record:', {
         sellerEmail: seller.email,
@@ -108,11 +109,11 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
         userId: userAccount?._id,
         paymentMethod,
       });
-      
+
       if (userAccount) {
         // Find matching PaymentMethod record
         let query = { user: userAccount._id };
-        
+
         if (paymentMethod === 'bank') {
           query.type = 'bank_transfer';
         } else if (paymentMethod === 'mtn_momo') {
@@ -125,14 +126,14 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
           query.type = 'mobile_money';
           query.provider = { $in: ['AirtelTigo', 'airtel_tigo'] };
         }
-        
+
         console.log('[Approve Payout Verification] Query for PaymentMethod:', JSON.stringify(query, null, 2));
-        
+
         // First try with provider match
         paymentMethodRecord = await PaymentMethod.findOne(query)
           .sort({ isDefault: -1, createdAt: -1 })
           .lean();
-        
+
         // If not found and it's mobile money, try without provider (in case provider doesn't match exactly)
         if (!paymentMethodRecord && ['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
           console.log('[Approve Payout Verification] Not found with provider, trying without provider match');
@@ -147,7 +148,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
             console.log('[Approve Payout Verification] Using first mobile money record:', paymentMethodRecord._id);
           }
         }
-        
+
         if (paymentMethodRecord) {
           console.log('[Approve Payout Verification] Found PaymentMethod record:', {
             _id: paymentMethodRecord._id,
@@ -159,7 +160,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
             accountNumber: paymentMethodRecord.accountNumber,
             bankName: paymentMethodRecord.bankName,
           });
-          
+
           // Convert PaymentMethod record to paymentDetails format
           if (paymentMethodRecord.type === 'bank_transfer') {
             paymentDetails = {
@@ -178,7 +179,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
               payoutStatus: paymentMethodRecord.verificationStatus || 'pending',
             };
           }
-          
+
           console.log('[Approve Payout Verification] Converted paymentDetails:', paymentDetails);
           console.log('[Approve Payout Verification] Account name extracted:', paymentDetails.accountName);
         } else {
@@ -236,7 +237,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
   try {
     // Update verification status for the SPECIFIC payment method (not global)
     const oldStatus = currentPaymentMethodStatus;
-    
+
     // Ensure embedded paymentMethods exist so onboarding status can see verified payout.
     if (!seller.paymentMethods) {
       seller.paymentMethods = {};
@@ -313,7 +314,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
           pmDoc.verifiedAt = new Date();
           pmDoc.verifiedBy = adminId;
           pmDoc.rejectionReason = null;
-          
+
           if (!pmDoc.verificationHistory) {
             pmDoc.verificationHistory = [];
           }
@@ -322,7 +323,7 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
             adminId: adminId,
             timestamp: new Date(),
           });
-          
+
           await pmDoc.save({ validateBeforeSave: false, session });
           console.log(`[Approve Payout Verification] Updated PaymentMethod record ${pmDoc._id} for seller ${seller._id}`, {
             verificationStatus: pmDoc.verificationStatus,
@@ -449,7 +450,7 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
   // Get current payment method for history
   const paymentMethod = getPaymentMethodType(seller);
   const paymentDetails = seller.paymentMethods?.bankAccount || seller.paymentMethods?.mobileMoney;
-  
+
   if (!paymentMethod || !paymentDetails) {
     return next(new AppError('Seller has no payment method configured. Cannot reject payout verification.', 400));
   }
@@ -489,7 +490,7 @@ exports.rejectPayoutVerification = catchAsync(async (req, res, next) => {
   try {
     // Update verification status for the SPECIFIC payment method (not global)
     const oldStatus = currentPaymentMethodStatus;
-    
+
     if (paymentMethod === 'bank' && seller.paymentMethods?.bankAccount) {
       seller.paymentMethods.bankAccount.payoutStatus = 'rejected';
       seller.paymentMethods.bankAccount.payoutRejectionReason = reason.trim();
@@ -630,7 +631,7 @@ exports.getPayoutVerificationDetails = catchAsync(async (req, res, next) => {
   const seller = await Seller.findById(id).select(
     'name shopName email payoutVerificationHistory paymentMethods'
   );
-  
+
   // Debug: Log payment methods to verify they're being fetched
   console.log('[Get Payout Verification Details] Seller paymentMethods:', JSON.stringify(seller?.paymentMethods, null, 2));
 

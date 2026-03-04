@@ -48,7 +48,7 @@ const OrderItemSchema = new mongoose.Schema({
     default: null,
     // Custom validator to ensure variant is ObjectId or null
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         // Allow null for simple products
         if (value === null || value === undefined) return true;
         // Must be a valid ObjectId
@@ -106,7 +106,7 @@ const OrderItemSchema = new mongoose.Schema({
     type: String,
     comment: 'Variant name/description at time of order (snapshot)',
   },
-  
+
   /**
    * PRICING FIELDS
    * All prices are stored as snapshots at order time
@@ -252,39 +252,57 @@ const OrderItemSchema = new mongoose.Schema({
  * - Variant field is kept for backward compatibility but SKU is preferred
  * - This ensures variant is ALWAYS stored as ObjectId or null, never as a full object
  */
-OrderItemSchema.pre('save', function(next) {
+OrderItemSchema.pre('save', async function (next) {
   // CRITICAL: Ensure SKU is uppercase (matching variant SKU format)
   if (this.sku) {
     this.sku = this.sku.trim().toUpperCase();
   }
-  
+
   // Normalize variant field - ensure it's ObjectId or null (backward compatibility)
   if (this.variant) {
-    // If variant is an object, extract _id
     if (typeof this.variant === 'object' && this.variant !== null && !(this.variant instanceof mongoose.Types.ObjectId)) {
-      // Extract _id from object
       const variantId = this.variant._id || this.variant.id || null;
       if (variantId) {
-        // Convert to ObjectId if it's a string
-        this.variant = mongoose.Types.ObjectId.isValid(variantId) 
-          ? new mongoose.Types.ObjectId(variantId) 
+        this.variant = mongoose.Types.ObjectId.isValid(variantId)
+          ? new mongoose.Types.ObjectId(variantId)
           : null;
       } else {
-        // No _id found in object - set to null
         this.variant = null;
       }
     } else if (typeof this.variant === 'string') {
-      // If variant is a string, convert to ObjectId if valid
       this.variant = mongoose.Types.ObjectId.isValid(this.variant)
         ? new mongoose.Types.ObjectId(this.variant)
         : null;
     }
-    // If already ObjectId, keep as is
   } else {
-    // Ensure null for simple products
     this.variant = null;
   }
-  
+
+  // Unified Pricing and Tax Logic (P2-FIX 2)
+  // Ensure taxes are calculated if missing or if price changed
+  if (this.isNew || this.isModified('price') || this.isModified('priceExVat')) {
+    try {
+      const pricingService = require('../../services/pricing/pricingService');
+      // Use priceExVat if available (seller entered), otherwise derive from price (VAT inclusive)
+      // Note: 1.15 is the standard factor for Ghana's 12.5% + 2.5% taxes
+      const basePriceToUse = this.priceExVat || (this.price / 1.15);
+      const pricing = await pricingService.calculateItemPricing(basePriceToUse, 0);
+
+      this.basePrice = pricing.netBasePrice;
+      this.priceExVat = pricing.netBasePrice;
+      this.priceInclVat = pricing.priceInclVat;
+      this.vat = pricing.vat;
+      this.nhil = pricing.nhil;
+      this.getfund = pricing.getfund;
+      this.covidLevy = pricing.covidLevy;
+      this.totalTaxes = pricing.totalTax;
+      this.vatAmount = pricing.vat; // Matching vatAmount field
+      this.vatRate = 0.15; // Standard platform rate
+    } catch (err) {
+      console.error('[OrderItem Pre-Save] Pricing calculation failed:', err.message);
+    }
+  }
+
   next();
 });
 
@@ -292,17 +310,17 @@ OrderItemSchema.pre('save', function(next) {
  * PRE-VALIDATE HOOK: Additional validation
  * Ensures data integrity before saving
  */
-OrderItemSchema.pre('validate', function(next) {
+OrderItemSchema.pre('validate', function (next) {
   // Ensure quantity is a positive integer
   if (this.quantity && (!Number.isInteger(this.quantity) || this.quantity < 1)) {
     return next(new Error('Quantity must be a positive integer'));
   }
-  
+
   // Ensure price is non-negative
   if (this.price !== undefined && this.price < 0) {
     return next(new Error('Price must be non-negative'));
   }
-  
+
   next();
 });
 
@@ -310,7 +328,7 @@ OrderItemSchema.pre('validate', function(next) {
  * INSTANCE METHOD: Get display name for order history
  * Combines product name with variant attributes if available
  */
-OrderItemSchema.methods.getDisplayName = function() {
+OrderItemSchema.methods.getDisplayName = function () {
   if (this.productName) {
     if (this.variantAttributes && this.variantAttributes.length > 0) {
       const attrs = this.variantAttributes.map(attr => `${attr.key}: ${attr.value}`).join(', ');

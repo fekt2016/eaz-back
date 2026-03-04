@@ -64,7 +64,7 @@ exports.getAllRefunds = catchAsync(async (req, res, next) => {
 
   // Execute query with pagination
   const skip = (parseInt(page) - 1) * parseInt(limit);
-  
+
   // Fetch RefundRequests (new item-level refunds)
   const refundRequests = await RefundRequest.find(refundRequestQuery)
     .populate('order', 'orderNumber totalPrice paymentStatus currentStatus createdAt')
@@ -319,7 +319,7 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
       try {
         const notificationService = require('../../services/notification/notificationService');
         const SellerOrder = require('../../models/order/sellerOrderModel');
-        
+
         // Get unique seller IDs from refund items
         const sellerIds = new Set();
         for (const item of refundRequest.items) {
@@ -401,6 +401,10 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
         timestamp: new Date(),
       });
       await order.save({ session });
+
+      // Reverse platform revenue associated with this order
+      const { reverseRevenue } = require('../../services/platform/platformRevenueService');
+      await reverseRevenue(order._id, 'Order Refunded');
 
       await session.commitTransaction();
 
@@ -503,6 +507,10 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
 
       // Revert seller balances (whole order)
       await orderService.revertSellerBalancesOnRefund(order._id, 'Order Refunded');
+
+      // Reverse platform revenue associated with this order
+      const { reverseRevenue } = require('../../services/platform/platformRevenueService');
+      await reverseRevenue(order._id, 'Order Refunded');
     }
 
     await session.commitTransaction();
@@ -527,7 +535,7 @@ exports.approveRefund = catchAsync(async (req, res, next) => {
       const emailDispatcher = require('../../emails/emailDispatcher');
       const User = require('../../models/user/userModel');
       const user = await User.findById(order.user).select('name email').lean();
-      
+
       if (user && user.email) {
         const refundData = {
           finalRefundAmount: refundAmount,
@@ -625,8 +633,8 @@ exports.rejectRefund = catchAsync(async (req, res, next) => {
       try {
         const notificationService = require('../../services/notification/notificationService');
         const SellerOrder = require('../../models/order/sellerOrderModel');
-const logger = require('../../utils/logger');
-        
+        const logger = require('../../utils/logger');
+
         // Get unique seller IDs from refund items
         const sellerIds = new Set();
         for (const item of refundRequest.items) {

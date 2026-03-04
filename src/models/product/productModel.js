@@ -126,6 +126,7 @@ const productSchema = new mongoose.Schema(
           required: true,
           trim: true,
           uppercase: true,
+          index: true,
         },
         status: {
           type: String,
@@ -563,6 +564,11 @@ const productSchema = new mongoose.Schema(
         _id: false,
       },
     ],
+    // Price range for optimized filtering/sorting (P2-FIX 4)
+    priceRange: {
+      min: { type: Number, index: true },
+      max: { type: Number, index: true },
+    },
     // AI Embedding for semantic search and recommendations
     embedding: {
       type: [Number],
@@ -598,7 +604,35 @@ productSchema.pre('save', function (next) {
   next();
 });
 
-// Pre-save middleware
+// SKU Uniqueness Validation (P2-FIX 1)
+productSchema.pre('save', async function (next) {
+  if (this.variants && this.variants.length > 0) {
+    const skus = this.variants.map(v => v.sku).filter(Boolean);
+
+    // Check for duplicates WITHIN this product
+    const internalDuplicates = skus.filter((sku, index) => skus.indexOf(sku) !== index);
+    if (internalDuplicates.length > 0) {
+      return next(new Error(`Duplicate SKUs found within product: ${internalDuplicates.join(', ')}`));
+    }
+
+    // Check for duplicates ACROSS other products
+    try {
+      const Product = mongoose.model('Product');
+      const existing = await Product.findOne({
+        _id: { $ne: this._id },
+        'variants.sku': { $in: skus }
+      });
+      if (existing) {
+        return next(new Error(`One or more SKUs are already in use by another product: ${existing.name}`));
+      }
+    } catch (err) {
+      return next(err);
+    }
+  }
+  next();
+});
+
+// Pre-save middleware: Slugification, Pricing, and Stock Logic (P2-FIX 4)
 productSchema.pre('save', function (next) {
   // Generate slug
   this.slug = slugify(this.name, {
@@ -612,14 +646,20 @@ productSchema.pre('save', function (next) {
     this.price = this.variants[0].price;
   }
 
-  // Calculate min and max prices from variants
+  // Calculate min, max prices and priceRange for optimized filtering (P2-FIX 4)
   if (this.variants && this.variants.length > 0) {
     const prices = this.variants
       .map((v) => v.price)
       .filter((p) => p != null && !isNaN(p) && isFinite(p));
+
     if (prices.length > 0) {
       this.minPrice = Math.min(...prices);
       this.maxPrice = Math.max(...prices);
+      // Cache priceRange for optimized index usage
+      this.priceRange = {
+        min: this.minPrice,
+        max: this.maxPrice
+      };
     }
 
     // Update status based on stock
@@ -638,9 +678,7 @@ productSchema.pre('save', function (next) {
   if (this.parentCategory && this.subCategory) {
     this.categoryPath = `${this.parentCategory}/${this.subCategory}`;
   }
-  if (this.variants && this.variants.length > 0 && this.variants[0].price) {
-    this.price = this.variants[0].price;
-  }
+
   // Calculate popularity score based on views, sales, and ratings
   this.popularity =
     this.totalViews * 0.1 + this.totalSold * 0.5 + this.ratingsAverage * 10;
@@ -679,94 +717,49 @@ productSchema.pre('save', async function (next) {
   next();
 });
 
-  // Pre-save middleware: Update isVisible BEFORE save
-  // This ensures visibility is set correctly even if post-save fails.
-  // A product is considered visible (and therefore orderable) only when:
-  // - the associated seller is verified
-  // - the product status is active / out_of_stock
-  // - the product is approved by an admin
-  // - the product is not soft‑deleted
+// Pre-save middleware: Update isVisible BEFORE save
+// This ensures visibility is set correctly even if post-save fails.
+// A product is considered visible (and therefore orderable) only when:
+// - the associated seller is verified
+// - the product status is active / out_of_stock
+// - the product is approved by an admin
+// - the product is not soft‑deleted
 productSchema.pre('save', async function (next) {
   // Only update if seller exists
   if (this.seller) {
     try {
+      const { calculateVisibility } = require('../../utils/helpers/productVisibility');
       const Seller = mongoose.model('Seller');
-      // Handle both populated and unpopulated seller
+
       let seller;
-      
-      // Check if seller is populated (has _id or verificationStatus property)
-      const isPopulated = this.seller && 
-                         typeof this.seller === 'object' && 
-                         (this.seller._id || this.seller.verificationStatus !== undefined);
-      
+      const isPopulated = this.seller &&
+        typeof this.seller === 'object' &&
+        (this.seller._id || this.seller.verificationStatus !== undefined);
+
       if (isPopulated) {
-        // Seller is already populated
         seller = this.seller;
       } else {
-        // Seller is just an ObjectId (string or ObjectId instance), fetch it
         const sellerId = this.seller.toString ? this.seller.toString() : this.seller;
         seller = await Seller.findById(sellerId).select('verificationStatus').lean();
       }
-      
-      if (seller) {
-        // Product is visible to buyers only if the seller is verified AND
-        // the product itself is active / out of stock and approved.
-        const isSellerVerified = seller.verificationStatus === 'verified';
-        const shouldBeVisible =
-          isSellerVerified &&
-          (this.status === 'active' || this.status === 'out_of_stock') &&
-          this.moderationStatus === 'approved' &&
-          !this.isDeleted && !this.isDeletedByAdmin && !this.isDeletedBySeller;
-        
-        // Set visibility directly on the document before save
-        this.isVisible = shouldBeVisible;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Product Pre-Save] Visibility updated:', {
-            productId: this._id,
-            productName: this.name,
-            productStatus: this.status,
-            moderationStatus: this.moderationStatus,
-            isVisible: shouldBeVisible,
-          });
-        }
-      } else {
-        // If we cannot resolve the seller, play it safe and hide the product
-        // from buyer listings. Orders against such products will also be
-        // rejected by the order controller because seller verification is
-        // required there as well.
-        this.isVisible = false;
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[Product Pre-Save] Seller not found, setting visibility based on product status and moderation:', {
-            productStatus: this.status,
-            moderationStatus: this.moderationStatus,
-            isVisible: shouldBeVisible,
-          });
-        }
+
+      // Use the consolidated helper (P2-FIX 3)
+      this.isVisible = calculateVisibility(this, seller);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Product Pre-Save] Visibility updated:', {
+          productId: this._id,
+          isVisible: this.isVisible,
+        });
       }
     } catch (error) {
-      // Log error but don't fail save - visibility will be false by default
       console.error('[Product Pre-Save] Error updating visibility:', error);
-      try {
-        const logger = require('../../utils/logger');
-        logger.error('[Product Pre-Save] Error details:', {
-          error: error.message,
-          stack: error.stack,
-          seller: this.seller,
-          sellerType: typeof this.seller,
-        });
-      } catch (loggerError) {
-        // If logger fails, just use console
-        console.error('[Product Pre-Save] Logger error:', loggerError);
-      }
       this.isVisible = false; // Safe default
     }
   } else {
-    // No seller, set visibility to false
     this.isVisible = false;
   }
-  
+
   next();
 });
 
@@ -775,28 +768,22 @@ productSchema.pre('save', async function (next) {
 // automatically move in/out of buyer visibility when either the seller or the
 // product itself changes. It mirrors the same rules as the pre-save hook.
 productSchema.post('save', async function (doc) {
-  // Only update if seller is populated or we can fetch it
   if (doc.seller && mongoose.Types.ObjectId.isValid(doc.seller)) {
     try {
+      const { calculateVisibility } = require('../../utils/helpers/productVisibility');
       const Seller = mongoose.model('Seller');
-      const seller = await Seller.findById(doc.seller);
-      
+      const seller = await Seller.findById(doc.seller).lean();
+
       if (seller) {
-        const isSellerVerified = seller.verificationStatus === 'verified';
-        const shouldBeVisible =
-          isSellerVerified &&
-          (doc.status === 'active' || doc.status === 'out_of_stock') &&
-          doc.moderationStatus === 'approved' &&
-          !doc.isDeleted && !doc.isDeletedByAdmin && !doc.isDeletedBySeller;
-        
-        // Only update if visibility needs to change (avoid infinite loop)
+        const shouldBeVisible = calculateVisibility(doc, seller);
+
         if (doc.isVisible !== shouldBeVisible) {
           await mongoose.model('Product').findByIdAndUpdate(
             doc._id,
             { isVisible: shouldBeVisible },
-            { runValidators: false } // Skip validators to avoid triggering save again
+            { runValidators: false }
           );
-          
+
           if (process.env.NODE_ENV === 'development') {
             console.log('[Product Post-Save] Visibility corrected:', {
               productId: doc._id,
@@ -886,7 +873,7 @@ productSchema.virtual('taxBreakdown').get(function () {
 // Get base price before VAT for a specific variant
 productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
   const taxService = require('../../services/tax/taxService');
-const logger = require('../../utils/logger');
+  const logger = require('../../utils/logger');
   const variant = this.variants?.[variantIndex];
   if (!variant) return null;
   return taxService.extractTaxFromPrice(variant.price || 0);
@@ -1003,7 +990,7 @@ productSchema.pre('validate', function (next) {
   try {
     // Ensure variants is an array (handle undefined/null)
     const variants = Array.isArray(this.variants) ? this.variants : [];
-    
+
     // CRITICAL: Set main product price from first variant BEFORE validation
     // This ensures the required price field is satisfied
     if ((!this.price || this.price === 0) && variants.length > 0) {
@@ -1012,13 +999,13 @@ productSchema.pre('validate', function (next) {
         this.price = firstVariantPrice;
       }
     }
-    
+
     // Validate variants exist (only validate if variants is explicitly provided)
     // For new documents, variants should be provided
     // For updates, only validate if variants field is being modified
     const isNewDocument = this.isNew;
     const isVariantsModified = this.isModified('variants');
-    
+
     // Only validate variants if:
     // 1. It's a new document (variants should be provided)
     // 2. OR variants field is being modified (explicitly set)
@@ -1038,14 +1025,14 @@ productSchema.pre('validate', function (next) {
           );
           return;
         }
-        
+
         if (!variant.attributes || !Array.isArray(variant.attributes) || variant.attributes.length === 0) {
           this.invalidate(
             `variants.${index}`,
             'Variant must have at least one attribute',
           );
         }
-        
+
         // Validate variant price is set
         const variantPrice = parseFloat(variant.price) || 0;
         if (!variant.price || variantPrice <= 0) {
@@ -1077,7 +1064,7 @@ productSchema.pre('save', async function (next) {
 // Post-save middleware to maintain category-product relationship
 productSchema.post('save', async function (doc) {
   const Category = mongoose.model('Category');
-  
+
   try {
     // Add product to subCategory's products array if it exists
     if (doc.subCategory) {
@@ -1087,7 +1074,7 @@ productSchema.post('save', async function (doc) {
         { new: true }
       );
     }
-    
+
     // Also add to parentCategory's products array if it exists
     if (doc.parentCategory) {
       await Category.findByIdAndUpdate(
@@ -1107,11 +1094,11 @@ productSchema.pre('save', async function (next) {
   // Only run if category fields are being modified and product already exists
   if (!this.isNew && this._id && (this.isModified('parentCategory') || this.isModified('subCategory'))) {
     const Category = mongoose.model('Category');
-    
+
     try {
       // Get the original document
       const originalDoc = await this.constructor.findById(this._id);
-      
+
       if (originalDoc) {
         // Remove from old categories
         if (originalDoc.subCategory && originalDoc.subCategory.toString() !== this.subCategory?.toString()) {
@@ -1120,7 +1107,7 @@ productSchema.pre('save', async function (next) {
             { $pull: { products: this._id } }
           );
         }
-        
+
         if (originalDoc.parentCategory && originalDoc.parentCategory.toString() !== this.parentCategory?.toString()) {
           await Category.findByIdAndUpdate(
             originalDoc.parentCategory,
@@ -1133,17 +1120,17 @@ productSchema.pre('save', async function (next) {
       // Continue with save even if this fails
     }
   }
-  
+
   next();
 });
 
 // Post-remove middleware to remove product from categories
 productSchema.post(['findOneAndDelete', 'findOneAndRemove', 'remove'], async function (doc) {
   const product = doc || this;
-  
+
   if (product) {
     const Category = mongoose.model('Category');
-    
+
     try {
       // Remove from subCategory
       if (product.subCategory) {
@@ -1152,7 +1139,7 @@ productSchema.post(['findOneAndDelete', 'findOneAndRemove', 'remove'], async fun
           { $pull: { products: product._id } }
         );
       }
-      
+
       // Remove from parentCategory
       if (product.parentCategory) {
         await Category.findByIdAndUpdate(
@@ -1169,11 +1156,11 @@ productSchema.post(['findOneAndDelete', 'findOneAndRemove', 'remove'], async fun
 // Also handle deleteOne
 productSchema.post('deleteOne', async function () {
   const productId = this.getQuery()._id;
-  
+
   if (productId) {
     const Category = mongoose.model('Category');
     const Product = mongoose.model('Product');
-    
+
     try {
       const product = await Product.findById(productId);
       if (product) {
@@ -1184,7 +1171,7 @@ productSchema.post('deleteOne', async function () {
             { $pull: { products: productId } }
           );
         }
-        
+
         // Remove from parentCategory
         if (product.parentCategory) {
           await Category.findByIdAndUpdate(
@@ -1279,6 +1266,7 @@ productSchema.index({ parentCategory: 1, subCategory: 1 });
 productSchema.index({ categoryPath: 1, status: 1 });
 productSchema.index({ price: 1, status: 1 });
 productSchema.index({ minPrice: 1, maxPrice: 1, status: 1 });
+productSchema.index({ 'priceRange.min': 1, 'priceRange.max': 1, status: 1 });
 productSchema.index({ ratingsAverage: -1, popularity: -1 });
 productSchema.index({ totalSold: -1, createdAt: -1 });
 productSchema.index({ brand: 1, parentCategory: 1 });

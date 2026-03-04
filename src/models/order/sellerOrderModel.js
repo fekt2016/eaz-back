@@ -155,6 +155,8 @@ const sellerOrderSchema = new mongoose.Schema({
     type: String,
     enum: ['EAZSHOP', 'SELLER'],
   },
+}, {
+  timestamps: true,
 });
 // Dual VAT: seller registered => payout = (base+VAT) - commission; platform => payout = base - commission (VAT withheld)
 sellerOrderSchema.virtual('payoutAmount').get(function () {
@@ -177,6 +179,7 @@ sellerOrderSchema.index({ seller: 1, status: 1 });
 sellerOrderSchema.index({ order: 1 });
 sellerOrderSchema.index({ payoutStatus: 1 });
 sellerOrderSchema.index({ seller: 1, payoutStatus: 1 });
+sellerOrderSchema.index({ seller: 1, status: 1, createdAt: 1 });
 
 const SellerOrder = mongoose.model('SellerOrder', sellerOrderSchema);
 

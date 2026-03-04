@@ -20,7 +20,7 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
 
   // Build query
   const query = {};
-  
+
   // Date filter
   if (startDate || endDate) {
     query.createdAt = {};
@@ -156,6 +156,14 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     .reduce((sum, tax) => sum + (tax.amount || 0), 0);
   const totalWithholdingUnremitted = totalWithholdingCollected - totalWithholdingRemitted;
 
+  // Add PlatformRevenueSummary specifically for tax type
+  const { getRevenueSummary } = require('../../services/platform/platformRevenueService');
+  const revenueSummary = await getRevenueSummary({
+    startDate,
+    endDate,
+    feeType: 'tax'
+  });
+
   res.status(200).json({
     status: 'success',
     period: {
@@ -175,9 +183,12 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
       totalWithholdingCollected: Math.round(totalWithholdingCollected * 100) / 100,
       totalWithholdingRemitted: Math.round(totalWithholdingRemitted * 100) / 100,
       totalWithholdingUnremitted: Math.round(totalWithholdingUnremitted * 100) / 100,
+      platformTaxRevenue: revenueSummary.taxRevenue,
     },
     breakdown: {
       bySeller: Object.values(sellerBreakdown),
+      byFeeCode: revenueSummary.byFeeCode,
+      byDay: revenueSummary.byDay
     },
   });
 });

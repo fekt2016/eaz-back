@@ -30,11 +30,14 @@ const sendPasswordReset = async (user, resetToken) => {
 };
 
 
-const sendOrderConfirmation = async (order, user) => {
+const sendOrderConfirmation = async (order, user, paymentMethod = null) => {
+  // Resolve payment method: explicit arg > order field
+  const method = paymentMethod || order.paymentMethod || null;
   return await sendOrderConfirmationEmail(
     user.email,
     order,
-    user.name || 'Customer'
+    user.name || 'Customer',
+    method
   );
 };
 
@@ -643,8 +646,8 @@ const sendCouponToBuyer = async (user, coupon, batch, seller = null, personalMes
   const couponCode = coupon.code || 'N/A';
   const discountValue = batch.discountValue || 0;
   const discountType = batch.discountType || 'fixed';
-  const discountText = discountType === 'percentage' 
-    ? `${discountValue}% off` 
+  const discountText = discountType === 'percentage'
+    ? `${discountValue}% off`
     : `GH₵${discountValue} off`;
   const validUntil = batch.expiresAt ? new Date(batch.expiresAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
   const sellerName = seller ? (seller.name || seller.shopName || 'A seller') : 'Saiisai';
@@ -899,23 +902,524 @@ const sendPaymentSuccess = async (user, order) => {
   });
 };
 
+
+// ============================================================================
+// BUYER — ORDER CANCELLED
+// ============================================================================
+const sendOrderCancelledBuyer = async (order, user, cancelledBy = 'system', reason = null) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://saiisai.com';
+  const supportUrl = `${FRONTEND_URL}/support`;
+  const isPaid = order.paymentStatus === 'paid' || order.paymentStatus === 'completed';
+  const total = Number(order.totalPrice || order.total || 0).toFixed(2);
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;padding:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .badge{background:#FEF2F2;border-left:4px solid #EF4444;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info{background:#F9F9F9;border-radius:6px;padding:18px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .refund-box{background:#F0FDF4;border-left:4px solid #22C55E;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">❌ Order Cancelled</h1></div>
+    <div class="bd">
+      <p>Hi ${user.name || 'Customer'},</p>
+      <p>Your order has been cancelled${cancelledBy !== 'system' ? ` by ${cancelledBy}` : ''}.</p>
+      <div class="badge">
+        <strong>Reason:</strong> ${reason || 'Not specified'}
+      </div>
+      <div class="info">
+        <p><strong>Order #:</strong> ${order.orderNumber || order._id}</p>
+        <p><strong>Cancelled on:</strong> ${new Date().toDateString()}</p>
+        <p><strong>Original Total:</strong> GH₵${total}</p>
+      </div>
+      ${isPaid ? `<div class="refund-box">
+        <p style="margin:0;font-weight:600;color:#166534;">💰 Refund Information</p>
+        <p style="margin:6px 0 0;">A refund of GH₵${total} will be processed within 3–5 business days to your original payment method.</p>
+      </div>` : ''}
+      <p style="text-align:center;"><a href="${supportUrl}" class="btn">Contact Support</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME} · Need help? <a href="mailto:${process.env.SUPPORT_EMAIL || 'support@saiisai.com'}">${process.env.SUPPORT_EMAIL || 'support@saiisai.com'}</a></div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `Order #${order.orderNumber || order._id} Cancelled — ${BRAND_NAME}`,
+    text: `Hi ${user.name || 'Customer'}, your order #${order.orderNumber || order._id} has been cancelled. ${reason ? 'Reason: ' + reason : ''}`,
+    html,
+  });
+};
+
+// ============================================================================
+// SELLER — ORDER CANCELLED
+// ============================================================================
+const sendOrderCancelledSeller = async (order, seller, reason = null) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const SELLER_URL = process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const ordersUrl = `${SELLER_URL}/dashboard/orders`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .badge{background:#FFFBEB;border-left:4px solid #F59E0B;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info{background:#F9F9F9;border-radius:6px;padding:18px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">📋 Order Cancelled</h1></div>
+    <div class="bd">
+      <p>Hi ${seller.name || seller.shopName || 'Seller'},</p>
+      <p>An order from your store has been cancelled. Stock has been automatically restored.</p>
+      <div class="badge">
+        <strong>Reason:</strong> ${reason || 'Not specified'}
+      </div>
+      <div class="info">
+        <p><strong>Order #:</strong> ${order.orderNumber || order._id}</p>
+        <p><strong>Cancelled on:</strong> ${new Date().toDateString()}</p>
+        <p><strong>Order Total:</strong> GH₵${Number(order.totalPrice || 0).toFixed(2)}</p>
+      </div>
+      <p style="text-align:center;"><a href="${ordersUrl}" class="btn">View My Orders</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `Order #${order.orderNumber || order._id} Cancelled — ${BRAND_NAME}`,
+    text: `Hi ${seller.name || seller.shopName || 'Seller'}, order #${order.orderNumber || order._id} has been cancelled. ${reason ? 'Reason: ' + reason : ''} Stock has been restored.`,
+    html,
+  });
+};
+
+// ============================================================================
+// SELLER — PRODUCT REJECTED
+// ============================================================================
+const sendProductRejectedEmail = async (seller, product, reason = null) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const SELLER_URL = process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const editUrl = `${SELLER_URL}/dashboard/products/${product._id || product.id}/edit`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#EF4444,#B91C1C);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .badge{background:#FEF2F2;border-left:4px solid #EF4444;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .product-box{background:#F9F9F9;border-radius:6px;padding:18px;margin:18px 0;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">📝 Product Needs Changes</h1></div>
+    <div class="bd">
+      <p>Hi ${seller.name || seller.shopName || 'Seller'},</p>
+      <p>Your product submission needs changes before it can go live on ${BRAND_NAME}.</p>
+      <div class="badge">
+        <strong>Reason:</strong> ${reason || 'Please review the product and resubmit.'}
+      </div>
+      <div class="product-box">
+        <p style="margin:0;font-size:15px;font-weight:600;">${product.name || 'Product'}</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#888;">Submitted for review on ${new Date(product.createdAt || Date.now()).toDateString()}</p>
+      </div>
+      <p>Please review the feedback above, make the necessary changes to your product, and resubmit for approval.</p>
+      <p style="text-align:center;"><a href="${editUrl}" class="btn">Edit &amp; Resubmit</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `Changes Required — "${product.name || 'Your product'}" — ${BRAND_NAME}`,
+    text: `Hi ${seller.name || seller.shopName || 'Seller'}, your product "${product.name}" needs changes. Reason: ${reason || 'Please review and resubmit.'}`,
+    html,
+  });
+};
+
+// ============================================================================
+// SELLER — ACCOUNT VERIFIED
+// ============================================================================
+const sendSellerVerifiedEmail = async (seller) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const SELLER_URL = process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const dashUrl = `${SELLER_URL}/dashboard`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#22C55E,#15803D);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .badge{background:#F0FDF4;border-left:4px solid #22C55E;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .steps{background:#F9F9F9;border-radius:6px;padding:18px;margin:18px 0;}
+    .steps li{font-size:14px;margin-bottom:8px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">🎉 Seller Account Verified!</h1></div>
+    <div class="bd">
+      <p>Hi ${seller.name || seller.shopName || 'Seller'},</p>
+      <p>Congratulations! Your seller account on ${BRAND_NAME} has been verified. You can now list products and start selling.</p>
+      <div class="badge">
+        <strong>✅ You are now a verified ${BRAND_NAME} seller</strong>
+      </div>
+      <div class="steps">
+        <p style="margin:0 0 8px;font-weight:600;">🚀 What you can do now:</p>
+        <ul style="margin:0;padding-left:20px;">
+          <li>List your products for sale</li>
+          <li>Set up your store profile &amp; logo</li>
+          <li>Manage orders and inventory</li>
+          <li>Track sales and request payouts</li>
+        </ul>
+      </div>
+      <p style="text-align:center;"><a href="${dashUrl}" class="btn">Go to Seller Dashboard</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `🎉 Your ${BRAND_NAME} Seller Account is Verified!`,
+    text: `Hi ${seller.name || seller.shopName || 'Seller'}, congratulations! Your seller account on ${BRAND_NAME} has been verified. Log in to your dashboard to start selling.`,
+    html,
+  });
+};
+
+// ============================================================================
+// SELLER — ACCOUNT SUSPENDED
+// ============================================================================
+const sendSellerSuspendedEmail = async (seller, reason = null) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@saiisai.com';
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#6B7280,#374151);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .badge{background:#FEF2F2;border-left:4px solid #EF4444;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">⚠️ Account Suspended</h1></div>
+    <div class="bd">
+      <p>Hi ${seller.name || seller.shopName || 'Seller'},</p>
+      <p>Your ${BRAND_NAME} seller account has been suspended.</p>
+      <div class="badge">
+        <strong>Reason:</strong> ${reason || 'Policy violation. Please contact support.'}
+      </div>
+      <p>During suspension, your listings are not visible to buyers and you cannot process new orders.</p>
+      <p>If you believe this is an error or would like to appeal, please contact our support team at <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `⚠️ Your ${BRAND_NAME} Seller Account Has Been Suspended`,
+    text: `Hi ${seller.name || seller.shopName || 'Seller'}, your seller account on ${BRAND_NAME} has been suspended. Reason: ${reason || 'Policy violation.'}. Contact ${supportEmail} to appeal.`,
+    html,
+  });
+};
+
+// ============================================================================
+// SELLER — LOW / OUT OF STOCK ALERT
+// ============================================================================
+/**
+ * @param {Object} seller - { email, name, shopName }
+ * @param {Array}  alerts - [{ productName, variantName, sku, stock }]
+ */
+const sendLowStockAlert = async (seller, alerts = []) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const SELLER_URL = process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const inventoryUrl = `${SELLER_URL}/dashboard/inventory`;
+
+  const rows = alerts.map(a => `
+    <tr>
+      <td style="padding:10px 12px;font-size:13px;border-bottom:1px solid #EEE;">
+        ${a.productName || 'Product'}
+        ${a.variantName ? `<br><span style="font-size:11px;color:#888;">${a.variantName}</span>` : ''}
+      </td>
+      <td style="padding:10px 12px;font-size:13px;font-weight:700;border-bottom:1px solid #EEE;color:${a.stock === 0 ? '#DC2626' : '#D97706'};text-align:center;">
+        ${a.stock === 0 ? '⛔ OUT OF STOCK' : `${a.stock} left`}
+      </td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    table{width:100%;border-collapse:collapse;margin:16px 0;}
+    th{background:#F3F4F6;text-align:left;padding:10px 12px;font-size:13px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">⚠️ Low Stock Alert</h1></div>
+    <div class="bd">
+      <p>Hi ${seller.name || seller.shopName || 'Seller'},</p>
+      <p>${alerts.length} product variant(s) in your store are running low or out of stock.</p>
+      <table>
+        <thead><tr><th>Product / Variant</th><th style="text-align:center;">Stock</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p>Restock soon to avoid losing sales.</p>
+      <p style="text-align:center;"><a href="${inventoryUrl}" class="btn">Update Inventory</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `⚠️ Low Stock Alert — ${alerts.length} variant(s) need attention — ${BRAND_NAME}`,
+    text: `Hi ${seller.name || seller.shopName || 'Seller'}, ${alerts.length} of your product variants are low or out of stock. Log in to update your inventory: ${inventoryUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
+// BUYER — WALLET TOPPED UP
+// ============================================================================
+const sendWalletTopup = async (user, amount, newBalance) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://saiisai.com';
+  const walletUrl = `${FRONTEND_URL}/wallet`;
+  const amt = Number(amount || 0).toFixed(2);
+  const bal = Number(newBalance || 0).toFixed(2);
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#22C55E,#15803D);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .balance-box{background:#F0FDF4;border-radius:8px;padding:24px;margin:18px 0;text-align:center;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">💳 Wallet Topped Up!</h1></div>
+    <div class="bd">
+      <p>Hi ${user.name || 'Customer'},</p>
+      <p>Your ${BRAND_NAME} wallet has been credited with <strong>GH₵${amt}</strong>.</p>
+      <div class="balance-box">
+        <p style="margin:0;font-size:13px;color:#555;">New Wallet Balance</p>
+        <p style="margin:8px 0 0;font-size:36px;font-weight:800;color:#16A34A;">GH₵${bal}</p>
+      </div>
+      <p style="text-align:center;"><a href="${walletUrl}" class="btn">View Wallet</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `💳 GH₵${amt} Added to Your Wallet — ${BRAND_NAME}`,
+    text: `Hi ${user.name || 'Customer'}, GH₵${amt} has been added to your ${BRAND_NAME} wallet. New balance: GH₵${bal}. View your wallet: ${walletUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
+// ADMIN — REFUND REQUESTED ALERT
+// ============================================================================
+const sendAdminRefundAlert = async (order, user, refundAmount, reason = null) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || 'admin@saiisai.com';
+  const ADMIN_URL = process.env.ADMIN_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const refundUrl = `${ADMIN_URL}/admin/refunds`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#F97316,#EA580C);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .info{background:#FFF7ED;border-left:4px solid #F97316;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">⚠️ Refund Request Needs Review</h1></div>
+    <div class="bd">
+      <p>A buyer has submitted a refund request that requires admin review.</p>
+      <div class="info">
+        <p><strong>Order #:</strong> ${order.orderNumber || order._id}</p>
+        <p><strong>Buyer:</strong> ${user.name || user.email || 'Unknown'}</p>
+        <p><strong>Buyer Email:</strong> ${user.email || 'N/A'}</p>
+        <p><strong>Refund Amount:</strong> GH₵${Number(refundAmount || 0).toFixed(2)}</p>
+        <p><strong>Reason:</strong> ${reason || 'Not specified'}</p>
+        <p><strong>Submitted:</strong> ${new Date().toDateString()}</p>
+      </div>
+      <p style="text-align:center;"><a href="${refundUrl}" class="btn">Review Refund</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: adminEmail,
+    subject: `⚠️ Refund Request — Order #${order.orderNumber || order._id} — GH₵${Number(refundAmount || 0).toFixed(2)}`,
+    text: `Refund request for order #${order.orderNumber || order._id} by ${user.email}. Amount: GH₵${Number(refundAmount || 0).toFixed(2)}. Reason: ${reason || 'Not provided'}. Review: ${refundUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
+// ADMIN — NEW SELLER REGISTERED
+// ============================================================================
+const sendAdminNewSellerAlert = async (seller) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || 'admin@saiisai.com';
+  const ADMIN_URL = process.env.ADMIN_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const reviewUrl = `${ADMIN_URL}/admin/sellers`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#4361EE,#3A0CA3);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .info{background:#EFF6FF;border-left:4px solid #3B82F6;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">🛍️ New Seller Registered</h1></div>
+    <div class="bd">
+      <p>A new seller has registered on ${BRAND_NAME} and is awaiting verification.</p>
+      <div class="info">
+        <p><strong>Shop Name:</strong> ${seller.shopName || 'N/A'}</p>
+        <p><strong>Seller Name:</strong> ${seller.name || 'N/A'}</p>
+        <p><strong>Email:</strong> ${seller.email || 'N/A'}</p>
+        <p><strong>Phone:</strong> ${seller.phone || 'N/A'}</p>
+        <p><strong>Registered:</strong> ${new Date().toDateString()}</p>
+      </div>
+      <p style="text-align:center;"><a href="${reviewUrl}" class="btn">Review Seller Application</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: adminEmail,
+    subject: `🛍️ New Seller Registration — ${seller.shopName || seller.name || seller.email} — ${BRAND_NAME}`,
+    text: `New seller registered: ${seller.shopName || seller.name} (${seller.email}). Review their application: ${reviewUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
+// ADMIN — NEW PRODUCT PENDING REVIEW
+// ============================================================================
+const sendAdminNewProductAlert = async (product, seller) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || 'admin@saiisai.com';
+  const ADMIN_URL = process.env.ADMIN_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const reviewUrl = `${ADMIN_URL}/admin/products`;
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .info{background:#F5F3FF;border-left:4px solid #8B5CF6;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">📦 New Product Pending Review</h1></div>
+    <div class="bd">
+      <p>A seller has submitted a new product for review on ${BRAND_NAME}.</p>
+      <div class="info">
+        <p><strong>Product:</strong> ${product.name || 'N/A'}</p>
+        <p><strong>Seller:</strong> ${seller?.shopName || seller?.name || 'N/A'}</p>
+        <p><strong>Seller Email:</strong> ${seller?.email || 'N/A'}</p>
+        <p><strong>Category:</strong> ${product.category || 'N/A'}</p>
+        <p><strong>Submitted:</strong> ${new Date().toDateString()}</p>
+      </div>
+      <p style="text-align:center;"><a href="${reviewUrl}" class="btn">Review Products</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: adminEmail,
+    subject: `📦 New Product Pending — "${product.name}" by ${seller?.shopName || seller?.name || 'Seller'} — ${BRAND_NAME}`,
+    text: `New product pending review: "${product.name}" submitted by ${seller?.shopName || seller?.email}. Review: ${reviewUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
+// BUYER — PASSWORD CHANGED CONFIRMATION
+// ============================================================================
+const sendPasswordChangedEmail = async (user) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const supportEmail = process.env.SUPPORT_EMAIL || 'support@saiisai.com';
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#4361EE,#3A0CA3);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .info{background:#EFF6FF;border-left:4px solid #3B82F6;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">🔒 Password Changed</h1></div>
+    <div class="bd">
+      <p>Hi ${user.name || 'Customer'},</p>
+      <p>Your ${BRAND_NAME} password was successfully changed on <strong>${new Date().toDateString()}</strong>.</p>
+      <div class="info">
+        <p style="margin:0;">If you made this change, no further action is needed.</p>
+        <p style="margin:8px 0 0;">If you did <strong>not</strong> make this change, please contact us immediately at <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+      </div>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `🔒 Your ${BRAND_NAME} Password Was Changed`,
+    text: `Hi ${user.name || 'Customer'}, your ${BRAND_NAME} password was successfully changed on ${new Date().toDateString()}. If you did not make this change, contact ${supportEmail} immediately.`,
+    html,
+  });
+};
+
 module.exports = {
+  // Auth
   sendSignupEmail,
   sendLoginDeviceAlert,
   sendPasswordReset,
+  sendPasswordChangedEmail,
+  // Orders — buyer
   sendOrderConfirmation,
   sendOrderShipped,
   sendOrderDelivered,
+  sendOrderCancelledBuyer,
+  // Orders — seller
   sendSellerNewOrder,
-   sendSellerOrderStatusUpdate,
+  sendSellerOrderStatusUpdate,
+  sendOrderCancelledSeller,
+  // Payments
+  sendPaymentSuccess,
+  // Wallet
+  sendWalletCredit,
+  sendWalletDebit,
+  sendWalletTopup,
+  // Refunds
+  sendRefundProcessed,
+  // Coupons
+  sendCouponToBuyer,
+  // Withdrawals (seller payouts)
   sendWithdrawalRequest,
   sendWithdrawalApproved,
   sendWithdrawalRejected,
+  // Products
   sendProductApprovedEmail,
-  sendRefundProcessed,
-  sendCouponToBuyer,
-  sendWalletCredit,
-  sendWalletDebit,
-  sendPaymentSuccess,
+  sendProductRejectedEmail,
+  // Seller account
+  sendSellerVerifiedEmail,
+  sendSellerSuspendedEmail,
+  sendLowStockAlert,
+  // Admin alerts
+  sendAdminRefundAlert,
+  sendAdminNewSellerAlert,
+  sendAdminNewProductAlert,
 };
-

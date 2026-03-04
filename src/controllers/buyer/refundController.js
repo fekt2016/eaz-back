@@ -340,92 +340,58 @@ exports.requestRefund = catchAsync(async (req, res, next) => {
       },
     });
 
-    // Send email notifications instead of in-app notifications
-    try {
-      const user = await User.findById(userId).select('name email');
-      const buyerName = user?.name || user?.email || 'Customer';
+    // Send email notifications (non-blocking, via emailDispatcher)
+    setImmediate(async () => {
+      try {
+        const emailDispatcher = require('../../emails/emailDispatcher');
+        const userForEmail = await User.findById(userId).select('name email');
 
-      // Admin email (use support email / configured from-address)
-      const adminEmail = brandConfig.supportEmail || process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM;
+        // Admin alert
+        await emailDispatcher.sendAdminRefundAlert(
+          order,
+          userForEmail || { email: '', name: '' },
+          totalRefundAmount,
+          reason || (items && items.length > 0 ? items[0].reason : null)
+        );
+        logger.info('[Refund Request] ✅ Admin refund alert email sent');
 
-      if (adminEmail) {
-        await sendCustomEmail({
-          email: adminEmail,
-          subject: `New refund request for Order #${order.orderNumber}`,
-          message: `${buyerName} requested a refund of GH₵${totalRefundAmount.toFixed(
-            2,
-          )} for order #${order.orderNumber}.`,
-          html: `
-            <h2>New Refund Request</h2>
-            <p><strong>Order:</strong> ${order.orderNumber}</p>
-            <p><strong>Buyer:</strong> ${buyerName}</p>
-            <p><strong>Amount:</strong> GH₵${totalRefundAmount.toFixed(2)}</p>
-            <p><strong>Refund ID:</strong> ${refundRequest._id}</p>
-          `,
-        });
-      }
+        // Collect seller IDs and notify each seller
+        const sellerIdSet = new Set();
+        if (items && items.length > 0) {
+          for (const item of items) {
+            const orderItem = await OrderItems.findById(item.orderItemId);
+            if (orderItem) {
+              const sellerOrder = await SellerOrder.findOne({ order: orderId, items: item.orderItemId })
+                .populate('seller', '_id');
+              if (sellerOrder?.seller?._id) sellerIdSet.add(sellerOrder.seller._id.toString());
+            }
+          }
+        } else {
+          const sellerOrders = await SellerOrder.find({ order: orderId }).populate('seller', '_id');
+          sellerOrders.forEach((so) => {
+            if (so.seller?._id) sellerIdSet.add(so.seller._id.toString());
+          });
+        }
 
-      // Collect seller IDs involved in this refund
-      const sellerIds = new Set();
-      if (items && items.length > 0) {
-        for (const item of items) {
-          const orderItem = await OrderItems.findById(item.orderItemId);
-          if (orderItem) {
-            const sellerOrder = await SellerOrder.findOne({
-              order: orderId,
-              items: item.orderItemId,
-            }).populate('seller', '_id');
+        if (sellerIdSet.size > 0) {
+          const sellers = await Seller.find({ _id: { $in: Array.from(sellerIdSet) } })
+            .select('name shopName email');
 
-            if (sellerOrder?.seller?._id) {
-              sellerIds.add(sellerOrder.seller._id.toString());
+          for (const seller of sellers) {
+            if (!seller.email) continue;
+            try {
+              // Use generic seller order status update for refund notification
+              await emailDispatcher.sendSellerOrderStatusUpdate(seller, order, 'refund_requested');
+              logger.info(`[Refund Request] ✅ Seller refund email sent to ${seller.email}`);
+            } catch (sellerEmailError) {
+              logger.error(`[Refund Request] Error sending refund email to seller ${seller._id}:`, sellerEmailError.message);
             }
           }
         }
-      } else {
-        const sellerOrders = await SellerOrder.find({ order: orderId }).populate('seller', '_id');
-        sellerOrders.forEach((so) => {
-          if (so.seller && so.seller._id) {
-            sellerIds.add(so.seller._id.toString());
-          }
-        });
+      } catch (emailError) {
+        logger.error('[Refund Request] Error sending refund emails:', emailError.message || emailError);
       }
-
-      // Email each seller
-      if (sellerIds.size > 0) {
-        const sellers = await Seller.find({ _id: { $in: Array.from(sellerIds) } }).select(
-          'name shopName email',
-        );
-
-        for (const seller of sellers) {
-          if (!seller.email) continue;
-          try {
-            await sendCustomEmail({
-              email: seller.email,
-              subject: `Refund request for Order #${order.orderNumber}`,
-              message: `A refund request of GH₵${totalRefundAmount.toFixed(
-                2,
-              )} has been submitted for an order containing your items.`,
-              html: `
-                <h2>Refund Request Submitted</h2>
-                <p>Hello ${seller.shopName || seller.name || 'Seller'},</p>
-                <p>A refund request has been submitted for order <strong>${order.orderNumber}</strong> that contains your items.</p>
-                <p><strong>Buyer:</strong> ${buyerName}</p>
-                <p><strong>Total refund amount (order level):</strong> GH₵${totalRefundAmount.toFixed(2)}</p>
-                <p>Please review this refund in your seller dashboard.</p>
-              `,
-            });
-          } catch (sellerEmailError) {
-            logger.error(
-              `[Refund Request] Error sending refund email to seller ${seller._id}:`,
-              sellerEmailError,
-            );
-          }
-        }
-      }
-    } catch (emailError) {
-      logger.error('[Refund Request] Error sending refund emails:', emailError);
-      // Do not fail the refund request if email sending fails
-    }
+    });
 
     res.status(200).json({
       status: 'success',
@@ -687,13 +653,14 @@ exports.selectReturnShippingMethod = catchAsync(async (req, res, next) => {
     } catch (notificationError) {
       logger.error('[Select Return Shipping] Error creating admin notification:', notificationError);
       // Don't fail the operation if notification fails
-    }    res.status(200).json({
+    } res.status(200).json({
       status: 'success',
       message: 'Return shipping method selected successfully',
       data: {
         refund: refundRequest,
       },
-    });  } catch (error) {
+    });
+  } catch (error) {
     if (session && typeof session.inTransaction === 'function' && session.inTransaction()) {
       await session.abortTransaction();
     }

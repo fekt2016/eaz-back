@@ -9,7 +9,65 @@ const getBrandConfig = () => ({
   url: process.env.FRONTEND_URL || 'https://saiisai.com',
   supportEmail: process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || 'support@saiisai.com',
   fromName: process.env.EMAIL_FROM_NAME || 'Saiisai',
+  logoUrl: process.env.BRAND_LOGO_URL || null,
+  primaryColor: process.env.BRAND_PRIMARY_COLOR || '#4361ee',
+  successColor: '#22C55E',
+  warningColor: '#F59E0B',
 });
+
+/**
+ * Returns the logo HTML block for email headers.
+ * Falls back to styled text if no logo URL is configured.
+ */
+const getLogoHtml = (brandConfig) => {
+  if (brandConfig.logoUrl) {
+    return `<img src="${brandConfig.logoUrl}" alt="${brandConfig.name}" height="44" style="display:block;margin:0 auto;">`;
+  }
+  return `<span style="color:#fff;font-size:26px;font-weight:900;letter-spacing:2px;">${brandConfig.name}</span>`;
+};
+
+/**
+ * Shared email wrapper — consistent header (logo) + footer across all emails.
+ */
+const getEmailWrapper = (brandConfig, headerBg, content, previewText = '') => `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${brandConfig.name}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#F5F5F5;font-family:Arial,Helvetica,sans-serif;">
+    ${previewText ? `<div style="display:none;max-height:0;overflow:hidden;color:transparent;">${previewText}&zwnj;&nbsp;</div>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F5F5;padding:32px 16px;">
+      <tr><td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background:${headerBg};padding:24px 32px;border-radius:8px 8px 0 0;">
+              ${getLogoHtml(brandConfig)}
+            </td>
+          </tr>
+          <!-- BODY -->
+          <tr>
+            <td style="background:#ffffff;padding:32px;border-radius:0 0 8px 8px;">
+              ${content}
+            </td>
+          </tr>
+          <!-- FOOTER -->
+          <tr>
+            <td align="center" style="padding:24px 0;color:#888;font-size:12px;">
+              <p style="margin:0 0 6px;">© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
+              <p style="margin:0 0 4px;">Questions? <a href="mailto:${brandConfig.supportEmail}" style="color:${brandConfig.primaryColor};">${brandConfig.supportEmail}</a></p>
+              <p style="margin:0;"><a href="${brandConfig.url}" style="color:${brandConfig.primaryColor};">${brandConfig.url}</a></p>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+  </html>
+`;
 
 /**
  * Core Email Service - Resend
@@ -102,41 +160,19 @@ const sendEmail = async (data) => {
  */
 const sendWelcomeEmail = async (email, name = 'User') => {
   const brandConfig = getBrandConfig();
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Welcome to ${brandConfig.name}! 🎉</h1>
-        </div>
-        <div class="content">
-          <p>Hello ${name},</p>
-          <p>Thank you for joining ${brandConfig.name}! We're excited to have you on board.</p>
-          <p>Start exploring our amazing products and enjoy a seamless shopping experience.</p>
-          <p style="text-align: center;">
-            <a href="${brandConfig.url}" class="button">Start Shopping</a>
-          </p>
-          <p>If you have any questions, feel free to reach out to our support team.</p>
-        </div>
-        <div class="footer">
-          <p>Best regards,<br>The ${brandConfig.name} Team</p>
-          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const htmlContent = getEmailWrapper(
+    brandConfig,
+    `linear-gradient(135deg, ${brandConfig.primaryColor} 0%, #3a0ca3 100%)`,
+    `<h2 style="margin:0 0 6px;font-size:22px;color:#333;">Welcome to ${brandConfig.name}! 🎉</h2>
+     <p style="margin:0 0 20px;font-size:15px;color:#555;">Hello ${name},</p>
+     <p style="margin:0 0 16px;font-size:14px;color:#555;">Thank you for joining ${brandConfig.name}! We're excited to have you on board.</p>
+     <p style="margin:0 0 24px;font-size:14px;color:#555;">Start exploring our amazing products and enjoy a seamless shopping experience.</p>
+     <div style="text-align:center;margin:24px 0;">
+       <a href="${brandConfig.url}" style="display:inline-block;background:${brandConfig.primaryColor};color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:bold;">Start Shopping</a>
+     </div>
+     <p style="font-size:13px;color:#888;">If you have any questions, feel free to reach out to our support team at <a href="mailto:${brandConfig.supportEmail}" style="color:${brandConfig.primaryColor};">${brandConfig.supportEmail}</a>.</p>`,
+    `Welcome to ${brandConfig.name}! We're glad to have you.`
+  );
 
   return sendEmail({
     to: email,
@@ -276,47 +312,23 @@ const sendDataReadyEmail = async (toEmail, downloadUrl, expiresAt, name = 'User'
  */
 const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
   const brandConfig = getBrandConfig();
-  // Use mobile-aware URL generator (supports universal links)
   const { generatePasswordResetUrl } = require('../mobileDeepLink');
   const resetUrl = generatePasswordResetUrl(resetToken, brandConfig.url);
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Password Reset Request</h1>
-        </div>
-        <div class="content">
-          <p>Hello ${name},</p>
-          <p>We received a request to reset your password. Click the button below to create a new password:</p>
-          <p style="text-align: center;">
-            <a href="${resetUrl}" class="button">Reset Password</a>
-          </p>
-          <div class="warning">
-            <p><strong>Security Notice:</strong> This link will expire in 10 minutes. If you didn't request this, please ignore this email or contact support.</p>
-          </div>
-        </div>
-        <div class="footer">
-          <p>Best regards,<br>The ${brandConfig.name} Team</p>
-          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const htmlContent = getEmailWrapper(
+    brandConfig,
+    `linear-gradient(135deg, ${brandConfig.primaryColor} 0%, #3a0ca3 100%)`,
+    `<h2 style="margin:0 0 16px;font-size:22px;color:#333;">Password Reset Request 🔑</h2>
+     <p style="margin:0 0 12px;font-size:14px;color:#555;">Hello ${name},</p>
+     <p style="margin:0 0 20px;font-size:14px;color:#555;">We received a request to reset your password. Click the button below to create a new password:</p>
+     <div style="text-align:center;margin:24px 0;">
+       <a href="${resetUrl}" style="display:inline-block;background:${brandConfig.primaryColor};color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:bold;">Reset Password</a>
+     </div>
+     <div style="background:#FFF8E7;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0;">
+       <p style="margin:0;font-size:13px;color:#333;"><strong>Security Notice:</strong> This link will expire in 10 minutes. If you didn't request this, please ignore this email or contact support.</p>
+     </div>`,
+    `Reset your ${brandConfig.name} password — link expires in 10 minutes.`
+  );
 
   return sendEmail({
     to: toEmail,
@@ -332,58 +344,30 @@ const sendPasswordResetEmail = async (toEmail, resetToken, name = 'User') => {
 const sendLoginEmail = async (toEmail, name = 'User', loginInfo = {}) => {
   const brandConfig = getBrandConfig();
   const loginTime = new Date().toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
   });
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea; }
-        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Login Notification 🔐</h1>
-        </div>
-        <div class="content">
-          <p>Hello ${name},</p>
-          <p>We noticed a recent login to your ${brandConfig.name} account.</p>
-          <div class="info-box">
-            <p><strong>Login Time:</strong> ${loginTime}</p>
-            ${loginInfo.ip ? `<p><strong>IP Address:</strong> ${loginInfo.ip}</p>` : ''}
-            ${loginInfo.device ? `<p><strong>Device:</strong> ${loginInfo.device}</p>` : ''}
-            ${loginInfo.location ? `<p><strong>Location:</strong> ${loginInfo.location}</p>` : ''}
-          </div>
-          <div class="warning">
-            <p><strong>Security Notice:</strong> If this wasn't you, please secure your account immediately by changing your password.</p>
-          </div>
-          <p style="text-align: center;">
-            <a href="${brandConfig.url}/account/security" class="button">Manage Account Security</a>
-          </p>
-        </div>
-        <div class="footer">
-          <p>Best regards,<br>The ${brandConfig.name} Security Team</p>
-          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const htmlContent = getEmailWrapper(
+    brandConfig,
+    `linear-gradient(135deg, ${brandConfig.primaryColor} 0%, #3a0ca3 100%)`,
+    `<h2 style="margin:0 0 16px;font-size:22px;color:#333;">Login Notification 🔐</h2>
+     <p style="margin:0 0 12px;font-size:14px;color:#555;">Hello ${name},</p>
+     <p style="margin:0 0 16px;font-size:14px;color:#555;">We noticed a recent login to your ${brandConfig.name} account.</p>
+     <div style="background:#F8F9FA;border-left:4px solid ${brandConfig.primaryColor};padding:16px;border-radius:0 6px 6px 0;margin:16px 0;">
+       <p style="margin:0 0 6px;font-size:14px;color:#333;"><strong>Login Time:</strong> ${loginTime}</p>
+       ${loginInfo.ip ? `<p style="margin:0 0 6px;font-size:14px;color:#333;"><strong>IP Address:</strong> ${loginInfo.ip}</p>` : ''}
+       ${loginInfo.device ? `<p style="margin:0 0 6px;font-size:14px;color:#333;"><strong>Device:</strong> ${loginInfo.device}</p>` : ''}
+       ${loginInfo.location ? `<p style="margin:0;font-size:14px;color:#333;"><strong>Location:</strong> ${loginInfo.location}</p>` : ''}
+     </div>
+     <div style="background:#FFF8E7;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0;">
+       <p style="margin:0;font-size:13px;color:#333;"><strong>Security Notice:</strong> If this wasn't you, please secure your account immediately by changing your password.</p>
+     </div>
+     <div style="text-align:center;margin:24px 0;">
+       <a href="${brandConfig.url}/account/security" style="display:inline-block;background:${brandConfig.primaryColor};color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:bold;">Manage Account Security</a>
+     </div>`,
+    `New login to your ${brandConfig.name} account detected.`
+  );
 
   return sendEmail({
     to: toEmail,
@@ -398,47 +382,23 @@ const sendLoginEmail = async (toEmail, name = 'User', loginInfo = {}) => {
  */
 const sendLoginOtpEmail = async (toEmail, otp, name = 'User') => {
   const brandConfig = getBrandConfig();
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .otp-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; margin: 30px 0; }
-        .otp-code { font-size: 3.6rem; font-weight: 800; letter-spacing: 10px; margin: 20px 0; }
-        .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Your Login Code</h1>
-        </div>
-        <div class="content">
-          <p>Hello ${name},</p>
-          <p>You requested a login code for your ${brandConfig.name} account. Use the code below to complete your login:</p>
-          <div class="otp-box">
-            <p style="margin: 0; font-size: 1.4rem; opacity: 0.9;">Your Login Code</p>
-            <div class="otp-code">${otp}</div>
-            <p style="margin: 0; font-size: 1.2rem; opacity: 0.9;">Valid for 10 minutes</p>
-          </div>
-          <div class="warning">
-            <p><strong>Security Notice:</strong> Never share this code with anyone. ${brandConfig.name} staff will never ask for your login code.</p>
-          </div>
-          <p>If you didn't request this code, please ignore this email or contact our support team if you're concerned about your account's security.</p>
-        </div>
-        <div class="footer">
-          <p>Best regards,<br>The ${brandConfig.name} Team</p>
-          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+
+  const htmlContent = getEmailWrapper(
+    brandConfig,
+    `linear-gradient(135deg, ${brandConfig.primaryColor} 0%, #3a0ca3 100%)`,
+    `<p style="margin:0 0 12px;font-size:14px;color:#555;">Hello ${name},</p>
+     <p style="margin:0 0 20px;font-size:14px;color:#555;">You requested a login code for your ${brandConfig.name} account. Use the code below to complete your login:</p>
+     <div style="background:linear-gradient(135deg,${brandConfig.primaryColor} 0%,#3a0ca3 100%);padding:32px;text-align:center;border-radius:8px;margin:20px 0;">
+       <p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.85);">Your Login Code</p>
+       <div style="font-size:42px;font-weight:900;letter-spacing:10px;color:#fff;margin:12px 0;">${otp}</div>
+       <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.8);">Valid for 10 minutes</p>
+     </div>
+     <div style="background:#FFF8E7;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0;">
+       <p style="margin:0;font-size:13px;color:#333;"><strong>Security Notice:</strong> Never share this code with anyone. ${brandConfig.name} staff will never ask for your login code.</p>
+     </div>
+     <p style="font-size:13px;color:#888;">If you didn't request this code, please ignore this email or contact our support team if you're concerned.</p>`,
+    `Your ${brandConfig.name} login code: ${otp} — valid for 10 minutes.`
+  );
 
   return sendEmail({
     to: toEmail,
@@ -449,60 +409,140 @@ const sendLoginOtpEmail = async (toEmail, otp, name = 'User') => {
 };
 
 /**
- * Send order confirmation email
+ * Send order confirmation email — payment-method-aware.
+ * @param {string} toEmail
+ * @param {Object} order - full order document
+ * @param {string} name - customer name
+ * @param {string} paymentMethod - 'paystack'|'mobile_money'|'credit_balance'|'payment_on_delivery'
  */
-const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer') => {
+const sendOrderConfirmationEmail = async (toEmail, order, name = 'Customer', paymentMethod = null) => {
   const brandConfig = getBrandConfig();
   const orderUrl = `${brandConfig.url}/orders/${order._id || order.id}`;
+  const orderNumber = order.orderNumber || order._id || 'N/A';
+  const orderTotal = Number(order.totalAmount || order.totalPrice || order.total || 0);
+  const method = paymentMethod || order.paymentMethod || '';
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
-        .order-info { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
-        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Order Confirmation</h1>
-        </div>
-        <div class="content">
-          <p>Hello ${name},</p>
-          <p>Thank you for your order! We've received it and are processing it now.</p>
-          <div class="order-info">
-            <p><strong>Order Number:</strong> ${order.orderNumber || order._id || 'N/A'}</p>
-            <p><strong>Total Amount:</strong> GH₵${(order.totalAmount || order.totalPrice || order.total || 0).toFixed(2)}</p>
-            <p><strong>Order Date:</strong> ${new Date(order.createdAt || Date.now()).toLocaleDateString()}</p>
-          </div>
-          <p style="text-align: center;">
-            <a href="${orderUrl}" class="button">View Order Details</a>
-          </p>
-          <p>You'll receive another email when your order ships.</p>
-        </div>
-        <div class="footer">
-          <p>Best regards,<br>The ${brandConfig.name} Team</p>
-          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+  // ── Payment badge: method-specific ──────────────────────────────
+  let paymentBadgeHtml = '';
+  let statusTitle = 'Order Confirmed! 🎉';
+  let statusMessage = 'Thank you for your order. It is now being processed.';
+  let previewText = `Order #${orderNumber} confirmed — GH₵${orderTotal.toFixed(2)}`;
+
+  if (method === 'credit_balance' || method === 'wallet') {
+    paymentBadgeHtml = `
+      <div style="background:#F0FDF4;border-left:4px solid #22C55E;padding:14px 16px;border-radius:0 6px 6px 0;margin:20px 0;">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#166534;">✅ Payment via Saiisai Credit Wallet confirmed</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#333;">GH₵ ${orderTotal.toFixed(2)} has been successfully debited from your wallet.</p>
+      </div>`;
+    statusTitle = 'Order Placed Successfully! 🎉';
+    statusMessage = 'Your payment was completed instantly using your Saiisai Credit Wallet. Your order is now being processed.';
+    previewText = `Wallet payment confirmed. Order #${orderNumber} is on its way.`;
+  } else if (method === 'payment_on_delivery' || method === 'cod' || method === 'cash_on_delivery') {
+    paymentBadgeHtml = `
+      <div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:14px 16px;border-radius:0 6px 6px 0;margin:20px 0;">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#92400E;">🚚 Cash on Delivery</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#333;">You will pay GH₵ ${orderTotal.toFixed(2)} when your order is delivered to your door.</p>
+      </div>`;
+    statusTitle = 'Order Received! 📦';
+    statusMessage = "We've received your order. You'll pay when it arrives at your door.";
+    previewText = `Order #${orderNumber} received — pay GH₵${orderTotal.toFixed(2)} on delivery.`;
+  } else {
+    // paystack / mobile_money / momo / card — payment confirmed
+    paymentBadgeHtml = `
+      <div style="background:#F0FDF4;border-left:4px solid #22C55E;padding:14px 16px;border-radius:0 6px 6px 0;margin:20px 0;">
+        <p style="margin:0;font-size:15px;font-weight:700;color:#166534;">✅ Payment via Mobile Money / Card confirmed</p>
+        ${order.paymentReference ? `<p style="margin:6px 0 0;font-size:13px;color:#333;">Reference: ${order.paymentReference}</p>` : ''}
+      </div>`;
+    previewText = `Payment confirmed. Order #${orderNumber} is being processed.`;
+  }
+
+  // ── Order items table ────────────────────────────────────────────
+  const orderItems = order.orderItems || order.items || [];
+  const itemsHtml = orderItems.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:16px 0;">
+        <tr style="background:#F9F9F9;">
+          <th align="left" style="padding:10px 12px;font-size:12px;color:#888;font-weight:600;border-bottom:1px solid #EEE;">Item</th>
+          <th align="center" style="padding:10px 12px;font-size:12px;color:#888;font-weight:600;border-bottom:1px solid #EEE;">Qty</th>
+          <th align="right" style="padding:10px 12px;font-size:12px;color:#888;font-weight:600;border-bottom:1px solid #EEE;">Price</th>
+        </tr>
+        ${orderItems.map(item => {
+      const product = item.product || {};
+      const itemName = product.name || item.productName || item.name || 'Product';
+      const qty = item.quantity || 1;
+      const unitPrice = Number(item.unitPrice || item.priceAtPurchase || product.price || 0);
+      return `<tr>
+            <td style="padding:12px;font-size:14px;color:#333;border-bottom:1px solid #EEE;">${itemName}</td>
+            <td align="center" style="padding:12px;font-size:14px;color:#333;border-bottom:1px solid #EEE;">${qty}</td>
+            <td align="right" style="padding:12px;font-size:14px;color:#333;border-bottom:1px solid #EEE;">GH₵ ${unitPrice.toFixed(2)}</td>
+          </tr>`;
+    }).join('')}
+        <tr>
+          <td colspan="2" align="right" style="padding:12px;font-size:15px;font-weight:700;color:#333;border-top:2px solid #EEE;">Total:</td>
+          <td align="right" style="padding:12px;font-size:15px;font-weight:700;color:${brandConfig.primaryColor};border-top:2px solid #EEE;">GH₵ ${orderTotal.toFixed(2)}</td>
+        </tr>
+      </table>`
+    : `<p style="font-size:14px;color:#888;">Order total: <strong>GH₵ ${orderTotal.toFixed(2)}</strong></p>`;
+
+  // ── Shipping address ─────────────────────────────────────────────
+  const addr = order.shippingAddress || order.deliveryAddress || {};
+  const addrStr = typeof addr === 'string' ? addr
+    : [addr.streetAddress, addr.town, addr.city, addr.region, addr.country].filter(Boolean).join(', ');
+  const addrHtml = addrStr
+    ? `<p style="font-size:14px;color:#555;margin:16px 0 4px;">Shipping to:</p>
+       <div style="background:#F9F9F9;padding:12px 16px;border-radius:6px;font-size:14px;color:#333;">${addrStr}</div>`
+    : '';
+
+  // ── COD next-steps block ─────────────────────────────────────────
+  const codNextStepsHtml = (method === 'payment_on_delivery' || method === 'cod' || method === 'cash_on_delivery')
+    ? `<div style="background:#FFF8E7;border-radius:6px;padding:16px;margin:20px 0;">
+         <p style="margin:0 0 8px;font-size:14px;color:#333;font-weight:700;">📌 What happens next?</p>
+         <ul style="margin:0;padding-left:20px;font-size:14px;color:#555;line-height:1.9;">
+           <li>Your order is being prepared by the seller</li>
+           <li>A delivery agent will contact you before arrival</li>
+           <li>Pay GH₵ ${orderTotal.toFixed(2)} in cash when the order arrives</li>
+           <li>Track your order anytime from your account</li>
+         </ul>
+       </div>`
+    : '';
+
+  const bodyContent = `
+    <h2 style="margin:0 0 6px;font-size:22px;color:#333;">${statusTitle}</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#555;">Hi ${name}, ${statusMessage}</p>
+    ${paymentBadgeHtml}
+    <p style="font-size:13px;color:#888;margin:0 0 4px;">Order #<strong>${orderNumber}</strong> &nbsp;·&nbsp; ${new Date(order.createdAt || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    ${itemsHtml}
+    ${addrHtml}
+    ${codNextStepsHtml}
+    <div style="text-align:center;margin:28px 0 8px;">
+      <a href="${orderUrl}" style="display:inline-block;background:${brandConfig.primaryColor};color:#fff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:15px;font-weight:bold;">View Order Details</a>
+    </div>
+    <p style="font-size:13px;color:#888;text-align:center;">Thank you for shopping with ${brandConfig.name}! 🛍️</p>
   `;
+
+  const htmlContent = getEmailWrapper(
+    brandConfig,
+    `linear-gradient(135deg, ${brandConfig.primaryColor} 0%, #3a0ca3 100%)`,
+    bodyContent,
+    previewText
+  );
+
+  const subjectMap = {
+    credit_balance: `✅ Order Confirmed — #${orderNumber}`,
+    wallet: `✅ Order Confirmed — #${orderNumber}`,
+    payment_on_delivery: `📦 Order Received — #${orderNumber} (Pay on Delivery)`,
+    cod: `📦 Order Received — #${orderNumber} (Pay on Delivery)`,
+    cash_on_delivery: `📦 Order Received — #${orderNumber} (Pay on Delivery)`,
+  };
+  const subject = subjectMap[method] || `✅ Payment Confirmed — Order #${orderNumber}`;
 
   return sendEmail({
     to: toEmail,
-    subject: `Order Confirmation - Order #${order.orderNumber || order._id || 'N/A'}`,
-    text: `Thank you for your order! Order Number: ${order.orderNumber || order._id || 'N/A'}, Total: GH₵${(order.totalAmount || order.totalPrice || order.total || 0).toFixed(2)}. View your order: ${orderUrl}`,
+    subject,
+    text: `${statusTitle} - Order #${orderNumber}. Hi ${name}, ${statusMessage} Total: GH₵${orderTotal.toFixed(2)}. View your order: ${orderUrl}`,
     html: htmlContent,
   });
 };
+
 
 /**
  * Send detailed order information email
@@ -607,12 +647,12 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
               <div class="info-row">
                 <span class="info-label">Order Date:</span>
                 <span class="info-value">${new Date(
-                  order.createdAt || Date.now(),
-                ).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}</span>
+    order.createdAt || Date.now(),
+  ).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Order Status:</span>
@@ -622,18 +662,16 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
                 <span class="info-label">Payment Method:</span>
                 <span class="info-value">${paymentMethod}</span>
               </div>
-              ${
-                order.paymentStatus
-                  ? `
+              ${order.paymentStatus
+      ? `
               <div class="info-row">
                 <span class="info-label">Payment Status:</span>
-                <span class="info-value">${
-                  order.paymentStatus === 'completed' ? 'Paid' : 'Pending'
-                }</span>
+                <span class="info-value">${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'
+      }</span>
               </div>
               `
-                  : ''
-              }
+      : ''
+    }
             </div>
           </div>
           <div class="section">
@@ -659,26 +697,24 @@ const sendOrderDetailEmail = async (toEmail, order, name = 'Customer') => {
                 <span class="info-label">Subtotal:</span>
                 <span class="info-value">GH₵${subtotal.toFixed(2)}</span>
               </div>
-              ${
-                shippingFee > 0
-                  ? `
+              ${shippingFee > 0
+      ? `
               <div class="info-row">
                 <span class="info-label">Shipping Fee:</span>
                 <span class="info-value">GH₵${shippingFee.toFixed(2)}</span>
               </div>
               `
-                  : ''
-              }
-              ${
-                tax > 0
-                  ? `
+      : ''
+    }
+              ${tax > 0
+      ? `
               <div class="info-row">
                 <span class="info-label">Tax:</span>
                 <span class="info-value">GH₵${tax.toFixed(2)}</span>
               </div>
               `
-                  : ''
-              }
+      : ''
+    }
               <div class="info-row total-row">
                 <span class="info-label">Total:</span>
                 <span class="info-value">GH₵${total.toFixed(2)}</span>
@@ -716,23 +752,22 @@ Order Information:
 - Order Date: ${new Date(order.createdAt || Date.now()).toLocaleDateString()}
 - Order Status: ${orderStatus}
 - Payment Method: ${paymentMethod}
-${
-  order.paymentStatus
-    ? `- Payment Status: ${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'}`
-    : ''
-}
+${order.paymentStatus
+      ? `- Payment Status: ${order.paymentStatus === 'completed' ? 'Paid' : 'Pending'}`
+      : ''
+    }
 
 Order Items:
 ${orderItems
-  .map((item) => {
-    const product = item.product || {};
-    const quantity = item.quantity || 1;
-    const price = product.price || 0;
-    return `- ${product.name || 'N/A'} x${quantity} @ GH₵${price.toFixed(2)} = GH₵${(
-      price * quantity
-    ).toFixed(2)}`;
-  })
-  .join('\n')}
+      .map((item) => {
+        const product = item.product || {};
+        const quantity = item.quantity || 1;
+        const price = product.price || 0;
+        return `- ${product.name || 'N/A'} x${quantity} @ GH₵${price.toFixed(2)} = GH₵${(
+          price * quantity
+        ).toFixed(2)}`;
+      })
+      .join('\n')}
 
 Order Summary:
 - Subtotal: GH₵${subtotal.toFixed(2)}
@@ -774,4 +809,6 @@ module.exports = {
   sendLoginEmail,
   sendLoginOtpEmail,
   getBrandConfig,
+  getEmailWrapper,
+  getLogoHtml,
 };

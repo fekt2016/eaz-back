@@ -88,7 +88,7 @@ exports.getSellerProducts = catchAsync(async (req, res, next) => {
 exports.getSellerProductById = catchAsync(async (req, res, next) => {
   // Route uses :productId, but we'll check both for compatibility
   const productId = req.params.productId || req.params.id;
-  
+
   if (!productId) {
     return next(new AppError('Product ID is required', 400));
   }
@@ -180,38 +180,36 @@ exports.uploadBusinessDocuments = (req, res, next) => {
   if (req.headers['content-type']?.startsWith('multipart/form-data')) {
     return upload.fields([
       { name: 'businessCert', maxCount: 1 },
-      { name: 'idProof', maxCount: 1 },
-      { name: 'addressProof', maxCount: 1 },
+      { name: 'businessCertFormA', maxCount: 1 },
+      { name: 'idProof', maxCount: 1 }
     ])(req, res, next);
   }
   next();
 };
 
 // Middleware to upload business documents to Cloudinary
-// Note: addressProof is mapped to addresProof (model typo) in updateMe
 exports.uploadBusinessDocumentsToCloudinary = uploadMultipleFields([
-  { 
-    name: 'businessCert', 
-    folder: 'seller-documents', 
+  {
+    name: 'businessCert',
+    folder: 'seller-documents',
     resourceType: 'auto',
     storeIn: 'verificationDocuments',
     // Map to correct field name in model
     fieldMapping: 'businessCert'
   },
-  { 
-    name: 'idProof', 
-    folder: 'seller-documents', 
+  {
+    name: 'businessCertFormA',
+    folder: 'seller-documents',
+    resourceType: 'auto',
+    storeIn: 'verificationDocuments',
+    fieldMapping: 'businessCertFormA'
+  },
+  {
+    name: 'idProof',
+    folder: 'seller-documents',
     resourceType: 'auto',
     storeIn: 'verificationDocuments',
     fieldMapping: 'idProof'
-  },
-  { 
-    name: 'addressProof', 
-    folder: 'seller-documents', 
-    resourceType: 'auto',
-    storeIn: 'verificationDocuments',
-    // Map addressProof to addresProof (model uses addresProof with typo)
-    fieldMapping: 'addresProof'
   },
 ]);
 
@@ -284,7 +282,7 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
-  console.log("body",req.body);
+  console.log("body", req.body);
   let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks, paymentMethods } = req.body;
 
   // Parse JSON strings if they exist (from FormData)
@@ -315,7 +313,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
   // Build update object
   const updateData = {};
-  
+
   if (name !== undefined) updateData.name = name;
   if (email !== undefined) updateData.email = email;
   // Phone: always update if provided (even if empty string, to allow clearing)
@@ -331,11 +329,11 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   if (shopName !== undefined) updateData.shopName = shopName;
   if (shopDescription !== undefined) updateData.shopDescription = shopDescription;
   if (digitalAddress !== undefined) updateData.digitalAddress = digitalAddress;
-  
+
   console.log('[updateMe] Request body phone:', phone, 'Type:', typeof phone);
   console.log('[updateMe] Update data:', JSON.stringify(updateData, null, 2));
   console.log('[updateMe] Phone in updateData:', updateData.phone);
-  
+
   // Update shopLocation (shop address) if provided
   if (addressData && typeof addressData === 'object') {
     // Normalize city to lowercase
@@ -343,7 +341,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     if (normalizedCity) {
       normalizedCity = normalizedCity.toLowerCase().trim();
     }
-    
+
     // Normalize region to lowercase and handle "greater accra region" -> "greater accra"
     let normalizedRegion = addressData.region;
     if (normalizedRegion) {
@@ -354,25 +352,25 @@ exports.updateMe = catchAsync(async (req, res, next) => {
         normalizedRegion = normalizedRegionLower;
       }
     }
-    
+
     // Normalize country to lowercase
     let normalizedCountry = addressData.country || 'Ghana';
     if (normalizedCountry) {
       normalizedCountry = normalizedCountry.toLowerCase().trim();
     }
-    
+
     // Normalize town to lowercase
     let normalizedTown = addressData.town;
     if (normalizedTown) {
       normalizedTown = normalizedTown.toLowerCase().trim();
     }
-    
+
     // Normalize street to lowercase
     let normalizedStreet = addressData.street;
     if (normalizedStreet) {
       normalizedStreet = normalizedStreet.toLowerCase().trim();
     }
-    
+
     updateData.shopLocation = {
       street: normalizedStreet || undefined,
       city: normalizedCity || undefined,
@@ -400,12 +398,12 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   // The pre-save hook will automatically reset individual payment method payoutStatus to 'pending' if payment methods change
   if (paymentMethods && typeof paymentMethods === 'object') {
     const { bankAccount, mobileMoney } = paymentMethods;
-    
+
     // Initialize paymentMethods object if not exists
     if (!updateData.paymentMethods) {
       updateData.paymentMethods = {};
     }
-    
+
     // Clean and validate bank account data
     if (bankAccount !== undefined) {
       const hasBankData = bankAccount && (bankAccount.bankName || bankAccount.accountNumber || bankAccount.accountName);
@@ -413,16 +411,20 @@ exports.updateMe = catchAsync(async (req, res, next) => {
         // SECURITY: Check for duplicate bank account across all sellers (only if account number changed)
         if (bankAccount.accountNumber) {
           const normalizedAccountNumber = bankAccount.accountNumber.replace(/\s+/g, '').toLowerCase();
+
+          // Get current seller and original bank account for comparison
+          const Seller = require('../../models/user/sellerModel');
+          const currentSeller = await Seller.findById(sellerId).select('+paymentMethods');
+          const originalBankAccount = currentSeller?.paymentMethods?.bankAccount;
           const originalAccountNumber = (originalBankAccount?.accountNumber || '').replace(/\s+/g, '').toLowerCase();
-          
+
           // Only check for duplicates if the account number is different from current
           if (normalizedAccountNumber !== originalAccountNumber) {
-            const Seller = require('../../models/user/sellerModel');
             const otherSeller = await Seller.findOne({
               _id: { $ne: sellerId },
               'paymentMethods.bankAccount.accountNumber': { $exists: true },
             }).select('paymentMethods name shopName');
-            
+
             if (otherSeller?.paymentMethods?.bankAccount?.accountNumber) {
               const otherAccountNumber = otherSeller.paymentMethods.bankAccount.accountNumber.replace(/\s+/g, '').toLowerCase();
               if (otherAccountNumber === normalizedAccountNumber) {
@@ -434,7 +436,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
             }
           }
         }
-        
+
         updateData.paymentMethods.bankAccount = {
           accountNumber: bankAccount.accountNumber || '',
           accountName: bankAccount.accountName || '',
@@ -442,12 +444,15 @@ exports.updateMe = catchAsync(async (req, res, next) => {
           bankCode: bankAccount.bankCode || '',
           branch: bankAccount.branch || '',
         };
+
+        // SINGLE PAYMENT METHOD: If adding/updating bank, clear mobile money details
+        updateData.paymentMethods.mobileMoney = undefined;
       } else {
         // If all bank fields are empty, remove bank account
         updateData.paymentMethods.bankAccount = undefined;
       }
     }
-    
+
     // Clean and validate mobile money data
     if (mobileMoney !== undefined) {
       const hasMobileData = mobileMoney && (mobileMoney.phone || mobileMoney.network || mobileMoney.accountName);
@@ -455,16 +460,20 @@ exports.updateMe = catchAsync(async (req, res, next) => {
         // SECURITY: Check for duplicate mobile money number across all sellers (only if phone changed)
         if (mobileMoney.phone) {
           const normalizedPhone = mobileMoney.phone.replace(/\D/g, '').toLowerCase();
+
+          // Get current seller and original mobile money for comparison
+          const Seller = require('../../models/user/sellerModel');
+          const currentSeller = await Seller.findById(sellerId).select('+paymentMethods');
+          const originalMobileMoney = currentSeller?.paymentMethods?.mobileMoney;
           const originalPhone = (originalMobileMoney?.phone || '').replace(/\D/g, '').toLowerCase();
-          
+
           // Only check for duplicates if the phone number is different from current
           if (normalizedPhone !== originalPhone) {
-            const Seller = require('../../models/user/sellerModel');
             const otherSeller = await Seller.findOne({
               _id: { $ne: sellerId },
               'paymentMethods.mobileMoney.phone': { $exists: true },
             }).select('paymentMethods name shopName');
-            
+
             if (otherSeller?.paymentMethods?.mobileMoney?.phone) {
               const otherPhone = otherSeller.paymentMethods.mobileMoney.phone.replace(/\D/g, '').toLowerCase();
               if (otherPhone === normalizedPhone) {
@@ -476,12 +485,15 @@ exports.updateMe = catchAsync(async (req, res, next) => {
             }
           }
         }
-        
+
         updateData.paymentMethods.mobileMoney = {
           accountName: mobileMoney.accountName || '',
           phone: mobileMoney.phone || undefined,
           network: mobileMoney.network || undefined,
         };
+
+        // SINGLE PAYMENT METHOD: If adding/updating mobile money, clear bank details
+        updateData.paymentMethods.bankAccount = undefined;
       } else {
         // If all mobile fields are empty, remove mobile money
         updateData.paymentMethods.mobileMoney = undefined;
@@ -491,7 +503,6 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
   // Handle file uploads - files are already uploaded by middleware
   // URLs are stored in req.body.verificationDocuments by the cloudinaryUpload middleware
-  // The middleware already maps addressProof to addresProof (model field name)
   if (req.body.verificationDocuments && typeof req.body.verificationDocuments === 'object') {
     // Initialize verificationDocuments if not already in updateData
     if (!updateData.verificationDocuments) {
@@ -501,29 +512,28 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     // Copy all verification documents with new structure (url and status)
     // When a new document is uploaded, set status to 'pending'
     if (req.body.verificationDocuments.businessCert) {
-      const url = typeof req.body.verificationDocuments.businessCert === 'string' 
-        ? req.body.verificationDocuments.businessCert 
+      const url = typeof req.body.verificationDocuments.businessCert === 'string'
+        ? req.body.verificationDocuments.businessCert
         : req.body.verificationDocuments.businessCert.url || req.body.verificationDocuments.businessCert;
       updateData.verificationDocuments.businessCert = {
         url: url,
         status: 'pending'
       };
     }
-    if (req.body.verificationDocuments.idProof) {
-      const url = typeof req.body.verificationDocuments.idProof === 'string' 
-        ? req.body.verificationDocuments.idProof 
-        : req.body.verificationDocuments.idProof.url || req.body.verificationDocuments.idProof;
-      updateData.verificationDocuments.idProof = {
+    if (req.body.verificationDocuments.businessCertFormA) {
+      const url = typeof req.body.verificationDocuments.businessCertFormA === 'string'
+        ? req.body.verificationDocuments.businessCertFormA
+        : req.body.verificationDocuments.businessCertFormA.url || req.body.verificationDocuments.businessCertFormA;
+      updateData.verificationDocuments.businessCertFormA = {
         url: url,
         status: 'pending'
       };
     }
-    // Middleware maps addressProof to addresProof, so check for addresProof
-    if (req.body.verificationDocuments.addresProof) {
-      const url = typeof req.body.verificationDocuments.addresProof === 'string' 
-        ? req.body.verificationDocuments.addresProof 
-        : req.body.verificationDocuments.addresProof.url || req.body.verificationDocuments.addresProof;
-      updateData.verificationDocuments.addresProof = {
+    if (req.body.verificationDocuments.idProof) {
+      const url = typeof req.body.verificationDocuments.idProof === 'string'
+        ? req.body.verificationDocuments.idProof
+        : req.body.verificationDocuments.idProof.url || req.body.verificationDocuments.idProof;
+      updateData.verificationDocuments.idProof = {
         url: url,
         status: 'pending'
       };
@@ -536,7 +546,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
   // Check if payment methods are being updated
   const isUpdatingPaymentMethods = updateData.paymentMethods !== undefined;
-  
+
   // Store original payment methods for duplicate checking
   const originalBankAccount = currentSeller.paymentMethods?.bankAccount;
   const originalMobileMoney = currentSeller.paymentMethods?.mobileMoney;
@@ -548,25 +558,34 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     if (updateData.paymentMethods.bankAccount !== undefined) {
       currentSeller.paymentMethods = currentSeller.paymentMethods || {};
       currentSeller.paymentMethods.bankAccount = updateData.paymentMethods.bankAccount;
+      // Clear other method
+      currentSeller.paymentMethods.mobileMoney = undefined;
     }
     if (updateData.paymentMethods.mobileMoney !== undefined) {
       currentSeller.paymentMethods = currentSeller.paymentMethods || {};
       currentSeller.paymentMethods.mobileMoney = updateData.paymentMethods.mobileMoney;
+      // Clear other method
+      currentSeller.paymentMethods.bankAccount = undefined;
     }
-    
+
+    // Mark as modified to ensure pre-save hook comparison works correctly
+    currentSeller.markModified('paymentMethods');
+    // Save to trigger pre-save hooks (which will reset payoutStatus if payment methods changed)
+    await currentSeller.save({ validateBeforeSave: false });
+
     // Remove paymentMethods from updateData since we're handling it separately
     delete updateData.paymentMethods;
-    
+
     // Update other fields
     Object.keys(updateData).forEach(key => {
       if (key !== 'paymentMethods') {
         currentSeller[key] = updateData[key];
       }
     });
-    
+
     // Save to trigger pre-save hooks (which will reset payoutStatus if payment methods changed)
     await currentSeller.save({ validateBeforeSave: true });
-    
+
     // Return updated seller
     const updatedSeller = await Seller.findById(sellerId);
     res.status(200).json({ status: 'success', data: { seller: updatedSeller } });
@@ -585,7 +604,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     },
   );
   if (!seller) return next(new AppError('No seller found with that ID', 404));
-  
+
   console.log('[updateMe] Seller updated successfully. New phone value:', seller.phone);
   console.log('[updateMe] Full seller object phone:', JSON.stringify(seller.phone));
 
@@ -598,7 +617,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 
   if (hasBusinessInfo && !seller.requiredSetup.hasAddedBusinessInfo) {
     seller.requiredSetup.hasAddedBusinessInfo = true;
-    
+
     // Check if all setup is complete (product not required for verification)
     const allSetupComplete =
       seller.requiredSetup.hasAddedBusinessInfo &&
@@ -607,7 +626,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     if (allSetupComplete && seller.onboardingStage === 'profile_incomplete') {
       seller.onboardingStage = 'pending_verification';
     }
-    
+
     await seller.save({ validateBeforeSave: false });
   }
 
@@ -638,8 +657,30 @@ exports.sellerStatus = catchAsync(async (req, res, next) => {
   );
   if (!seller) return next(new AppError('No seller found with that ID', 404));
   logger.info('[sellerStatus] Admin updated seller status', { sellerId: seller._id, newStatus });
+
+  // Send email alert to seller based on new status (non-blocking)
+  if (seller.email) {
+    setImmediate(async () => {
+      try {
+        const emailDispatcher = require('../../emails/emailDispatcher');
+        const reason = req.body.reason || null;
+        if (newStatus === 'suspended') {
+          await emailDispatcher.sendSellerSuspendedEmail(seller, reason);
+          logger.info('[sellerStatus] ✅ Suspended email sent to seller %s', seller.email);
+        } else if (newStatus === 'active') {
+          // Only send verified email if actually transitioning to active from a non-active state
+          await emailDispatcher.sendSellerVerifiedEmail(seller);
+          logger.info('[sellerStatus] ✅ Verified/reactivated email sent to seller %s', seller.email);
+        }
+      } catch (emailErr) {
+        logger.error('[sellerStatus] Error sending status email to seller:', emailErr.message);
+      }
+    });
+  }
+
   res.status(200).json({ status: 'success', data: { seller } });
 });
+
 
 /** Seller only (settings): update own status to 'deactive'. Cannot set active/suspended. PATCH /seller/me/status */
 exports.updateMyStatus = catchAsync(async (req, res, next) => {
@@ -781,7 +822,7 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
 
 exports.getBestSellers = catchAsync(async (req, res, next) => {
   const SellerOrder = require('../../models/order/sellerOrderModel');
-  
+
   // Get query parameters with defaults
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
@@ -1053,7 +1094,7 @@ exports.getMySellerProfile = catchAsync(async (req, res, next) => {
 // Override getAllSeller to include balance fields and verification status
 exports.getAllSeller = catchAsync(async (req, res, next) => {
   let filter = {};
-  
+
   // Search filter
   if (req.query.search) {
     const search = req.query.search;
@@ -1066,12 +1107,12 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
       ],
     };
   }
-  
+
   // Verification status filter
   if (req.query.verificationStatus) {
     filter.verificationStatus = req.query.verificationStatus;
   }
-  
+
   // Onboarding stage filter
   if (req.query.onboardingStage) {
     filter.onboardingStage = req.query.onboardingStage;
@@ -1079,7 +1120,7 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
 
   // Build select fields - include verification status fields for admin UI
   const selectFields = 'name shopName email balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin verificationStatus onboardingStage verifiedBy verifiedAt verificationDocuments';
-  
+
   let query = Seller.find(filter).select(selectFields);
 
   const features = new APIFeature(query, req.query)
@@ -1089,7 +1130,7 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
     .paginate();
 
   const results = await features.query;
-  
+
   // Calculate withdrawableBalance for each seller
   results.forEach(seller => {
     seller.calculateWithdrawableBalance();
@@ -1098,7 +1139,7 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
   // Get order counts for all sellers
   const SellerOrder = require('../../models/order/sellerOrderModel');
   const sellerIds = results.map(seller => seller._id);
-  
+
   // Aggregate order counts per seller
   const orderCounts = await SellerOrder.aggregate([
     {
@@ -1141,10 +1182,10 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
     // - If stored verificationStatus is already 'verified' (e.g. from approve flow) → keep Verified
     // - Otherwise use stored verificationStatus or 'pending'
     const docs = sellerDoc.verificationDocuments || seller.verificationDocuments;
-    const biz = getDocStatus(docs?.businessCert);
-    const idP = getDocStatus(docs?.idProof);
-    const addr = getDocStatus(docs?.addresProof);
-    const allDocsVerified = biz === 'verified' && idP === 'verified' && addr === 'verified';
+    const businessCert = getDocStatus(docs?.businessCert);
+    const businessCertFormA = getDocStatus(docs?.businessCertFormA);
+    const idProof = getDocStatus(docs?.idProof);
+    const allDocsVerified = businessCert === 'verified' && businessCertFormA === 'verified' && idProof === 'verified';
     const storedVerification = sellerDoc.verificationStatus || seller.verificationStatus;
     const displayVerification = allDocsVerified || storedVerification === 'verified'
       ? 'verified'
@@ -1175,20 +1216,17 @@ const computeIsSetupCompleteFromData = (data) => {
     if (typeof doc === 'string') return null;
     return doc.status || null;
   };
-  const biz = getDocStatus(data.verificationDocuments?.businessCert);
-  const idP = getDocStatus(data.verificationDocuments?.idProof);
-  const addr = getDocStatus(data.verificationDocuments?.addresProof);
+  const businessCert = getDocStatus(data.verificationDocuments?.businessCert);
+  const businessCertFormA = getDocStatus(data.verificationDocuments?.businessCertFormA);
+  const idProof = getDocStatus(data.verificationDocuments?.idProof);
   const docsUploaded =
     (data.verificationDocuments?.businessCert &&
       (typeof data.verificationDocuments.businessCert === 'string' ||
         data.verificationDocuments.businessCert.url)) &&
     (data.verificationDocuments?.idProof &&
       (typeof data.verificationDocuments.idProof === 'string' ||
-        data.verificationDocuments.idProof.url)) &&
-    (data.verificationDocuments?.addresProof &&
-      (typeof data.verificationDocuments.addresProof === 'string' ||
-        data.verificationDocuments.addresProof.url));
-  const docsVerified = biz === 'verified' && idP === 'verified' && addr === 'verified';
+        data.verificationDocuments.idProof.url));
+  const docsVerified = businessCert === 'verified' && businessCertFormA === 'verified' && idProof === 'verified';
   const docsComplete = docsUploaded && docsVerified;
   const bankOk = data.paymentMethods?.bankAccount?.payoutStatus === 'verified';
   const mobileOk = data.paymentMethods?.mobileMoney?.payoutStatus === 'verified';

@@ -18,17 +18,17 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
  */
 async function getSettings() {
   const now = Date.now();
-  
+
   // Return cached settings if still valid
   if (cachedSettings && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
     return cachedSettings;
   }
-  
+
   // Fetch fresh settings
   const settings = await PlatformSettings.getSettings();
   cachedSettings = settings;
   cacheTimestamp = now;
-  
+
   return settings;
 }
 
@@ -96,12 +96,12 @@ exports.extractTaxFromPrice = async (vatInclusivePrice, settings = null) => {
  */
 exports.calculateCovidLevy = async (basePrice, settings = null) => {
   if (!basePrice || basePrice <= 0) return 0;
-  
+
   // Get settings if not provided
   if (!settings) {
     settings = await getSettings();
   }
-  
+
   const covidLevyRate = settings.covidLevyRate || 0.01;
   return Math.round(basePrice * covidLevyRate * 100) / 100;
 };
@@ -117,7 +117,7 @@ exports.calculateCompletePrice = async (vatInclusivePrice, settings = null) => {
   if (!settings) {
     settings = await getSettings();
   }
-  
+
   const taxBreakdown = await exports.extractTaxFromPrice(vatInclusivePrice, settings);
   const covidLevy = await exports.calculateCovidLevy(taxBreakdown.basePrice, settings);
   const grandTotal = vatInclusivePrice + covidLevy;
@@ -148,12 +148,12 @@ exports.calculateOrderTaxBreakdown = async (items, settings = null) => {
   if (!settings) {
     settings = await getSettings();
   }
-  
+
   const itemBreakdowns = await Promise.all(items.map(async (item) => {
     const price = item.price || item.vatInclusivePrice || 0;
     const quantity = item.quantity || 1;
     const itemTotal = price * quantity;
-    
+
     const breakdown = await exports.calculateCompletePrice(price, settings);
     const itemBasePrice = breakdown.basePrice * quantity;
     const itemVAT = breakdown.vat * quantity;
@@ -218,7 +218,7 @@ exports.applyDiscountToVATInclusivePrice = async (vatInclusivePrice, discountAmo
 
   // Apply discount to VAT-inclusive price
   const discountedPrice = Math.max(0, vatInclusivePrice - discountAmount);
-  
+
   // Recalculate tax breakdown from discounted price
   return await exports.calculateCompletePrice(discountedPrice, settings);
 };
@@ -325,12 +325,12 @@ exports.getTaxRates = async (settings = null) => {
   if (!settings) {
     settings = await getSettings();
   }
-  
+
   const vatRate = settings.vatRate || 0.125;
   const nhilRate = settings.nhilRate || 0.025;
   const getfundRate = settings.getfundRate || 0.025;
   const covidLevyRate = settings.covidLevyRate || 0.01;
-  
+
   return {
     vat: vatRate,
     nhil: nhilRate,
@@ -361,19 +361,19 @@ exports.calculateWithholdingTax = async (amount, taxCategory = 'individual', set
       amountPaidToSeller: amount,
     };
   }
-  
+
   // Get settings if not provided
   if (!settings) {
     settings = await getSettings();
   }
-  
-  const withholdingRate = taxCategory === 'company' 
+
+  const withholdingRate = taxCategory === 'company'
     ? (settings.withholdingCompany || 0.15)
     : (settings.withholdingIndividual || 0.03);
-  
+
   const withholdingTax = Math.round(amount * withholdingRate * 100) / 100;
   const amountPaidToSeller = Math.round((amount - withholdingTax) * 100) / 100;
-  
+
   return {
     withholdingTax,
     withholdingTaxRate: withholdingRate,
@@ -400,3 +400,80 @@ exports.formatTaxBreakdown = (breakdown) => {
   };
 };
 
+const { recordRevenue } = require('../platform/platformRevenueService');
+const { getFeeByCode } = require('../platform/platformFeeService');
+
+/**
+ * Records tax revenue to the PlatformRevenue system after an order is created.
+ * @param {String} orderId 
+ * @param {String} buyerId 
+ * @param {Number} orderBasePrice 
+ * @param {Number} vatAmount 
+ * @param {Number} nhilAmount 
+ * @param {Number} getfundAmount 
+ */
+exports.recordOrderTaxRevenue = async (orderId, buyerId, orderBasePrice, vatAmount, nhilAmount, getfundAmount) => {
+  try {
+    const vatFee = await getFeeByCode('VAT');
+    if (vatFee && vatAmount > 0) {
+      await recordRevenue({
+        orderId,
+        platformFeeId: vatFee._id,
+        feeCode: 'VAT',
+        feeName: vatFee.name,
+        feeType: 'tax',
+        calculationMethod: vatFee.calculationMethod,
+        rateApplied: vatFee.value,
+        baseAmount: orderBasePrice,
+        revenueAmount: vatAmount,
+        paidBy: 'buyer',
+        buyerId,
+        chargeEvent: 'on_order_created',
+        sourceModel: 'Order',
+        sourceId: orderId,
+      });
+    }
+
+    const nhilFee = await getFeeByCode('NHIL');
+    if (nhilFee && nhilAmount > 0) {
+      await recordRevenue({
+        orderId,
+        platformFeeId: nhilFee._id,
+        feeCode: 'NHIL',
+        feeName: nhilFee.name,
+        feeType: 'tax',
+        calculationMethod: nhilFee.calculationMethod,
+        rateApplied: nhilFee.value,
+        baseAmount: orderBasePrice,
+        revenueAmount: nhilAmount,
+        paidBy: 'buyer',
+        buyerId,
+        chargeEvent: 'on_order_created',
+        sourceModel: 'Order',
+        sourceId: orderId,
+      });
+    }
+
+    const getfundFee = await getFeeByCode('GETFUND');
+    if (getfundFee && getfundAmount > 0) {
+      await recordRevenue({
+        orderId,
+        platformFeeId: getfundFee._id,
+        feeCode: 'GETFUND',
+        feeName: getfundFee.name,
+        feeType: 'tax',
+        calculationMethod: getfundFee.calculationMethod,
+        rateApplied: getfundFee.value,
+        baseAmount: orderBasePrice,
+        revenueAmount: getfundAmount,
+        paidBy: 'buyer',
+        buyerId,
+        chargeEvent: 'on_order_created',
+        sourceModel: 'Order',
+        sourceId: orderId,
+      });
+    }
+  } catch (error) {
+    console.error('Error recording tax revenue:', error);
+  }
+};

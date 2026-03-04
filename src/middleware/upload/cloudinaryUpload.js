@@ -211,36 +211,35 @@ const cloudinaryUpload = (config = {}) => {
         const fileHash = generateHash(file.buffer);
         const existingMedia = await Media.findOne({ hash: fileHash });
 
+        let result;
         if (existingMedia) {
-          return next(new AppError('This image has already been uploaded. Please upload a new image.', 400));
+          // If media already exists, reuse it instead of uploading again
+          result = {
+            secure_url: existingMedia.url,
+            public_id: existingMedia.public_id,
+            format: existingMedia.format || (file.mimetype ? file.mimetype.split('/')[1] : 'unknown'),
+            width: existingMedia.width || 0,
+            height: existingMedia.height || 0,
+            bytes: existingMedia.bytes || file.size || 0,
+            resource_type: existingMedia.resource_type || 'image'
+          };
+        } else {
+          // Upload file if it doesn't exist
+          result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
+
+          // Create Media record only if it's a new upload
+          await Media.create({
+            url: result.secure_url,
+            public_id: result.public_id,
+            hash: fileHash,
+            uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000',
+            format: result.format,
+            resource_type: result.resource_type || 'image',
+            bytes: result.bytes,
+            width: result.width,
+            height: result.height,
+          });
         }
-
-        // Upload file
-        const result = await uploadFileToCloudinary(file.buffer, uploadOptions, cloudinary);
-
-        // Store result
-        uploadResults[fieldName] = {
-          url: result.secure_url,
-          publicId: result.public_id,
-          format: result.format,
-          width: result.width,
-          height: result.height,
-          bytes: result.bytes,
-          hash: fileHash,
-        };
-
-        // Create Media record
-        await Media.create({
-          url: result.secure_url,
-          public_id: result.public_id,
-          hash: fileHash,
-          uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000', // Fallback for system uploads
-          format: result.format,
-          resource_type: result.resource_type || 'image',
-          bytes: result.bytes,
-          width: result.width,
-          height: result.height,
-        });
 
         // Add URL to request body for easy access
         req.body[fieldName] = result.secure_url;
@@ -347,39 +346,39 @@ const uploadMultipleFields = (fieldConfigs, defaultOptions = {}) => {
         const fileHash = generateHash(file.buffer);
         const existingMedia = await Media.findOne({ hash: fileHash });
 
+        let result;
         if (existingMedia) {
-          return next(
-            new AppError(
-              'This image has already been uploaded. Please upload a new image.',
-              400
-            )
+          // If media already exists, reuse it instead of uploading again
+          result = {
+            secure_url: existingMedia.url,
+            public_id: existingMedia.public_id,
+            format: existingMedia.format || (file.mimetype ? file.mimetype.split('/')[1] : 'unknown'),
+            width: existingMedia.width || 0,
+            height: existingMedia.height || 0,
+            bytes: existingMedia.bytes || file.size || 0,
+            resource_type: existingMedia.resource_type || 'image'
+          };
+        } else {
+          // Upload file if it doesn't exist
+          result = await uploadFileToCloudinary(
+            file.buffer,
+            uploadOptions,
+            cloudinary
           );
+
+          // Create Media record only if it's a new upload
+          await Media.create({
+            url: result.secure_url,
+            public_id: result.public_id,
+            hash: fileHash,
+            uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000',
+            format: result.format,
+            resource_type: result.resource_type || 'image',
+            bytes: result.bytes,
+            width: result.width,
+            height: result.height,
+          });
         }
-
-        const result = await uploadFileToCloudinary(
-          file.buffer,
-          uploadOptions,
-          cloudinary
-        );
-
-        uploadResults[fieldName] = {
-          url: result.secure_url,
-          publicId: result.public_id,
-          hash: fileHash,
-        };
-
-        // Create Media record
-        await Media.create({
-          url: result.secure_url,
-          public_id: result.public_id,
-          hash: fileHash,
-          uploadedBy: req.user?._id || req.user?.id || '000000000000000000000000',
-          format: result.format,
-          resource_type: result.resource_type || 'image',
-          bytes: result.bytes,
-          width: result.width,
-          height: result.height,
-        });
 
         // Store URL in request body
         // Use fieldMapping if provided, otherwise use fieldName

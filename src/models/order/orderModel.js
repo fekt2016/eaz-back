@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema(
   {
-   
+
     orderItems: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -234,6 +234,13 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // For checkout migration later:
+    feesSnapshot: [{
+      feeCode: String,
+      feeName: String,
+      feeAmount: Number,
+      rateApplied: Number,
+    }],
     paymentReference: {
       type: String,
       // Paystack transaction reference
@@ -426,6 +433,12 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Flag to prevent duplicate order confirmation emails
+    // (guards against both verifyPaystackPayment + paystackWebhook firing)
+    confirmationEmailSent: {
+      type: Boolean,
+      default: false,
+    },
     // Seller payout status (default: pending, updated to paid when order is delivered)
     sellerPayoutStatus: {
       type: String,
@@ -487,6 +500,14 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ['Admin', 'Seller'],
     },
+    // P4-FIX 2: Optimistic concurrency locking for order status updates.
+    // Clients must send the current statusVersion when updating status.
+    // If the version in the DB has already been incremented by another actor,
+    // the update is rejected with a 409 Conflict.
+    statusVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -509,7 +530,7 @@ orderSchema.set('toJSON', { virtuals: true });
  * PRE-SAVE HOOK: Validate order items
  * Ensures all orderItems references are valid ObjectIds
  */
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   // Validate orderItems array
   if (this.orderItems && Array.isArray(this.orderItems)) {
     const invalidItems = this.orderItems.filter(
@@ -519,7 +540,7 @@ orderSchema.pre('save', function(next) {
       return next(new Error('All orderItems must be valid ObjectIds'));
     }
   }
-  
+
   next();
 });
 
@@ -527,7 +548,7 @@ orderSchema.pre('save', function(next) {
  * INSTANCE METHOD: Get total quantity
  * Sums up all quantities from order items
  */
-orderSchema.methods.getTotalQuantity = async function() {
+orderSchema.methods.getTotalQuantity = async function () {
   await this.populate('orderItems', 'quantity');
   return this.orderItems.reduce((total, item) => total + (item.quantity || 0), 0);
 };
@@ -559,6 +580,7 @@ orderSchema.index({ currentStatus: 1 });
 orderSchema.index({ orderType: 1, currentStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
+orderSchema.index({ revenueAdded: 1, currentStatus: 1, updatedAt: 1 });
 
 const Order = mongoose.model('Order', orderSchema);
 module.exports = Order;;

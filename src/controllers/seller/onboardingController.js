@@ -28,7 +28,7 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
     // Get seller ID - Mongoose documents have _id, but also expose id as a getter
     // Handle both _id and id for robustness
     const sellerId = req.user._id || req.user.id;
-    
+
     if (!sellerId) {
       console.error('[getOnboardingStatus] ❌ Seller ID is missing:', {
         hasUser: !!req.user,
@@ -80,7 +80,7 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
 
   // Check if email is verified
   const isEmailVerified = seller.verification?.emailVerified === true;
-  
+
   // Check if phone is verified (if phone exists and is not empty, consider it verified for now)
   // TODO: Add phone verification system if needed
   // Safely check phone - handle cases where phone might not be a string
@@ -89,25 +89,15 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
   // Check if all three documents exist and are verified
   const businessCertStatus = getDocumentStatus(seller.verificationDocuments?.businessCert);
   const idProofStatus = getDocumentStatus(seller.verificationDocuments?.idProof);
-  const addresProofStatus = getDocumentStatus(seller.verificationDocuments?.addresProof);
 
-  // Check if all documents are verified
-  const allDocumentsVerified =  
-    businessCertStatus === 'verified' &&
-    idProofStatus === 'verified' &&
-    addresProofStatus === 'verified';
+  // Check if mandatory documents (ID Proof) are verified
+  const allDocumentsVerified = idProofStatus === 'verified';
 
-  // Also check if documents have URLs (they must be uploaded)
-  const allDocumentsUploaded = 
-    (seller.verificationDocuments?.businessCert && 
-     (typeof seller.verificationDocuments.businessCert === 'string' || 
-      seller.verificationDocuments.businessCert.url)) &&
-    (seller.verificationDocuments?.idProof && 
-     (typeof seller.verificationDocuments.idProof === 'string' || 
-      seller.verificationDocuments.idProof.url)) &&
-    (seller.verificationDocuments?.addresProof && 
-     (typeof seller.verificationDocuments.addresProof === 'string' || 
-      seller.verificationDocuments.addresProof.url));
+  // Also check if mandatory documents have URLs (they must be uploaded)
+  const allDocumentsUploaded =
+    seller.verificationDocuments?.idProof &&
+    (typeof seller.verificationDocuments.idProof === 'string' ||
+      seller.verificationDocuments.idProof.url);
 
   // Check payment method verification status using shared helper so
   // admin approval and seller setup step use the exact same rules.
@@ -149,8 +139,8 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
   } catch (computeError) {
     console.error('[getOnboardingStatus] Error computing isSetupComplete:', computeError);
     // Fallback: compute manually if method fails
-    isSetupComplete = 
-      allDocumentsVerified && 
+    isSetupComplete =
+      allDocumentsVerified &&
       allDocumentsUploaded &&
       isEmailVerified &&
       isPhoneVerified &&
@@ -159,13 +149,13 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
 
   // CRITICAL: Check if ALL requirements are met for seller verification
   // This matches the pre-save hook logic to ensure consistency
-  // Requirements:
-  // 1. All 3 documents verified and uploaded
+  // Requirements (Updated: Business doc is optional):
+  // 1. Mandatory document (ID Proof/Ghana Card) verified and uploaded
   // 2. Email verified (verified during registration)
   // 3. Phone verified (phone exists)
   // 4. Payment method verified (at least one payment method is verified)
-  const allRequirementsMet = 
-    allDocumentsVerified && 
+  const allRequirementsMet =
+    allDocumentsVerified &&
     allDocumentsUploaded &&
     isEmailVerified &&
     isPhoneVerified &&
@@ -182,21 +172,20 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
         seller.verification = seller.verification || {};
         seller.verification.businessVerified = true;
         seller.verification.emailVerified = true; // Ensure email is marked as verified
-        
+
         // Set verifiedBy and verifiedAt if not already set
         if (!seller.verifiedBy) {
           const getVerifiedBy = (doc) => {
             if (typeof doc === 'string') return null;
             return doc?.verifiedBy || null;
           };
-          
+
           const businessCertAdmin = getVerifiedBy(seller.verificationDocuments.businessCert);
           const idProofAdmin = getVerifiedBy(seller.verificationDocuments.idProof);
-          const addresProofAdmin = getVerifiedBy(seller.verificationDocuments.addresProof);
-          
-          seller.verifiedBy = addresProofAdmin || idProofAdmin || businessCertAdmin;
+
+          seller.verifiedBy = idProofAdmin || businessCertAdmin;
         }
-        
+
         if (!seller.verifiedAt) {
           const getVerifiedAt = (doc) => {
             if (typeof doc === 'string') return null;
@@ -210,13 +199,12 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
               return null;
             }
           };
-          
+
           const dates = [
             getVerifiedAt(seller.verificationDocuments.businessCert),
             getVerifiedAt(seller.verificationDocuments.idProof),
-            getVerifiedAt(seller.verificationDocuments.addresProof),
           ].filter(Boolean);
-          
+
           if (dates.length > 0) {
             const timestamps = dates.map(d => d.getTime()).filter(t => !isNaN(t));
             if (timestamps.length > 0) {
@@ -228,7 +216,7 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
             seller.verifiedAt = new Date();
           }
         }
-        
+
         await seller.save({ validateBeforeSave: false });
         console.log('[getOnboardingStatus] ✅ All requirements met - updated seller to verified status');
       } catch (saveError) {
@@ -267,7 +255,6 @@ exports.getOnboardingStatus = catchAsync(async (req, res, next) => {
         isVerified: allDocumentsVerified,
         businessCertStatus,
         idProofStatus,
-        addresProofStatus,
       },
       verifiedBy: seller.verifiedBy,
       verifiedAt: seller.verifiedAt,
@@ -326,23 +313,18 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
 
   const businessCertStatus = getDocumentStatus(seller.verificationDocuments?.businessCert);
   const idProofStatus = getDocumentStatus(seller.verificationDocuments?.idProof);
-  const addresProofStatus = getDocumentStatus(seller.verificationDocuments?.addresProof);
 
-  const allDocumentsVerified =  
+  const allDocumentsVerified =
     businessCertStatus === 'verified' &&
-    idProofStatus === 'verified' &&
-    addresProofStatus === 'verified';
+    idProofStatus === 'verified';
 
-  const allDocumentsUploaded = 
-    (seller.verificationDocuments?.businessCert && 
-     (typeof seller.verificationDocuments.businessCert === 'string' || 
-      seller.verificationDocuments.businessCert.url)) &&
-    (seller.verificationDocuments?.idProof && 
-     (typeof seller.verificationDocuments.idProof === 'string' || 
-      seller.verificationDocuments.idProof.url)) &&
-    (seller.verificationDocuments?.addresProof && 
-     (typeof seller.verificationDocuments.addresProof === 'string' || 
-      seller.verificationDocuments.addresProof.url));
+  const allDocumentsUploaded =
+    (seller.verificationDocuments?.businessCert &&
+      (typeof seller.verificationDocuments.businessCert === 'string' ||
+        seller.verificationDocuments.businessCert.url)) &&
+    (seller.verificationDocuments?.idProof &&
+      (typeof seller.verificationDocuments.idProof === 'string' ||
+        seller.verificationDocuments.idProof.url));
 
   // Check payment method verification status using shared helper so
   // admin approval and seller setup step use the exact same rules.
@@ -374,7 +356,7 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
   const wasPendingVerification = seller.onboardingStage === 'pending_verification';
   if (allSetupComplete && seller.onboardingStage === 'profile_incomplete') {
     seller.onboardingStage = 'pending_verification';
-    
+
     // Notify admins when seller submits verification documents
     if (!wasPendingVerification) {
       try {
@@ -412,7 +394,7 @@ exports.updateOnboarding = catchAsync(async (req, res, next) => {
  */
 exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   const seller = await Seller.findById(req.params.id);
-  
+
   if (!seller) {
     return next(new AppError('Seller not found', 404));
   }
@@ -425,34 +407,30 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   // Check if all documents are uploaded
   const docs = seller.verificationDocuments || {};
   const missingDocs = [];
-  
-  // Check business certificate
-  const hasBusinessCert = docs.businessCert && 
-    (typeof docs.businessCert === 'string' || (docs.businessCert && docs.businessCert.url));
-  if (!hasBusinessCert) {
-    missingDocs.push('Business Certificate');
-  }
-  
-  // Check ID proof
-  const hasIdProof = docs.idProof && 
-    (typeof docs.idProof === 'string' || (docs.idProof && docs.idProof.url));
-  if (!hasIdProof) {
-    missingDocs.push('ID Proof');
-  }
-  
-  // Check address proof
-  const hasAddressProof = docs.addresProof && 
-    (typeof docs.addresProof === 'string' || (docs.addresProof && docs.addresProof.url));
-  if (!hasAddressProof) {
-    missingDocs.push('Address Proof');
-  }
 
-  if (missingDocs.length > 0) {
+  // Check mandatory document: ID proof (Ghana Card)
+  // Business Certificate is now optional
+  const hasIdProof = docs.idProof &&
+    (typeof docs.idProof === 'string' || (docs.idProof && docs.idProof.url));
+
+  if (!hasIdProof) {
     return next(new AppError(
-      `Cannot approve seller verification. Missing required documents: ${missingDocs.join(', ')}. All documents (Business Certificate, ID Proof, Address Proof) must be uploaded before approval.`,
+      'Cannot approve seller verification. Missing mandatory document: ID Proof (Ghana Card). The Ghana Card must be uploaded before approval.',
       400
     ));
   }
+
+  // Check if payout method is verified
+  const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
+  const payoutCheck = hasVerifiedPayoutMethod(seller);
+  if (!payoutCheck.hasVerified) {
+    return next(new AppError(
+      'Cannot approve seller verification. At least one payout method (Bank Account or Mobile Money) must be verified first.',
+      400
+    ));
+  }
+
+  // (Wait for mandatory check above)
 
   // CRITICAL: Use save() instead of findByIdAndUpdate to trigger pre-save hook
   // The pre-save hook will validate ALL requirements (documents, email, phone, payment method)
@@ -465,10 +443,10 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   seller.verification.emailVerified = true; // CRITICAL: Mark email as verified when admin approves
   seller.verifiedBy = req.user.id; // Track which admin verified the seller
   seller.verifiedAt = new Date(); // Track when verification happened
-  
+
   // Mark verification field as modified so Mongoose saves it
   seller.markModified('verification');
-  
+
   // Save seller - this will trigger the pre-save hook which validates all requirements
   // The hook will ensure phone and payment method are also verified before finalizing
   const updatedSeller = await seller.save({ validateBeforeSave: false });
@@ -476,7 +454,7 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
   if (!updatedSeller) {
     return next(new AppError('Seller not found', 404));
   }
-  
+
   // Verify that the seller was actually verified (pre-save hook may have reverted if requirements not met)
   if (updatedSeller.onboardingStage !== 'verified' || updatedSeller.verificationStatus !== 'verified') {
     console.warn('[Approve Seller Verification] ⚠️ Seller was not verified - requirements not met:', {
@@ -487,18 +465,18 @@ exports.approveSellerVerification = catchAsync(async (req, res, next) => {
       phoneVerified: updatedSeller.phone && updatedSeller.phone.trim() !== '',
       hasPaymentMethod: !!(updatedSeller.paymentMethods?.bankAccount || updatedSeller.paymentMethods?.mobileMoney),
     });
-    
+
     // Check what's missing
     const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
     const payoutCheck = hasVerifiedPayoutMethod(updatedSeller);
     const hasPaymentMethodVerified = payoutCheck.hasVerified;
     const isPhoneVerified = updatedSeller.phone && updatedSeller.phone.trim() !== '';
-    
+
     const missingRequirements = [];
     if (!updatedSeller.verification?.emailVerified) missingRequirements.push('Email verification');
     if (!isPhoneVerified) missingRequirements.push('Phone number');
     if (!hasPaymentMethodVerified) missingRequirements.push('Payment method verification');
-    
+
     return next(new AppError(
       `Cannot approve seller verification. Missing requirements: ${missingRequirements.join(', ')}. All requirements (email, phone, payment method) must be met before approval.`,
       400
@@ -573,7 +551,7 @@ exports.rejectSellerVerification = catchAsync(async (req, res, next) => {
   // Notify seller about verification rejection
   try {
     const notificationService = require('../../services/notification/notificationService');
-const logger = require('../../utils/logger');
+    const logger = require('../../utils/logger');
     await notificationService.createVerificationNotification(
       seller._id,
       'seller',
@@ -603,17 +581,18 @@ const logger = require('../../utils/logger');
 /**
  * Update individual document status
  * PATCH /seller/:id/document-status
- * Body: { documentType: 'businessCert' | 'idProof' | 'addresProof', status: 'verified' | 'rejected' }
+ * Body: { documentType: 'businessCert' | 'idProof', status: 'verified' | 'rejected' }
  */
 exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
-  const { documentType, status } = req.body;
   const { id } = req.params;
+  const { documentType, status } = req.body;
 
   if (!documentType || !status) {
-    return next(new AppError('documentType and status are required', 400));
+    return next(new AppError('Please provide document type and status', 400));
   }
 
-  if (!['businessCert', 'idProof', 'addresProof'].includes(documentType)) {
+  // Validate document type
+  if (!['businessCert', 'businessCertFormA', 'idProof'].includes(documentType)) {
     return next(new AppError('Invalid document type', 400));
   }
 
@@ -621,8 +600,9 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
     return next(new AppError('Invalid status. Must be "verified" or "rejected"', 400));
   }
 
-  // Fetch seller with minimal fields for better performance
-  const seller = await Seller.findById(id).select('verificationDocuments requiredSetup onboardingStage');
+  // Fetch seller with all fields needed for pre-save auto-verification hook to run correctly
+  const seller = await Seller.findById(id)
+    .select('verificationDocuments requiredSetup onboardingStage verificationStatus status verification email phone paymentMethods verifiedBy verifiedAt');
   if (!seller) {
     return next(new AppError('Seller not found', 404));
   }
@@ -655,11 +635,41 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
     return next(new AppError(`Document ${documentType} not found`, 404));
   }
 
+  // LINKED VERIFICATION: If ID Proof is verified, also verify Business Certificate section
+  if (documentType === 'idProof' && status === 'verified') {
+    const linkedDocs = ['businessCert', 'businessCertFormA'];
+
+    for (const linkedType of linkedDocs) {
+      const linkedDoc = seller.verificationDocuments?.[linkedType];
+      if (linkedDoc) {
+        // If it's a string, convert to object
+        if (typeof linkedDoc === 'string') {
+          seller.verificationDocuments[linkedType] = {
+            url: linkedDoc,
+            status: 'verified',
+            verifiedBy: req.user.id,
+            verifiedAt: new Date()
+          };
+        } else if (linkedDoc.url) {
+          // Update status if it's not already verified
+          if (linkedDoc.status !== 'verified') {
+            seller.verificationDocuments[linkedType] = {
+              ...linkedDoc,
+              status: 'verified',
+              verifiedBy: req.user.id,
+              verifiedAt: new Date()
+            };
+          }
+        }
+      }
+    }
+  }
+
   // CRITICAL: Mark verificationDocuments as modified
   // Mongoose doesn't automatically detect changes to Mixed type fields
   // Without this, the changes won't be saved to the database!
   seller.markModified('verificationDocuments');
-  
+
   // Double-check that Mongoose recognizes the change
   if (!seller.isModified('verificationDocuments')) {
     console.error('[updateDocumentStatus] WARNING: verificationDocuments not marked as modified after markModified() call!');
@@ -672,7 +682,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
   // If business certificate is verified, set hasAddedBusinessInfo to true
   if (documentType === 'businessCert' && status === 'verified') {
     seller.requiredSetup.hasAddedBusinessInfo = true;
-    
+
     // Check if all setup is complete (product not required for verification)
     const allSetupComplete =
       seller.requiredSetup.hasAddedBusinessInfo &&
@@ -708,34 +718,36 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
     };
 
     const businessCertStatus = getDocumentStatus(seller.verificationDocuments?.businessCert);
+    const businessCertFormAStatus = getDocumentStatus(seller.verificationDocuments?.businessCertFormA);
     const idProofStatus = getDocumentStatus(seller.verificationDocuments?.idProof);
-    const addresProofStatus = getDocumentStatus(seller.verificationDocuments?.addresProof);
 
-    const allDocumentsVerified = 
-      businessCertStatus === 'verified' &&
-      idProofStatus === 'verified' &&
-      addresProofStatus === 'verified';
+    // Business Certificates are now optional - only ID Proof is mandatory for document stage
+    const allDocumentsVerified = idProofStatus === 'verified';
 
-    const allDocumentsUploaded = 
-      (seller.verificationDocuments?.businessCert && 
-       (typeof seller.verificationDocuments.businessCert === 'string' || 
-        seller.verificationDocuments.businessCert.url)) &&
-      (seller.verificationDocuments?.idProof && 
-       (typeof seller.verificationDocuments.idProof === 'string' || 
-        seller.verificationDocuments.idProof.url)) &&
-      (seller.verificationDocuments?.addresProof && 
-       (typeof seller.verificationDocuments.addresProof === 'string' || 
-        seller.verificationDocuments.addresProof.url));
+    const allDocumentsUploaded =
+      seller.verificationDocuments?.idProof &&
+      (typeof seller.verificationDocuments.idProof === 'string' ||
+        seller.verificationDocuments.idProof.url);
 
-    if (allDocumentsVerified && allDocumentsUploaded) {
+    // Check other requirements (email, payment method)
+    const isEmailVerified = seller.verification?.emailVerified === true;
+    const isPhoneVerified = seller.phone && seller.phone.trim() !== '';
+    const hasVerifiedContact = isEmailVerified || isPhoneVerified;
+
+    const { hasVerifiedPayoutMethod } = require('../../utils/helpers/paymentMethodHelpers');
+    const payoutCheck = hasVerifiedPayoutMethod(seller);
+    const hasPaymentMethodVerified = payoutCheck.hasVerified;
+
+    if (allDocumentsVerified && allDocumentsUploaded && hasVerifiedContact && hasPaymentMethodVerified) {
       updateData.verificationStatus = 'verified';
       updateData.onboardingStage = 'verified';
-      updateData.status = 'active'; // So seller table shows "active" when all verifications pass
+      updateData.status = 'active';
       updateData['verification.businessVerified'] = true;
-      // CRITICAL: When all documents are verified by admin, also mark email as verified
-      // This ensures seller setup page recognizes email verification
+      // Note: we don't force updateData['verification.emailVerified'] = true here because it should already be true if it's verified contact
+      // unless we want doc verification to act as a fallback for email too (which line 736 did)
+      // For safety and consistency with previous behavior:
       updateData['verification.emailVerified'] = true;
-      
+
       // Also update seller object in memory for save() method
       seller.verificationStatus = 'verified';
       seller.onboardingStage = 'verified';
@@ -745,7 +757,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
       }
       seller.verification.businessVerified = true;
       seller.verification.emailVerified = true;
-      
+
       // Mark verification field as modified so Mongoose saves it
       seller.markModified('verification');
 
@@ -755,12 +767,11 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
           if (typeof doc === 'string') return null;
           return doc?.verifiedBy || null;
         };
-        
+
         const businessCertAdmin = getVerifiedBy(seller.verificationDocuments.businessCert);
         const idProofAdmin = getVerifiedBy(seller.verificationDocuments.idProof);
-        const addresProofAdmin = getVerifiedBy(seller.verificationDocuments.addresProof);
-        
-        updateData.verifiedBy = addresProofAdmin || idProofAdmin || businessCertAdmin || req.user.id;
+
+        updateData.verifiedBy = idProofAdmin || businessCertAdmin || req.user.id;
       }
 
       // Set verifiedAt if not already set
@@ -769,13 +780,12 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
           if (typeof doc === 'string') return null;
           return doc?.verifiedAt ? new Date(doc.verifiedAt) : null;
         };
-        
+
         const dates = [
           getVerifiedAt(seller.verificationDocuments.businessCert),
           getVerifiedAt(seller.verificationDocuments.idProof),
-          getVerifiedAt(seller.verificationDocuments.addresProof),
         ].filter(Boolean);
-        
+
         if (dates.length > 0) {
           updateData.verifiedAt = new Date(Math.max(...dates.map(d => d.getTime())));
         } else {
@@ -783,7 +793,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
         }
       }
 
-      console.log('[updateDocumentStatus] ✅ All 3 documents verified - will update verificationStatus to verified');
+      console.log('[updateDocumentStatus] ✅ Mandatory ID document verified - will update verificationStatus to verified');
     }
   }
 
@@ -791,7 +801,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
   try {
     // First attempt: Use save() method
     await seller.save({ validateBeforeSave: false });
-    
+
     // Verify the save worked by fetching again (include verificationStatus and onboardingStage)
     let savedSeller = await Seller.findById(id).select('verificationDocuments verificationStatus onboardingStage verifiedBy verifiedAt');
     console.log('[updateDocumentStatus] After save - verification:', {
@@ -801,11 +811,11 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
       onboardingStage: savedSeller?.onboardingStage,
       statusMatches: savedSeller?.verificationDocuments?.[documentType]?.status === status,
     });
-    
+
     // If save didn't work, use findByIdAndUpdate as fallback
     if (savedSeller?.verificationDocuments?.[documentType]?.status !== status) {
       console.warn('[updateDocumentStatus] WARNING: Save() didn\'t persist changes, trying findByIdAndUpdate...');
-      
+
       // Use findByIdAndUpdate to directly update the database
       savedSeller = await Seller.findByIdAndUpdate(
         id,
@@ -815,7 +825,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
           runValidators: false,
         }
       ).select('verificationDocuments verificationStatus onboardingStage verifiedBy verifiedAt');
-      
+
       console.log('[updateDocumentStatus] After findByIdAndUpdate - verification:', {
         documentType,
         savedStatus: savedSeller?.verificationDocuments?.[documentType]?.status,
@@ -823,7 +833,7 @@ exports.updateDocumentStatus = catchAsync(async (req, res, next) => {
         onboardingStage: savedSeller?.onboardingStage,
         statusMatches: savedSeller?.verificationDocuments?.[documentType]?.status === status,
       });
-      
+
       if (savedSeller?.verificationDocuments?.[documentType]?.status !== status) {
         console.error('[updateDocumentStatus] ❌ CRITICAL: Status mismatch after both save methods!', {
           expected: status,

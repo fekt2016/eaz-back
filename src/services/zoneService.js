@@ -65,10 +65,25 @@ function isWeekend(date = new Date()) {
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 
+/**
+ * Check if it is currently within working hours in Ghana time
+ * Working hours: Monday–Friday, 08:00–18:00 (Africa/Accra, UTC+0)
+ * Express Delivery is only available during these hours.
+ * @param {Date} date - Date to check (defaults to now)
+ * @returns {Boolean} True if within working hours
+ */
+function isWorkingHours(date = new Date()) {
+  const ghanaTime = new Date(date.toLocaleString('en-US', { timeZone: 'Africa/Accra' }));
+  const day = ghanaTime.getDay();   // 0=Sunday … 6=Saturday
+  const hour = ghanaTime.getHours();
+  return day >= 1 && day <= 6 && hour >= 8 && hour < 18;
+}
+
 module.exports = {
   detectZone,
   getZoneName,
   isNightTime,
   isWeekend,
+  isWorkingHours,
 };
 

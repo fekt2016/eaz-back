@@ -230,7 +230,7 @@ exports.uploadProductImage = upload.any();
 exports.resizeProductImages = catchAsync(async (req, res, next) => {
   // logger.info(req);
   req.body = { ...req.body };
-  
+
   // Convert req.files array to object format for easier access
   // When using upload.any(), files are in array format with fieldname property
   let filesObj = {};
@@ -244,20 +244,20 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   } else if (req.files) {
     filesObj = req.files;
   }
-  
+
   req.files = filesObj;
   console.log('req.files', req.files);
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
     const cloudinary = req.app.get('cloudinary');
-    
+
     // Check if Cloudinary is configured
     if (!cloudinary) {
       logger.error('[resizeProductImages] Cloudinary is not configured');
       return next(new AppError('Image upload service is not configured. Please contact support.', 500));
     }
-    
+
     // console.log('cloudinary', cloudinary);
     if (req.files && Object.keys(req.files).length > 0) {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -277,7 +277,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
           bufferStream.pipe(writeStream);
         });
       };
-      
+
       // Process cover image
       if (req.files.imageCover && req.files.imageCover[0]) {
         const coverFile = req.files.imageCover[0];
@@ -332,7 +332,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         for (let i = 0; i < req.body.variants.length; i++) {
           const variantKey = `variantImages[${i}]`;
           const variantKeyAlt = `variants[${i}][images]`; // Alternative format
-          
+
           // Check both possible field name formats
           let variantImageFiles = null;
           if (req.files[variantKey] && req.files[variantKey].length > 0) {
@@ -355,7 +355,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
             });
 
             const variantImageUrls = await Promise.all(variantImagesPromises);
-            
+
             // Merge with existing variant images if any
             const existingVariantImages = req.body.variants[i].images || [];
             if (typeof existingVariantImages === 'string') {
@@ -398,12 +398,12 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       stack: err.stack,
       filesCount: req.files ? Object.keys(req.files).length : 0,
     });
-    
+
     // If it's a critical error (like Cloudinary config), return error
     if (err.message && err.message.includes('not configured')) {
       return next(err);
     }
-    
+
     // For other image processing errors, log but continue (product can be created without images)
     logger.warn('[resizeProductImages] Continuing without images due to processing error');
   }
@@ -422,7 +422,7 @@ exports.bestProductPrice = async () => {
 exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
   console.time('category-counts');
   console.log('[CATEGORY-COUNTS] Request received');
-  
+
   // PERFORMANCE FIX: Add allowDiskUse(true) for large aggregations
   // This allows MongoDB to use disk for temporary files when memory is insufficient
   // CRITICAL: Exclude deleted products from category counts
@@ -505,7 +505,7 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
     isAdmin: req.user?.role === 'admin',
     isSeller: false, // Public view, not seller's own view
   });
-  
+
   const products = await Product.find(buyerSafeFilter)
     .populate('parentCategory', 'name slug')
     .populate('subCategory', 'name slug');
@@ -577,16 +577,16 @@ exports.getAllPublicProductsBySeller = catchAsync(async (req, res, next) => {
 exports.getAllProduct = catchAsync(async (req, res, next) => {
   console.time('getAllProduct');
   console.log('🔍 [getAllProduct] Products request hit');
-  
+
   // Check if user is admin - handle both admin and superadmin roles
   const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'moderator');
-  
+
   // Set default limit based on user role
   // Admins can see more products at once for better management
   if (!req.query.limit) {
     req.query.limit = isAdmin ? '200' : '20'; // Higher default for admins
   }
-  
+
   // Cap limit based on user role
   // CRITICAL: Enforce strict limits to prevent server lockup
   // Admins can fetch more products (up to 200) for management purposes
@@ -604,10 +604,10 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       req.query.limit = '100';
     }
   }
-  
+
   // Build base filter
   let filter = {};
-  
+
   // For non-admin users (public/buyer access), use buyer-safe query
   // This excludes products from unverified sellers
   if (!isAdmin) {
@@ -617,13 +617,13 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       isAdmin: false,
       isSeller: isSeller,
     });
-    
+
     // DEBUG: Log the filter being used for buyer queries
     logger.info('[getAllProduct] Buyer query filter:', JSON.stringify(filter, null, 2));
   }
   // Admins can see all products (including pending/rejected, unverified sellers, and buyer-created products)
   // Sellers can see their own products regardless of verification (handled in getSellerProducts)
-  
+
   // Debug logging for admin access
   if (isAdmin && process.env.NODE_ENV === 'development') {
     console.log('[getAllProduct] Admin access - showing ALL products (including buyer-created, pending, rejected)');
@@ -723,7 +723,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
         isDeletedBySeller: p.isDeletedBySeller,
         seller: p.seller,
       })));
-      
+
       // Also check total count
       const totalApproved = await Product.countDocuments({
         moderationStatus: 'approved',
@@ -744,7 +744,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       })));
     }
   }
-  
+
   // Calculate totalStock and enrich sale fields from variants (lean() doesn't include virtuals)
   // Apply read-time discounts first (Ramadan etc.) so product card shows correct price even if product wasn't saved
   const requestPromoKey = req.query.promotionKey || null;
@@ -775,7 +775,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
       }
     }
   }
-  
+
   // CRITICAL: Limit debug logging to prevent log accumulation
   // Only log in development and limit to first product only
   if (process.env.NODE_ENV === 'development' && products.length > 0) {
@@ -795,7 +795,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   const total = await countFeatures.query.countDocuments();
 
   console.timeEnd('getAllProduct');
-  
+
   // CRITICAL: Limit logging to prevent log accumulation
   // Only log essential info, not full objects
   if (isAdmin && process.env.NODE_ENV === 'development') {
@@ -839,24 +839,22 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
     }
     // Show approved reviews to public, or all reviews if admin
     // Also show pending reviews to the user who created them
-    let statusFilter = {};
+    let statusFilter = { status: 'approved' };
     if (req.user && req.user.role === 'admin') {
-      // Admin sees all reviews
       statusFilter = {};
     } else if (req.user) {
-      // Authenticated users see approved reviews, or their own pending reviews
-      statusFilter = {
-        $or: [
-          { status: 'approved' },
-          { status: 'pending', user: mongoose.Types.ObjectId(req.user.id) }
-        ]
-      };
-    } else {
-      // Anonymous users only see approved reviews
-      statusFilter = { status: 'approved' };
+      const userId = req.user._id || req.user.id;
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        statusFilter = {
+          $or: [
+            { status: 'approved' },
+            { status: 'pending', user: new mongoose.Types.ObjectId(userId.toString()) }
+          ]
+        };
+      }
     }
 
-    const reviews = await Review.find({
+    const query = Review.find({
       product: productId,
       ...statusFilter
     })
@@ -867,22 +865,19 @@ exports.getProductReviews = catchAsync(async (req, res, next) => {
       .populate({
         path: 'sellerReply.repliedBy',
         select: 'shopName',
+        strictPopulate: false,
       })
       .sort({ createdAt: -1 })
       .lean();
 
-    // Debug logging
-    logger.info(`[getProductReviews] Product ID: ${productId}`);
-    logger.info(`[getProductReviews] User: ${req.user?.id || 'anonymous'}, Role: ${req.user?.role || 'none'}`);
-    logger.info(`[getProductReviews] Status filter:`, statusFilter);
-    logger.info(`[getProductReviews] Found ${reviews.length} reviews`);
+    const reviews = await query;
 
     res.status(200).json({
       success: true,
       data: {
         count: reviews.length,
-        reviews, // Directly return reviews array
-        averageRating: calculateAverage(reviews), // Optional
+        reviews,
+        averageRating: calculateAverage(reviews),
       },
     });
   } catch (error) {
@@ -972,10 +967,10 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   // 3. Buyers/public cannot see deleted/archived products
   if (!isAdmin) {
     // If product is deleted or archived
-    if (product.isDeleted === true || 
-        product.isDeletedByAdmin === true || 
-        product.isDeletedBySeller === true || 
-        product.status === 'archived') {
+    if (product.isDeleted === true ||
+      product.isDeletedByAdmin === true ||
+      product.isDeletedBySeller === true ||
+      product.status === 'archived') {
       // If seller owns it but admin deleted it, hide it
       if (isSellerOwnProduct && product.isDeletedByAdmin) {
         logger.info('[getProductById] ❌ Product deleted by admin - hiding from seller:', {
@@ -1100,16 +1095,23 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   }
 
   // 1. Get category and its subcategories
-  const category =
-    await Category.findById(categoryId).populate('subcategories');
-  if (!category) {
-    return next(new AppError('No category found with that ID', 404));
+  let category;
+  if (mongoose.Types.ObjectId.isValid(categoryId)) {
+    category = await Category.findById(categoryId).populate('subcategories');
+  } else {
+    category = await Category.findOne({ slug: categoryId }).populate('subcategories');
   }
 
-  // 2. Build base query
-  const baseQuery = {
-    parentCategory: categoryId, // Use string ID directly
-  };
+  if (!category) {
+    return next(new AppError('No category found with that ID or slug', 404));
+  }
+
+  // 2. Build base query using the resolved category ID
+  const baseQuery = category.parentCategory
+    ? { subCategory: category._id }
+    : { parentCategory: category._id };
+
+
 
   // 3. Handle subcategory filtering
   if (req.query?.subcategories) {
@@ -1125,6 +1127,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
 
     if (validSubs.length > 0) {
       baseQuery.subCategory = { $in: validSubs };
+
     }
   }
 
@@ -1144,8 +1147,12 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     isSeller: isSeller,
   });
 
+
+
   let products = await Product.find(buyerSafeQuery).lean();
   const totalCount = await Product.countDocuments(buyerSafeQuery);
+
+
 
   // Promotional discounts = Ads (link + discountPercent). Seller discounts are separate.
   let promosFromAds = [];
@@ -1368,7 +1375,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
 
   // Get old product data before update and verify ownership
   const oldProduct = await Product.findById(req.params.id);
-  
+
   if (!oldProduct) {
     return next(new AppError('Product not found', 404));
   }
@@ -1401,10 +1408,10 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       if (!Array.isArray(attributes)) {
         attributes = [];
       }
-      
+
       // Filter out attributes with empty keys or values
       attributes = attributes.filter(attr => attr && attr.key && attr.value);
-      
+
       // If no valid attributes, create a default one to satisfy validation
       if (attributes.length === 0) {
         attributes = [{ key: 'Default', value: 'N/A' }];
@@ -1467,7 +1474,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       const durationMatch = warrantyStr.match(/(\d+)/);
       const duration = durationMatch ? parseInt(durationMatch[1]) : null;
       const type = warrantyStr.includes('year') ? 'year' : warrantyStr.includes('month') ? 'month' : 'standard';
-      
+
       req.body.warranty = {
         duration: duration || 1,
         type: type,
@@ -1514,7 +1521,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   // because findByIdAndUpdate doesn't work well with nested subdocuments
   try {
     const product = await Product.findById(req.params.id);
-    
+
     if (!product) {
       return next(new AppError('Product not found', 404));
     }
@@ -1531,9 +1538,32 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       delete updateFields.moderatedBy;
       delete updateFields.moderatedAt;
       delete updateFields.moderationNotes;
-      // Preserve existing moderation status
-      if (product.moderationStatus) {
-        // Keep the existing moderationStatus - don't allow sellers to change it
+
+      // P4-FIX 1: Auto-resubmit for re-review if seller edits an approved product
+      // This prevents un-reviewed seller edits from staying live on the marketplace
+      if (product.moderationStatus === 'approved') {
+        product.moderationStatus = 'pending';
+        product.isVisible = false;
+        logger.info(`[updateProduct] ✅ P4-FIX1: Approved product ${product._id} edited by seller — auto-reset to pending review. Product hidden from marketplace until re-approved.`);
+
+        // Notify admins about the re-submission (non-blocking)
+        setImmediate(async () => {
+          try {
+            const notificationService = require('../../services/notification/notificationService');
+            const seller = await Seller.findById(req.user.id).select('shopName name');
+            await notificationService.createProductCreationNotification(
+              product._id,
+              product.name,
+              req.user.id,
+              seller?.shopName || seller?.name || 'Seller'
+            );
+            logger.info(`[updateProduct] Admin re-review notification sent for product ${product._id}`);
+          } catch (notifErr) {
+            logger.warn(`[updateProduct] Could not send admin re-review notification:`, notifErr?.message);
+          }
+        });
+      } else {
+        // Keep the existing moderationStatus for non-approved products (pending/rejected)
         logger.info(`[updateProduct] Preserving moderationStatus for seller update: ${product.moderationStatus}`);
       }
     }
@@ -1550,8 +1580,29 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       }
     });
 
-    // Handle variants update
+    // Handle variants update with protection for order history
     if (variantsToUpdate && Array.isArray(variantsToUpdate)) {
+      const OrderItems = require('../../models/order/OrderItemModel');
+
+      // Identify variants being removed
+      const currentVariantIds = product.variants.map(v => v._id.toString());
+      const updatedVariantIds = variantsToUpdate
+        .filter(v => v._id && mongoose.Types.ObjectId.isValid(v._id))
+        .map(v => v._id.toString());
+
+      const removedVariantIds = currentVariantIds.filter(id => !updatedVariantIds.includes(id));
+
+      // Check order history for each removed variant
+      for (const variantId of removedVariantIds) {
+        const orderCount = await OrderItems.countDocuments({ variant: variantId });
+        if (orderCount > 0) {
+          return next(new AppError(
+            `Cannot remove variant ${variantId} because it has existing orders. Variants with order history must be preserved.`,
+            400
+          ));
+        }
+      }
+
       // Build new variants array
       const newVariants = variantsToUpdate.map((variant) => {
         // If variant has _id and it exists in current product, update it
@@ -1574,7 +1625,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         }
         return newVariant;
       });
-      
+
       // Replace entire variants array
       product.variants = newVariants;
     }
@@ -1594,7 +1645,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         parentCategory: product.parentCategory,
         subCategory: product.subCategory,
       });
-      
+
       // If it's a validation error, return more details
       if (saveError.name === 'ValidationError') {
         const validationErrors = Object.values(saveError.errors).map(err => ({
@@ -1605,7 +1656,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         console.error('[updateProduct] Validation errors:', validationErrors);
         return next(new AppError(`Validation error: ${validationErrors.map(e => `${e.path}: ${e.message}`).join(', ')}`, 400));
       }
-      
+
       // Re-throw if not a validation error to be caught by outer catch
       throw saveError;
     }
@@ -1637,13 +1688,13 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     console.error('[updateProduct] Request body:', JSON.stringify(req.body, null, 2));
     console.error('[updateProduct] Product ID:', req.params.id);
     console.error('[updateProduct] Error stack:', error.stack);
-    
+
     // Return more specific error messages
     if (error.name === 'ValidationError') {
       const errors = Object.values(error.errors).map(err => err.message).join(', ');
       return next(new AppError(`Validation error: ${errors}`, 400));
     }
-    
+
     return next(new AppError(`Failed to update product: ${error.message}`, 500));
   }
 
@@ -1665,7 +1716,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 
   // Get product before deletion
   const productToDelete = await Product.findById(req.params.id);
-  
+
   if (!productToDelete) {
     return next(new AppError('Product not found', 404));
   }
@@ -1673,7 +1724,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
   // Log user and product info for debugging
   const userRole = req.user?.role || req.user?.userRole || null;
   const userId = req.user?.id || req.user?._id || null;
-  
+
   logger.info(`[Delete Product] Delete request:`, {
     productId: req.params.id,
     userRole: userRole,
@@ -1695,10 +1746,10 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
   // Verify ownership (unless admin/superadmin/moderator)
   // CRITICAL: If user passed restrictTo('admin', 'superadmin', 'moderator', 'seller') middleware,
   // they are authorized. We just need to check if they're an admin (not a seller) to bypass ownership check.
-  
+
   // Get role from multiple possible locations
   const userRoleValue = userRole || req.user?.role || null;
-  
+
   // More robust Admin model detection - check multiple ways to identify Admin model
   const isAdminModel = req.user && (
     req.user.constructor?.modelName === 'Admin' ||
@@ -1709,19 +1760,19 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
     // Check if the collection name is 'admins'
     (req.user.collection?.name === 'admins')
   );
-  
+
   // Check if role matches admin roles
-  const hasAdminRole = userRoleValue === 'admin' || 
-                       userRoleValue === 'superadmin' || 
-                       userRoleValue === 'moderator';
-  
+  const hasAdminRole = userRoleValue === 'admin' ||
+    userRoleValue === 'superadmin' ||
+    userRoleValue === 'moderator';
+
   // Final admin check: user is admin if they have admin role OR are from Admin model
   // Since they passed the restrictTo middleware, they're authorized - we just need to know if they're admin vs seller
   const finalIsAdmin = hasAdminRole || isAdminModel;
-  
-  const userOwnsProduct = productToDelete.seller && userId && 
-                          (productToDelete.seller.toString() === userId.toString());
-  
+
+  const userOwnsProduct = productToDelete.seller && userId &&
+    (productToDelete.seller.toString() === userId.toString());
+
   logger.info(`[Delete Product] Permission check:`, {
     finalIsAdmin: finalIsAdmin,
     hasAdminRole: hasAdminRole,
@@ -1744,7 +1795,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
       userId: userId?.toString(),
     },
   });
-  
+
   if (!finalIsAdmin && !userOwnsProduct) {
     logger.warn(`[Delete Product] Permission denied:`, {
       userRole: userRole,
@@ -1840,11 +1891,11 @@ exports.getProductVariants = catchAsync(async (req, res, next) => {
 
   // Check if seller owns this product (unless admin)
   // Handle both ObjectId and string formats
-  const productSellerId = product.seller?._id 
-    ? product.seller._id.toString() 
+  const productSellerId = product.seller?._id
+    ? product.seller._id.toString()
     : (product.seller?.toString ? product.seller.toString() : String(product.seller));
   const userId = req.user.id?.toString ? req.user.id.toString() : String(req.user.id);
-  
+
   // Log for debugging
   logger.info('[getProductVariants] Permission check:', {
     productId,
@@ -2191,22 +2242,40 @@ exports.deleteProductVariant = catchAsync(async (req, res, next) => {
 
   // Find and remove variant
   let removed = false;
+  let variantToDelete = null;
+
   if (mongoose.Types.ObjectId.isValid(variantId)) {
-    const variant = product.variants.id(variantId);
-    if (variant) {
-      variant.remove();
-      removed = true;
-    }
+    variantToDelete = product.variants.id(variantId);
   } else {
     const index = parseInt(variantId);
     if (!isNaN(index) && index >= 0 && index < product.variants.length) {
-      product.variants.splice(index, 1);
-      removed = true;
+      variantToDelete = product.variants[index];
     }
   }
 
-  if (!removed) {
+  if (!variantToDelete) {
     return next(new AppError('Variant not found', 404));
+  }
+
+  // CRITICAL: Protect order history - cannot delete variants with existing orders
+  const OrderItems = require('../../models/order/OrderItemModel');
+  const orderCount = await OrderItems.countDocuments({ variant: variantToDelete._id });
+
+  if (orderCount > 0) {
+    return next(new AppError(
+      'This variant cannot be deleted because it has existing orders. Variants with order history must be kept for record accuracy.',
+      400
+    ));
+  }
+
+  // Remove the variant
+  if (mongoose.Types.ObjectId.isValid(variantId)) {
+    product.variants.pull(variantId);
+    removed = true;
+  } else {
+    const index = parseInt(variantId);
+    product.variants.splice(index, 1);
+    removed = true;
   }
 
   await product.save();
@@ -2256,19 +2325,19 @@ exports.getSimilarProducts = catchAsync(async (req, res, next) => {
       .sort({ viewedAt: -1 })
       .limit(20)
       .lean();
-    
+
     // Get product IDs from browser history
     const viewedProductIds = recentViews
       .map((view) => view.itemId)
       .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
-    
+
     // Fetch products to get their categories
     const viewedProducts = viewedProductIds.length > 0
       ? await Product.find({
-          _id: { $in: viewedProductIds },
-        })
-          .select('_id parentCategory subCategory')
-          .lean()
+        _id: { $in: viewedProductIds },
+      })
+        .select('_id parentCategory subCategory')
+        .lean()
       : [];
 
     // 3. Collect all category IDs

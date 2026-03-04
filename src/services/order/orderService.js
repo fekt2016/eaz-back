@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
 const logger = require('../../utils/logger');
 const { logSellerRevenue } = require('../historyLogger');
+const shippingChargeService = require('../shippingChargeService');
 
 /** Platform store (EazShop) seller ID – orders with this seller credit actual suppliers via Product.supplierSeller */
 const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
@@ -539,7 +540,7 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       // Log seller revenue history with correct balance values
       const balanceBeforeValue = oldBalance;
       const balanceAfterValue = newBalance;
-      
+
       try {
         await logSellerRevenue({
           sellerId,
@@ -553,8 +554,8 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
           metadata: {
             orderNumber: order.orderNumber,
             sellerEarnings,
-            commissionRate: sellerOrder.commissionRate !== undefined 
-              ? sellerOrder.commissionRate 
+            commissionRate: sellerOrder.commissionRate !== undefined
+              ? sellerOrder.commissionRate
               : (settings.platformCommissionRate || 0),
             basePrice: sellerOrder.totalBasePrice || 0,
             shippingCost: sellerOrder.shippingCost,
@@ -586,13 +587,13 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
 
     // Mark order as seller credited to prevent double-crediting
     order.sellerCredited = true;
-    
+
     // Update seller payout status on order
     order.sellerPayoutStatus = 'paid';
-    
+
     // Calculate total seller payouts for this order
     const totalSellerPayouts = balanceUpdates.reduce((sum, update) => sum + update.amount, 0);
-    
+
     // Revenue should already be added at payment time (not at delivery)
     // Only increment delivered orders count and products sold here
     // DO NOT add revenue again - it was added when payment was received
@@ -601,66 +602,66 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
       // For credit_balance and Paystack, revenue is added at payment time
       const PlatformStats = require('../../models/platform/platformStatsModel');
       const orderTotal = order.totalPrice || 0;
-      
+
       if (orderTotal > 0) {
         const platformStats = await PlatformStats.getStats();
         // Only add revenue if it wasn't added at payment time
         // This handles payment_on_delivery orders
         platformStats.totalRevenue = (platformStats.totalRevenue || 0) + orderTotal;
         platformStats.totalDeliveredOrders = (platformStats.totalDeliveredOrders || 0) + 1;
-        
+
         // Deduct seller payouts from admin revenue
         if (totalSellerPayouts > 0) {
           platformStats.totalRevenue = Math.max(0, platformStats.totalRevenue - totalSellerPayouts);
           logger.info(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}`);
         }
-        
+
         // Add to daily revenue tracking
         platformStats.addDailyRevenue(new Date(), orderTotal, 1);
-        
+
         // Calculate total products sold from order items
         const totalQty = order.totalQty || 0;
         if (totalQty > 0) {
           platformStats.totalProductsSold = (platformStats.totalProductsSold || 0) + totalQty;
         }
-        
+
         platformStats.lastUpdated = new Date();
         await platformStats.save({ session });
-        
+
         logger.info(`[OrderService] Added GH₵${orderTotal.toFixed(2)} to platform revenue for order ${orderId} (payment_on_delivery), then deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts. Net: GH₵${(orderTotal - totalSellerPayouts).toFixed(2)}`);
       }
-      
+
       // Mark order as revenue added to prevent double-counting
       order.revenueAdded = true;
     } else {
       // Revenue already added at payment time - deduct seller payouts and increment delivered orders count
       const PlatformStats = require('../../models/platform/platformStatsModel');
       const platformStats = await PlatformStats.getStats();
-      
+
       // Deduct seller payouts from admin revenue
       if (totalSellerPayouts > 0) {
         const oldRevenue = platformStats.totalRevenue || 0;
         platformStats.totalRevenue = Math.max(0, oldRevenue - totalSellerPayouts);
         logger.info(`[OrderService] Deducted GH₵${totalSellerPayouts.toFixed(2)} seller payouts from admin revenue for order ${orderId}. Revenue: GH₵${oldRevenue.toFixed(2)} → GH₵${platformStats.totalRevenue.toFixed(2)}`);
       }
-      
+
       platformStats.totalDeliveredOrders = (platformStats.totalDeliveredOrders || 0) + 1;
-      
+
       // Add to daily revenue tracking (only order count, not revenue)
       platformStats.addDailyRevenue(new Date(), 0, 1);
-      
+
       // Calculate total products sold from order items
       const totalQty = order.totalQty || 0;
       if (totalQty > 0) {
         platformStats.totalProductsSold = (platformStats.totalProductsSold || 0) + totalQty;
       }
-      
+
       platformStats.lastUpdated = new Date();
       await platformStats.save({ session });
-      
+
       logger.info(`[OrderService] Revenue already added at payment time for order ${orderId}. Deducted GH₵${totalSellerPayouts.toFixed(2)} for seller payouts, incremented delivered orders count`);
     }
-    
+
     // Log seller payout activity
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
     for (const update of balanceUpdates) {
@@ -679,7 +680,17 @@ exports.creditSellerForOrder = async (orderId, updatedBy) => {
         },
       });
     }
-    
+
+    try {
+      // Create shipping charge record after successful seller crediting
+      await shippingChargeService.createShippingChargeRecord(orderId, session);
+      order.shippingChargeRecorded = true;
+      logger.info(`[OrderService] Created shipping charge record for delivered order ${orderId}`);
+    } catch (shippingErr) {
+      // Must not block the delivery completion
+      logger.error(`[OrderService] Failed to create shipping charge for order ${orderId}: ${shippingErr.message}`);
+    }
+
     await order.save({ session });
 
     // NOTE: Stock reduction happens AFTER payment confirmation, not on delivery
@@ -759,7 +770,7 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
 
       // Get balance before reversal
       const balanceBefore = seller.balance || 0;
-      
+
       // Deduct from seller balance
       seller.balance = balanceBefore - transaction.amount;
       await seller.save({ session });
@@ -767,7 +778,7 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
       // Log seller revenue history with correct balance values
       const order = await Order.findById(orderId).session(session);
       const balanceAfter = seller.balance;
-      
+
       try {
         await logSellerRevenue({
           sellerId: transaction.seller,
@@ -826,6 +837,13 @@ exports.revertSellerBalancesOnRefund = async (orderId, reason = 'Order Refunded'
         amount: transaction.amount,
         reversalTransactionId: reversalTransaction[0]._id,
       });
+    }
+
+    try {
+      await shippingChargeService.refundShippingCharge(orderId, session);
+      logger.info(`[OrderService] Marked shipping charge as refunded for order ${orderId}`);
+    } catch (shippingErr) {
+      logger.error(`[OrderService] Failed to refund shipping charge for order ${orderId}: ${shippingErr.message}`);
     }
 
     await session.commitTransaction();
@@ -895,7 +913,7 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
 
       // Get balance before reversal
       const balanceBefore = seller.balance || 0;
-      
+
       // Check if seller has sufficient balance
       if (balanceBefore < refundAmount) {
         // If insufficient, track negative balance
@@ -912,7 +930,7 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
       // Log seller revenue history with correct balance values
       const order = await Order.findById(orderId).session(session);
       const balanceAfter = seller.balance;
-      
+
       try {
         await logSellerRevenue({
           sellerId: sellerRefund.sellerId,
@@ -996,6 +1014,17 @@ exports.revertSellerBalancesForItems = async (orderId, refundItems, reason = 'It
         reversalTransactionId: reversalTransaction[0]._id,
         items: sellerRefund.items,
       });
+    }
+
+    try {
+      // If full order effectively refunded, we can mark shipping as refunded.
+      // But item-level refund is tricky, so we always try to refund shipping charge 
+      // when items are refunded (it will only effect if shipping charge exists).
+      // Let's rely on refundShippingCharge failing gracefully if not exist.
+      await shippingChargeService.refundShippingCharge(orderId, session);
+      logger.info(`[OrderService] Marked shipping charge as refunded for order ${orderId} (item-level)`);
+    } catch (shippingErr) {
+      logger.error(`[OrderService] Failed to refund shipping charge for order ${orderId} (item-level): ${shippingErr.message}`);
     }
 
     await session.commitTransaction();

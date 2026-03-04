@@ -18,6 +18,60 @@ exports.setUserId = (req, res, next) => {
   next();
 };
 
+/**
+ * Normalize variant to a valid ObjectId string or null.
+ * Prevents storing stringified variant objects (from old clients/bugs).
+ * If value looks like JSON (starts with { or [), try to extract _id; otherwise reject.
+ */
+function normalizeVariantId(value) {
+  if (value == null || value === '') return null;
+  const str =
+    typeof value === 'object' && value !== null && value._id != null
+      ? (value._id.toString ? value._id.toString() : String(value._id))
+      : String(value);
+  const trimmed = str.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const id = parsed?._id ?? parsed?.id;
+      return id != null && mongoose.Types.ObjectId.isValid(String(id)) ? String(id) : null;
+    } catch {
+      return null;
+    }
+  }
+  return mongoose.Types.ObjectId.isValid(trimmed) ? trimmed : null;
+}
+
+/**
+ * Get variant ID from a cart item for lookup. If item.variant is a stringified
+ * object (invalid), return null so we don't match and we return variant: null.
+ */
+function getVariantIdForLookup(item) {
+  const raw = item.variant;
+  if (raw == null || raw === '') return null;
+  const str = String(raw).trim();
+  if (str.startsWith('{') || str.startsWith('[')) {
+    // Attempt to parse existing stringified Object to rescue the cart
+    try {
+      // Sometimes it's not valid JSON, but rather `"{ _id: new ObjectId('...') }"`
+      // We'll use a regex to snatch the hex id
+      const match = str.match(/(?:_id|id)\s*["': ]+([0-9a-fA-F]{24})/);
+      if (match && match[1]) {
+        return mongoose.Types.ObjectId.isValid(match[1]) ? match[1] : null;
+      }
+
+      const parsed = JSON.parse(str);
+      const id = parsed?._id ?? parsed?.id;
+      return id != null && mongoose.Types.ObjectId.isValid(String(id)) ? String(id) : null;
+    } catch {
+      // Fallback regex if it's strictly a mongoose string representation
+      const match = str.match(/([0-9a-fA-F]{24})/);
+      return match && match[1] && mongoose.Types.ObjectId.isValid(match[1]) ? match[1] : null;
+    }
+  }
+  return mongoose.Types.ObjectId.isValid(str) ? str : null;
+}
+
 // Helper function to populate cart with product details (include promotionKey for promo price)
 const populateCart = (cart) => {
   return cart.populate({
@@ -34,9 +88,52 @@ const populateCart = (cart) => {
   });
 };
 
+/**
+ * Shared logic to process and map cart products, resolving variant IDs to full objects.
+ * This ensures consistency between getMyCart, getCart, and addToCart.
+ */
+const mapCartProducts = (populatedProducts) => {
+  if (!populatedProducts || !Array.isArray(populatedProducts)) return [];
+
+  return populatedProducts
+    .filter((item) => item.product) // Filter out items with null products
+    .map((item) => {
+      const variantId = getVariantIdForLookup(item);
+      const product = item.product;
+
+      let selectedVariant = null;
+      if (variantId && product && Array.isArray(product.variants)) {
+        // Find variant by ID
+        const found = product.variants.find(v => (v._id || v.id || '').toString() === variantId);
+        if (found) {
+          // Convert to plain object to ensure all fields (images, attributes, etc.) are included
+          selectedVariant = typeof found.toObject === 'function' ? found.toObject() : JSON.parse(JSON.stringify(found));
+
+          // Ensure images is an array of strings (sometimes Mongoose subdocs return objects for array items)
+          if (selectedVariant.images && Array.isArray(selectedVariant.images)) {
+            selectedVariant.images = selectedVariant.images.map(img => {
+              if (typeof img === 'string') return img;
+              if (img && typeof img === 'object' && img.url) return img.url;
+              return String(img);
+            }).filter(Boolean);
+          }
+        }
+      }
+
+      const itemObj = typeof item.toObject === 'function' ? item.toObject() : { ...item };
+
+      return {
+        ...itemObj,
+        variant: selectedVariant, // Inject full variant object
+      };
+    });
+};
+
 // Apply promo pricing to cart products; mutates items in place, adds unitPrice and originalUnitPrice when discounted
-const applyCartPromoPricing = async (products) => {
-  if (!products?.length) return;
+const applyCartPromoPricing = async (items) => {
+  if (!items?.length) return;
+
+  const pricingService = require('../../services/pricing/pricingService');
   let promos;
   try {
     promos = await getPromosFromAds();
@@ -44,24 +141,42 @@ const applyCartPromoPricing = async (products) => {
     logger.warn('[cart] Could not load promos for cart:', e?.message);
     return;
   }
-  for (const item of products) {
+
+  for (const item of items) {
     const product = item.product;
     if (!product) continue;
     const variant = item.variant;
-    // Dual VAT: display inclusive price to customer (seller enters base; we store priceInclVat on product)
-    const basePrice = (variant && (variant.priceInclVat ?? variant.price != null))
-      ? Number(variant.priceInclVat ?? variant.price)
-      : Number(product.priceInclVat ?? product.price ?? 0);
+
+    // 1. Get base price (VAT exclusive)
+    const basePrice = (variant && variant.price != null)
+      ? Number(variant.price)
+      : Number(product.price ?? product.defaultPrice ?? 0);
+
     if (!basePrice) {
       item.unitPrice = 0;
       continue;
     }
+
+    // 2. Add VAT to get standard inclusive price for promo calculation
+    const taxService = require('../../services/tax/taxService');
+    const vatComputed = await taxService.addVatToBase(basePrice);
+    const standardPriceInclVat = vatComputed.priceInclVat;
+
+    // 3. Apply promotions to the standard inclusive price
     const applicable = getApplicablePromos(product, promos);
-    const { unitPrice, originalPrice } = applyPromosToPrice(basePrice, applicable);
-    item.unitPrice = unitPrice;
-    if (originalPrice != null && originalPrice > unitPrice) {
-      item.originalUnitPrice = originalPrice;
+    const { unitPrice: finalInclVat } = applyPromosToPrice(standardPriceInclVat, applicable);
+    const promoDiscount = Math.max(0, standardPriceInclVat - finalInclVat);
+
+    // 4. Get final pricing breakdown using the unified service (P2-FIX 2)
+    const pricing = await pricingService.calculateItemPricing(basePrice, promoDiscount);
+
+    item.unitPrice = pricing.unitPrice;
+    if (pricing.promoDiscount > 0) {
+      item.originalUnitPrice = standardPriceInclVat + (pricing.covidLevy || 0);
     }
+
+    // Attach breakdown for frontend display if needed
+    item.pricingBreakdown = pricing;
   }
 };
 
@@ -91,30 +206,36 @@ exports.getMyCart = catchAsync(async (req, res, next) => {
     );
   }
 
-  populatedCart.products = populatedCart.products
-    .filter((item) => item.product) // Filter out items with null products
-    .map((item) => {
-      const variantId = String(item.variant);
+  // Map products to include full variant objects
+  const mappedProducts = mapCartProducts(populatedCart.products);
+  await applyCartPromoPricing(mappedProducts);
 
-      const selectedVariant =
-        (item.product?.variants || []).find(
-          (v) => v._id.toString() === variantId,
-        ) || null;
-      return {
-        ...item.toObject(),
-        variant: selectedVariant, // ✅ replaces ID with full object
-      };
-    });
+  returnCart = {
+    ...populatedCart.toObject(),
+    products: mappedProducts
+  };
 
-  await applyCartPromoPricing(populatedCart.products);
+  // Sanitize DB: if any cart item had stringified variant, fix it so we don't keep returning null
+  const rawCart = await Cart.findOne({ user: req.user.id });
+  if (rawCart && rawCart.products?.length) {
+    let needsSave = false;
+    for (const item of rawCart.products) {
+      const v = item.variant;
+      if (typeof v === 'string' && (v.trim().startsWith('{') || v.trim().startsWith('['))) {
+        item.variant = undefined;
+        needsSave = true;
+      }
+    }
+    if (needsSave) {
+      rawCart.markModified('products');
+      await rawCart.save();
+    }
+  }
 
   res.status(200).json({
     status: 'success',
     data: {
-      cart: {
-        ...populatedCart.toObject(),
-        products: populatedCart.products,
-      },
+      cart: returnCart,
     },
   });
 });
@@ -166,10 +287,10 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
   // SECURITY: Resolve sellable unit (variant or product) and available stock
   const product = cart.products[itemIndex].product;
   let availableStock = 0;
-  if (product.variants && product.variants.length > 0 && cart.products[itemIndex].variant) {
-    const variantId = String(cart.products[itemIndex].variant);
+  const variantIdForStock = getVariantIdForLookup(cart.products[itemIndex]);
+  if (product.variants && product.variants.length > 0 && variantIdForStock) {
     const variant = product.variants.find(
-      (v) => v._id && v._id.toString() === variantId,
+      (v) => v._id && v._id.toString() === variantIdForStock,
     );
     if (variant) {
       availableStock = Math.max(0, (variant.stock || 0) - (variant.sold || 0));
@@ -178,40 +299,42 @@ exports.updateCartItem = catchAsync(async (req, res, next) => {
     availableStock = Math.max(0, (product.stock || 0) - (product.sold || 0));
   }
 
+  // Gracefully clamp the requested quantity to available stock to prevent stuck carts (e.g., when trying to lower quantity from 15 to 14, but stock is 10)
+  let finalQty = rawQty;
+  let didClamp = false;
   if (rawQty > availableStock) {
-    return next(new AppError(
-      `Only ${availableStock} available in stock. Reduce quantity or remove item.`,
-      400,
-    ));
+    finalQty = availableStock;
+    didClamp = true;
+
+    // If the cart item was already effectively 0 available stock, we should remove the item instead.
+    // However, if the user requested > 0 and stock is > 0, we just clamp it.
+    if (availableStock === 0) {
+      return next(new AppError('This item is currently out of stock.', 400));
+    }
   }
 
-  cart.products[itemIndex].quantity = rawQty;
+  cart.products[itemIndex].quantity = finalQty;
   const updatedCart = await cart.save();
   const populatedCart = await populateCart(Cart.findById(updatedCart._id));
 
-  // Filter out null products and process variants
-  if (populatedCart && populatedCart.products) {
-    populatedCart.products = populatedCart.products
-      .filter((item) => item.product)
-      .map((item) => {
-        const variantId = String(item.variant);
-        const selectedVariant =
-          (item.product?.variants || []).find(
-            (v) => v._id.toString() === variantId,
-          ) || null;
-        return {
-          ...item.toObject(),
-          variant: selectedVariant,
-        };
-      });
-    await applyCartPromoPricing(populatedCart.products);
+  if (!populatedCart) {
+    return next(new AppError('Failed to load cart after update', 500));
   }
+
+  // Map products to include full variant objects
+  const mappedProducts = mapCartProducts(populatedCart.products);
+  await applyCartPromoPricing(mappedProducts);
+
+  const returnCart = {
+    ...populatedCart.toObject(),
+    products: mappedProducts
+  };
 
   // Return the FULL updated cart, not just the item
   res.status(200).json({
     status: 'success',
     data: {
-      cart: populatedCart,
+      cart: returnCart,
     },
   });
 });
@@ -234,22 +357,24 @@ exports.deleteCartItem = catchAsync(async (req, res, next) => {
     return next(new AppError('No cart found for this user', 404));
   }
 
-  const populatedCart = await Cart.findById(cart._id)
-    .populate('products.product')
-    .lean();
+  const populatedCart = await populateCart(Cart.findById(cart._id));
 
-  logger.info('after pull:', populatedCart.products);
-
-  // Filter out null products
-  if (populatedCart && populatedCart.products) {
-    populatedCart.products = populatedCart.products.filter(
-      (item) => item.product
-    );
+  if (!populatedCart) {
+    return next(new AppError('Failed to load cart after item removal', 500));
   }
+
+  // Map products to include full variant objects
+  const mappedProducts = mapCartProducts(populatedCart.products);
+  await applyCartPromoPricing(mappedProducts);
+
+  const returnCart = {
+    ...populatedCart.toObject(),
+    products: mappedProducts
+  };
 
   res.status(200).json({
     status: 'success',
-    data: { cart: populatedCart },
+    data: { cart: returnCart },
   });
 });
 
@@ -267,12 +392,23 @@ exports.clearCart = catchAsync(async (req, res) => {
 
 // --- Admin operations below ---
 exports.addToCart = catchAsync(async (req, res, next) => {
-  const { productId, quantity, variantId } = req.body;
+  const rawProductId = req.body.productId;
+  const rawQuantity = req.body.quantity;
+  const variantId = req.body.variantId;
 
   const userId = req.user.id;
 
+  // Normalize productId (client may send string or object with _id)
+  const productId = rawProductId != null
+    ? (typeof rawProductId === 'object' && rawProductId._id != null ? rawProductId._id : rawProductId)
+    : null;
+  const productIdStr = productId != null ? String(productId) : '';
+
+  // Normalize quantity (client may send string "1")
+  const quantity = rawQuantity != null ? Math.floor(Number(rawQuantity)) : NaN;
+
   // Validate input
-  if (!mongoose.Types.ObjectId.isValid(productId)) {
+  if (!productIdStr || !mongoose.Types.ObjectId.isValid(productIdStr)) {
     return next(new AppError('Invalid product ID', 400));
   }
 
@@ -281,14 +417,14 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   }
 
   // Check if product exists (optional but recommended)
-  const productExists = await Product.exists({ _id: productId });
+  const productExists = await Product.exists({ _id: productIdStr });
   if (!productExists) {
     return next(new AppError('Product not found', 404));
   }
 
   // Find or create cart
   let cart = await Cart.findOne({ user: userId });
-  
+
   if (!cart) {
     // Create new cart if it doesn't exist
     cart = await Cart.create({
@@ -297,20 +433,14 @@ exports.addToCart = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Normalize variantId to string for comparison
-  const normalizedVariantId = variantId 
-    ? (typeof variantId === 'object' && variantId._id ? variantId._id.toString() : variantId.toString())
-    : null;
+  const normalizedVariantId = normalizeVariantId(variantId);
 
   // Check if item already exists in cart (same product + variant combination)
   const existingItemIndex = cart.products.findIndex((item) => {
     const itemProductId = item.product?.toString() || String(item.product);
-    const itemVariantId = item.variant?.toString() || null;
-    
-    // Match by product ID and variant ID (both must match)
-    const productMatches = itemProductId === productId.toString();
+    const itemVariantId = getVariantIdForLookup(item);
+    const productMatches = itemProductId === productIdStr;
     const variantMatches = itemVariantId === normalizedVariantId;
-    
     return productMatches && variantMatches;
   });
 
@@ -321,14 +451,14 @@ exports.addToCart = catchAsync(async (req, res, next) => {
   } else {
     // Item doesn't exist, add new item
     const newItem = {
-      product: productId,
+      product: productIdStr,
       quantity,
     };
-    
+
     if (normalizedVariantId) {
       newItem.variant = normalizedVariantId;
     }
-    
+
     cart.products.push(newItem);
     logger.info(`[addToCart] Added new item to cart: product=${productId}, variant=${normalizedVariantId || 'none'}, quantity=${quantity}`);
   }
@@ -342,39 +472,33 @@ exports.addToCart = catchAsync(async (req, res, next) => {
     return next(new AppError('No cart found for this user', 404));
   }
 
-  // Filter out null products and process variants
-  if (populatedCart.products) {
-    populatedCart.products = populatedCart.products
-      .filter((item) => item.product)
-      .map((item) => {
-        const variantId = String(item.variant);
-        const selectedVariant =
-          (item.product?.variants || []).find(
-            (v) => v._id.toString() === variantId,
-          ) || null;
-        return {
-          ...item.toObject(),
-          variant: selectedVariant,
-        };
-      });
-    await applyCartPromoPricing(populatedCart.products);
-  }
+  let returnCart = populatedCart;
+
+  // Map products to include full variant objects
+  const mappedProducts = mapCartProducts(populatedCart.products);
+  await applyCartPromoPricing(mappedProducts);
+
+  // We need to construct a plain object to return so our mapped array isn't lost by mongoose serialization
+  returnCart = {
+    ...populatedCart.toObject(),
+    products: mappedProducts
+  };
 
   // Log activity
-  const product = populatedCart.products?.find(p => p.product?._id?.toString() === productId);
+  const product = populatedCart.products?.find(p => p.product?._id?.toString() === productIdStr);
   logActivityAsync({
     userId: req.user.id,
     role: 'buyer',
     action: 'ADD_TO_CART',
     description: `User added ${quantity}x ${product?.product?.name || 'product'} to cart`,
     req,
-    metadata: { productId, quantity, variantId },
+    metadata: { productId: productIdStr, quantity, variantId },
   });
 
   res.status(200).json({
     status: 'success',
     data: {
-      cart: populatedCart,
+      cart: returnCart,
     },
   });
 });
@@ -385,18 +509,17 @@ exports.getCart = catchAsync(async (req, res, next) => {
     return next(new AppError('No cart found for this user', 404));
   }
 
-  cart.products = cart.products
-    .filter((item) => item.product) // Filter out items with null products
-    .map((item) => {
-      const variantId = item.variant?.toString() || item.variantId;
-      const selectedVariant = item.product?.variants?.id(variantId) || null;
-      return { ...item.toObject(), variant: selectedVariant };
-    });
+  // Map products to include full variant objects
+  const mappedProducts = mapCartProducts(cart.products);
+  await applyCartPromoPricing(mappedProducts);
 
-  await applyCartPromoPricing(cart.products);
+  const returnCart = {
+    ...cart.toObject(),
+    products: mappedProducts
+  };
 
   res.status(200).json({
     status: 'success',
-    data: { cart },
+    data: { cart: returnCart },
   });
 });

@@ -85,7 +85,18 @@ const validateVariantAttributes = catchAsync(async (req, res, next) => {
 
             // Validate enum/color values
             if ((def.type === 'enum' || def.type === 'color') && def.values && def.values.length > 0) {
-                if (va.value && !def.values.includes(va.value)) {
+                let isValidValue = va.value && def.values.some(v => v.toLowerCase() === va.value.toLowerCase());
+
+                // Special handling for gray/grey synonyms
+                if (!isValidValue && va.value && va.key.toLowerCase() === 'color') {
+                    const lowerValue = va.value.toLowerCase();
+                    if (lowerValue === 'gray' || lowerValue === 'grey') {
+                        const target = lowerValue === 'gray' ? 'grey' : 'gray';
+                        isValidValue = def.values.some(v => v.toLowerCase() === target);
+                    }
+                }
+
+                if (va.value && !isValidValue) {
                     errors.push(
                         `Variant ${i + 1}: "${va.key}" value "${va.value}" is not allowed. Allowed values: ${def.values.join(
                             ', '

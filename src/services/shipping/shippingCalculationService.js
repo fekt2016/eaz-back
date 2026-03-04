@@ -13,8 +13,9 @@ const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
 async function getProductsWithCategories(items) {
   const productIds = items.map(item => item.productId).filter(Boolean);
   return Product.find({ _id: { $in: productIds } })
-    .populate('category')
-    .select('shipping specifications weight category isEazShopProduct seller name shippingType');
+    .populate('parentCategory')
+    .populate('subCategory')
+    .select('shipping specifications weight parentCategory subCategory isEazShopProduct seller name shippingType');
 }
 
 /**

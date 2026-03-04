@@ -56,11 +56,11 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
   // This prevents validation errors from empty enum fields
   if (req.body.paymentMethods) {
     const { bankAccount, mobileMoney } = req.body.paymentMethods;
-    
+
     // Check if paymentMethods has any meaningful data
     const hasBankData = bankAccount && (bankAccount.bankName || bankAccount.accountNumber || bankAccount.accountName);
     const hasMobileData = mobileMoney && (mobileMoney.phone || mobileMoney.network || mobileMoney.accountName);
-    
+
     // Remove paymentMethods if all fields are empty/undefined
     if (!hasBankData && !hasMobileData) {
       delete req.body.paymentMethods;
@@ -168,6 +168,17 @@ exports.signupSeller = catchAsync(async (req, res, next) => {
     // Don't fail signup if notification fails
   }
 
+  // Email admin about new seller registration (fire-and-forget)
+  setImmediate(async () => {
+    try {
+      const emailDispatcher = require('../../emails/emailDispatcher');
+      await emailDispatcher.sendAdminNewSellerAlert(newSeller);
+      logger.info('[Seller Signup] ✅ Admin new-seller alert email sent');
+    } catch (adminEmailErr) {
+      logger.error('[Seller Signup] Error sending admin new-seller alert email:', adminEmailErr.message);
+    }
+  });
+
   // ✅ Don't create token yet - seller must verify email first
   res.status(201).json({
     status: 'success',
@@ -220,11 +231,11 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     const missingFields = [];
     if (!email) missingFields.push('email');
     if (!password) missingFields.push('password');
-    
-    const receivedKeys = Object.keys(req.body || {}).length > 0 
-      ? Object.keys(req.body).join(', ') 
+
+    const receivedKeys = Object.keys(req.body || {}).length > 0
+      ? Object.keys(req.body).join(', ')
       : 'none';
-    
+
     return next(
       new AppError(
         `Please provide ${missingFields.join(' and ')}. Received fields: ${receivedKeys}`,
@@ -260,7 +271,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       ip: req.ip,
       origin: req.headers.origin,
     });
-    
+
     // In production, also check if seller exists with different casing (for debugging)
     if (process.env.NODE_ENV === 'production') {
       const anySeller = await Seller.findOne({ email: new RegExp(`^${email}$`, 'i') });
@@ -274,7 +285,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
         });
       }
     }
-    
+
     // Debug logging (only in development)
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Seller not found for email:', normalizedEmail);
@@ -322,7 +333,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       timestamp: new Date().toISOString(),
       ip: req.ip,
     });
-    
+
     if (process.env.NODE_ENV !== 'production') {
       console.log('[Seller Login] ❌ Account suspended:', { status: seller.status, active: seller.active });
     }
@@ -389,7 +400,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   });
 
   const passwordValid = await seller.correctPassword(password, seller.password);
-  
+
   // Production-safe logging after password check
   logger.info('[Seller Login] Password verification result', {
     sellerId: seller._id.toString(),
@@ -398,7 +409,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     timestamp: new Date().toISOString(),
     ip: req.ip,
   });
-  
+
   if (!passwordValid) {
     logger.warn('[Seller Login] 401 - Password mismatch', {
       sellerId: seller._id.toString(),
@@ -449,7 +460,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
     // 2FA is enabled - require Google Authenticator code
     // Generate temporary session ID for 2FA verification
     const loginSessionId = crypto.randomBytes(32).toString('hex');
-    
+
     // Store session in shared cache (5 minutes TTL)
     loginSessionCache.set(loginSessionId, {
       userId: seller._id.toString(),
@@ -473,7 +484,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   // Use standardized login helper
   try {
     const response = await handleSuccessfulLogin(req, res, seller, 'seller');
-    
+
     // Production-safe logging for successful login
     logger.info('[Seller Login] ✅ Login successful', {
       sellerId: seller._id.toString(),
@@ -485,7 +496,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       cookieDomain: process.env.COOKIE_DOMAIN || 'not set',
       nodeEnv: process.env.NODE_ENV,
     });
-    
+
     // Log cookie setting in production for debugging
     if (process.env.NODE_ENV === 'production') {
       logger.info('[Seller Login] Cookie configuration', {
@@ -496,12 +507,12 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
         hasSetCookieHeader: !!res.getHeader('Set-Cookie'),
       });
     }
-    
+
     res.status(200).json(response);
   } catch (deviceError) {
-    if (process.env.NODE_ENV === 'production' && 
-        (deviceError.message?.includes('Too many devices') || 
-         deviceError.message?.includes('Device limit exceeded'))) {
+    if (process.env.NODE_ENV === 'production' &&
+      (deviceError.message?.includes('Too many devices') ||
+        deviceError.message?.includes('Device limit exceeded'))) {
       // Production-safe logging for device limit
       logger.warn('[Seller Login] 403 - Device limit exceeded', {
         sellerId: seller._id.toString(),
@@ -510,11 +521,11 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
         timestamp: new Date().toISOString(),
         ip: req.ip,
       });
-      
+
       // Return user-friendly error with device limit details
-      const errorMessage = deviceError.message || 
+      const errorMessage = deviceError.message ||
         `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
-      
+
       return next(new AppError(errorMessage, 403));
     }
     // In dev, continue without device session
@@ -572,7 +583,7 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
     const backupCodeIndex = seller.twoFactorBackupCodes.findIndex(
       (code) => code === twoFactorCode.toUpperCase()
     );
-    
+
     if (backupCodeIndex !== -1) {
       seller.twoFactorBackupCodes.splice(backupCodeIndex, 1);
       await seller.save({ validateBeforeSave: false });
@@ -594,9 +605,9 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
     const response = await handleSuccessfulLogin(req, res, seller, 'seller');
     res.status(200).json(response);
   } catch (deviceError) {
-    if (process.env.NODE_ENV === 'production' && 
-        (deviceError.message?.includes('Too many devices') || 
-         deviceError.message?.includes('Device limit exceeded'))) {
+    if (process.env.NODE_ENV === 'production' &&
+      (deviceError.message?.includes('Too many devices') ||
+        deviceError.message?.includes('Device limit exceeded'))) {
       logger.warn('[Seller 2FA Login] 403 - Device limit exceeded', {
         sellerId: seller._id.toString(),
         email: seller.email,
@@ -604,10 +615,10 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
         timestamp: new Date().toISOString(),
         ip: req.ip,
       });
-      
-      const errorMessage = deviceError.message || 
+
+      const errorMessage = deviceError.message ||
         `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
-      
+
       return next(new AppError(errorMessage, 403));
     }
     // In dev, continue without device session
@@ -744,7 +755,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       await seller.save({ validateBeforeSave: false });
       const attemptsRemaining = 5 - (seller.otpAttempts || 0);
       let errorMessage = 'Invalid verification code.';
-      
+
       if (otpResult.reason === 'expired') {
         errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
       } else if (otpResult.reason === 'no_otp') {
@@ -754,7 +765,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       } else if (otpResult.reason === 'mismatch') {
         errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
       }
-      
+
       return next(new AppError(errorMessage, 401));
     }
 
@@ -787,9 +798,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       response.redirectTo = redirectTo || '/';
       res.status(200).json(response);
     } catch (deviceError) {
-      if (process.env.NODE_ENV === 'production' && 
-          (deviceError.message?.includes('Too many devices') || 
-           deviceError.message?.includes('Device limit exceeded'))) {
+      if (process.env.NODE_ENV === 'production' &&
+        (deviceError.message?.includes('Too many devices') ||
+          deviceError.message?.includes('Device limit exceeded'))) {
         logger.warn('[Seller OTP Login] 403 - Device limit exceeded', {
           sellerId: seller._id.toString(),
           email: seller.email,
@@ -797,10 +808,10 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
           timestamp: new Date().toISOString(),
           ip: req.ip,
         });
-        
-        const errorMessage = deviceError.message || 
+
+        const errorMessage = deviceError.message ||
           `Device limit exceeded. You have reached the maximum number of devices. Please log out from another device or contact support.`;
-        
+
         return next(new AppError(errorMessage, 403));
       }
       // In dev, continue without device session
@@ -833,7 +844,7 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
   const normalizedEmail = normalizeEmail(email);
 
   let seller;
-  
+
   // Support both authenticated (req.user.id) and unauthenticated (email) verification
   if (req.user && req.user.id) {
     // Authenticated seller verifying their own email
@@ -883,7 +894,7 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
     await seller.save({ validateBeforeSave: false });
     const attemptsRemaining = 5 - (seller.otpAttempts || 0);
     let errorMessage = 'Invalid verification code.';
-    
+
     if (otpResult.reason === 'expired') {
       errorMessage = `Verification code expired ${otpResult.minutesExpired || 0} minute(s) ago. Request a new one.`;
     } else if (otpResult.reason === 'no_otp') {
@@ -893,19 +904,19 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
     } else if (otpResult.reason === 'mismatch') {
       errorMessage = `Wrong code. You have ${attemptsRemaining} attempt(s) remaining.`;
     }
-    
+
     return next(new AppError(errorMessage, 401));
   }
 
   // OTP is valid - mark email as verified
   seller.verification = seller.verification || {};
   seller.verification.emailVerified = true;
-  
+
   // If seller status is pending (or not set), activate the account on email verification
   if (!seller.status || seller.status === 'pending') {
     seller.status = 'active';
   }
-  
+
   // Clear OTP fields using shared helper
   clearOtp(seller);
   await seller.save({ validateBeforeSave: false });
@@ -1144,7 +1155,7 @@ exports.requestPasswordReset = catchAsync(async (req, res, next) => {
   try {
     // Send password reset email
     await sendPasswordResetEmail(seller.email, resetToken, seller.name || 'Seller');
-    
+
     console.log(`[Seller Password Reset] Reset email sent to ${seller.email}`);
   } catch (err) {
     // If email fails, clear the reset token
@@ -1366,10 +1377,10 @@ exports.logout = catchAsync(async (req, res, next) => {
   // SECURITY: Clear JWT cookie using standardized helper
   // DO NOT reference Authorization header - cookie is the source of truth
   clearAuthCookie(res, 'seller');
-  
-  res.status(200).json({ 
-    status: 'success', 
-    message: 'Logged out successfully' 
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Logged out successfully'
   });
 });
 
@@ -1396,7 +1407,7 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
 
   // Get base32 secret (this is what we store and use)
   const base32Secret = secretData.base32;
-  
+
   // Store temporary secret (will be moved to twoFactorSecret after verification)
   // IMPORTANT: Do NOT set twoFactorEnabled = true here (only after verification)
   seller.twoFactorTempSecret = base32Secret;
@@ -1416,7 +1427,7 @@ exports.enableTwoFactor = catchAsync(async (req, res, next) => {
   const otpAuthUrl = secretData.otpauth_url;
 
   // Mask secret for response (show only last 4 characters)
-  const base32SecretMasked = base32Secret.length > 4 
+  const base32SecretMasked = base32Secret.length > 4
     ? `${'*'.repeat(base32Secret.length - 4)}${base32Secret.slice(-4)}`
     : '****';
 
@@ -1470,7 +1481,7 @@ exports.getTwoFactorSetup = catchAsync(async (req, res, next) => {
   });
 
   // Mask secret for response
-  const base32SecretMasked = seller.twoFactorTempSecret.length > 4 
+  const base32SecretMasked = seller.twoFactorTempSecret.length > 4
     ? `${'*'.repeat(seller.twoFactorTempSecret.length - 4)}${seller.twoFactorTempSecret.slice(-4)}`
     : '****';
 
@@ -1703,7 +1714,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 exports.getSessions = catchAsync(async (req, res, next) => {
   const DeviceSession = require('../../models/user/deviceSessionModel');
   const { parseUserAgent } = require('../../utils/helpers/deviceUtils');
-  
+
   const userId = req.user._id || req.user.id;
   const currentDeviceId = req.user.deviceId;
 
@@ -1791,7 +1802,7 @@ exports.revokeSession = catchAsync(async (req, res, next) => {
 exports.revokeAllOtherSessions = catchAsync(async (req, res, next) => {
   const DeviceSession = require('../../models/user/deviceSessionModel');
   const { logoutOtherDevices } = require('../../utils/helpers/createDeviceSession');
-  
+
   const userId = req.user._id || req.user.id;
   const currentDeviceId = req.user.deviceId;
 
@@ -1950,7 +1961,7 @@ exports.updateNotificationSettings = catchAsync(async (req, res, next) => {
 exports.protectSeller = catchAsync(async (req, res, next) => {
   const fullPath = req.originalUrl.split('?')[0];
   const method = req.method.toUpperCase();
-  
+
   // 🛡️ HARD SAFETY GUARD: Prevent buyer routes from using seller auth
   if (fullPath.startsWith('/api/v1/users') || fullPath.startsWith('/api/v1/buyer') || fullPath.startsWith('/users') || fullPath.startsWith('/buyer')) {
     console.error('═══════════════════════════════════════════════════════════');
@@ -1960,7 +1971,7 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
     console.error('═══════════════════════════════════════════════════════════');
     return next(new AppError('Configuration error: Buyer route using seller auth', 500));
   }
-  
+
   // 🔍 AUTH TRACE LOGGING
   console.log('[AUTH TRACE]', {
     path: fullPath,
@@ -1971,14 +1982,14 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
     hasMainJwt: req.cookies?.main_jwt ? 'YES' : 'NO',
     timestamp: new Date().toISOString(),
   });
-  
+
   // Extract token from seller_jwt cookie ONLY
   let token = null;
   if (req.cookies && req.cookies.seller_jwt) {
     token = req.cookies.seller_jwt;
     console.log(`[protectSeller] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
   }
-  
+
   if (!token) {
     console.error('═══════════════════════════════════════════════════════════');
     console.error(`[protectSeller] ❌ CRITICAL: No seller_jwt token found for seller route`);
@@ -1990,7 +2001,7 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
       new AppError('You are not logged in! Please log in to get access.', 401),
     );
   }
-  
+
   // Check token blacklist
   const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
   if (isBlacklisted) {
@@ -1998,16 +2009,16 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
       new AppError('Your session has expired. Please log in again.', 401),
     );
   }
-  
+
   // Verify token
   const { verifyToken } = require('../../utils/helpers/routeUtils');
   const { decoded, error } = await verifyToken(token, fullPath);
-  
+
   if (error || !decoded) {
     console.error('[protectSeller] Token verification failed:', error?.message || 'Invalid token');
     return next(new AppError('Session expired', 401));
   }
-  
+
   // Find seller user
   const { findUserByToken } = require('../../utils/helpers/routeUtils');
   const currentUser = await findUserByToken(decoded);
@@ -2024,7 +2035,7 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
       new AppError('Your session is no longer valid. Please log in again.', 401),
     );
   }
-  
+
   // CRITICAL: Verify user is actually a seller
   if (currentUser.role !== 'seller') {
     console.error(`[protectSeller] ❌ SECURITY: Non-seller user detected in seller route:`, {
@@ -2037,25 +2048,25 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
       new AppError(`You do not have permission to perform this action. Required role: seller, Your role: ${currentUser.role}`, 403)
     );
   }
-  
+
   // Check password change timestamp
   if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
       new AppError('User recently changed password! Please log in again', 401),
     );
   }
-  
+
   // Attach seller to request
   req.user = currentUser;
   if (decoded.deviceId) {
     req.user.deviceId = decoded.deviceId;
   }
-  
+
   console.log(`[protectSeller] ✅ Authentication successful for seller:`, {
     userId: currentUser.id,
     email: currentUser.email || currentUser.phone,
     route: fullPath,
   });
-  
+
   next();
 });

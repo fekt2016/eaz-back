@@ -171,11 +171,11 @@ const sellerSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
-      idProof: {
+      businessCertFormA: {
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
-      addresProof: {
+      idProof: {
         type: mongoose.Schema.Types.Mixed,
         default: { url: '', status: 'pending', verifiedBy: null, verifiedAt: null },
       },
@@ -530,28 +530,24 @@ sellerSchema.methods.computeIsSetupComplete = function () {
     return document.status || null;
   };
 
-  // 1. Check documents: All 3 must exist, have URLs, AND be verified
-  const businessCertStatus = getDocumentStatus(this.verificationDocuments?.businessCert);
+  // 1. Check documents: Only idProof must exist, have URL, AND be verified
   const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
-  const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
 
   const allDocumentsUploaded =
-    (this.verificationDocuments?.businessCert &&
-      (typeof this.verificationDocuments.businessCert === 'string' ||
-        this.verificationDocuments.businessCert.url)) &&
-    (this.verificationDocuments?.idProof &&
-      (typeof this.verificationDocuments.idProof === 'string' ||
-        this.verificationDocuments.idProof.url)) &&
-    (this.verificationDocuments?.addresProof &&
-      (typeof this.verificationDocuments.addresProof === 'string' ||
-        this.verificationDocuments.addresProof.url));
+    this.verificationDocuments?.idProof &&
+    (typeof this.verificationDocuments.idProof === 'string' ||
+      this.verificationDocuments.idProof.url);
 
-  const allDocumentsVerified =
-    businessCertStatus === 'verified' &&
-    idProofStatus === 'verified' &&
-    addresProofStatus === 'verified';
+  const allDocumentsVerified = idProofStatus === 'verified';
 
   const documentsComplete = allDocumentsUploaded && allDocumentsVerified;
+
+  // 1b. Update requiredSetup if only ID proof is verified (making it more robust)
+  if (documentsComplete && !this.requiredSetup?.hasBusinessDocumentsVerified) {
+    this.requiredSetup = this.requiredSetup || {};
+    this.requiredSetup.hasBusinessDocumentsVerified = true;
+  }
+
 
   // 2. Check payment method: At least one exists AND is verified
   const bankAccountPayoutStatus = this.paymentMethods?.bankAccount?.payoutStatus;
@@ -601,9 +597,9 @@ sellerSchema.pre('save', function (next) {
         this.paymentMethods.bankAccount.bankName = undefined;
       }
       // Remove bankAccount if all fields are empty
-      const hasBankData = this.paymentMethods.bankAccount.bankName ||
-        this.paymentMethods.bankAccount.accountNumber ||
-        this.paymentMethods.bankAccount.accountName;
+      const hasBankData = this.paymentMethods.bankAccount.accountNumber ||
+        this.paymentMethods.bankAccount.accountName ||
+        this.paymentMethods.bankAccount.bankName;
       if (!hasBankData) {
         this.paymentMethods.bankAccount = undefined;
       }
@@ -635,7 +631,7 @@ sellerSchema.pre('save', function (next) {
 });
 
 // Middleware to auto-verify seller when ALL requirements are met:
-// 1. All 3 documents are verified
+// 1. All 3 business documents are uploaded AND verified
 // 2. Email is verified (verified when seller first registers and receives PIN)
 // 3. Phone is verified (phone exists and is not empty)
 // 4. Payment method is verified (at least one payment method is verified)
@@ -668,28 +664,17 @@ sellerSchema.pre('save', async function (next) {
   // ✅ Contact is verified if EITHER email OR phone is verified
   const hasVerifiedContact = isEmailVerified || isPhoneVerified;
 
-  // 3. Check if all three documents exist and are verified
-  const businessCertStatus = getDocumentStatus(this.verificationDocuments?.businessCert);
+  // 3. Check if ID document exists and is verified (Business documents are optional)
   const idProofStatus = getDocumentStatus(this.verificationDocuments?.idProof);
-  const addresProofStatus = getDocumentStatus(this.verificationDocuments?.addresProof);
 
-  // Check if all documents are verified
-  const allDocumentsVerified =
-    businessCertStatus === 'verified' &&
-    idProofStatus === 'verified' &&
-    addresProofStatus === 'verified';
+  // Check if mandatory documents are verified
+  const allDocumentsVerified = idProofStatus === 'verified';
 
-  // Also check if documents have URLs (they must be uploaded)
+  // Also check if mandatory documents have URLs (they must be uploaded)
   const allDocumentsUploaded =
-    (this.verificationDocuments?.businessCert &&
-      (typeof this.verificationDocuments.businessCert === 'string' ||
-        this.verificationDocuments.businessCert.url)) &&
-    (this.verificationDocuments?.idProof &&
-      (typeof this.verificationDocuments.idProof === 'string' ||
-        this.verificationDocuments.idProof.url)) &&
-    (this.verificationDocuments?.addresProof &&
-      (typeof this.verificationDocuments.addresProof === 'string' ||
-        this.verificationDocuments.addresProof.url));
+    this.verificationDocuments?.idProof &&
+    (typeof this.verificationDocuments.idProof === 'string' ||
+      this.verificationDocuments.idProof.url);
 
   // 4. Check if payment method is verified (at least one payment method is verified)
   // Use the shared helper for embedded paymentMethods first, then PaymentMethod collection fallback
@@ -722,13 +707,13 @@ sellerSchema.pre('save', async function (next) {
   }
 
   // CRITICAL: All requirements must be met to auto-verify seller
-  // - All 3 documents verified and uploaded
+  // - Mandatory document (ID Proof) verified and uploaded
   // - At least ONE contact is verified (email OR phone)
   // - Payment method verified (at least one payment method is verified)
   const allRequirementsMet =
     allDocumentsVerified &&
     allDocumentsUploaded &&
-    hasVerifiedContact &&
+    isEmailVerified &&
     hasPaymentMethodVerified;
 
   if (allRequirementsMet) {
@@ -753,10 +738,9 @@ sellerSchema.pre('save', async function (next) {
 
         const businessCertAdmin = getVerifiedBy(this.verificationDocuments.businessCert);
         const idProofAdmin = getVerifiedBy(this.verificationDocuments.idProof);
-        const addresProofAdmin = getVerifiedBy(this.verificationDocuments.addresProof);
 
         // Use the most recent admin who verified (prefer the last one verified)
-        this.verifiedBy = addresProofAdmin || idProofAdmin || businessCertAdmin;
+        this.verifiedBy = idProofAdmin || businessCertAdmin;
       }
 
       if (!this.verifiedAt) {
@@ -769,7 +753,6 @@ sellerSchema.pre('save', async function (next) {
         const dates = [
           getVerifiedAt(this.verificationDocuments.businessCert),
           getVerifiedAt(this.verificationDocuments.idProof),
-          getVerifiedAt(this.verificationDocuments.addresProof),
         ].filter(Boolean);
 
         if (dates.length > 0) {

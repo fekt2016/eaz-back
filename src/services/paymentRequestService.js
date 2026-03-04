@@ -10,6 +10,7 @@ const Seller = require('../models/user/sellerModel');
 const PaymentRequest = require('../models/payment/paymentRequestModel');
 const PaymentMethod = require('../models/payment/PaymentMethodModel');
 const User = require('../models/user/userModel');
+const Transaction = require('../models/transaction/transactionModel');
 const { sendPaymentNotification } = require('../utils/helpers/notificationService');
 
 /**
@@ -62,7 +63,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     const reason = payoutCheck.allRejected
       ? payoutCheck.rejectionReasons.join('; ') || 'Payout details were rejected. Please update your payment details and resubmit for verification.'
       : 'Your payout details (bank account or mobile money) must be verified by an admin before you can withdraw funds.';
-    
+
     throw new AppError(reason, 403);
   }
 
@@ -79,7 +80,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
 
   // Use seller's saved payment methods if paymentDetails are not provided or incomplete
   let finalPaymentDetails = paymentDetails || {};
-  
+
   // If paymentDetails is empty or incomplete, fetch from PaymentMethod model first, then fallback to seller.paymentMethods
   if (!paymentDetails || Object.keys(paymentDetails).length === 0) {
     // Try to find User account linked to seller (by email)
@@ -87,7 +88,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     if (currentSeller.email) {
       userAccount = await User.findOne({ email: currentSeller.email });
     }
-    
+
     // Map payment method to PaymentMethod model type
     const paymentMethodToType = {
       'bank': 'bank_transfer',
@@ -95,14 +96,14 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       'vodafone_cash': 'mobile_money',
       'airtel_tigo_money': 'mobile_money',
     };
-    
+
     // Map payment method to provider
     const paymentMethodToProvider = {
       'mtn_momo': 'MTN',
       'vodafone_cash': 'Vodafone',
       'airtel_tigo_money': 'AirtelTigo',
     };
-    
+
     if (paymentMethod === 'bank') {
       // Try to get from PaymentMethod model first
       if (userAccount) {
@@ -113,7 +114,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           isDefault: true,
           verificationStatus: 'verified', // Prefer verified default
         });
-        
+
         // If no verified default, get any verified method
         if (!paymentMethodDoc) {
           paymentMethodDoc = await PaymentMethod.findOne({
@@ -122,7 +123,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             verificationStatus: 'verified',
           });
         }
-        
+
         // If no verified method, fallback to default (even if not verified)
         if (!paymentMethodDoc) {
           paymentMethodDoc = await PaymentMethod.findOne({
@@ -131,7 +132,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             isDefault: true,
           });
         }
-        
+
         // If no default, get any bank transfer method
         if (!paymentMethodDoc) {
           const anyBankMethod = await PaymentMethod.findOne({
@@ -155,7 +156,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           };
         }
       }
-      
+
       // Fallback to seller's saved bank account details
       if (!finalPaymentDetails.accountNumber && currentSeller.paymentMethods?.bankAccount) {
         const bankAccount = currentSeller.paymentMethods.bankAccount;
@@ -168,13 +169,13 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           };
         }
       }
-      
+
       if (!finalPaymentDetails.accountNumber) {
         throw new AppError('Bank account details not found. Please add bank details in your payment methods.', 400);
       }
     } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
       const provider = paymentMethodToProvider[paymentMethod];
-      
+
       // Try to get from PaymentMethod model first
       if (userAccount && provider) {
         // CRITICAL: Prefer verified default method, then any verified method, then default, then any
@@ -185,7 +186,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           isDefault: true,
           verificationStatus: 'verified', // Prefer verified default
         });
-        
+
         // If no verified default, get any verified method with matching provider
         if (!paymentMethodDoc) {
           paymentMethodDoc = await PaymentMethod.findOne({
@@ -195,7 +196,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             verificationStatus: 'verified',
           });
         }
-        
+
         // If no verified method, fallback to default (even if not verified)
         if (!paymentMethodDoc) {
           paymentMethodDoc = await PaymentMethod.findOne({
@@ -205,7 +206,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             isDefault: true,
           });
         }
-        
+
         // If no default, get any matching provider
         if (!paymentMethodDoc) {
           paymentMethodDoc = await PaymentMethod.findOne({
@@ -214,7 +215,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             provider: provider,
           });
         }
-        
+
         if (paymentMethodDoc && paymentMethodDoc.mobileNumber) {
           finalPaymentDetails = {
             phone: paymentMethodDoc.mobileNumber,
@@ -223,7 +224,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           };
         }
       }
-      
+
       // Fallback to seller's saved mobile money details
       if (!finalPaymentDetails.phone && currentSeller.paymentMethods?.mobileMoney) {
         const mobileMoney = currentSeller.paymentMethods.mobileMoney;
@@ -234,10 +235,10 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
             'vodafone': 'vodafone_cash',
             'airteltigo': 'airtel_tigo_money',
           };
-          
+
           const savedNetwork = mobileMoney.network.toLowerCase();
           const expectedPaymentMethod = networkToPaymentMethod[savedNetwork];
-          
+
           if (expectedPaymentMethod === paymentMethod) {
             finalPaymentDetails = {
               phone: mobileMoney.phone,
@@ -247,7 +248,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
           }
         }
       }
-      
+
       if (!finalPaymentDetails.phone) {
         throw new AppError('Mobile money details not found. Please add mobile money details in your payment methods.', 400);
       }
@@ -286,7 +287,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       finalPaymentDetails = paymentDetails;
     }
   }
-  
+
   // Ensure paymentDetails is always populated before creating the request
   if (!finalPaymentDetails || Object.keys(finalPaymentDetails).length === 0) {
     throw new AppError('Payment details are required. Please provide payment information.', 400);
@@ -315,6 +316,26 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     sellerBalanceBefore: currentSeller.balance || 0,
   });
 
+  // Create a pending transaction record for visibility in history immediately
+  try {
+    await Transaction.create({
+      seller: seller.id,
+      amount: amount,
+      type: 'debit',
+      description: `Withdrawal Pending - Request #${paymentRequest._id}`,
+      status: 'pending',
+      payoutRequest: paymentRequest._id,
+      metadata: {
+        paymentRequestId: paymentRequest._id,
+        paymentMethod,
+      },
+    });
+    logger.info(`[createPaymentRequest] Created pending transaction for withdrawal ${paymentRequest._id}`);
+  } catch (txError) {
+    logger.error(`[createPaymentRequest] Failed to create pending transaction (non-critical): ${txError.message}`);
+    // Don't fail the main request creation
+  }
+
   // Add amount to pendingBalance when withdrawal request is created
   // This tracks funds awaiting admin approval and OTP verification
   // IMPORTANT: Total Revenue (balance) should NOT be deducted here - only available balance decreases
@@ -322,51 +343,51 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   const oldPendingBalance = currentSeller.pendingBalance || 0;
   const oldLockedBalance = currentSeller.lockedBalance || 0;
   const oldWithdrawableBalance = Math.max(0, oldBalance - oldLockedBalance - oldPendingBalance);
-  
+
   // PROTECTION: Prevent negative pendingBalance
   if (oldPendingBalance < 0) {
     logger.warn(`[createPaymentRequest] ⚠️ Seller ${seller.id} has negative pendingBalance: ${oldPendingBalance}. Resetting to 0.`);
     currentSeller.pendingBalance = 0;
   }
-  
+
   // Add to pendingBalance (funds awaiting approval and OTP verification)
   // This reduces available balance but does NOT affect total revenue (balance)
   const newPendingBalance = oldPendingBalance + amount;
-  
+
   // PROTECTION: Prevent double-adding (check if amount already in pendingBalance)
   // This is a safety check - in normal flow, amount should not already be in pendingBalance
   if (newPendingBalance > oldBalance) {
     logger.warn(`[createPaymentRequest] ⚠️ New pendingBalance (${newPendingBalance}); exceeds balance (${oldBalance}). This may indicate a double-add.`);
   }
-  
+
   currentSeller.pendingBalance = newPendingBalance;
-  
+
   // CRITICAL: Do NOT modify balance (total revenue) - it should remain unchanged
   // Only pendingBalance is increased, which reduces withdrawableBalance
   // Balance will only be deducted when withdrawal is actually paid (in processPaymentRequest)
-  
+
   // Recalculate withdrawableBalance explicitly (balance - lockedBalance - pendingBalance)
   currentSeller.calculateWithdrawableBalance();
   const newWithdrawableBalance = Math.max(0, currentSeller.balance - currentSeller.lockedBalance - currentSeller.pendingBalance);
   currentSeller.withdrawableBalance = newWithdrawableBalance;
-  
+
   // Verify balance was NOT modified
   if (currentSeller.balance !== oldBalance) {
     logger.error(`[createPaymentRequest] ERROR: Balance was modified! Old: ${oldBalance}, New: ${currentSeller.balance}`);
     // Restore balance if it was accidentally modified
     currentSeller.balance = oldBalance;
   }
-  
+
   logger.info(`[createPaymentRequest] Pending balance update for seller ${seller.id}:`);
   logger.info(`  Total Revenue (Balance);: ${oldBalance} (UNCHANGED - not deducted)`);
   logger.info(`  Pending Balance: ${oldPendingBalance} + ${amount} = ${currentSeller.pendingBalance}`);
   logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
   logger.info(`  Available Balance: ${oldWithdrawableBalance} - ${amount} = ${newWithdrawableBalance} (decreased due to pending withdrawal);`);
-  
+
   // Auto-update onboarding if bank details are being added
   if (!currentSeller.requiredSetup.hasAddedBankDetails) {
     currentSeller.requiredSetup.hasAddedBankDetails = true;
-    
+
     // Check if all setup is complete (product not required for verification)
     const allSetupComplete =
       currentSeller.requiredSetup.hasAddedBusinessInfo &&
@@ -376,9 +397,9 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       currentSeller.onboardingStage = 'pending_verification';
     }
   }
-  
+
   await currentSeller.save();
-  
+
   // Verify the save worked and balance was NOT deducted
   const savedSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance withdrawableBalance');
   if (savedSeller) {
@@ -389,7 +410,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       logger.info(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance);: ${savedSeller.balance} (UNCHANGED)`);
     }
     logger.info(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
-    
+
     // Log finance audit
     try {
       const financeAudit = require('./financeAuditService');

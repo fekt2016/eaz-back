@@ -2,6 +2,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const { getZoneFromNeighborhood, getZoneFromNeighborhoodName } = require('../../utils/getZoneFromNeighborhood');
 const { calcShipping, calcShippingWithBreakdown } = require('../../utils/calcShipping');
+const { isWorkingHours } = require('../../services/zoneService');
 
 /**
  * Calculate shipping fee based on neighborhood
@@ -107,16 +108,41 @@ exports.getShippingOptions = catchAsync(async (req, res, next) => {
     return next(new AppError(error.message, 404));
   }
 
-  // Check same-day availability (cut-off time: 15:00 / 3pm Ghana time)
-  // Get current time in Ghana (GMT+0 / UTC+0)
+  // Get current time in Ghana (UTC+0 / Africa/Accra)
   const now = new Date();
-  // Convert to Ghana time (UTC+0)
   const ghanaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Accra' }));
   const hour = ghanaTime.getHours();
   const minute = ghanaTime.getMinutes();
+
+  // Check same-day availability (cut-off time: 15:00 / 3pm Ghana time)
   const currentTime = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   const cutOffTime = '15:00';
   const isSameDayAvailable = currentTime < cutOffTime;
+
+  // Check Express Delivery availability: only during working hours (Mon–Fri 08:00–18:00 Ghana time)
+  const isExpressAvailable = isWorkingHours(now);
+
+  // Express estimate: if available now → starts today; otherwise starts at next working slot
+  let expressEstimate;
+  if (isExpressAvailable) {
+    expressEstimate = 'Starts today — delivered within 1-2 hours';
+  } else {
+    const dayOfWeek = ghanaTime.getDay(); // 0=Sun, 6=Sat
+    const isAfterHours = hour >= 18;
+    if (dayOfWeek === 0) {
+      // Sunday — next working day is Monday
+      expressEstimate = 'Starts Monday from 8:00 AM';
+    } else if (isAfterHours && dayOfWeek === 6) {
+      // Saturday after 6pm — next working day is Monday
+      expressEstimate = 'Starts Monday from 8:00 AM';
+    } else if (isAfterHours) {
+      // Mon–Fri after 6pm — starts tomorrow
+      expressEstimate = 'Starts tomorrow from 8:00 AM';
+    } else {
+      // Before 8am on any working day (Mon–Sat)
+      expressEstimate = 'Starts today from 8:00 AM';
+    }
+  }
 
   // Calculate fees for all shipping types (with fragile surcharge if applicable)
   const standardFee = calcShipping(zone, weight, 'standard', fragile);
@@ -151,8 +177,9 @@ exports.getShippingOptions = catchAsync(async (req, res, next) => {
       type: 'express',
       name: 'Express Delivery',
       fee: expressFee,
-      estimate: '1-2 Business Days',
-      available: true,
+      estimate: expressEstimate,
+      available: true,  // Always selectable — delivery starts at next working hours
+      workingHours: '08:00–18:00, Mon–Fri',
       breakdown: expressBreakdown.breakdown,
     },
   ];

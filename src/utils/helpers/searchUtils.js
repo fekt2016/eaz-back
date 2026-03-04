@@ -76,6 +76,36 @@ exports.buildSearchRegex = (query, anchored = false) => {
 };
 
 /**
+ * Build fuzzy regex pattern for typo tolerance (allows 1 character variation for longer words)
+ * @param {string} query - Search term
+ * @returns {RegExp[]} - Array of regex patterns allowing 1 typo
+ */
+exports.buildFuzzyRegexes = (query) => {
+  const cleaned = exports.normalizeQuery(query);
+  if (!cleaned || cleaned.length <= 3) return [exports.buildSearchRegex(cleaned)];
+
+  const escaped = exports.escapeRegex(cleaned);
+  const patterns = [];
+
+  // Exact match
+  patterns.push(new RegExp(escaped, 'i'));
+
+  // Generate typo variations (1 character change)
+  for (let i = 1; i < escaped.length; i++) {
+    const variation = escaped.substring(0, i) + '.' + escaped.substring(i + 1);
+    patterns.push(new RegExp(variation, 'i'));
+  }
+
+  // Generate omission variations (1 missing character)
+  for (let i = 1; i < escaped.length; i++) {
+    const variation = escaped.substring(0, i) + escaped.substring(i + 1);
+    patterns.push(new RegExp(variation, 'i'));
+  }
+
+  return patterns;
+};
+
+/**
  * Expand search keywords (hybrid: AI + rule-based)
  * Uses AI if available, falls back to rule-based expansion
  * Example: "phone cover" -> ["phone cover", "phone case", "iphone case", "samsung case"]
@@ -91,7 +121,7 @@ exports.expandKeywords = async (query, useAI = true) => {
   if (useAI) {
     try {
       const aiSearchService = require('../../services/aiSearchService');
-const logger = require('../logger');
+      const logger = require('../logger');
       if (aiSearchService.isAIEnabled()) {
         const aiExpanded = await aiSearchService.expandKeywordsWithAI(normalized);
         if (aiExpanded && aiExpanded.length > 1) {
@@ -174,12 +204,16 @@ exports.buildFallbackQuery = (query, options = {}) => {
   const tokens = exports.tokenizeQuery(normalized);
   if (tokens.length === 0) return null;
 
-  // Build $or conditions for partial matching
   const orConditions = [];
 
-  // Title matching (highest priority)
+  // Title matching (highest priority with fuzzy logic)
   tokens.forEach((token) => {
-    orConditions.push({ name: { $regex: token, $options: 'i' } });
+    if (token.length > 3) {
+      const fuzzyPatterns = exports.buildFuzzyRegexes(token);
+      orConditions.push({ name: { $in: fuzzyPatterns } });
+    } else {
+      orConditions.push({ name: { $regex: token, $options: 'i' } });
+    }
   });
 
   // Brand matching

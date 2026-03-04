@@ -21,84 +21,131 @@ exports.getSellerKPICards = catchAsync(async (req, res, next) => {
   yesterday.setDate(yesterday.getDate() - 1);
   const lastWeek = new Date(today);
   lastWeek.setDate(lastWeek.getDate() - 7);
-  const last14Days = new Date(today);
-  last14Days.setDate(last14Days.getDate() - 14);
+  // Single aggregation for all revenue metrics
+  const revenueStats = await SellerOrder.aggregate([
+    {
+      $match: {
+        seller: new mongoose.Types.ObjectId(sellerId),
+        createdAt: { $gte: last14Days },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        revenueToday: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', today] },
+                  { $in: ['$status', ['delivered', 'paid']] },
+                ],
+              },
+              { $ifNull: ['$totalBasePrice', 0] },
+              0,
+            ],
+          },
+        },
+        revenueYesterday: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', yesterday] },
+                  { $lt: ['$createdAt', today] },
+                  { $in: ['$status', ['delivered', 'paid']] },
+                ],
+              },
+              { $ifNull: ['$totalBasePrice', 0] },
+              0,
+            ],
+          },
+        },
+        revenueThisWeek: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', lastWeek] },
+                  { $in: ['$status', ['delivered', 'paid']] },
+                ],
+              },
+              { $ifNull: ['$totalBasePrice', 0] },
+              0,
+            ],
+          },
+        },
+        revenuePreviousWeek: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', last14Days] },
+                  { $lt: ['$createdAt', lastWeek] },
+                  { $in: ['$status', ['delivered', 'paid']] },
+                ],
+              },
+              { $ifNull: ['$totalBasePrice', 0] },
+              0,
+            ],
+          },
+        },
+        ordersToday: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', today] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
 
-  // Today's Revenue (VAT-exclusive basePrice)
-  const todayOrders = await SellerOrder.find({
-    seller: sellerId,
-    status: { $in: ['delivered', 'paid'] },
-    createdAt: { $gte: today },
-  });
-  const revenueToday = todayOrders.reduce((sum, order) => sum + (order.totalBasePrice || 0), 0);
+  console.log(`[getSellerKPICards] Raw Aggregation Result: ${JSON.stringify(revenueStats)}`);
 
-  // Yesterday's Revenue (for comparison)
-  const yesterdayOrders = await SellerOrder.find({
-    seller: sellerId,
-    status: { $in: ['delivered', 'paid'] },
-    createdAt: { $gte: yesterday, $lt: today },
-  });
-  const revenueYesterday = yesterdayOrders.reduce((sum, order) => sum + (order.totalBasePrice || 0), 0);
-  const revenueTodayChange = revenueYesterday > 0
-    ? ((revenueToday - revenueYesterday) / revenueYesterday * 100).toFixed(1)
-    : revenueToday > 0 ? 100 : 0;
+  const stats = revenueStats[0] || {
+    revenueToday: 0,
+    revenueYesterday: 0,
+    revenueThisWeek: 0,
+    revenuePreviousWeek: 0,
+    ordersToday: 0,
+  };
 
-  // This Week's Revenue
-  const weekOrders = await SellerOrder.find({
-    seller: sellerId,
-    status: { $in: ['delivered', 'paid'] },
-    createdAt: { $gte: lastWeek },
-  });
-  const revenueThisWeek = weekOrders.reduce((sum, order) => sum + (order.totalBasePrice || 0), 0);
-
-  // Previous Week's Revenue (for comparison)
-  const previousWeekOrders = await SellerOrder.find({
-    seller: sellerId,
-    status: { $in: ['delivered', 'paid'] },
-    createdAt: { $gte: last14Days, $lt: lastWeek },
-  });
-  const revenuePreviousWeek = previousWeekOrders.reduce((sum, order) => sum + (order.totalBasePrice || 0), 0);
-  const revenueWeekChange = revenuePreviousWeek > 0
-    ? ((revenueThisWeek - revenuePreviousWeek) / revenuePreviousWeek * 100).toFixed(1)
-    : revenueThisWeek > 0 ? 100 : 0;
-
-  // Total Orders Today
-  const ordersToday = await SellerOrder.countDocuments({
-    seller: sellerId,
-    createdAt: { $gte: today },
-  });
-
-  // Pending Orders
+  // Remaining counts (still efficient via countDocuments with indexes)
   const pendingOrders = await SellerOrder.countDocuments({
     seller: sellerId,
     status: { $in: ['pending', 'confirmed', 'processing'] },
   });
 
-  // Total Products Live
   const totalProductsLive = await Product.countDocuments({
     seller: sellerId,
     active: true,
   });
 
-  // Available Balance (after withholding tax)
-  const seller = await Seller.findById(sellerId);
-  const availableBalance = seller?.withdrawableBalance || seller?.balance - (seller?.lockedBalance || 0) - (seller?.pendingBalance || 0) || 0;
+  const seller = await Seller.findById(sellerId).select('balance lockedBalance pendingBalance withdrawableBalance');
+  const availableBalance = seller?.withdrawableBalance || (seller?.balance || 0) - (seller?.lockedBalance || 0) - (seller?.pendingBalance || 0);
+
+  const revenueTodayChange = stats.revenueYesterday > 0
+    ? (((stats.revenueToday - stats.revenueYesterday) / stats.revenueYesterday) * 100).toFixed(1)
+    : stats.revenueToday > 0 ? 100 : 0;
+
+  const revenueWeekChange = stats.revenuePreviousWeek > 0
+    ? (((stats.revenueThisWeek - stats.revenuePreviousWeek) / stats.revenuePreviousWeek) * 100).toFixed(1)
+    : stats.revenueThisWeek > 0 ? 100 : 0;
 
   res.status(200).json({
     status: 'success',
     data: {
       revenueToday: {
-        value: revenueToday,
+        value: stats.revenueToday,
         change: parseFloat(revenueTodayChange),
         label: "Today's Revenue",
       },
       revenueThisWeek: {
-        value: revenueThisWeek,
+        value: stats.revenueThisWeek,
         change: parseFloat(revenueWeekChange),
         label: "This Week's Revenue",
       },
       ordersToday: {
-        value: ordersToday,
+        value: stats.ordersToday,
         change: null,
         label: 'Total Orders Today',
       },

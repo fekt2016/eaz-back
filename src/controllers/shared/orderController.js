@@ -22,6 +22,8 @@ const WalletTransaction = require('../../models/user/walletTransactionModel');
 const { logBuyerWallet } = require('../../services/historyLogger');
 const taxService = require('../../services/tax/taxService');
 const logger = require('../../utils/logger');
+const stockService = require('../../services/stock/stockService');
+const Cart = require('../../models/product/cartModel');
 
 
 exports.updateProductTotalSold = async (order) => {
@@ -156,16 +158,22 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       }
     }
 
-    // Dual VAT: add VAT to base to get customer-facing inclusive price (no tax line at checkout)
-    let priceInclVat = sellableUnit.priceInclVat ?? product.priceInclVat;
-    if (priceInclVat == null || priceInclVat <= 0) {
-      const computed = await taxService.addVatToBase(basePrice, platformSettings);
-      priceInclVat = computed.priceInclVat;
-    }
+    // Unified Pricing and Tax Logic (P2-FIX 2)
+    const pricingService = require('../../services/pricing/pricingService');
 
-    // Apply promotion discount (same as cart) so checkout subtotal matches cart
+    // 1. Get base price (VAT exclusive) - already resolved above
+
+    // 2. Add VAT to get standard inclusive price for promo calculation
+    const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
+    const standardPriceInclVat = vatComputed.priceInclVat;
+
+    // 3. Apply promotions to the standard inclusive price
     const applicable = getApplicablePromos(product, promos);
-    const { unitPrice: price } = applyPromosToPrice(priceInclVat, applicable);
+    const { unitPrice: finalInclVat } = applyPromosToPrice(standardPriceInclVat, applicable);
+    const promoDiscount = Math.max(0, standardPriceInclVat - finalInclVat);
+
+    // 4. Get final pricing breakdown using the unified service
+    const pricing = await pricingService.calculateItemPricing(basePrice, promoDiscount);
 
     // Validate quantity against stock
     const availableStock = sellableUnit.stock - (sellableUnit.sold || 0);
@@ -184,10 +192,11 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       variant: item.variant || null,
       sku: item.sku || null,
       quantity: validatedQuantity,
-      price, // From database with promo applied (matches cart)
+      price: pricing.unitPrice, // Customer pays this (includes VAT + COVID levy)
       validated: true,
       productName: product.name,
       availableStock,
+      pricingBreakdown: pricing // Useful for debugging or detailed checkout view
     });
   }
 
@@ -212,9 +221,10 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       const productIds = validatedItems.map(item => item.product);
       const products = await Product.find({ _id: { $in: productIds } })
         .populate('seller', '_id')
-        .populate('category', '_id');
-      
-      const categoryIds = [...new Set(products.map(p => p.category?._id?.toString()).filter(Boolean))];
+        .populate('parentCategory', '_id')
+        .populate('subCategory', '_id');
+
+      const categoryIds = [...new Set(products.flatMap(p => [p.parentCategory?._id?.toString(), p.subCategory?._id?.toString()]).filter(Boolean))];
       const sellerIds = [...new Set(products.map(p => p.seller?._id?.toString()).filter(Boolean))];
 
       couponData = await couponService.validateCoupon(
@@ -244,7 +254,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       .map((p) => String(p.preOrderOriginCountry).trim())
       .filter((c) => ['China', 'USA'].includes(c)),
   )];
-  
+
   // Use specified origin if available, otherwise default to "China" for pre-orders
   let supplierCountry = null;
   if (hasPreOrderItem) {
@@ -259,7 +269,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       supplierCountry = originCountries.includes('China') ? 'China' : originCountries[0];
     }
   }
-  
+
   const isInternationalPreorder = hasPreOrderItem && supplierCountry;
 
   let shippingFee = 0;
@@ -363,20 +373,91 @@ exports.validateCart = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getAllOrder = handleFactory.getAll(Order, [
-  {
-    path: 'orderItems',
-    select: 'quantity product price productName',
-    populate: {
-      path: 'product',
-      select: 'name price',
-    },
-  },
-  {
-    path: 'user',
-    select: 'name email phone',
-  },
-]);
+exports.getAllOrder = catchAsync(async (req, res, next) => {
+  let filter = {};
+
+  // Search by orderNumber or trackingNumber
+  if (req.query.search) {
+    const searchRegex = new RegExp(req.query.search, 'i');
+    filter.$or = [
+      { orderNumber: searchRegex },
+      { trackingNumber: searchRegex }
+    ];
+  }
+
+  // Filter by status
+  if (req.query.status && req.query.status !== 'all') {
+    // Check currentStatus first, fallback to orderStatus if needed
+    filter.$or = [
+      { currentStatus: req.query.status },
+      { orderStatus: req.query.status }
+    ];
+  }
+
+  // Filter by date
+  if (req.query.date && req.query.date !== 'all') {
+    const today = new Date();
+    let startDate = new Date();
+
+    switch (req.query.date) {
+      case 'today':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate.setDate(today.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(today.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(today.getFullYear() - 1);
+        break;
+      default:
+        startDate = null;
+    }
+
+    if (startDate) {
+      filter.createdAt = { $gte: startDate };
+    }
+  }
+
+  // Pagination
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+
+  // Execute query
+  const query = Order.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate({
+      path: 'orderItems',
+      select: 'quantity product price productName',
+      populate: {
+        path: 'product',
+        select: 'name price',
+      },
+    })
+    .populate({
+      path: 'user',
+      select: 'name email phone',
+    });
+
+  const results = await query;
+  const total = await Order.countDocuments(filter);
+
+  res.status(200).json({
+    status: 'success',
+    results,
+    meta: {
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      itemsPerPage: limit,
+    }
+  });
+});
 // creating orders
 exports.createOrder = catchAsync(async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -506,24 +587,31 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellableUnit = product;
       }
 
-      // Dual VAT: seller enters base price; add VAT to get customer-facing inclusive price
-      const basePrice = sellableUnit.price ?? product.price;
-      const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
-      let priceInclVat = sellableUnit.priceInclVat ?? product.priceInclVat ?? vatComputed.priceInclVat;
-      const vatAmountPerUnit = vatComputed.vatAmount;
-      const vatRateUsed = vatComputed.vatRate;
+      // Unified Pricing and Tax Logic (P2-FIX 2)
+      const pricingService = require('../../services/pricing/pricingService');
 
-      // Apply promotion discount (same as cart/validateCart)
+      // 1. Get base price (VAT exclusive)
+      const basePrice = sellableUnit.price ?? product.price;
+
+      // 2. Add VAT to get standard inclusive price for promo calculation
+      const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
+      const standardPriceInclVat = vatComputed.priceInclVat;
+
+      // 3. Apply promos to the standard inclusive price
       const applicable = getApplicablePromos(product, orderPromos);
-      const { unitPrice: finalPrice } = applyPromosToPrice(priceInclVat, applicable);
+      const { unitPrice: finalInclVat } = applyPromosToPrice(standardPriceInclVat, applicable);
+      const promoDiscount = Math.max(0, standardPriceInclVat - finalInclVat);
+
+      // 4. Get final pricing breakdown using the unified service
+      const pricing = await pricingService.calculateItemPricing(basePrice, promoDiscount);
 
       const quantity = Math.max(1, Math.min(item.quantity || 1, 999));
       if (quantity !== item.quantity) {
         throw new AppError(`Invalid quantity for product ${item.product}`, 400);
       }
 
-      if (item.price && Math.abs(item.price - finalPrice) > 0.01) {
-        logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${finalPrice}`);
+      if (item.price && Math.abs(item.price - pricing.unitPrice) > 0.01) {
+        logger.warn(`[SECURITY] Price mismatch for product ${item.product}: frontend=${item.price}, database=${pricing.unitPrice}`);
       }
 
       const sellerIdStr = (product.seller && product.seller.toString()) || '';
@@ -533,36 +621,30 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         product: item.product,
         variant: sellableUnit._id !== product._id ? sellableUnit._id : null,
         quantity,
-        price: finalPrice,
         sku,
-        basePrice: vatComputed.basePrice,
-        vatAmount: vatAmountPerUnit,
-        vatRate: vatRateUsed,
         vatCollectedBy,
+        pricing, // Store the full breakdown for OrderItem creation
       });
     }
 
-    // Build order items with VAT metadata (vatAmount, vatRate, vatCollectedBy) for audit and payout
-    const vatR = platformSettings?.vatRate ?? 0.125;
-    const nhilR = platformSettings?.nhilRate ?? 0.025;
-    const getfundR = platformSettings?.getfundRate ?? 0.025;
+    // Build order items with unified pricing data (P2-FIX 2)
     const orderItemsWithTax = normalizedItems.map((item) => ({
       product: item.product,
       variant: item.variant,
       quantity: item.quantity,
-      price: item.price,
       sku: item.sku,
-      priceInclVat: item.price,
-      priceExVat: item.basePrice,
-      vatAmount: item.vatAmount,
-      vatRate: item.vatRate,
+      price: item.pricing.unitPrice,
+      priceInclVat: item.pricing.priceInclVat,
+      priceExVat: item.pricing.netBasePrice,
+      basePrice: item.pricing.netBasePrice,
+      vat: item.pricing.vat,
+      nhil: item.pricing.nhil,
+      getfund: item.pricing.getfund,
+      covidLevy: item.pricing.covidLevy,
+      totalTaxes: item.pricing.totalTax,
+      vatAmount: item.pricing.vat,
+      vatRate: 0.15,
       vatCollectedBy: item.vatCollectedBy,
-      basePrice: item.basePrice,
-      vat: Math.round((item.basePrice * vatR) * 100) / 100,
-      nhil: Math.round((item.basePrice * nhilR) * 100) / 100,
-      getfund: Math.round((item.basePrice * getfundR) * 100) / 100,
-      covidLevy: 0,
-      totalTaxes: item.vatAmount,
       isVATInclusive: true,
     }));
 
@@ -1070,8 +1152,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderType: isInternationalPreorder
         ? 'preorder_international'
         : hasPreOrderProduct
-        ? 'preorder_local'
-        : 'normal',
+          ? 'preorder_local'
+          : 'normal',
       // Normalize payment method to match enum values
       paymentMethod: (() => {
         const method = req.body.paymentMethod || 'mobile_money';
@@ -1106,8 +1188,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       importDutyRate: isInternationalPreorder ? importDutyRate : undefined,
       metadata: internationalCustomsMetadata
         ? {
-            internationalCustoms: internationalCustomsMetadata,
-          }
+          internationalCustoms: internationalCustomsMetadata,
+        }
         : undefined,
       subtotal: overallSubtotal, // VAT-inclusive subtotal
       tax: 0, // Deprecated - use tax breakdown fields
@@ -1176,8 +1258,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       if (req.body.paidAt) {
         newOrder.paidAt = new Date(req.body.paidAt);
       }
-      // Reduce product stock after payment is confirmed
-      await exports.reduceOrderStock(newOrder, session);
+      // Stock will be reduced for ALL payment methods after order is saved.
     } else {
       // Set initial status based on payment method
       let paymentMethod = req.body.paymentMethod || 'mobile_money';
@@ -1246,8 +1327,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         // Mark revenue as added
         newOrder.revenueAdded = true;
 
-        // Reduce product stock after payment is confirmed
-        await exports.reduceOrderStock(newOrder, session);
+        // Stock will be reduced for ALL payment methods after order is saved.
 
         // Log payment activity
         const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
@@ -1271,153 +1351,23 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     // Save order
     await newOrder.save({ session });
 
+    // 🔐 3. Deduct stock for ALL payment methods (COD, Wallet, Paystack, etc.)
+    const stockService = require('../../services/stock/stockService');
+    await stockService.reduceOrderStock(normalizedItems, session);
+
+    // 🛒 4. Clear cart after successful order creation and stock deduction
+    await Cart.findOneAndUpdate(
+      { user: req.user.id },
+      { $set: { items: [], totalQty: 0, totalPrice: 0 } },
+      { session }
+    );
+
     // Link SellerOrders back to this Order (required for getSellerOrders and syncSellerOrderStatus)
     await SellerOrder.updateMany(
       { _id: { $in: sellerOrders } },
       { $set: { order: newOrder._id } },
       { session }
     );
-
-    /* ---------------------------------- */
-    /* 7.1. PAYMENT HANDLING (LEGACY)      */
-    /* ---------------------------------- */
-    // NOTE: Wallet payments are now handled via walletService above when
-    // paymentMethod === 'credit_balance'. To avoid double-charging and
-    // undefined variable errors, this legacy block is effectively disabled.
-    const isWalletPayment = false;
-
-    // Handle wallet payment (credit_balance) - legacy path (currently disabled)
-    if (isWalletPayment) {
-      console.log('[createOrder] 💰 Processing wallet payment deduction...');
-      
-      // Get wallet (within same session)
-      const wallet = await Creditbalance.findOne({ user: req.user.id }).session(session);
-      
-      if (!wallet) {
-        await session.abortTransaction();
-        return next(new AppError('Wallet not found. Please contact support.', 500));
-      }
-      
-      const balanceBefore = wallet.balance || 0;
-      // Use availableBalance (balance - holdAmount) for validation
-      const availableBalanceBefore = wallet.availableBalance !== undefined 
-        ? wallet.availableBalance 
-        : Math.max(0, balanceBefore - (wallet.holdAmount || 0));
-      const balanceAfter = balanceBefore - totalPrice;
-      
-      // Double-check available balance (race condition protection - final check before deduction)
-      if (availableBalanceBefore < totalPrice) {
-        await session.abortTransaction();
-        return next(new AppError(
-          `Insufficient wallet balance. Your available balance is GH₵${availableBalanceBefore.toFixed(2)}, but required amount is GH₵${totalPrice.toFixed(2)}. ${wallet.holdAmount > 0 ? `You have GH₵${wallet.holdAmount.toFixed(2)} on hold. ` : ''}Please try again or choose a different payment method.`,
-          400
-        ));
-      }
-      
-      // Update wallet balance atomically using $inc to prevent race conditions
-      const updatedWallet = await Creditbalance.findOneAndUpdate(
-        { 
-          _id: wallet._id,
-          balance: { $gte: totalPrice } // Ensure balance is still sufficient
-        },
-        { 
-          $inc: { balance: -totalPrice },
-          $set: { 
-            availableBalance: Math.max(0, balanceAfter - (wallet.holdAmount || 0)), // Recalculate availableBalance
-            lastUpdated: new Date(),
-          },
-          $push: {
-            transactions: {
-              date: new Date(),
-              amount: -totalPrice,
-              type: 'purchase',
-              description: `Order payment: ${orderNumber}`,
-              reference: `ORDER-${newOrder._id}`,
-            }
-          }
-        },
-        { 
-          new: true,
-          session 
-        }
-      );
-      
-      if (!updatedWallet) {
-        // Balance check failed (insufficient or race condition)
-        await session.abortTransaction();
-        return next(new AppError(
-          `Insufficient wallet balance or balance changed. Please try again.`,
-          400
-        ));
-      }
-      
-      // Create wallet transaction record
-      const walletTransactionReference = `ORDER-${newOrder._id}-${Date.now()}`;
-      await WalletTransaction.create([{
-        user: req.user.id,
-        amount: -totalPrice, // Store as negative for debits
-        type: 'DEBIT_ORDER',
-        description: `Order payment: ${orderNumber}`,
-        reference: walletTransactionReference,
-        orderId: newOrder._id,
-        balanceBefore,
-        balanceAfter,
-        metadata: {
-          orderNumber,
-          orderId: newOrder._id.toString(),
-        },
-      }], { session });
-      
-      // Mark order as paid
-      newOrder.paymentStatus = 'paid';
-      newOrder.status = 'confirmed'; // Use 'status' field (has 'confirmed' in enum), not 'orderStatus'
-      newOrder.currentStatus = 'confirmed'; // Also update currentStatus for tracking
-      newOrder.paidAt = new Date();
-      
-      // Update order with payment status
-      await newOrder.save({ session });
-      
-      console.log('[createOrder] ✅ Wallet payment processed:', {
-        orderId: newOrder._id,
-        orderNumber,
-        amountDeducted: totalPrice,
-        balanceBefore,
-        balanceAfter,
-        transactionReference: walletTransactionReference,
-      });
-      
-      // Log to wallet history (non-blocking - don't fail if logging fails)
-      logBuyerWallet({
-        userId: req.user.id,
-        amount: -totalPrice, // Store as negative for debits
-        type: 'ORDER_DEBIT',
-        description: `Order payment: ${orderNumber}`,
-        reference: walletTransactionReference,
-        orderId: newOrder._id,
-        metadata: {
-          orderNumber,
-          orderId: newOrder._id.toString(),
-        },
-      }).catch(err => {
-        console.error('[createOrder] Failed to log wallet history (non-critical):', err);
-      });
-      
-      // 🔐 Reduce stock for wallet-paid orders
-      await exports.reduceOrderStock(newOrder, session);
-      
-    } else if (req.body.paymentStatus === 'completed') {
-      // Handle other payment methods (e.g., Paystack webhook)
-      newOrder.paymentStatus = 'paid';
-      newOrder.status = 'confirmed'; // Use 'status' field (has 'confirmed' in enum), not 'orderStatus'
-      newOrder.currentStatus = 'confirmed'; // Also update currentStatus for tracking
-      newOrder.paidAt = new Date();
-
-      // Update order with payment status
-      await newOrder.save({ session });
-
-      // 🔐 Reduce stock ONLY here
-      await exports.reduceOrderStock(newOrder, session);
-    }
 
     /* ---------------------------------- */
     /* 7.5. APPLY COUPON TO ORDER          */
@@ -1483,18 +1433,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       totalPrice: fullOrder.totalPrice,
     });
 
-    // Send order confirmation email to buyer
-    try {
-      const emailDispatcher = require('../../emails/emailDispatcher');
-      const user = fullOrder.user || { email: req.user.email, name: req.user.name };
-      if (user.email) {
-        await emailDispatcher.sendOrderConfirmation(fullOrder, user);
-        logger.info(`[createOrder] ✅ Order confirmation email sent to ${user.email}`);
-      }
-    } catch (emailError) {
-      logger.error('[createOrder] Error sending order confirmation email:', emailError.message);
-      // Don't fail the order if email fails
+    // Capture email data for post-response sending (COD + credit_balance only)
+    //   paystack / mobile_money → email fires in verifyPaystackPayment or paystackWebhook
+    const paymentMethodForEmail = newOrder.paymentMethod || paymentMethod || '';
+    const isOnlinePayment = ['paystack', 'mobile_money', 'momo', 'card'].includes(paymentMethodForEmail);
+    const emailUserForOrder = fullOrder.user || { email: req.user.email, name: req.user.name };
+
+    if (isOnlinePayment) {
+      logger.info(`[createOrder] ℹ️ Email deferred for online payment method "${paymentMethodForEmail}" — will send after payment confirmed.`);
     }
+
 
     // Send new order alert emails to sellers
     try {
@@ -1518,6 +1466,21 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       // Don't fail the order if email fails
     }
 
+    // Fire COD / credit_balance email AFTER the response is sent (after confirmation page renders)
+    if (!isOnlinePayment && emailUserForOrder.email) {
+      res.on('finish', () => {
+        setImmediate(async () => {
+          try {
+            const emailDispatcher = require('../../emails/emailDispatcher');
+            await emailDispatcher.sendOrderConfirmation(fullOrder, emailUserForOrder, paymentMethodForEmail);
+            logger.info(`[createOrder] ✅ Order confirmation email sent to ${emailUserForOrder.email} (method: ${paymentMethodForEmail})`);
+          } catch (emailErr) {
+            logger.error('[createOrder] Post-response email failed:', emailErr.message);
+          }
+        });
+      });
+    }
+
     res.status(201).json({
       status: 'success',
       data: { order: fullOrder },
@@ -1537,9 +1500,18 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       },
     });
     // Return the error message from AppError if it exists, otherwise generic message
-    const errorMessage = error instanceof AppError 
-      ? error.message 
+    const errorMessage = error instanceof AppError
+      ? error.message
       : (error.message || 'Failed to create order');
+
+    // Return specific stock error to client
+    if (errorMessage.includes('Insufficient stock')) {
+      return res.status(400).json({
+        success: false,
+        message: errorMessage
+      });
+    }
+
     return next(new AppError(errorMessage, 400));
   } finally {
     session.endSession();
@@ -1567,15 +1539,17 @@ exports.getCount = catchAsync(async (req, res, next) => {
  */
 exports.getOrderStats = catchAsync(async (req, res, next) => {
   const stats = await Order.aggregate([
-    { $facet: {
-      total: [{ $count: 'count' }],
-      pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
-      processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
-      confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
-      shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
-      delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
-      cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
-    } },
+    {
+      $facet: {
+        total: [{ $count: 'count' }],
+        pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
+        processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
+        confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
+        shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
+        delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
+        cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
+      }
+    },
   ]);
   const facet = (stats && stats[0]) ? stats[0] : {};
   const getCount = (key) => (facet[key] && facet[key][0] && facet[key][0].count) ? facet[key][0].count : 0;
@@ -1635,38 +1609,38 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
   }
 
   const validSellerOrders = sellerOrders.filter((so) => so.order);
-  
+
   // Return empty array instead of 404 - having no orders is a valid state
-  const formattedOrders = validSellerOrders.length === 0 
-    ? [] 
+  const formattedOrders = validSellerOrders.length === 0
+    ? []
     : validSellerOrders.map((so) => ({
-    // SellerOrder fields
-    _id: so._id,
-    status: so.status,
-    items: so.items,
-    subtotal: so.subtotal,
-    total: so.total,
-    shippingCost: so.shippingCost,
-    tax: so.tax,
-    commissionRate: so.commissionRate,
-    payoutStatus: so.payoutStatus,
+      // SellerOrder fields
+      _id: so._id,
+      status: so.status,
+      items: so.items,
+      subtotal: so.subtotal,
+      total: so.total,
+      shippingCost: so.shippingCost,
+      tax: so.tax,
+      commissionRate: so.commissionRate,
+      payoutStatus: so.payoutStatus,
 
-    // Parent Order fields
-    orderNumber: so.order.orderNumber,
-    trackingNumber: so.order.trackingNumber,
-    user: so.order.user,
-    createdAt: so.order.createdAt,
-    paymentMethod: so.order.paymentMethod,
-    paymentStatus: so.order.paymentStatus,
-    paidAt: so.order.paidAt,
-    shippingAddress: so.order.shippingAddress,
-    // Parent order status (source of truth for "completed" / delivered)
-    currentStatus: so.order.currentStatus,
-    orderStatus: so.order.status,
+      // Parent Order fields
+      orderNumber: so.order.orderNumber,
+      trackingNumber: so.order.trackingNumber,
+      user: so.order.user,
+      createdAt: so.order.createdAt,
+      paymentMethod: so.order.paymentMethod,
+      paymentStatus: so.order.paymentStatus,
+      paidAt: so.order.paidAt,
+      shippingAddress: so.order.shippingAddress,
+      // Parent order status (source of truth for "completed" / delivered)
+      currentStatus: so.order.currentStatus,
+      orderStatus: so.order.status,
 
-    // Parent order ID
-    parentOrderId: so.order._id || null,
-  }));
+      // Parent order ID
+      parentOrderId: so.order._id || null,
+    }));
 
   res.status(200).json({
     status: 'success',
@@ -1964,11 +1938,11 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   if (!order) {
     console.error(`[getUserOrder] Order not found with ID: ${orderId} for user: ${req.user.id}`);
     console.error(`[getUserOrder] Searched both _id and orderNumber`);
-    
+
     // Additional debugging: Check if any orders exist for this user
     const userOrdersCount = await Order.countDocuments({ user: req.user.id });
     console.error(`[getUserOrder] User has ${userOrdersCount} total orders`);
-    
+
     return next(new AppError(`Order not found with ID: ${orderId}`, 404));
   }
 
@@ -2092,144 +2066,164 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
   const orderId = req.params.id;
   const updateData = req.body;
 
-  // Find order
-  const order = await Order.findById(orderId);
-  if (!order) {
-    return next(new AppError('Order not found', 404));
-  }
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // Store previous status (treat legacy typo 'delievered' as completed)
-  const previousStatus = order.currentStatus;
-  const wasCompleted =
-    order.currentStatus === 'delivered' ||
-    order.currentStatus === 'delievered' ||
-    order.status === 'completed';
+  try {
+    // Find order
+    const order = await Order.findById(orderId).session(session);
+    if (!order) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('Order not found', 404));
+    }
 
-  // If status is being updated, sync all status fields
-  if (updateData.currentStatus) {
-    const newStatus = updateData.currentStatus;
-    order.currentStatus = newStatus;
+    // Store previous status (treat legacy typo 'delievered' as completed)
+    const previousStatus = order.currentStatus;
+    const wasCompleted =
+      order.currentStatus === 'delivered' ||
+      order.currentStatus === 'delievered' ||
+      order.status === 'completed';
 
-    // Sync legacy status fields for backward compatibility
-    if (newStatus === 'delivered') {
+    // If status is being updated, sync all status fields
+    if (updateData.currentStatus) {
+      const newStatus = updateData.currentStatus;
+      order.currentStatus = newStatus;
+
+      // Sync legacy status fields for backward compatibility
+      if (newStatus === 'delivered') {
+        order.orderStatus = 'delievered';
+        order.FulfillmentStatus = 'delievered';
+        order.status = 'completed';
+      } else if (newStatus === 'cancelled') {
+        order.orderStatus = 'cancelled';
+        order.FulfillmentStatus = 'cancelled';
+        order.status = 'cancelled';
+      } else if (newStatus === 'refunded') {
+        order.status = 'cancelled';
+        order.orderStatus = 'cancelled';
+        order.FulfillmentStatus = 'cancelled';
+      } else if (newStatus === 'out_for_delivery') {
+        order.orderStatus = 'shipped';
+        order.FulfillmentStatus = 'shipped';
+        order.status = 'processing';
+      } else if (newStatus === 'confirmed' || newStatus === 'payment_completed') {
+        // Confirmed status means payment is complete - set status to confirmed
+        order.status = 'confirmed';
+        order.paymentStatus = 'completed';
+      } else if (['processing', 'preparing', 'ready_for_dispatch'].includes(newStatus)) {
+        order.status = 'processing';
+      }
+
+      // Add tracking history entry
+      order.trackingHistory.push({
+        status: newStatus,
+        message: updateData.message || 'Order status updated',
+        location: updateData.location || '',
+        updatedBy: req.user.id,
+        updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
+        timestamp: new Date(),
+      });
+    }
+
+    // Update other fields
+    Object.keys(updateData).forEach((key) => {
+      if (key !== 'currentStatus' && key !== 'message' && key !== 'location') {
+        order[key] = updateData[key];
+      }
+    });
+
+    // If client sent only legacy "delivered" fields (orderStatus/FulfillmentStatus 'delievered' or status 'completed')
+    // without currentStatus, treat as delivered so seller crediting runs.
+    let effectiveStatusBecameDelivered = false;
+    const isDeliveredViaLegacy =
+      (order.orderStatus === 'delievered' || order.FulfillmentStatus === 'delievered' || order.status === 'completed') &&
+      order.currentStatus !== 'delivered' &&
+      order.currentStatus !== 'delievered';
+    if (isDeliveredViaLegacy) {
+      order.currentStatus = 'delivered';
       order.orderStatus = 'delievered';
       order.FulfillmentStatus = 'delievered';
       order.status = 'completed';
-    } else if (newStatus === 'cancelled') {
-      order.orderStatus = 'cancelled';
-      order.FulfillmentStatus = 'cancelled';
-      order.status = 'cancelled';
-    } else if (newStatus === 'refunded') {
-      order.status = 'cancelled';
-      order.orderStatus = 'cancelled';
-      order.FulfillmentStatus = 'cancelled';
-    } else if (newStatus === 'out_for_delivery') {
-      order.orderStatus = 'shipped';
-      order.FulfillmentStatus = 'shipped';
-      order.status = 'processing';
-    } else if (newStatus === 'confirmed' || newStatus === 'payment_completed') {
-      // Confirmed status means payment is complete - set status to confirmed
-      order.status = 'confirmed';
-      order.paymentStatus = 'completed';
-    } else if (['processing', 'preparing', 'ready_for_dispatch'].includes(newStatus)) {
-      order.status = 'processing';
+      order.trackingHistory.push({
+        status: 'delivered',
+        message: updateData.message || 'Order marked delivered (legacy status sync)',
+        location: updateData.location || '',
+        updatedBy: req.user.id,
+        updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
+        timestamp: new Date(),
+      });
+      effectiveStatusBecameDelivered = true;
+      logger.info(`[updateOrder] Order ${orderId} had legacy delivered status; set currentStatus to 'delivered' for crediting`);
     }
-
-    // Add tracking history entry
-    order.trackingHistory.push({
-      status: newStatus,
-      message: updateData.message || 'Order status updated',
-      location: updateData.location || '',
-      updatedBy: req.user.id,
-      updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
-      timestamp: new Date(),
-    });
-  }
-
-  // Update other fields
-  Object.keys(updateData).forEach((key) => {
-    if (key !== 'currentStatus' && key !== 'message' && key !== 'location') {
-      order[key] = updateData[key];
-    }
-  });
-
-  // If client sent only legacy "delivered" fields (orderStatus/FulfillmentStatus 'delievered' or status 'completed')
-  // without currentStatus, treat as delivered so seller crediting runs.
-  let effectiveStatusBecameDelivered = false;
-  const isDeliveredViaLegacy =
-    (order.orderStatus === 'delievered' || order.FulfillmentStatus === 'delievered' || order.status === 'completed') &&
-    order.currentStatus !== 'delivered' &&
-    order.currentStatus !== 'delievered';
-  if (isDeliveredViaLegacy) {
-    order.currentStatus = 'delivered';
-    order.orderStatus = 'delievered';
-    order.FulfillmentStatus = 'delievered';
-    order.status = 'completed';
-    order.trackingHistory.push({
-      status: 'delivered',
-      message: updateData.message || 'Order marked delivered (legacy status sync)',
-      location: updateData.location || '',
-      updatedBy: req.user.id,
-      updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
-      timestamp: new Date(),
-    });
-    effectiveStatusBecameDelivered = true;
-    logger.info(`[updateOrder] Order ${orderId} had legacy delivered status; set currentStatus to 'delivered' for crediting`);
-  }
-
-  await order.save();
-
-  // Sync SellerOrder status with Order status if currentStatus was updated
-  if (updateData.currentStatus || effectiveStatusBecameDelivered) {
-    try {
-      const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
-      const statusToSync = effectiveStatusBecameDelivered ? 'delivered' : updateData.currentStatus;
-      const syncResult = await syncSellerOrderStatus(orderId, statusToSync);
-      logger.info('[updateOrder] SellerOrder sync result:', syncResult);
-    } catch (error) {
-      logger.error('[updateOrder] Error syncing SellerOrder status:', error);
-      // Don't fail the order update if SellerOrder sync fails
-    }
-  }
-
-  // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-  // This is the ONLY place where sellers should be credited (including when legacy delivered status was synced)
-  if ((updateData.currentStatus === 'delivered' || effectiveStatusBecameDelivered) && !wasCompleted) {
-    try {
-      const orderService = require('../../services/order/orderService');
-      const balanceUpdateResult = await orderService.creditSellerForOrder(
-        orderId,
-        req.user.id
-      );
-      logger.info('[updateOrder] Seller balance credit result:', balanceUpdateResult);
-      if (!balanceUpdateResult.success) {
-        logger.warn('[updateOrder] Seller credit failed:', balanceUpdateResult.message);
+    // Handle stock restoration on cancellation/refund
+    if (updateData.currentStatus && ['cancelled', 'refunded'].includes(updateData.currentStatus) && !['cancelled', 'refunded'].includes(previousStatus)) {
+      try {
+        await order.populate('orderItems');
+        await stockService.restoreOrderStock(order.orderItems, session);
+        logger.info(`[updateOrder] Stock restored for order ${orderId} (Status: ${updateData.currentStatus})`);
+      } catch (stockError) {
+        await session.abortTransaction();
+        session.endSession();
+        logger.error(`[updateOrder] Stock restoration failed:`, stockError);
+        return next(new AppError('Failed to restore stock. Please try again.', 500));
       }
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[updateOrder] Error crediting seller balances:', error);
     }
-  }
 
-  // If order is being refunded, revert seller balances
-  if (updateData.currentStatus === 'refunded' && wasCompleted) {
-    try {
-      const orderService = require('../../services/order/orderService');
-      const reversalResult = await orderService.revertSellerBalancesOnRefund(
-        orderId,
-        'Order Refunded'
-      );
-      logger.info('[updateOrder] Seller balance reversal result:', reversalResult);
-    } catch (error) {
-      // Log error but don't fail the status update
-      logger.error('[updateOrder] Error reverting seller balances:', error);
+    await order.save({ session });
+    await session.commitTransaction();
+
+    // POST-COMMIT ACTIONS
+    // Sync SellerOrder status with Order status if currentStatus was updated
+    if (updateData.currentStatus || effectiveStatusBecameDelivered) {
+      try {
+        const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
+        const statusToSync = effectiveStatusBecameDelivered ? 'delivered' : updateData.currentStatus;
+        const syncResult = await syncSellerOrderStatus(orderId, statusToSync);
+        logger.info('[updateOrder] SellerOrder sync result:', syncResult);
+      } catch (error) {
+        logger.error('[updateOrder] Error syncing SellerOrder status:', error);
+      }
     }
-  }
 
-  res.status(200).json({
-    status: 'success',
-    data: { order },
-  });
+    // Credit sellers ONLY when order status becomes "delivered"
+    if ((updateData.currentStatus === 'delivered' || effectiveStatusBecameDelivered) && !wasCompleted) {
+      try {
+        const balanceUpdateResult = await orderService.creditSellerForOrder(
+          orderId,
+          req.user.id
+        );
+        logger.info('[updateOrder] Seller balance credit result:', balanceUpdateResult);
+      } catch (error) {
+        logger.error('[updateOrder] Error crediting seller balances:', error);
+      }
+    }
+
+    // Revert seller balances on refund
+    if (updateData.currentStatus === 'refunded' && wasCompleted) {
+      try {
+        const reversalResult = await orderService.revertSellerBalancesOnRefund(
+          orderId,
+          'Order Refunded'
+        );
+        logger.info('[updateOrder] Seller balance reversal result:', reversalResult);
+      } catch (error) {
+        logger.error('[updateOrder] Error reverting seller balances:', error);
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: { order },
+    });
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
 });
 /**
  * Delete order with backup and revenue deduction
@@ -2242,6 +2236,9 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
   const userId = req.user._id;
   const role = req.user?.role;
 
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   // SECURITY FIX #25: Order items validation (only when items are explicitly provided)
   // For delete operations, the order and its items already exist in the database.
   // We should NOT require the client to re-send all items just to delete an order.
@@ -2250,33 +2247,31 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     for (const item of orderItems) {
       // Validate quantity
       if (!item.quantity || item.quantity <= 0) {
+        await session.abortTransaction();
+        session.endSession();
         return next(new AppError('Item quantity must be greater than zero', 400));
       }
 
       if (!Number.isInteger(item.quantity)) {
+        await session.abortTransaction();
+        session.endSession();
         return next(new AppError('Item quantity must be a whole number', 400));
       }
 
       // Validate product exists
       if (!item.product) {
+        await session.abortTransaction();
+        session.endSession();
         return next(new AppError('Product ID is required for all items', 400));
       }
 
-      // Check product exists and has sufficient stock
-      const Product = require('../../models/product/productModel'); // Assuming Product model is needed here
-      const product = await Product.findById(item.product);
+      // Check product exists (no stock check needed for delete/cancel)
+      const Product = require('../../models/product/productModel');
+      const product = await Product.findById(item.product).session(session);
       if (!product) {
+        await session.abortTransaction();
+        session.endSession();
         return next(new AppError(`Product ${item.product} not found`, 404));
-      }
-
-      // SECURITY: Check stock availability
-      if (product.stock < item.quantity) {
-        return next(
-          new AppError(
-            `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`,
-            400
-          )
-        );
       }
     }
   }
@@ -2286,12 +2281,16 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
 
   // Validate order ID
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    await session.abortTransaction();
+    session.endSession();
     return next(new AppError('Invalid order ID format', 400));
   }
 
   // Find the order before deletion
-  const order = await Order.findById(orderId);
+  const order = await Order.findById(orderId).session(session);
   if (!order) {
+    await session.abortTransaction();
+    session.endSession();
     return next(new AppError('Order not found', 404));
   }
 
@@ -2311,6 +2310,8 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
       ].includes(order.currentStatus);
 
     if (isPaidOrShipped) {
+      await session.abortTransaction();
+      session.endSession();
       return next(
         new AppError('This order can no longer be cancelled.', 400)
       );
@@ -2327,17 +2328,21 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     order.archivedByUser = true;
     order.archivedAt = new Date();
 
-    // Add tracking history entry for audit
-    order.trackingHistory.push({
-      status: 'cancelled',
-      message: 'Order cancelled by customer',
-      location: '',
-      updatedBy: req.user.id,
-      updatedByModel: 'User',
-      timestamp: new Date(),
-    });
+    // RESTORE STOCK
+    try {
+      await order.populate('orderItems');
+      await stockService.restoreOrderStock(order.orderItems, session);
+      logger.info(`[deleteOrder] Stock restored for user-cancelled order ${orderId}`);
+    } catch (stockError) {
+      await session.abortTransaction();
+      session.endSession();
+      logger.error(`[deleteOrder] Stock restoration failed:`, stockError);
+      return next(new AppError('Failed to restore stock. Please try again.', 500));
+    }
 
-    await order.save();
+    await order.save({ session });
+    await session.commitTransaction();
+    session.endSession();
 
     return res.status(200).json({
       status: 'success',
@@ -2422,8 +2427,22 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
     });
   }
 
+  // RESTORE STOCK before hard delete
+  try {
+    await order.populate('orderItems');
+    await stockService.restoreOrderStock(order.orderItems, session);
+    logger.info(`[deleteOrder] Stock restored for admin-deleted order ${orderId}`);
+  } catch (stockError) {
+    await session.abortTransaction();
+    session.endSession();
+    logger.error(`[deleteOrder] Admin delete stock restoration failed:`, stockError);
+    return next(new AppError('Failed to restore stock before deletion. Process aborted.', 500));
+  }
+
   // Now delete the order
-  await Order.findByIdAndDelete(orderId);
+  await Order.findByIdAndDelete(orderId).session(session);
+  await session.commitTransaction();
+  session.endSession();
 
   res.status(200).json({
     status: 'success',
@@ -2856,7 +2875,7 @@ exports.payShippingDifference = catchAsync(async (req, res, next) => {
 
   // Initialize Paystack payment using payment controller
   const axios = require('axios');
-const logger = require('../../utils/logger');
+  const logger = require('../../utils/logger');
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 
   try {

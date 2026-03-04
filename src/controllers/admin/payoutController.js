@@ -152,20 +152,20 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     // Paystack may have changed the transfer status (completed, failed, etc.)
     let paystackTransferStatus;
     try {
-      const transferId = withdrawalRequest.paystackTransferId || 
-                        withdrawalRequest.paystackReference || 
-                        transferCode;
-      
+      const transferId = withdrawalRequest.paystackTransferId ||
+        withdrawalRequest.paystackReference ||
+        transferCode;
+
       if (!transferId) {
         logger.warn('[verifyPaystackOtpForWithdrawal] No transfer ID found, skipping status check');
       } else {
         paystackTransferStatus = await payoutService.verifyTransferStatus(transferId);
-        
+
         logger.info('[verifyPaystackOtpForWithdrawal] Paystack transfer status:', {
           status: paystackTransferStatus.status,
           requiresPin: paystackTransferStatus.requires_pin,
         });
-        
+
         // If transfer is already completed, do NOT accept OTP - each transfer has its own OTP on Paystack.
         // Direct admin to use "Verify Transfer Status" to sync (no OTP needed).
         if (['success', 'completed', 'paid'].includes(paystackTransferStatus.status)) {
@@ -177,7 +177,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
             )
           );
         }
-        
+
         // If transfer has failed or been reversed: remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
         if (['failed', 'reversed'].includes(paystackTransferStatus.status)) {
           logger.info('[verifyPaystackOtpForWithdrawal] Transfer failed on Paystack, syncing database status and refunding seller');
@@ -208,7 +208,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
             )
           );
         }
-        
+
         // If transfer was abandoned: remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
         if (paystackTransferStatus.status === 'abandoned') {
           logger.info('[verifyPaystackOtpForWithdrawal] Transfer abandoned on Paystack, syncing database status and refunding seller');
@@ -242,7 +242,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
             )
           );
         }
-        
+
         // Only allow OTP verification if Paystack status is 'otp'
         if (paystackTransferStatus.status !== 'otp') {
           await session.abortTransaction();
@@ -282,7 +282,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
         transferCode,
         otp
       );
-      
+
       if (!paystackResponse) {
         throw new AppError('Paystack returned an empty response', 500);
       }
@@ -306,9 +306,9 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     // Safely extract transfer data from response
     const transferData = paystackResponse?.data?.data || paystackResponse?.data || {};
     const transferStatus =
-      transferData.status || 
-      paystackResponse?.data?.status || 
-      paystackResponse?.status || 
+      transferData.status ||
+      paystackResponse?.data?.status ||
+      paystackResponse?.status ||
       'unknown';
 
     logger.info('[verifyPaystackOtpForWithdrawal] Paystack finalize_transfer result:', {
@@ -347,6 +347,25 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
       withdrawalRequest.status = 'processing';
     } else {
       withdrawalRequest.status = 'failed';
+    }
+
+    // Update transaction status
+    if (['paid', 'failed'].includes(withdrawalRequest.status)) {
+      let transaction = null;
+      if (withdrawalRequest.transaction) {
+        transaction = await Transaction.findById(withdrawalRequest.transaction).session(session);
+      } else {
+        // Fallback for PaymentRequest, since they don't store transaction IDs directly
+        transaction = await Transaction.findOne({
+          'metadata.withdrawalRequestId': withdrawalRequest._id,
+          type: 'debit'
+        }).session(session);
+      }
+
+      if (transaction) {
+        transaction.status = withdrawalRequest.status === 'paid' ? 'completed' : 'failed';
+        await transaction.save({ session });
+      }
     }
 
     // Persist changes
@@ -430,12 +449,12 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
       withdrawalId: id,
       adminId,
     });
-    
+
     // If it's already an AppError, pass it through
     if (error instanceof AppError) {
       return next(error);
     }
-    
+
     // If it's a Paystack error that wasn't wrapped, wrap it
     if (error.response?.data?.message) {
       return next(
@@ -445,7 +464,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
         )
       );
     }
-    
+
     // Generic error fallback with more context
     return next(
       new AppError(
@@ -695,10 +714,10 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       isPaymentRequest = true;
       withdrawalRequest = paymentRequest;
     }
-    
+
     // Convert to plain object to inspect all fields
     const requestObj = withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest;
-    
+
     // Debug: Log the withdrawal request to see what fields are present
     logger.info('[approveWithdrawalRequest] Withdrawal request fields:', {
       id: requestObj._id,
@@ -755,11 +774,11 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
     // ALWAYS use payment details from the request, not from seller's saved methods
     // PaymentRequest uses 'paymentMethod', WithdrawalRequest uses 'payoutMethod'
-    const paymentMethod = isPaymentRequest 
+    const paymentMethod = isPaymentRequest
       ? (withdrawalRequest.paymentMethod || withdrawalRequest.payoutMethod)
       : (withdrawalRequest.payoutMethod || withdrawalRequest.paymentMethod);
     const paymentDetails = withdrawalRequest.paymentDetails || {};
-    
+
     logger.info('[approveWithdrawalRequest] Using payment details from request:', {
       isPaymentRequest,
       payoutMethod: withdrawalRequest.payoutMethod,
@@ -770,7 +789,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       paymentDetails,
       withdrawalRequestFields: Object.keys(withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest),
     });
-    
+
     // Validate payment method exists
     if (!paymentMethod) {
       await session.abortTransaction();
@@ -783,20 +802,20 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       });
       return next(new AppError('Payment method is missing from the withdrawal request. Please ensure the request has a valid payout method.', 400));
     }
-    
+
     // Validate payment details exist
     if (!paymentDetails || Object.keys(paymentDetails).length === 0) {
       await session.abortTransaction();
       return next(new AppError('Payment details are missing from the withdrawal request. Please ensure the request has valid payment information.', 400));
     }
-    
+
     // Build recipientData directly from payment details in the request
     let recipientData = {};
     let recipientCode = null;
-    
+
     // Check if this is a mobile money payment method
     const isMobileMoney = ['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod);
-    
+
     if (isMobileMoney) {
       // Map payment method to network
       const methodToNetwork = {
@@ -804,33 +823,33 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         'vodafone_cash': 'Vodafone',
         'airtel_tigo_money': 'AirtelTigo',
       };
-      
+
       // Validate mobile money details
       if (!paymentDetails.phone) {
         await session.abortTransaction();
         return next(new AppError('Mobile money phone number is missing from payment details', 400));
       }
-      
+
       // Get mobile money bank code
       const payoutService = require('../../services/payoutService');
       const network = paymentDetails.network || methodToNetwork[paymentMethod];
       const mobileBankCode = payoutService.getMobileMoneyBankCode(network);
-      
+
       if (!mobileBankCode) {
         await session.abortTransaction();
         return next(new AppError('Invalid mobile money network. Supported networks: MTN, Vodafone, AirtelTigo', 400));
       }
-      
+
       // Format phone number - remove any spaces, dashes, or non-digit characters
       // Paystack expects phone number in format: 0551234987 (Ghana format)
       const formattedPhone = paymentDetails.phone.replace(/\D/g, ''); // Remove non-digits
-      
+
       // Validate phone number format (should be 10 digits for Ghana)
       if (formattedPhone.length !== 10) {
         await session.abortTransaction();
         return next(new AppError(`Invalid phone number format. Expected 10 digits, got ${formattedPhone.length}. Phone: ${paymentDetails.phone}`, 400));
       }
-      
+
       // Build recipient data directly from payment details (Paystack format)
       recipientData = {
         type: 'mobile_money',
@@ -839,7 +858,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         bank_code: mobileBankCode, // MTN, VOD, or ATL
         currency: 'GHS',
       };
-      
+
       logger.info('[approveWithdrawalRequest] Mobile money recipient data from request:', {
         phone: paymentDetails.phone,
         network: network,
@@ -852,7 +871,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         await session.abortTransaction();
         return next(new AppError('Bank account details are incomplete. Please ensure account number, account name, and bank name are provided.', 400));
       }
-      
+
       // Get bank code - use stored bankCode or map from bankName
       const payoutService = require('../../services/payoutService');
       let bankCode = paymentDetails.bankCode;
@@ -860,23 +879,23 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         bankCode = payoutService.getBankCodeFromName(paymentDetails.bankName);
         logger.info(`[approveWithdrawalRequest] Mapped bank name "${paymentDetails.bankName}" to code: ${bankCode}`);
       }
-      
+
       if (!bankCode) {
-        const errorMsg = paymentDetails.bankName 
+        const errorMsg = paymentDetails.bankName
           ? `Invalid bank name: "${paymentDetails.bankName}". Please provide a valid bank code or use a supported bank name.`
           : 'Bank code is required. Please ensure the payment request has a valid bank code.';
         await session.abortTransaction();
         return next(new AppError(errorMsg, 400));
       }
-      
+
       // Validate bank code format (should be 3 digits for Ghana banks)
       if (!/^\d{3}$/.test(bankCode)) {
         logger.warn(`[approveWithdrawalRequest] Bank code format may be invalid: ${bankCode}`);
       }
-      
+
       // Format account number - remove any spaces or dashes
       const formattedAccountNumber = paymentDetails.accountNumber.replace(/\s+/g, '');
-      
+
       // Build recipient data directly from payment details (Paystack format)
       recipientData = {
         type: 'nuban',
@@ -885,7 +904,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         bank_code: bankCode, // 3-digit bank code (e.g., "044", "050")
         currency: 'GHS',
       };
-      
+
       logger.info('[approveWithdrawalRequest] Bank recipient data from request:', {
         accountNumber: paymentDetails.accountNumber,
         accountName: paymentDetails.accountName,
@@ -896,7 +915,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       await session.abortTransaction();
       return next(new AppError(`Unsupported payment method: ${paymentMethod}`, 400));
     }
-    
+
     // Create recipient using recipientData built from payment request details
     try {
       const { paystackApi, PAYSTACK_ENDPOINTS } = require('../../config/paystack');
@@ -935,12 +954,12 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     // Check transfer_data for requires_approval or otp status
     const transferData = transferResult.transfer_data || {};
     const paystackStatus = transferResult.status; // This is Paystack's actual status
-    
+
     // CRITICAL: Check Paystack's ACTUAL status, not our assumptions
-    const requiresPin = paystackStatus === 'otp' || 
-                        transferData.requires_approval === 1 ||
-                        transferData.requires_approval === true ||
-                        (isMobileMoney && (paystackStatus === 'pending' || paystackStatus === 'otp'));
+    const requiresPin = paystackStatus === 'otp' ||
+      transferData.requires_approval === 1 ||
+      transferData.requires_approval === true ||
+      (isMobileMoney && (paystackStatus === 'pending' || paystackStatus === 'otp'));
 
     logger.info('💳 [approveWithdrawalRequest] Paystack transfer status analysis:', {
       paystackStatus: paystackStatus,
@@ -953,19 +972,19 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     // For mobile money, always require PIN and set status to processing
     // For bank transfers, set status based on transfer result
     const finalRequiresPin = isMobileMoney ? true : requiresPin;
-    
+
     // IMPORTANT: Only set to 'awaiting_paystack_otp' if Paystack status is actually 'otp'
     // Otherwise, Paystack won't accept OTP verification
     const shouldAwaitOtp = (isMobileMoney || requiresPin) && paystackStatus === 'otp';
-    const finalStatus = shouldAwaitOtp ? 'awaiting_paystack_otp' : 
-                       (isMobileMoney ? 'processing' : (requiresPin ? 'processing' : 'paid'));
-    
+    const finalStatus = shouldAwaitOtp ? 'awaiting_paystack_otp' :
+      (isMobileMoney ? 'processing' : (requiresPin ? 'processing' : 'paid'));
+
     logger.info('💳 [approveWithdrawalRequest] Setting withdrawal status:', {
       finalStatus: finalStatus,
       shouldAwaitOtp: shouldAwaitOtp,
       paystackStatus: paystackStatus,
-      reason: shouldAwaitOtp ? 'Paystack status is "otp" - will await OTP' : 
-              `Paystack status is "${paystackStatus}" - cannot await OTP`
+      reason: shouldAwaitOtp ? 'Paystack status is "otp" - will await OTP' :
+        `Paystack status is "${paystackStatus}" - cannot await OTP`
     });
 
     // Security check: Double-check status before updating (prevent race conditions)
@@ -1000,7 +1019,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     const withholdingTax = withdrawalRequest.withholdingTax || 0;
     const withholdingTaxRate = withdrawalRequest.withholdingTaxRate || 0;
     const taxCategory = seller.taxCategory || 'individual';
-    
+
     // Create TaxCollection record when admin approves withdrawal
     if (withholdingTax > 0) {
       const taxCollection = await TaxCollection.create([{
@@ -1016,7 +1035,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
           amountPaidToSeller: withdrawalRequest.amountPaidToSeller || (withdrawalRequest.amount - withholdingTax),
         },
       }], { session });
-      
+
       logger.info(`[approveWithdrawalRequest] Created TaxCollection record: ${taxCollection[0]._id}, Amount: ${withholdingTax}, Rate: ${withholdingTaxRate}`);
     }
 
@@ -1044,11 +1063,11 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       paymentRequest.approvedAt = new Date(); // Mark as approved
       paymentRequest.requiresPin = finalRequiresPin;
       paymentRequest.pinSubmitted = false;
-      
+
       // Add admin tracking
       paymentRequest.approvedByAdmin = adminTrackingData;
       paymentRequest.rejectedByAdmin = null; // Clear rejection if exists
-      
+
       // Add to audit history
       if (!paymentRequest.auditHistory) {
         paymentRequest.auditHistory = [];
@@ -1057,7 +1076,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         action: 'approved',
         ...adminTrackingData,
       });
-      
+
       await paymentRequest.save({ session });
       withdrawalRequest = paymentRequest.toObject();
     } else {
@@ -1074,11 +1093,11 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       withdrawalRequest.pinSubmitted = false;
       withdrawalRequest.processedBy = adminId;
       withdrawalRequest.processedAt = new Date();
-      
+
       // Add admin tracking
       withdrawalRequest.approvedByAdmin = adminTrackingData;
       withdrawalRequest.rejectedByAdmin = null; // Clear rejection if exists
-      
+
       // Add to audit history
       if (!withdrawalRequest.auditHistory) {
         withdrawalRequest.auditHistory = [];
@@ -1087,7 +1106,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         action: 'approved',
         ...adminTrackingData,
       });
-      
+
       await withdrawalRequest.save({ session });
     }
 
@@ -1128,38 +1147,61 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     const oldPendingBalance = seller.pendingBalance || 0;
     const oldLockedBalance = seller.lockedBalance || 0;
     const oldWithdrawableBalance = seller.withdrawableBalance || 0;
-    
+
     // Recalculate withdrawableBalance (balance - lockedBalance - pendingBalance)
     seller.calculateWithdrawableBalance();
     const newWithdrawableBalance = seller.withdrawableBalance || 0;
-    
+
     await seller.save({ session });
-    
+
     logger.info(`[approveWithdrawalRequest] Balance after admin approval for seller ${seller._id}:`);
     logger.info(`  Total Revenue (Balance);: ${oldBalance} (unchanged - will deduct when OTP verified)`);
     logger.info(`  Pending Balance: ${oldPendingBalance} (unchanged - awaiting OTP verification);`);
     logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
     logger.info(`  Available Balance: ${oldWithdrawableBalance} → ${newWithdrawableBalance} (recalculated);`);
 
-    // Create transaction record
-    const transaction = await Transaction.create(
-      [
-        {
-          seller: seller._id,
-          amount: withdrawalRequest.amount,
-          type: 'debit',
-          description: `Withdrawal Payout - Request #${withdrawalRequest._id}`,
-          status: 'pending', // Will be updated when transfer is verified
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id,
-            paystackReference: transferResult.reference,
-            paystackTransferCode: transferResult.transfer_code,
-            processedBy: adminId,
+    // Update existing transaction or create new one
+    let transactionRecord = await Transaction.findOne({
+      seller: seller._id,
+      payoutRequest: withdrawalRequest._id,
+      type: 'debit'
+    }).session(session);
+
+    if (transactionRecord) {
+      transactionRecord.status = 'pending';
+      transactionRecord.description = `Withdrawal Payout - Request #${withdrawalRequest._id}`;
+      transactionRecord.metadata = {
+        ...transactionRecord.metadata,
+        withdrawalRequestId: withdrawalRequest._id,
+        paystackReference: transferResult.reference,
+        paystackTransferCode: transferResult.transfer_code,
+        processedBy: adminId,
+      };
+      await transactionRecord.save({ session });
+      logger.info(`[approveWithdrawalRequest] Updated existing transaction ${transactionRecord._id} for withdrawal ${withdrawalRequest._id}`);
+    } else {
+      const transaction = await Transaction.create(
+        [
+          {
+            seller: seller._id,
+            amount: withdrawalRequest.amount,
+            type: 'debit',
+            description: `Withdrawal Payout - Request #${withdrawalRequest._id}`,
+            status: 'pending', // Will be updated when transfer is verified
+            payoutRequest: withdrawalRequest._id, // Set the link
+            metadata: {
+              withdrawalRequestId: withdrawalRequest._id,
+              paystackReference: transferResult.reference,
+              paystackTransferCode: transferResult.transfer_code,
+              processedBy: adminId,
+            },
           },
-        },
-      ],
-      { session }
-    );
+        ],
+        { session }
+      );
+      transactionRecord = transaction[0];
+      logger.info(`[approveWithdrawalRequest] Created new transaction for withdrawal ${withdrawalRequest._id}`);
+    }
 
     // Link transaction to request (only for WithdrawalRequest, PaymentRequest doesn't have this field)
     if (!isPaymentRequest) {
@@ -1176,7 +1218,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       payoutService
         .verifyTransferStatus(transferResult.transfer_id)
         .then(async (transferStatus) => {
-          await updateWithdrawalStatusFromPaystack(withdrawalRequest._id, transferStatus, finalRequiresPin);
+          await payoutService.updateWithdrawalStatusFromPaystack(withdrawalRequest._id, transferStatus, finalRequiresPin);
         })
         .catch((error) => {
           logger.error('[approveWithdrawalRequest] Error verifying transfer:', error);
@@ -1216,7 +1258,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     const updatedSeller = await Seller.findById(seller._id)
       .select('balance lockedBalance pendingBalance withdrawableBalance')
       .lean();
-    
+
     // Send withdrawal request confirmation email to seller
     try {
       const emailDispatcher = require('../../emails/emailDispatcher');
@@ -1226,7 +1268,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       logger.error('[approveWithdrawalRequest] Error sending withdrawal request email:', emailError.message);
       // Don't fail withdrawal if email fails
     }
-    
+
     res.status(200).json({
       status: 'success',
       message: message,
@@ -1258,7 +1300,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         logger.warn('[approveWithdrawalRequest] Transaction abort error:', abortError.message);
       }
     }
-    
+
     logger.error('[approveWithdrawalRequest] Error:', {
       message: error.message,
       stack: error.stack,
@@ -1273,10 +1315,10 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     }
 
     // Provide more specific error message
-    const errorMessage = error.response?.data?.message 
+    const errorMessage = error.response?.data?.message
       ? `Paystack error: ${error.response.data.message}`
       : error.message || 'Failed to approve withdrawal request';
-    
+
     return next(new AppError(errorMessage, error.response?.status || 500));
   } finally {
     session.endSession();
@@ -1346,26 +1388,26 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
     const oldPendingBalance = seller.pendingBalance || 0;
     const oldBalance = seller.balance || 0;
-    
+
     // Validate pendingBalance has the amount
     if (amountRequested > oldPendingBalance) {
       logger.warn(`[rejectWithdrawalRequest] Pending balance (${oldPendingBalance}); is less than requested amount (${amountRequested}). Proceeding with refund anyway.`);
     }
-    
+
     // Refund from pendingBalance (the amount was moved to pendingBalance when request was created)
     seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
-    
+
     // Balance should NOT be modified - it was never deducted
     // Only pendingBalance is refunded, which increases available balance
-    
+
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
-    
+
     logger.info(`[rejectWithdrawalRequest] Pending balance refund for seller ${seller._id}:`);
     logger.info(`  Pending Balance: ${oldPendingBalance} - ${amountRequested} = ${seller.pendingBalance}`);
     logger.info(`  Total Balance: ${oldBalance} (unchanged);`);
     logger.info(`  Available Balance: ${seller.withdrawableBalance}`);
-    
+
     // Log finance audit
     try {
       const financeAudit = require('../../services/financeAuditService');
@@ -1380,7 +1422,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     } catch (auditError) {
       logger.error('[rejectWithdrawalRequest] Failed to log finance audit (non-critical);:', auditError);
     }
-    
+
     // Log seller revenue history for rejected withdrawal refund
     // Note: This is a pendingBalance refund, not a balance refund
     try {
@@ -1406,10 +1448,24 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       });
       logger.info(`[rejectWithdrawalRequest] ✅ Seller revenue history logged for rejected withdrawal refund - seller ${seller._id}`);
     } catch (historyError) {
-      logger.error(`[rejectWithdrawalRequest] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
+      logger.error(`[rejectWithdrawalRequest] Failed to log seller revenue history (non-critical) for seller ${seller._id}:`, {
         error: historyError.message,
         stack: historyError.stack,
       });
+    }
+
+    // Update existing transaction record 
+    const existingTx = await Transaction.findOne({
+      seller: seller._id,
+      payoutRequest: withdrawalRequest._id,
+      type: 'debit'
+    }).session(session);
+
+    if (existingTx) {
+      existingTx.status = 'failed';
+      existingTx.description = `Withdrawal Rejected: ${reason || 'Rejected by admin'}`;
+      await existingTx.save({ session });
+      logger.info(`[rejectWithdrawalRequest] Updated existing transaction ${existingTx._id} to failed`);
     }
 
     // Prepare admin tracking data
@@ -1431,11 +1487,11 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       paymentRequest.rejectionReason = reason || 'Rejected by admin';
       paymentRequest.processedAt = new Date();
       paymentRequest.rejectedAt = new Date(); // Mark rejection time
-      
+
       // Add admin tracking
       paymentRequest.rejectedByAdmin = adminTrackingData;
       paymentRequest.approvedByAdmin = null; // Clear approval if exists
-      
+
       // Add to audit history
       if (!paymentRequest.auditHistory) {
         paymentRequest.auditHistory = [];
@@ -1444,7 +1500,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
         action: 'rejected',
         ...adminTrackingData,
       });
-      
+
       await paymentRequest.save({ session });
       withdrawalRequest = paymentRequest.toObject();
     } else {
@@ -1454,11 +1510,11 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       withdrawalRequest.processedBy = adminId;
       withdrawalRequest.processedAt = new Date();
       withdrawalRequest.rejectedAt = new Date(); // Mark rejection time
-      
+
       // Add admin tracking
       withdrawalRequest.rejectedByAdmin = adminTrackingData;
       withdrawalRequest.approvedByAdmin = null; // Clear approval if exists
-      
+
       // Add to audit history
       if (!withdrawalRequest.auditHistory) {
         withdrawalRequest.auditHistory = [];
@@ -1467,7 +1523,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
         action: 'rejected',
         ...adminTrackingData,
       });
-      
+
       await withdrawalRequest.save({ session });
     }
 
@@ -1501,9 +1557,9 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
     try {
       const emailDispatcher = require('../../emails/emailDispatcher');
       const Seller = require('../../models/user/sellerModel');
-const logger = require('../../utils/logger');
+      const logger = require('../../utils/logger');
       const seller = await Seller.findById(withdrawalRequest.seller).select('name email shopName').lean();
-      
+
       if (seller && seller.email) {
         await emailDispatcher.sendWithdrawalRejected(seller, withdrawalRequest, reason || 'Rejected by admin');
         logger.info(`[rejectWithdrawalRequest] ✅ Withdrawal rejected email sent to seller ${seller.email}`);
@@ -1620,10 +1676,10 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
     // For pending/processing withdrawals, refund from pendingBalance
     const oldBalance = seller.balance || 0;
     const oldPendingBalance = seller.pendingBalance || 0;
-    
+
     // Check if withdrawal was already paid (balance was deducted)
     const wasPaid = ['paid', 'success'].includes(withdrawalRequest.status);
-    
+
     if (wasPaid) {
       // Refund to balance (money was already deducted from balance)
       seller.balance = oldBalance + amountRequested;
@@ -1636,11 +1692,11 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
         seller.pendingBalance = 0;
       }
     }
-    
+
     // Recalculate withdrawableBalance
     seller.calculateWithdrawableBalance();
     await seller.save({ session });
-    
+
     logger.info(`[reverseWithdrawal] Refund for seller ${seller._id}:`, {
       wasPaid,
       amountRequested,
@@ -1788,10 +1844,10 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
   }
 
   // Get transfer ID from various possible fields
-  const transferId = withdrawalRequest.paystackTransferId || 
-                     withdrawalRequest.paystackReference || 
-                     withdrawalRequest.paystackTransferCode ||
-                     withdrawalRequest.transferCode;
+  const transferId = withdrawalRequest.paystackTransferId ||
+    withdrawalRequest.paystackReference ||
+    withdrawalRequest.paystackTransferCode ||
+    withdrawalRequest.transferCode;
 
   if (!transferId) {
     return next(new AppError('No Paystack transfer reference found', 400));
@@ -1888,7 +1944,7 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
     if (newStatus !== oldStatus) {
       requestToUpdate.status = newStatus;
       await requestToUpdate.save({ session, validateBeforeSave: false });
-      
+
       logger.info('[verifyTransferStatus] Status synced from Paystack:', {
         withdrawalId: id,
         oldStatus,
@@ -1932,7 +1988,7 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
       status: 'success',
-      message: oldStatus !== newStatus 
+      message: oldStatus !== newStatus
         ? `Transfer status synced. Updated from '${oldStatus}' to '${newStatus}' based on Paystack status.`
         : 'Transfer status verified',
       data: {
@@ -1956,200 +2012,6 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
   }
 });
 
-/**
- * Helper function to update withdrawal status from Paystack transfer status
- * @param {String} withdrawalRequestId - Withdrawal request ID
- * @param {Object} transferStatus - Transfer status from Paystack
- * @param {Boolean} requiresPin - Whether PIN is required (prevents auto-update to 'paid')
- */
-async function updateWithdrawalStatusFromPaystack(withdrawalRequestId, transferStatus, requiresPin = false) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
 
-  try {
-    const withdrawalRequest = await WithdrawalRequest.findById(withdrawalRequestId).session(session);
-    if (!withdrawalRequest) {
-      await session.abortTransaction();
-      return;
-    }
 
-    const seller = await Seller.findById(withdrawalRequest.seller).session(session);
-    if (!seller) {
-      await session.abortTransaction();
-      return;
-    }
-
-    let newStatus = withdrawalRequest.status;
-    let shouldUpdateTransaction = false;
-
-    // Check if PIN is required from transfer status or withdrawal request
-    const pinRequired = requiresPin || 
-                       withdrawalRequest.requiresPin || 
-                       transferStatus.requires_pin ||
-                       transferStatus.status === 'otp';
-
-    // Map Paystack status to our status
-    // IMPORTANT: Don't change to 'paid' if PIN is required and not submitted
-    if (transferStatus.status === 'success') {
-      // Only mark as 'paid' if PIN is not required OR PIN has been submitted
-      if (!pinRequired || withdrawalRequest.pinSubmitted) {
-        newStatus = 'paid';
-        shouldUpdateTransaction = true;
-        // Remove amount from pendingBalance and balance now that payout is complete
-        const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
-        const oldPendingBalance = seller.pendingBalance || 0;
-        const oldBalance = seller.balance || 0;
-        if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
-          seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
-          seller.balance = Math.max(0, oldBalance - amountRequested);
-          seller.calculateWithdrawableBalance();
-          await seller.save({ session });
-          logger.info(`[updateWithdrawalStatusFromPaystack] Deducted from pendingBalance and balance (paid): seller ${seller._id}, amount: ${amountRequested}`);
-        }
-      } else {
-        // PIN required but not submitted - keep as processing
-        newStatus = 'processing';
-        // Update requiresPin flag if not already set
-        if (!withdrawalRequest.requiresPin) {
-          withdrawalRequest.requiresPin = true;
-        }
-      }
-    } else if (transferStatus.status === 'failed') {
-      newStatus = 'failed';
-      shouldUpdateTransaction = true;
-      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
-      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
-      const oldPendingBalance = seller.pendingBalance || 0;
-      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
-        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
-        seller.calculateWithdrawableBalance();
-        await seller.save({ session });
-        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (failed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
-      }
-      try {
-        await logSellerRevenue({
-          sellerId: seller._id,
-          amount: amountRequested,
-          type: 'REVERSAL',
-          description: `Transfer failed - Refund: GH₵${amountRequested.toFixed(2)}`,
-          reference: `TRANSFER-FAILED-${withdrawalRequest._id}-${Date.now()}`,
-          payoutRequestId: withdrawalRequest._id,
-          balanceBefore: seller.balance,
-          balanceAfter: seller.balance,
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id.toString(),
-            transferStatus: 'failed',
-            paystackTransferId: withdrawalRequest.paystackTransferId,
-            reason: 'Transfer failed on Paystack',
-            pendingBalanceRefund: true,
-          },
-        });
-        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for failed transfer refund - seller ${seller._id}`);
-      } catch (historyError) {
-        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
-          error: historyError.message,
-          stack: historyError.stack,
-        });
-      }
-    } else if (transferStatus.status === 'abandoned') {
-      newStatus = 'failed';
-      shouldUpdateTransaction = true;
-      if (withdrawalRequest.otpSessionStatus !== undefined) {
-        withdrawalRequest.otpSessionStatus = 'abandoned';
-      }
-      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
-      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
-      const oldPendingBalance = seller.pendingBalance || 0;
-      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
-        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
-        seller.calculateWithdrawableBalance();
-        await seller.save({ session });
-        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (abandoned) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
-      }
-    } else if (transferStatus.status === 'pending' || transferStatus.status === 'otp') {
-      newStatus = 'processing';
-      // Update requiresPin flag if status is 'otp'
-      if (transferStatus.status === 'otp' && !withdrawalRequest.requiresPin) {
-        withdrawalRequest.requiresPin = true;
-      }
-    } else if (transferStatus.status === 'reversed') {
-      newStatus = 'failed';
-      shouldUpdateTransaction = true;
-      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
-      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
-      const oldPendingBalance = seller.pendingBalance || 0;
-      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
-        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
-        seller.calculateWithdrawableBalance();
-        await seller.save({ session });
-        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (reversed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
-      }
-      try {
-        await logSellerRevenue({
-          sellerId: seller._id,
-          amount: amountRequested,
-          type: 'REVERSAL',
-          description: `Transfer reversed - Refund: GH₵${amountRequested.toFixed(2)}`,
-          reference: `TRANSFER-REVERSED-${withdrawalRequest._id}-${Date.now()}`,
-          payoutRequestId: withdrawalRequest._id,
-          balanceBefore: seller.balance,
-          balanceAfter: seller.balance,
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id.toString(),
-            transferStatus: 'reversed',
-            paystackTransferId: withdrawalRequest.paystackTransferId,
-            reason: 'Transfer reversed on Paystack',
-            pendingBalanceRefund: true,
-          },
-        });
-        logger.info(`[updateWithdrawalStatusFromPaystack] ✅ Seller revenue history logged for reversed transfer refund - seller ${seller._id}`);
-      } catch (historyError) {
-        logger.error(`[updateWithdrawalStatusFromPaystack] Failed to log seller revenue history (non-critical); for seller ${seller._id}:`, {
-          error: historyError.message,
-          stack: historyError.stack,
-        });
-      }
-    }
-
-    // Update withdrawal request
-    const statusChanged = newStatus !== withdrawalRequest.status;
-    const pinFlagChanged = pinRequired && !withdrawalRequest.requiresPin;
-    
-    if (statusChanged || pinFlagChanged) {
-      withdrawalRequest.status = newStatus;
-      if (pinFlagChanged) {
-        withdrawalRequest.requiresPin = true;
-      }
-      await withdrawalRequest.save({ session });
-    }
-
-    // Update transaction status
-    if (shouldUpdateTransaction && withdrawalRequest.transaction) {
-      const transaction = await Transaction.findById(withdrawalRequest.transaction).session(session);
-      if (transaction) {
-        transaction.status = newStatus === 'paid' ? 'completed' : 'failed';
-        await transaction.save({ session });
-      }
-    }
-
-    // Send transfer-success email to seller when marked paid
-    if (newStatus === 'paid' && seller && seller.email) {
-      try {
-        const emailDispatcher = require('../../emails/emailDispatcher');
-        await emailDispatcher.sendWithdrawalApproved(seller, withdrawalRequest);
-        logger.info('[updateWithdrawalStatusFromPaystack] ✅ Transfer success email sent to seller %s', seller.email);
-      } catch (emailError) {
-        logger.error('[updateWithdrawalStatusFromPaystack] Error sending transfer success email:', emailError.message);
-      }
-    }
-
-    await session.commitTransaction();
-  } catch (error) {
-    await session.abortTransaction();
-    logger.error('[updateWithdrawalStatusFromPaystack] Error:', error);
-    throw error;
-  } finally {
-    session.endSession();
-  }
-}
 

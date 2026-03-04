@@ -14,21 +14,28 @@ const adminActionLogSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: true,
+    required: false,
   },
   email: {
     type: String,
-    required: true,
+    required: false,
   },
   role: {
     type: String,
-    required: true,
+    required: false,
     enum: ['superadmin', 'admin', 'moderator'],
     index: true,
   },
   actionType: {
     type: String,
-    enum: ['WITHDRAWAL_APPROVED', 'WITHDRAWAL_REJECTED', 'PAYOUT_VERIFICATION_APPROVED', 'PAYOUT_VERIFICATION_REJECTED'],
+    enum: [
+      'WITHDRAWAL_APPROVED',
+      'WITHDRAWAL_REJECTED',
+      'PAYOUT_VERIFICATION_APPROVED',
+      'PAYOUT_VERIFICATION_REJECTED',
+      'SHIPPING_RATE_UPDATE',
+      'SHIPPING_SETTLED'
+    ],
     required: true,
     index: true,
   },
@@ -46,7 +53,7 @@ const adminActionLogSchema = new mongoose.Schema({
   sellerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Seller',
-    required: true,
+    required: false,
     index: true,
   },
   oldStatus: {

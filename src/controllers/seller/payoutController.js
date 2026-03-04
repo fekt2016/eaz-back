@@ -237,29 +237,39 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
     logger.info(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
     logger.info(`  Withdrawable Balance: ${seller.withdrawableBalance}`);
 
-    // Update payment request status (PaymentRequest doesn't have 'cancelled', use 'rejected')
-    withdrawalRequest.status = 'rejected';
+    // Update payment request status (PaymentRequest doesn't have 'cancelled', use 'cancelled' or 'rejected')
+    withdrawalRequest.status = 'rejected'; // 'rejected' is the existing enum for final cancellation
     withdrawalRequest.rejectionReason = 'Cancelled by seller';
     await withdrawalRequest.save({ session });
 
-    // Create a "refund" transaction record
-    const transaction = await Transaction.create(
-      [
-        {
-          seller: sellerId,
-          amount: withdrawalRequest.amount,
-          type: 'credit',
-          description: `Withdrawal Request Cancelled - Refund for Request #${withdrawalRequest._id}`,
-          status: 'completed',
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id,
-            action: 'cancellation_refund',
-            cancelledAt: new Date(),
+    // Update existing transaction record instead of creating a new one
+    const existingTx = await Transaction.findOne({
+      seller: sellerId,
+      payoutRequest: withdrawalRequest._id,
+      type: 'debit'
+    }).session(session);
+
+    if (existingTx) {
+      existingTx.status = 'cancelled';
+      existingTx.description = `Withdrawal Cancelled - Request #${withdrawalRequest._id}`;
+      await existingTx.save({ session });
+      logger.info(`[cancelWithdrawalRequest] Updated existing transaction ${existingTx._id} to cancelled`);
+    } else {
+      // Create a record if none found (fallback)
+      await Transaction.create(
+        [
+          {
+            seller: sellerId,
+            amount: withdrawalRequest.amount,
+            type: 'debit',
+            description: `Withdrawal Cancelled - Request #${withdrawalRequest._id}`,
+            status: 'cancelled',
+            payoutRequest: withdrawalRequest._id,
           },
-        },
-      ],
-      { session }
-    );
+        ],
+        { session }
+      );
+    }
 
     await session.commitTransaction();
 
@@ -1009,15 +1019,21 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         logger.warn(`[verifyOtp] Transfer failed but pendingBalance (${oldPendingBalance}); is less than amount (${amountRequested})`);
       }
 
-      // Update withdrawal request status
-      withdrawalRequest.status = 'failed';
-      withdrawalRequest.otpSessionStatus = 'failed';
-      if (!withdrawalRequest.metadata) {
-        withdrawalRequest.metadata = {};
-      }
-      withdrawalRequest.metadata.failedAt = new Date();
-      withdrawalRequest.metadata.failureReason = 'Transfer failed after OTP verification';
       await withdrawalRequest.save({ session });
+
+      // Update transaction status to failed
+      const existingTx = await Transaction.findOne({
+        seller: sellerId,
+        payoutRequest: withdrawalRequest._id,
+        type: 'debit'
+      }).session(session);
+
+      if (existingTx) {
+        existingTx.status = 'failed';
+        existingTx.description = `Withdrawal Failed: Request #${withdrawalRequest._id}`;
+        await existingTx.save({ session });
+        logger.info(`[verifyOtp] Updated transaction ${existingTx._id} to failed`);
+      }
 
       await session.commitTransaction();
       session.endSession();
@@ -1049,22 +1065,21 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         logger.warn(`[verifyOtp] Transfer abandoned but pendingBalance (${oldPendingBalance}); is less than amount (${amountRequested})`);
       }
 
-      // Mark withdrawal as OTP expired and update session status
-      withdrawalRequest.status = 'otp_expired';
-      withdrawalRequest.otpSessionStatus = 'abandoned';
-      withdrawalRequest.paystackTransferCode = null; // Clear abandoned transfer code
-
-      // Update metadata
-      if (!withdrawalRequest.metadata) {
-        withdrawalRequest.metadata = {};
-      }
-      withdrawalRequest.metadata.abandonedAt = new Date();
-      withdrawalRequest.metadata.abandonedTransferCode = transferCode; // Keep old code for reference
-      withdrawalRequest.metadata.pendingBalanceRefunded = true;
-      withdrawalRequest.metadata.pendingBalanceBefore = oldPendingBalance;
-      withdrawalRequest.metadata.pendingBalanceAfter = seller.pendingBalance;
-
       await withdrawalRequest.save({ session });
+
+      // Update transaction status to failed
+      const existingTx = await Transaction.findOne({
+        seller: sellerId,
+        payoutRequest: withdrawalRequest._id,
+        type: 'debit'
+      }).session(session);
+
+      if (existingTx) {
+        existingTx.status = 'failed';
+        existingTx.description = `Withdrawal OTP Expired: Request #${withdrawalRequest._id}`;
+        await existingTx.save({ session });
+        logger.info(`[verifyOtp] Updated transaction ${existingTx._id} to failed (expired)`);
+      }
 
       // Log finance audit
       try {
@@ -1232,12 +1247,25 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     await withdrawalRequest.save({ session });
 
     // Update transaction status if exists
+    let transaction = null;
     if (withdrawalRequest.transaction) {
-      const transaction = await Transaction.findById(withdrawalRequest.transaction).session(session);
-      if (transaction) {
-        transaction.status = 'completed';
-        await transaction.save({ session });
-      }
+      transaction = await Transaction.findById(withdrawalRequest.transaction).session(session);
+    } else {
+      // Find transaction by payoutRequest link or metadata fallback
+      transaction = await Transaction.findOne({
+        $or: [
+          { payoutRequest: withdrawalRequest._id },
+          { 'metadata.withdrawalRequestId': withdrawalRequest._id }
+        ],
+        type: 'debit'
+      }).session(session);
+    }
+
+    if (transaction) {
+      transaction.status = 'completed';
+      transaction.description = `Withdrawal Paid: GH₵${withdrawalRequest.amount.toFixed(2)}`;
+      await transaction.save({ session });
+      logger.info(`[verifyOtp] Updated transaction ${transaction._id} to completed`);
     }
 
     await session.commitTransaction();
@@ -1988,7 +2016,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
       try {
         await session.startTransaction();
         const payoutService = require('../../services/payoutService');
-const logger = require('../../utils/logger');
+        const logger = require('../../utils/logger');
         const transferResult = await payoutService.initiatePayout(
           withdrawalRequest.amount,
           recipientCode,
