@@ -725,37 +725,27 @@ exports.setDefaultPaymentMethod = catchAsync(async (req, res, next) => {
       return next(new AppError('You do not have permission to modify this payment method', 403));
     }
 
-    // SECURITY: Only verified or active payment methods can be set as default
-    // Check both status and verificationStatus for backward compatibility
-    const isVerified = paymentMethod.status === 'verified' ||
-      paymentMethod.status === 'active' ||
-      paymentMethod.verificationStatus === 'verified';
-
-    if (!isVerified) {
-      await session.abortTransaction();
-      session.endSession();
-      return next(new AppError(
-        `Only verified payment methods can be set as default. Current status: ${paymentMethod.status || paymentMethod.verificationStatus || 'pending'}. Please submit your payment method for verification first.`,
-        400
-      ));
-    }
-
-    // 1. Clear existing default payment method
+    // 1. Clear existing default payment method for this user
     await PaymentMethod.updateMany(
       { user: userId, isDefault: true },
       { $set: { isDefault: false } },
       { session },
     );
 
-    // 2. Set the new payment method as default and update status to active
+    // 2. Set the new payment method as default
+    // We only set status to 'active' if it was already verified/active
+    const isVerified = paymentMethod.status === 'verified' ||
+      paymentMethod.status === 'active' ||
+      paymentMethod.verificationStatus === 'verified';
+
+    const updateData = { isDefault: true };
+    if (isVerified) {
+      updateData.status = 'active';
+    }
+
     const updatedPaymentMethod = await PaymentMethod.findByIdAndUpdate(
       paymentMethodId,
-      {
-        $set: {
-          isDefault: true,
-          status: 'active', // Set status to active when made default
-        }
-      },
+      { $set: updateData },
       {
         new: true,
         runValidators: true,
