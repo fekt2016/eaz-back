@@ -18930,3 +18930,59 @@
 {"level":"info","message":"\u001b[0mGET /api/v1/cart \u001b[36m304\u001b[0m 860.183 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:17:41"}
 {"level":"info","message":"\u001b[0mGET /api/v1/order/get-user-orders \u001b[36m304\u001b[0m 1252.290 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:17:41"}
 {"level":"info","message":"\u001b[0mGET /api/v1/paymentmethod/me \u001b[36m304\u001b[0m 547.972 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:17:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[getSellerProducts] page=1 limit=500 skip=0 (query limit ignored)","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[OptionalAuth] Authenticated as superadmin: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"0":"{","1":"\n","10":"i","11":"b","12":"l","13":"e","14":"\"","15":":","16":" ","17":"t","18":"r","19":"u","2":" ","20":"e","21":"\n","22":"}","3":" ","4":"\"","5":"i","6":"s","7":"V","8":"i","9":"s","level":"info","message":"[getAllProduct] Buyer query filter:","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:25"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me \u001b[32m200\u001b[0m 743.099 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"warn","message":"[Auth] ⚠️ SECURITY: Seller route detected main_jwt cookie - ignoring it. Route: /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[Auth] ✅ Token found in cookie (seller_jwt) for GET /api/v1/order/get-seller-orders","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/status \u001b[36m304\u001b[0m 933.285 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/analytics/revenue?range=30 \u001b[36m304\u001b[0m 934.524 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"Authenticated as seller: easyworldbtc@gmail.com","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product/category-counts \u001b[32m200\u001b[0m 176.532 ms - 266\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[getSellerProducts] returning 8 products (total for seller: 8)","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/products?limit=200&page=1 \u001b[36m304\u001b[0m 1194.811 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5175","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/me/balance \u001b[36m304\u001b[0m 1235.538 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[getAllProduct] Query returned 10 products for buyer","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"0":{"id":"69c6e223293f4c2368baeaba","isVisible":true,"moderationStatus":"approved","name":"fffffff","status":"active"},"1":{"id":"69ad9318522e74fd798b0da5","isVisible":true,"moderationStatus":"approved","name":"nvmhjbj","status":"active"},"2":{"id":"69ad8efb522e74fd798b06a1","isVisible":true,"moderationStatus":"approved","name":"nbvmhv","status":"active"},"level":"info","message":"[getAllProduct] Sample returned products:","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/product \u001b[36m304\u001b[0m 1449.264 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"[restrictTo] ✅ Permission granted - User role: seller matches required roles","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/order/get-seller-orders \u001b[36m304\u001b[0m 917.590 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/analytics/orders/status \u001b[32m200\u001b[0m 710.825 ms - 153\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:26"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/analytics/products/top?limit=5 \u001b[36m304\u001b[0m 1216.362 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:27"}
+{"level":"info","message":"\u001b[0mGET /api/v1/seller/analytics/traffic?range=30 \u001b[36m304\u001b[0m 1585.481 ms - -\u001b[0m","service":"backend-api","timestamp":"2026-03-31 15:28:28"}
