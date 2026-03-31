@@ -375,11 +375,29 @@ app.use('/api', limiter);
 
 // 🐢 Slow Down Repeated Requests (SECURITY)
 // In development, skip entirely so local dev isn't artificially slowed (100+ requests per 15min is normal).
+const getRateLimitClientIp = (req) => {
+  // Prefer CDN/client-origin headers when available (CloudFront/ALB),
+  // then fall back to Express-derived IP.
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.trim()) {
+    return cfIp.trim();
+  }
+
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
+    return xForwardedFor.split(',')[0].trim();
+  }
+
+  return req.ip;
+};
+
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 100, // Allow 100 requests per window
-  delayMs: (hits) => hits * 500, // Add 500ms delay per request after limit
-  maxDelayMs: 20000, // Max 20s delay
+  // Keep protection, but avoid long user-facing stalls on normal app traffic.
+  delayAfter: isProduction ? 300 : 1000,
+  delayMs: (hits) => Math.max(0, (hits - (isProduction ? 300 : 1000)) * 100),
+  maxDelayMs: isProduction ? 3000 : 0,
+  keyGenerator: getRateLimitClientIp,
   skip: () => isDevelopment, // Skip in development to avoid slow backend during local testing
 });
 app.use('/api', speedLimiter);

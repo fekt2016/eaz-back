@@ -13,6 +13,7 @@
     "gate:auth": "./scripts/staging-auth-gate.sh",
     "gate:all": "./scripts/run-all-gates.sh",
     "gate:all:wait": "WAIT_FOR_API_SECONDS=45 API_BASE=http://127.0.0.1:4000 ./scripts/run-all-gates.sh",
+    "gate:auth-latency": "bash ./scripts/auth-latency-check.sh",
     "seed:pickup-centers": "node scripts/seedPickupCenters.js",
     "update-neighborhood-locations": "node src/scripts/fetchCoordinatesForNeighborhoods.js",
     "seed:shipping-zones": "node src/seed/shippingZones.seed.js",
