@@ -344,6 +344,22 @@ app.options('*', cors(corsOptions));
 const { enforceHttps } = require('./middleware/security/httpsEnforcement');
 app.use(enforceHttps); // Enforces HTTPS in production
 
+const getRateLimitClientIp = (req) => {
+  // Prefer CDN/client-origin headers when available (CloudFront/ALB),
+  // then fall back to Express-derived IP.
+  const cfIp = req.headers['cf-connecting-ip'];
+  if (typeof cfIp === 'string' && cfIp.trim()) {
+    return cfIp.trim();
+  }
+
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
+    return xForwardedFor.split(',')[0].trim();
+  }
+
+  return req.ip;
+};
+
 // Logging - Use Winston logger for HTTP requests
 if (isDevelopment) {
   app.use(morgan('dev', { stream: logger.stream }));
@@ -363,6 +379,7 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getRateLimitClientIp,
   // Skip rate limiting for whitelisted IPs (optional)
   skip: (req) => {
     // Skip localhost in development
@@ -375,22 +392,6 @@ app.use('/api', limiter);
 
 // 🐢 Slow Down Repeated Requests (SECURITY)
 // In development, skip entirely so local dev isn't artificially slowed (100+ requests per 15min is normal).
-const getRateLimitClientIp = (req) => {
-  // Prefer CDN/client-origin headers when available (CloudFront/ALB),
-  // then fall back to Express-derived IP.
-  const cfIp = req.headers['cf-connecting-ip'];
-  if (typeof cfIp === 'string' && cfIp.trim()) {
-    return cfIp.trim();
-  }
-
-  const xForwardedFor = req.headers['x-forwarded-for'];
-  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
-    return xForwardedFor.split(',')[0].trim();
-  }
-
-  return req.ip;
-};
-
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   // Keep protection, but avoid long user-facing stalls on normal app traffic.
@@ -413,6 +414,7 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: getRateLimitClientIp,
 });
 
 app.use('/api/v1/users/login', authLimiter);
