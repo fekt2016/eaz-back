@@ -1421,7 +1421,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Check for support ticket creation - can be used by any authenticated user
   const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
 
-  // Payment method routes: buyers (main_jwt), sellers (seller_jwt), admins (admin_jwt) can all access
+  // Payment method routes: buyers (user_jwt/main_jwt), sellers (seller_jwt), admins (admin_jwt) can all access
   const isSharedPaymentMethodRoute = fullPath.startsWith('/api/v1/paymentmethod');
 
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
@@ -1447,7 +1447,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   } else if (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) {
     cookieName = 'admin_jwt';
   } else {
-    cookieName = 'main_jwt'; // Default to buyer/eazmain
+    cookieName = 'user_jwt'; // Default to buyer/eazmain (legacy: main_jwt)
   }
 
   // #region agent log
@@ -1467,6 +1467,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       hasAuthHeader: !!req.headers.authorization,
       cookieKeys: req.cookies ? Object.keys(req.cookies) : 'none',
       seller_jwt: req.cookies?.seller_jwt ? 'present' : 'missing',
+      user_jwt: req.cookies?.user_jwt ? 'present' : 'missing',
       main_jwt: req.cookies?.main_jwt ? 'present' : 'missing',
       admin_jwt: req.cookies?.admin_jwt ? 'present' : 'missing'
     });
@@ -1487,9 +1488,12 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   if (!token) {
-    // For payment method routes, try main_jwt (buyer), seller_jwt (seller), admin_jwt (admin)
+    // For payment method routes, try user_jwt/main_jwt (buyer), seller_jwt (seller), admin_jwt (admin)
     if (isSharedPaymentMethodRoute && req.cookies) {
-      if (req.cookies.main_jwt) {
+      if (req.cookies.user_jwt) {
+        token = req.cookies.user_jwt;
+        logger.info(`[Auth] ✅ Token found in user_jwt cookie for payment method route: ${method} ${fullPath}`);
+      } else if (req.cookies.main_jwt) {
         token = req.cookies.main_jwt;
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for payment method route: ${method} ${fullPath}`);
       } else if (req.cookies.seller_jwt) {
@@ -1513,8 +1517,11 @@ exports.protect = catchAsync(async (req, res, next) => {
         token = req.cookies.admin_jwt;
         logger.info(`[Auth] ✅ Token found in admin_jwt cookie for ${method} ${fullPath}`);
       }
-      // Finally try main_jwt (buyers creating tickets)
-      else if (req.cookies.main_jwt) {
+      // Finally try buyer cookie (user_jwt first, legacy main_jwt fallback)
+      else if (req.cookies.user_jwt) {
+        token = req.cookies.user_jwt;
+        logger.info(`[Auth] ✅ Token found in user_jwt cookie for ${method} ${fullPath}`);
+      } else if (req.cookies.main_jwt) {
         token = req.cookies.main_jwt;
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for ${method} ${fullPath}`);
       }
@@ -1532,8 +1539,11 @@ exports.protect = catchAsync(async (req, res, next) => {
         token = req.cookies.admin_jwt;
         logger.info(`[Auth] ✅ Token found in admin_jwt cookie for notification route: ${method} ${fullPath}`);
       }
-      // Finally try main_jwt (buyers accessing notifications)
-      else if (req.cookies.main_jwt) {
+      // Finally try buyer cookie (user_jwt first, legacy main_jwt fallback)
+      else if (req.cookies.user_jwt) {
+        token = req.cookies.user_jwt;
+        logger.info(`[Auth] ✅ Token found in user_jwt cookie for notification route: ${method} ${fullPath}`);
+      } else if (req.cookies.main_jwt) {
         token = req.cookies.main_jwt;
         logger.info(`[Auth] ✅ Token found in main_jwt cookie for notification route: ${method} ${fullPath}`);
       }
@@ -1550,10 +1560,14 @@ exports.protect = catchAsync(async (req, res, next) => {
       }
     }
 
-    // For specific routes, use the determined cookie name
+    // For specific routes, use the determined cookie name.
+    // Backward compatibility: if buyer cookieName=user_jwt is absent, fallback to legacy main_jwt.
     if (!token && req.cookies && req.cookies[cookieName]) {
       token = req.cookies[cookieName];
       logger.info(`[Auth] ✅ Token found in cookie (${cookieName}) for ${method} ${fullPath}`);
+    } else if (!token && cookieName === 'user_jwt' && req.cookies?.main_jwt) {
+      token = req.cookies.main_jwt;
+      logger.info(`[Auth] ✅ Token found in legacy buyer cookie (main_jwt) for ${method} ${fullPath}`);
     }
     
     // Enhanced logging for payment method routes

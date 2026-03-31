@@ -30,11 +30,11 @@ const normalizePhone = (phone) => {
  */
 const getCookieName = (role) => {
   const cookieMap = {
-    buyer: 'main_jwt',
+    buyer: 'user_jwt',
     seller: 'seller_jwt',
     admin: 'admin_jwt',
   };
-  return cookieMap[role] || 'main_jwt';
+  return cookieMap[role] || 'user_jwt';
 };
 
 /**
