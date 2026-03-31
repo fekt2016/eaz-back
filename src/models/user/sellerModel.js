@@ -494,7 +494,12 @@ const sellerSchema = new mongoose.Schema(
     lastActivity: {
       type: Date,
       default: Date.now,
-      select: false, // Don't return in queries by default
+      select: false,
+    },
+    referral: {
+      type: String,
+      default: "",
+      trim: true,
     },
   },
   {
@@ -832,7 +837,7 @@ sellerSchema.methods.createPasswordResetToken = function () {
 // OTP methods with hashing
 sellerSchema.methods.createOtp = function () {
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = crypto.randomInt(100000, 1000000).toString();
 
   // Hash OTP before storing (SHA-256)
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');

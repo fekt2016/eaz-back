@@ -172,7 +172,7 @@ const applyCartPromoPricing = async (items) => {
 
     item.unitPrice = pricing.unitPrice;
     if (pricing.promoDiscount > 0) {
-      item.originalUnitPrice = standardPriceInclVat + (pricing.covidLevy || 0);
+      item.originalUnitPrice = standardPriceInclVat;
     }
 
     // Attach breakdown for frontend display if needed
@@ -416,10 +416,32 @@ exports.addToCart = catchAsync(async (req, res, next) => {
     return next(new AppError('Quantity must be a positive integer', 400));
   }
 
-  // Check if product exists (optional but recommended)
-  const productExists = await Product.exists({ _id: productIdStr });
-  if (!productExists) {
+  // Enforce buyer visibility rules before allowing cart additions.
+  // If a product is not approved/active/visible, buyers must not add it.
+  const productDoc = await Product.findById(productIdStr)
+    .select(
+      'name moderationStatus status isVisible isDeleted isDeletedByAdmin isDeletedBySeller'
+    )
+    .lean();
+  if (!productDoc) {
     return next(new AppError('Product not found', 404));
+  }
+  const notApproved = productDoc.moderationStatus !== 'approved';
+  const notSellableStatus = !['active', 'out_of_stock', 'outOfStock'].includes(
+    productDoc.status
+  );
+  const hiddenOrDeleted =
+    productDoc.isVisible === false ||
+    productDoc.isDeleted === true ||
+    productDoc.isDeletedByAdmin === true ||
+    productDoc.isDeletedBySeller === true;
+  if (notApproved || notSellableStatus || hiddenOrDeleted) {
+    return next(
+      new AppError(
+        `Product "${productDoc.name}" is not approved for sale.`,
+        400
+      )
+    );
   }
 
   // Find or create cart

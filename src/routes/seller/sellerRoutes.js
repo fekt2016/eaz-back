@@ -9,6 +9,7 @@ const pickupLocationController = require('../../controllers/seller/pickupLocatio
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
 const authController = require('../../controllers/buyer/authController');
+const statusController = require('../../controllers/seller/statusController');
 const { resizeImage, uploadProfileImage } = require('../../middleware/upload/multer');
 
 const { otpLimiter, resetLimiter } = require('../../middleware/rateLimiting/otpLimiter');
@@ -63,6 +64,7 @@ router
         [
           'me',
           'status',
+          'statuses',
           'updateMe',
           'update-onboarding',
           // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
@@ -85,6 +87,7 @@ router
         [
           'me',
           'status',
+          'statuses',
           'updateMe',
           'update-onboarding',
           // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
@@ -164,6 +167,25 @@ router.get(
   onboardingController.getOnboardingStatus
 );
 
+// Video statuses (stories-style)
+router.post(
+  '/statuses',
+  authController.restrictTo('seller', 'official_store'),
+  statusController.uploadStatusVideo,
+  statusController.uploadVideoToCloudinary,
+  statusController.createStatus
+);
+router.get(
+  '/me/statuses',
+  authController.restrictTo('seller', 'official_store'),
+  statusController.getMyStatuses
+);
+router.delete(
+  '/statuses/:id',
+  authController.restrictTo('seller', 'official_store'),
+  statusController.deleteStatus
+);
+
 router
   .route('/me/products')
   .get(sellerControllor.getSellerProducts);
@@ -171,6 +193,10 @@ router
   .route('/me/products/:productId')
   .get(sellerControllor.getSellerProductById)
   .delete(sellerControllor.SellerDeleteProduct);
+router.post(
+  '/me/products/:productId/duplicate',
+  sellerControllor.duplicateProduct
+);
 
 // Admin-only routes - must come AFTER specific routes
 router.patch(
@@ -251,12 +277,12 @@ router.delete(
 // Notification preferences
 router.get(
   '/me/notification-settings',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   authSellerController.getNotificationSettings
 );
 router.patch(
   '/me/notification-settings',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   authSellerController.updateNotificationSettings
 );
 
@@ -278,93 +304,104 @@ router.get(
 // Seller balance and transactions routes
 router.get(
   '/me/balance',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerBalance
 );
 router.get(
   '/me/transactions',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerTransactions
 );
 router.get(
+  '/me/transactions/:id',
+  authController.restrictTo('seller', 'official_store'),
+  balanceController.getSellerTransactionById
+);
+router.get(
   '/me/revenue-history',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerRevenueHistory
 );
 router.get(
   '/me/balance-history',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerRevenueHistory
 ); // Alias for revenue-history
 router.get(
   '/me/earnings',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerEarnings
 );
 router.get(
   '/me/earnings/order/:orderId',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   balanceController.getSellerEarningsByOrder
 );
 
 // Seller Analytics Routes
 router.get(
+  '/analytics',
+  authController.restrictTo('seller', 'official_store'),
+  sellerAnalyticsController.getSellerAnalytics
+);
+
+router.get(
   '/analytics/kpi',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerKPICards
 );
 
 router.get(
   '/analytics/revenue',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerRevenueAnalytics
 );
 
 router.get(
   '/analytics/orders/status',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerOrderStatusAnalytics
 );
 
 router.get(
   '/analytics/products/top',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerTopProducts
 );
 
 router.get(
   '/analytics/traffic',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerTrafficAnalytics
 );
 
 router.get(
   '/analytics/payouts',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerPayoutAnalytics
 );
 
 router.get(
   '/analytics/tax',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerTaxAnalytics
 );
 
 router.get(
   '/analytics/inventory',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerInventoryAnalytics
 );
 
 router.get(
   '/analytics/refunds',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerRefundAnalytics
 );
 
 router.get(
   '/analytics/performance',
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   sellerAnalyticsController.getSellerPerformanceScore
 );
 

@@ -8,7 +8,6 @@ const AppError = require('../utils/errors/appError');
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 const Seller = require('../models/user/sellerModel');
-const WithdrawalRequest = require('../models/payout/withdrawalRequestModel');
 const PaymentRequest = require('../models/payment/paymentRequestModel');
 const Transaction = require('../models/transaction/transactionModel');
 const { logSellerRevenue } = require('./historyLogger');
@@ -653,13 +652,7 @@ exports.updateWithdrawalStatusFromPaystack = async function (withdrawalRequestId
     const originalId = withdrawalRequestId;
     const objectId = mongoose.isValidObjectId(originalId) ? new mongoose.Types.ObjectId(originalId) : null;
 
-    let withdrawalRequest = await WithdrawalRequest.findById(originalId).session(session);
-    let isPaymentRequest = false;
-
-    if (!withdrawalRequest) {
-      withdrawalRequest = await PaymentRequest.findById(originalId).session(session);
-      isPaymentRequest = true;
-    }
+    const withdrawalRequest = await PaymentRequest.findById(originalId).session(session);
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -670,6 +663,17 @@ exports.updateWithdrawalStatusFromPaystack = async function (withdrawalRequestId
     if (!seller) {
       await session.abortTransaction();
       return;
+    }
+
+    // Idempotency check: if the request is already in a final state, only allow specific transitions (like paid -> reversed)
+    if (['paid', 'failed', 'abandoned'].includes(withdrawalRequest.status)) {
+      if (withdrawalRequest.status === 'paid' && transferStatus.status === 'reversed') {
+        logger.info(`[updateWithdrawalStatusFromPaystack] Processing reversal for already paid transfer ${withdrawalRequestId}`);
+      } else {
+        logger.info(`[updateWithdrawalStatusFromPaystack] Idempotency check: Request ${withdrawalRequestId} is already ${withdrawalRequest.status}. Ignoring ${transferStatus.status} webhook.`);
+        await session.abortTransaction();
+        return;
+      }
     }
 
     let newStatus = withdrawalRequest.status;
@@ -768,14 +772,24 @@ exports.updateWithdrawalStatusFromPaystack = async function (withdrawalRequestId
     } else if (transferStatus.status === 'reversed') {
       newStatus = 'failed';
       shouldUpdateTransaction = true;
-      // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
       const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
-      const oldPendingBalance = seller.pendingBalance || 0;
-      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
-        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+      
+      if (withdrawalRequest.status === 'paid') {
+        // If it was already paid, pendingBalance is 0 and total balance was deducted.
+        // We must refund the total balance so it becomes available again.
+        seller.balance = (seller.balance || 0) + amountRequested;
         seller.calculateWithdrawableBalance();
         await seller.save({ session });
-        logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (reversed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
+        logger.info(`[updateWithdrawalStatusFromPaystack] Refunded total revenue balance (reversed from paid): seller ${seller._id}, amount: ${amountRequested}`);
+      } else {
+        // Remove from pendingBalance so amount returns to available; total revenue (balance) unchanged
+        const oldPendingBalance = seller.pendingBalance || 0;
+        if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+          seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+          seller.calculateWithdrawableBalance();
+          await seller.save({ session });
+          logger.info(`[updateWithdrawalStatusFromPaystack] Removed from pendingBalance (reversed) → back to available; total revenue unchanged: seller ${seller._id}, amount: ${amountRequested}`);
+        }
       }
       try {
         await logSellerRevenue({

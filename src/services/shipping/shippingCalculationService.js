@@ -84,9 +84,9 @@ async function calculateUnifiedShipping(items, buyerCity, buyerNeighborhoodId, s
   let baseFee = (zone.baseRate || 20) * (maxTier.multiplier || 1);
 
   if (shippingType === 'same_day') {
-    baseFee = baseFee * (zone.sameDayMultiplier || 1.2);
-  } else if (shippingType === 'express') {
     baseFee = baseFee * (zone.expressMultiplier || 1.4);
+  } else if (shippingType === 'express') {
+    baseFee = baseFee * (zone.sameDayMultiplier || 1.2);
   }
 
   // 5. Weight and Fragile Surcharges
@@ -137,7 +137,12 @@ async function calculateShippingQuote(buyerCity, items, method = 'dispatch', pic
   let pickupCenter = null;
   let dispatchType = null;
 
-  const shippingTypeMap = deliverySpeed === 'same_day' ? 'same_day' : 'standard';
+  const shippingTypeMap =
+    deliverySpeed === 'same_day'
+      ? 'same_day'
+      : deliverySpeed === 'express'
+        ? 'express'
+        : 'standard';
 
   if (method === 'pickup_center') {
     if (pickupCenterId) {

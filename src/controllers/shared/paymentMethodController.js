@@ -70,7 +70,7 @@ const getUserIdForPaymentMethod = async (currentUser) => {
         if (error.code === 11000 && error.keyPattern?.phone) {
           // Phone already exists, generate a completely unique one
           const timestamp = Date.now().toString();
-          const random = Math.floor(Math.random() * 100000);
+          const random = crypto.randomInt(0, 100000);
           sellerPhone = parseInt(`233${timestamp.slice(-7)}${random.toString().padStart(5, '0')}`, 10);
 
           // Ensure it's a valid number length
@@ -458,14 +458,58 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
     logger.info(`[Update PaymentMethod] Payment details changed, resetting verification status from ${paymentMethod.status} to pending`);
   }
 
-  // Update the payment method
+  // Update the payment method (strict whitelist to prevent mass assignment)
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
+  const update = {};
+
+  // Payment details
+  if (hasOwn('type')) update.type = req.body.type;
+  if (hasOwn('mobileNumber')) {
+    update.mobileNumber = req.body.mobileNumber
+      ? req.body.mobileNumber.replace(/\D/g, '')
+      : null;
+  }
+  if (hasOwn('provider')) update.provider = typeof req.body.provider === 'string'
+    ? req.body.provider.trim()
+    : req.body.provider;
+  if (hasOwn('accountNumber')) {
+    update.accountNumber = req.body.accountNumber
+      ? req.body.accountNumber.replace(/\s+/g, '')
+      : null;
+  }
+  if (hasOwn('bankName')) update.bankName = typeof req.body.bankName === 'string'
+    ? req.body.bankName.trim()
+    : req.body.bankName;
+  if (hasOwn('branch')) update.branch = typeof req.body.branch === 'string'
+    ? req.body.branch.trim()
+    : req.body.branch;
+  if (hasOwn('accountName')) update.accountName = typeof req.body.accountName === 'string'
+    ? req.body.accountName.trim()
+    : req.body.accountName;
+
+  // Verification state transitions (only allow expected values)
+  if (hasOwn('status') && ['draft', 'pending'].includes(req.body.status)) {
+    update.status = req.body.status;
+  }
+  if (hasOwn('verificationStatus') && req.body.verificationStatus === 'pending') {
+    update.verificationStatus = req.body.verificationStatus;
+  }
+  if (hasOwn('verificationHistory') && Array.isArray(req.body.verificationHistory)) {
+    update.verificationHistory = req.body.verificationHistory;
+  }
+
+  // Only allow server-controlled clears (nulls) for verification timestamps/identity
+  for (const k of ['verifiedAt', 'verifiedBy', 'rejectionReason']) {
+    if (hasOwn(k) && req.body[k] === null) update[k] = null;
+  }
+
   const updatedPaymentMethod = await PaymentMethod.findByIdAndUpdate(
     req.params.id,
-    req.body,
+    update,
     {
       new: true,
       runValidators: true,
-    },
+    }
   );
 
   // If seller updated PaymentMethod and it matches their seller.paymentMethods, sync seller payoutStatus
@@ -533,7 +577,9 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
           });
 
           await seller.save({ validateBeforeSave: false });
-          console.log(`[Update PaymentMethod] Synced seller ${seller._id} payment method payoutStatus to pending due to PaymentMethod change`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Update PaymentMethod] Synced seller payoutStatus to pending due to PaymentMethod change');
+          }
         }
       }
     } catch (sellerSyncError) {

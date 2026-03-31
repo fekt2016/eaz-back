@@ -36,7 +36,7 @@ const compression = require('compression');
 // const csurf = require('csurf');
 
 // Config
-const configureCloudinary = require('./config/cloudinary');
+const { configureCloudinary } = require('./config/cloudinary');
 
 // Utils and error handling
 const AppError = require('./utils/errors/appError');
@@ -56,6 +56,7 @@ const followRoutes = require('./routes/buyer/followRoutes');
 const permissionRoutes = require('./routes/buyer/permissionRoutes');
 const newsletterRoutes = require('./routes/buyer/newsletterRoutes');
 const discountDisplayRoutes = require('./routes/buyer/discountDisplayRoutes');
+const statusRoutes = require('./routes/buyer/statusRoutes');
 
 const sellerRoutes = require('./routes/seller/sellerRoutes');
 const sellerReviewRoutes = require('./routes/seller/reviewRoutes');
@@ -65,6 +66,8 @@ const discountRoutes = require('./routes/seller/discountRoute');
 const buyerCouponRoutes = require('./routes/buyer/couponRoutes');
 const sellerCouponRoutes = require('./routes/seller/couponRoutes');
 const shippingSettingsRoutes = require('./routes/seller/shippingSettingsRoutes');
+const sellerImageRoutes = require('./routes/seller/imageRoutes');
+const sellerTestimonialRoutes = require('./routes/seller/testimonialRoutes');
 
 const adminRoutes = require('./routes/admin/adminRoutes');
 const adminCouponRoutes = require('./routes/admin/couponRoutes');
@@ -81,6 +84,7 @@ const adminPayoutRoutes = require('./routes/admin/payoutRoutes');
 const adminRefundRoutes = require('./routes/admin/refundRoutes');
 const adRoutes = require('./routes/admin/adRoutes');
 const adminShippingRoutes = require('./routes/admin/shippingRoutes');
+const adminTestimonialRoutes = require('./routes/admin/testimonialRoutes');
 
 const productRoutes = require('./routes/shared/productRoutes');
 const categoryRoutes = require('./routes/shared/categoryRoutes');
@@ -130,14 +134,14 @@ app.use((req, res, next) => {
         scriptSrc: [
           "'self'",
           nonceDirective,
-          "'unsafe-inline'", // Required for Paystack checkout compatibility
+          ...(process.env.NODE_ENV === 'development' ? ["'unsafe-inline'"] : []),
           'https://cdnjs.cloudflare.com',
           'https://checkout.paystack.com',
         ],
         styleSrc: [
           "'self'",
           nonceDirective,
-          "'unsafe-inline'",
+          ...(process.env.NODE_ENV === 'development' ? ["'unsafe-inline'"] : []),
           'https://fonts.googleapis.com',
           'https://cdnjs.cloudflare.com',
         ],
@@ -161,6 +165,12 @@ app.use((req, res, next) => {
               'http://127.0.0.1:5173',
               'http://127.0.0.1:5174',
               'http://127.0.0.1:5175',
+              'http://154.161.40.137:5173',
+              'http://154.161.40.137:5174',
+              'http://154.161.40.137:5175',
+              'http://154.161.40.137:3000',
+              'http://154.161.40.137:3001',
+              'http://154.161.40.137:4000',
             ]
             : []
           ),
@@ -260,7 +270,9 @@ const corsOptions = {
           origin.startsWith('http://10.194.166.') ||
           origin.startsWith('http://192.168.') ||
           origin.startsWith('http://172.') ||
-          origin.startsWith('http://10.')
+          origin.startsWith('http://10.') ||
+          origin.startsWith('http://154.161.40.137:') || // Your public IP for network access
+          (process.env.CORS_ALLOW_IP && origin.startsWith(`http://${process.env.CORS_ALLOW_IP}:`))
         ) {
           logger.debug(`[CORS] Development - allowing network origin: ${origin}`);
           return callback(null, true);
@@ -372,7 +384,7 @@ const speedLimiter = slowDown({
 });
 app.use('/api', speedLimiter);
 
-// More aggressive rate limiting for auth endpoints
+// More aggressive rate limiting for auth endpoints (brute-force protection)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -381,10 +393,16 @@ const authLimiter = rateLimit({
     retryAfter: 15 * 60,
   },
   skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
+app.use('/api/v1/admin/login', authLimiter);
+app.use('/api/v1/admin/signup', authLimiter);
+app.use('/api/v1/seller/login', authLimiter);
+app.use('/api/v1/seller/signup', authLimiter);
 
 // 📦 Body parsing with strict size limits (SECURITY)
 app.use(express.json({
@@ -500,6 +518,7 @@ app.use('/api/v1/follow', followRoutes);
 app.use('/api/v1/permission', permissionRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
 app.use('/api/v1/discount', discountDisplayRoutes);
+app.use('/api/v1/statuses', statusRoutes);
 
 // Seller routes
 // IMPORTANT: More specific routes must come BEFORE general routes to avoid route conflicts
@@ -507,7 +526,9 @@ app.use('/api/v1/discount', discountDisplayRoutes);
 app.use('/api/v1/seller/coupon', sellerCouponRoutes); // Seller routes (manage coupons) - MUST come before sellerRoutes
 app.use('/api/v1/seller/discount', discountRoutes); // Seller routes (manage discounts) - MUST come before sellerRoutes
 app.use('/api/v1/seller/reviews', sellerReviewRoutes);
+app.use('/api/v1/seller/testimonials', sellerTestimonialRoutes);
 app.use('/api/v1/seller/payout', sellerPayoutRoutes);
+app.use('/api/v1/seller/products', sellerImageRoutes);
 app.use('/api/v1/seller', sellerRoutes);
 app.use('/api/v1/paymentrequest', paymentRequestRoutes);
 app.use('/api/v1/coupon', buyerCouponRoutes); // Buyer routes (apply coupons)
@@ -520,6 +541,7 @@ app.use('/api/v1/shipping/settings', shippingSettingsRoutes);
 app.use('/api/v1/promotional-discounts', adRoutes);
 app.use('/api/v1/admin/neighborhoods', adminNeighborhoodRoutes);
 app.use('/api/v1/admin/reviews', adminReviewRoutes);
+app.use('/api/v1/admin/testimonials', adminTestimonialRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);
 app.use('/api/v1/admin/refunds', adminRefundRoutes);
 app.use('/api/v1/admin/coupons', adminCouponRoutes);
@@ -544,6 +566,7 @@ app.use('/api/v1/paymentmethod', paymentMethodRoutes);
 app.use('/api/v1/payment', paymentRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/notification-settings', notificationRoutes);
+app.use('/api/v1/notification-setting', notificationRoutes); // alias for typo
 app.use('/api/v1/notifications', notificationsApiRoutes);
 app.use('/api/v1/shipping', shippingRoutes);
 app.use('/api/v1/location', locationRoutes);

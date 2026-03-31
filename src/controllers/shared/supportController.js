@@ -38,14 +38,18 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  // Allow images and documents
-  if (file.mimetype.startsWith('image/') || 
-      file.mimetype === 'application/pdf' ||
-      file.mimetype === 'application/msword' ||
-      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+  // Allow only images + PDF to reduce upload abuse and spoofing surface
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ];
+
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new AppError('Invalid file type. Only images and documents are allowed.', 400), false);
+    cb(new AppError('Invalid file type. Only images and PDF are allowed.', 400), false);
   }
 };
 
@@ -56,6 +60,95 @@ const upload = multer({
 });
 
 exports.uploadSupportFiles = upload.array('attachments', 5);
+
+const detectFileSignature = async (filePath) => {
+  const handle = await fs.promises.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(16);
+    const { bytesRead } = await handle.read(buffer, 0, 16, 0);
+    if (bytesRead < 4) return null;
+
+    // JPEG: FF D8 FF
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return 'image/jpeg';
+    }
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0d &&
+      buffer[5] === 0x0a &&
+      buffer[6] === 0x1a &&
+      buffer[7] === 0x0a
+    ) {
+      return 'image/png';
+    }
+    // WebP: RIFF....WEBP
+    if (
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46 &&
+      buffer[8] === 0x57 &&
+      buffer[9] === 0x45 &&
+      buffer[10] === 0x42 &&
+      buffer[11] === 0x50
+    ) {
+      return 'image/webp';
+    }
+    // PDF: 25 50 44 46 (%PDF)
+    if (
+      buffer[0] === 0x25 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x44 &&
+      buffer[3] === 0x46
+    ) {
+      return 'application/pdf';
+    }
+
+    return null;
+  } finally {
+    await handle.close();
+  }
+};
+
+exports.validateSupportFileSignatures = catchAsync(async (req, res, next) => {
+  if (!req.files || req.files.length === 0) {
+    return next();
+  }
+
+  const allowedMimeTypes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ]);
+
+  for (const file of req.files) {
+    const detectedMime = await detectFileSignature(file.path);
+
+    if (!detectedMime || !allowedMimeTypes.has(detectedMime)) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (unlinkError) {
+        logger.warn(
+          '[supportController] Failed deleting invalid upload:',
+          unlinkError.message
+        );
+      }
+      return next(
+        new AppError(
+          'Invalid file signature detected. Only valid images and PDF files are allowed.',
+          400
+        )
+      );
+    }
+  }
+
+  return next();
+});
 
 /**
  * Create a new support ticket

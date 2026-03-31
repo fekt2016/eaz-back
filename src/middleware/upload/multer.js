@@ -7,6 +7,7 @@ const { pipeline } = require('stream/promises');
 const sharp = require('sharp');
 const logger = require('../../utils/logger');
 const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
+const AppError = require('../../utils/errors/appError');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -16,11 +17,9 @@ cloudinary.config({
   timeout: 120000, // Global 2-minute timeout
 });
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new AppError('Not an image! Please upload an image', 400), false);
-  }
+  const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  if (allowedMimes.has(file.mimetype)) return cb(null, true);
+  return cb(new AppError('Unsupported file type', 400), false);
 };
 
 const upload = multer({
@@ -28,6 +27,7 @@ const upload = multer({
   fileFilter: multerFilter,
   limits: {
     fileSize: 5 * 1024 * 1024,
+    files: 1,
   },
 });
 exports.upProfileImage = upload.fields([
@@ -39,14 +39,32 @@ exports.uploadProfileImage = upload.single('imageCover');
 exports.resizeImage = async (req, res, next) => {
   req.body = { ...req.body };
   req.file = { ...req.file };
-  logger.info(req.body);
-  logger.info(req.file);
 
   try {
     const cloudinary = req.app.get('cloudinary');
     if (req.file && req.file.buffer) {
+      const buffer = req.file.buffer;
+      // Validate media signature to prevent mimetype spoofing.
+      const detectMediaFromBuffer = (buf) => {
+        if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
+        if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+        const pngSig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        if (buf.slice(0, 8).equals(pngSig)) return 'image/png';
+        if (buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WEBP') {
+          return 'image/webp';
+        }
+        return null;
+      };
+
+      const detected = detectMediaFromBuffer(buffer);
+      if (!detected || !['image/jpeg', 'image/png', 'image/webp'].includes(detected)) {
+        return next(new AppError('Invalid image file', 400));
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      logger.info(uniqueSuffix);
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(uniqueSuffix);
+      }
 
       // Process cover image using central utility (handles duplicates)
       const coverResult = await uploadToCloudinary(req.file.buffer, {

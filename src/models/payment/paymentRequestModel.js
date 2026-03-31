@@ -10,15 +10,19 @@ const paymentRequestSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Seller',
     required: false,
+    index: true,
   },
   amount: {
     type: Number,
     required: true,
+    min: [0.01, 'Amount must be greater than 0'],
+    max: [50000, 'Amount cannot exceed GH₵50,000'],
   },
   currency: {
     type: String,
     default: 'GHS',
   },
+  // paymentMethod is the canonical field name; payoutMethod is a virtual alias for compatibility
   paymentMethod: {
     type: String,
     enum: ['bank', 'mtn_momo', 'vodafone_cash', 'airtel_tigo_money'],
@@ -28,8 +32,21 @@ const paymentRequestSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'paid', 'rejected', 'success', 'failed', 'processing', 'approved', 'awaiting_paystack_otp', 'otp_expired', 'reversed'],
+    enum: ['pending', 'paid', 'rejected', 'success', 'failed', 'processing', 'approved', 'awaiting_paystack_otp', 'otp_expired', 'reversed', 'cancelled'],
     default: 'pending',
+    index: true,
+  },
+  // Admin who processed (approved/rejected) the withdrawal
+  processedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    default: null,
+  },
+  // Linked debit Transaction record
+  transaction: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    default: null,
   },
   // ===== Withdrawal Reversal Fields =====
   reversed: {
@@ -215,21 +232,21 @@ const paymentRequestSchema = new mongoose.Schema({
     {
       action: {
         type: String,
-        enum: ['approved', 'rejected'],
+        enum: ['approved', 'rejected', 'reversed', 'cancelled', 'paid', 'failed'],
         required: true,
       },
       adminId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Admin',
-        required: true,
+        required: false, // Not required for seller-initiated actions
       },
       name: {
         type: String,
-        required: true,
+        required: false,
       },
       role: {
         type: String,
-        required: true,
+        required: false,
       },
       timestamp: {
         type: Date,
@@ -245,7 +262,19 @@ const paymentRequestSchema = new mongoose.Schema({
       },
     },
   ],
+}, { timestamps: true });
+
+// payoutMethod is an alias for paymentMethod — used by frontend and newer code
+paymentRequestSchema.virtual('payoutMethod').get(function () {
+  return this.paymentMethod;
 });
+
+paymentRequestSchema.set('toJSON', { virtuals: true });
+paymentRequestSchema.set('toObject', { virtuals: true });
+
+paymentRequestSchema.index({ seller: 1, createdAt: -1 });
+paymentRequestSchema.index({ seller: 1, status: 1 });
+paymentRequestSchema.index({ transaction: 1 });
 
 const PaymentRequest = mongoose.model('PaymentRequest', paymentRequestSchema);
 

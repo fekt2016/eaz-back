@@ -25,10 +25,7 @@ exports.calculateItemPricing = async (basePrice, promoDiscount = 0) => {
     // This ensures VAT/NHIL/GETFund are proportionally adjusted
     const netBreakdown = await taxService.extractTaxFromPrice(discountedPriceInclVat, settings);
 
-    // 4. Calculate COVID Levy on the net base price
-    const covidLevy = await taxService.calculateCovidLevy(netBreakdown.basePrice, settings);
-
-    const unitPrice = discountedPriceInclVat + covidLevy;
+    const unitPrice = discountedPriceInclVat;
 
     return {
         originalBasePrice: taxData.basePrice,
@@ -38,8 +35,7 @@ exports.calculateItemPricing = async (basePrice, promoDiscount = 0) => {
         vat: netBreakdown.vat,
         nhil: netBreakdown.nhil,
         getfund: netBreakdown.getfund,
-        covidLevy: Math.round(covidLevy * 100) / 100,
-        totalTax: Math.round((netBreakdown.totalVATComponents + covidLevy) * 100) / 100,
+        totalTax: Math.round(netBreakdown.totalVATComponents * 100) / 100,
         unitPrice: Math.round(unitPrice * 100) / 100
     };
 };
@@ -68,7 +64,6 @@ exports.applyPricingToOrderItem = async (item) => {
         vat: breakdown.vat,
         nhil: breakdown.nhil,
         getfund: breakdown.getfund,
-        covidLevy: breakdown.covidLevy,
         totalTaxes: breakdown.totalTax,
         vatAmount: breakdown.vat,
         vatRate: 0.15,

@@ -11,7 +11,11 @@ const authController = require('../../controllers/buyer/authController');
 // SECURITY FIX #4 (Phase 2 Enhancement): Rate limiting for payment endpoints
 const { paymentInitLimiter, paymentVerificationLimiter } = require('../../middleware/rateLimiting/paymentLimiter');
 // SECURITY FIX #5 (Phase 2 Enhancement): Input validation for payment operations
-const { validatePaystackInit, handleValidationErrors } = require('../../middleware/validation/paymentValidator');
+const {
+  validatePaystackInit,
+  validatePaystackVerify,
+  handleValidationErrors,
+} = require('../../middleware/validation/paymentValidator');
 // SECURITY FIX #8: Paystack webhook signature verification
 const { verifyPaystackWebhook } = require('../../middleware/paystackWebhookVerification');
 
@@ -34,11 +38,13 @@ router.post(
 
 // Paystack payment verification (called from frontend after redirect)
 // SECURITY FIX #4: Rate limiting added to prevent verification abuse
-router.get(
+router.post(
   '/paystack/verify',
   authController.protect,
   authController.restrictTo('user'),
   paymentVerificationLimiter, // ✅ Rate limit payment verification
+  validatePaystackVerify, // ✅ Validate payment input
+  handleValidationErrors, // ✅ Handle validation errors
   verifyPaystackPayment
 );
 

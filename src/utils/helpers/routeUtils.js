@@ -43,6 +43,12 @@ const publicRoutes = [
   { path: '/api/v1/shipping/shipping-options', methods: ['POST'] }, // Public shipping options for checkout
   { path: '/api/v1/shipping/calc-shipping', methods: ['POST'] }, // Public shipping calculation
   { path: '/api/v1/shipping/pickup-centers', methods: ['GET'] }, // Public pickup centers
+  // Analytics telemetry - mobile app doesn't send CSRF; low-risk view tracking
+  { path: '/api/v1/analytics/views', methods: ['POST'] },
+  { path: '/api/v1/analytics/screen-views', methods: ['POST'] },
+  { path: '/api/v1/analytics/search', methods: ['POST'] },
+  { path: '/api/v1/analytics/category-views', methods: ['POST'] },
+  { path: '/api/v1/analytics/seller-views', methods: ['POST'] },
 ];
 
 const escapeRegex = (string) => {

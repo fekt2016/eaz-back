@@ -22,15 +22,56 @@ const { sendPaymentNotification } = require('../utils/helpers/notificationServic
  * @returns {Promise<Object>} - Created payment request
  */
 exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDetails = {}) => {
-  // Validate amount
+  const mongoose = require('mongoose');
+
+  // ── Input validation ──────────────────────────────────────────────
   if (amount <= 0) {
     throw new AppError('Amount must be greater than 0', 400);
   }
 
-  // Get current seller balance from seller model (including taxCategory and paymentMethods)
-  const currentSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance taxCategory paymentMethods email name shopName requiredSetup onboardingStage');
+  const numAmount = parseFloat(amount);
+  if (isNaN(numAmount)) {
+    throw new AppError('Amount must be a valid number', 400);
+  }
+
+  // SECURITY: Minimum withdrawal amount
+  const MIN_WITHDRAWAL = 10;
+  if (numAmount < MIN_WITHDRAWAL) {
+    throw new AppError(`Minimum withdrawal amount is GH₵${MIN_WITHDRAWAL}`, 400);
+  }
+
+  // SECURITY: Maximum single withdrawal amount
+  const MAX_WITHDRAWAL = 50000;
+  if (numAmount > MAX_WITHDRAWAL) {
+    throw new AppError(`Maximum single withdrawal amount is GH₵${MAX_WITHDRAWAL.toLocaleString()}`, 400);
+  }
+
+  // SECURITY: Prevent floating point manipulation — round to 2 decimal places
+  amount = Math.round(numAmount * 100) / 100;
+
+  // ── Start atomic session to prevent race-condition double-spend ──
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+  // Get current seller balance WITH session lock
+  const currentSeller = await Seller.findById(seller.id)
+    .select('balance lockedBalance pendingBalance taxCategory paymentMethods email name shopName requiredSetup onboardingStage')
+    .session(session);
   if (!currentSeller) {
+    await session.abortTransaction();
     throw new AppError('Seller not found', 404);
+  }
+
+  // SECURITY: Check for existing pending withdrawals (prevent concurrent requests)
+  const existingPending = await PaymentRequest.countDocuments({
+    seller: seller.id,
+    status: { $in: ['pending', 'processing', 'awaiting_paystack_otp'] },
+    isActive: true,
+  }).session(session);
+  if (existingPending > 0) {
+    await session.abortTransaction();
+    throw new AppError('You already have a pending withdrawal request. Please wait for it to complete or cancel it first.', 400);
   }
 
   // SECURITY: Require payout verification before allowing withdrawal
@@ -301,11 +342,11 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   const withholdingTaxRate = withholdingResult.withholdingTaxRate;
   const amountPaidToSeller = withholdingResult.amountPaidToSeller;
 
-  // Create payment request with withholding tax information
-  const paymentRequest = await PaymentRequest.create({
+  // Create payment request with withholding tax information (within session)
+  const [paymentRequest] = await PaymentRequest.create([{
     seller: seller.id,
     amount,
-    amountRequested: amount, // Store original requested amount
+    amountRequested: amount,
     currency: 'GHS',
     paymentMethod,
     paymentDetails: finalPaymentDetails,
@@ -314,27 +355,19 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     withholdingTaxRate,
     amountPaidToSeller,
     sellerBalanceBefore: currentSeller.balance || 0,
-  });
+  }], { session });
 
-  // Create a pending transaction record for visibility in history immediately
-  try {
-    await Transaction.create({
-      seller: seller.id,
-      amount: amount,
-      type: 'debit',
-      description: `Withdrawal Pending - Request #${paymentRequest._id}`,
-      status: 'pending',
-      payoutRequest: paymentRequest._id,
-      metadata: {
-        paymentRequestId: paymentRequest._id,
-        paymentMethod,
-      },
-    });
-    logger.info(`[createPaymentRequest] Created pending transaction for withdrawal ${paymentRequest._id}`);
-  } catch (txError) {
-    logger.error(`[createPaymentRequest] Failed to create pending transaction (non-critical): ${txError.message}`);
-    // Don't fail the main request creation
-  }
+  // Create a pending transaction record (within session)
+  await Transaction.create([{
+    seller: seller.id,
+    source: 'withdrawal',
+    amount: amount,
+    type: 'debit',
+    description: `Withdrawal Pending - Request #${paymentRequest._id}`,
+    status: 'pending',
+    payoutRequest: paymentRequest._id,
+    metadata: { paymentMethod },
+  }], { session });
 
   // Add amount to pendingBalance when withdrawal request is created
   // This tracks funds awaiting admin approval and OTP verification
@@ -398,36 +431,29 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     }
   }
 
-  await currentSeller.save();
+  await currentSeller.save({ session });
 
-  // Verify the save worked and balance was NOT deducted
-  const savedSeller = await Seller.findById(seller.id).select('balance lockedBalance pendingBalance withdrawableBalance');
-  if (savedSeller) {
-    // Verify balance (total revenue) was NOT modified
-    if (Math.abs((savedSeller.balance || 0) - oldBalance) > 0.01) {
-      logger.error(`[createPaymentRequest] ❌ ERROR: Total Revenue (Balance); was modified! Expected: ${oldBalance}, Actual: ${savedSeller.balance}`);
-    } else {
-      logger.info(`[createPaymentRequest] ✅ Verified save - Total Revenue (Balance);: ${savedSeller.balance} (UNCHANGED)`);
-    }
-    logger.info(`[createPaymentRequest] ✅ Verified save - LockedBalance: ${savedSeller.lockedBalance}, PendingBalance: ${savedSeller.pendingBalance}, WithdrawableBalance: ${savedSeller.withdrawableBalance}`);
+  // ── Commit the atomic transaction ─────────────────────────────────
+  await session.commitTransaction();
 
-    // Log finance audit
-    try {
-      const financeAudit = require('./financeAuditService');
-      await financeAudit.logWithdrawalCreated(
-        seller.id,
-        amount,
-        paymentRequest._id,
-        oldPendingBalance,
-        savedSeller.pendingBalance
-      );
-    } catch (auditError) {
-      logger.error('[createPaymentRequest] Failed to log finance audit (non-critical);:', auditError);
-    }
+  logger.info(`[createPaymentRequest] ✅ Atomic withdrawal created - seller ${seller.id}, amount: ${amount}, PR: ${paymentRequest._id}`);
+
+  // ── Post-commit: non-critical notifications (outside session) ─────
+  try {
+    const financeAudit = require('./financeAuditService');
+    await financeAudit.logWithdrawalCreated(
+      seller.id, amount, paymentRequest._id, oldPendingBalance, currentSeller.pendingBalance
+    );
+  } catch (auditError) {
+    logger.error('[createPaymentRequest] Failed to log finance audit (non-critical):', auditError);
   }
 
   // Send confirmation to seller
-  await sendPaymentNotification(seller, 'request_created', paymentRequest);
+  try {
+    await sendPaymentNotification(seller, 'request_created', paymentRequest);
+  } catch (notifError) {
+    logger.error('[createPaymentRequest] Failed to send notification (non-critical):', notifError);
+  }
 
   // Notify all admins about withdrawal request
   try {
@@ -438,12 +464,20 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       currentSeller.shopName || currentSeller.name || 'Seller',
       amount
     );
-    logger.info(`[Payment Request] Admin notification created for withdrawal ${paymentRequest._id}`);
   } catch (notificationError) {
     logger.error('[Payment Request] Error creating admin notification:', notificationError);
-    // Don't fail payment request if notification fails
   }
 
   return paymentRequest;
+
+  } catch (error) {
+    // Rollback everything if any step fails
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    throw error;
+  } finally {
+    session.endSession();
+  }
 };
 

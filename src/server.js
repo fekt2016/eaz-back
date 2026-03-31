@@ -162,6 +162,12 @@ class Server {
       // Initialize withdrawal cleanup job (runs in all environments)
       const { startCleanupJob } = require('./jobs/withdrawalCleanupJob');
       startCleanupJob();
+
+      // Cleanup orphaned Cloudinary product images daily
+      const {
+        startOrphanedImageCleanup,
+      } = require('./jobs/cleanupOrphanedImages');
+      startOrphanedImageCleanup();
       
       if (process.env.NODE_ENV === 'production') {
         logger.info('Cron jobs initialized');

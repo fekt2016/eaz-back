@@ -25,6 +25,45 @@ const logger = require('../../utils/logger');
 const stockService = require('../../services/stock/stockService');
 const Cart = require('../../models/product/cartModel');
 
+const isPaymentConfirmedStatus = (paymentStatus) => {
+  const normalized = String(paymentStatus || '').toLowerCase();
+  return normalized === 'paid' || normalized === 'completed';
+};
+
+const normalizeOrderStatusForPaid = ({
+  paymentStatus,
+  status,
+  currentStatus,
+  orderStatus,
+}) => {
+  const next = {
+    status,
+    currentStatus,
+    orderStatus,
+  };
+
+  if (!isPaymentConfirmedStatus(paymentStatus)) {
+    return next;
+  }
+
+  const normalizedStatus = String(status || '').toLowerCase();
+  const normalizedCurrent = String(currentStatus || '').toLowerCase();
+  const normalizedOrder = String(orderStatus || '').toLowerCase();
+
+  const shouldNormalize =
+    ['cancelled', 'pending', 'pending_payment'].includes(normalizedStatus) ||
+    ['cancelled', 'pending', 'pending_payment'].includes(normalizedCurrent) ||
+    ['cancelled', 'pending', 'pending_payment'].includes(normalizedOrder);
+
+  if (shouldNormalize) {
+    next.status = 'confirmed';
+    next.currentStatus = 'confirmed';
+    next.orderStatus = 'confirmed';
+  }
+
+  return next;
+};
+
 
 exports.updateProductTotalSold = async (order) => {
   try {
@@ -192,7 +231,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       variant: item.variant || null,
       sku: item.sku || null,
       quantity: validatedQuantity,
-      price: pricing.unitPrice, // Customer pays this (includes VAT + COVID levy)
+      price: pricing.unitPrice, // Customer pays this (VAT-inclusive price)
       validated: true,
       productName: product.name,
       availableStock,
@@ -338,7 +377,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
         shippingFee = round2(shippingQuote.totalShippingFee || 0);
       }
     } catch (shippingError) {
-      console.warn('[validateCart] Shipping calculation error:', shippingError.message);
+      logger.warn('[validateCart] Shipping calculation error:', shippingError.message);
     }
   }
 
@@ -374,24 +413,33 @@ exports.validateCart = catchAsync(async (req, res, next) => {
 });
 
 exports.getAllOrder = catchAsync(async (req, res, next) => {
-  let filter = {};
+  const andFilters = [];
 
-  // Search by orderNumber or trackingNumber
+  // Search by orderNumber, trackingNumber, or exact order _id
   if (req.query.search) {
-    const searchRegex = new RegExp(req.query.search, 'i');
-    filter.$or = [
+    const rawSearch = String(req.query.search).trim();
+    const searchRegex = new RegExp(rawSearch, 'i');
+    const searchOr = [
       { orderNumber: searchRegex },
-      { trackingNumber: searchRegex }
+      { trackingNumber: searchRegex },
     ];
+
+    if (mongoose.Types.ObjectId.isValid(rawSearch)) {
+      searchOr.push({ _id: rawSearch });
+    }
+
+    andFilters.push({ $or: searchOr });
   }
 
   // Filter by status
   if (req.query.status && req.query.status !== 'all') {
     // Check currentStatus first, fallback to orderStatus if needed
-    filter.$or = [
-      { currentStatus: req.query.status },
-      { orderStatus: req.query.status }
-    ];
+    andFilters.push({
+      $or: [
+        { currentStatus: req.query.status },
+        { orderStatus: req.query.status },
+      ],
+    });
   }
 
   // Filter by date
@@ -417,9 +465,11 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
     }
 
     if (startDate) {
-      filter.createdAt = { $gte: startDate };
+      andFilters.push({ createdAt: { $gte: startDate } });
     }
   }
+
+  const filter = andFilters.length > 0 ? { $and: andFilters } : {};
 
   // Pagination
   const page = parseInt(req.query.page, 10) || 1;
@@ -447,9 +497,46 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
   const results = await query;
   const total = await Order.countDocuments(filter);
 
+  // Normalize inconsistent legacy rows for admin consumers:
+  // if payment is confirmed, status must not remain cancelled.
+  const normalizedResults = results.map((orderDoc) => {
+    const normalized = normalizeOrderStatusForPaid({
+      paymentStatus: orderDoc?.paymentStatus,
+      status: orderDoc?.status,
+      currentStatus: orderDoc?.currentStatus,
+      orderStatus: orderDoc?.orderStatus,
+    });
+
+    const wasChanged =
+      normalized.status !== orderDoc.status ||
+      normalized.currentStatus !== orderDoc.currentStatus ||
+      normalized.orderStatus !== orderDoc.orderStatus;
+
+    if (wasChanged) {
+      orderDoc.status = normalized.status;
+      orderDoc.currentStatus = normalized.currentStatus;
+      orderDoc.orderStatus = normalized.orderStatus;
+
+      // Best-effort DB self-heal so all apps/tables stay in sync.
+      Order.findByIdAndUpdate(
+        orderDoc._id,
+        {
+          $set: {
+            status: normalized.status,
+            currentStatus: normalized.currentStatus,
+            orderStatus: normalized.orderStatus,
+          },
+        },
+        { runValidators: false }
+      ).catch(() => {});
+    }
+
+    return orderDoc;
+  });
+
   res.status(200).json({
     status: 'success',
-    results,
+    results: normalizedResults,
     meta: {
       total,
       totalPages: Math.ceil(total / limit),
@@ -640,7 +727,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       vat: item.pricing.vat,
       nhil: item.pricing.nhil,
       getfund: item.pricing.getfund,
-      covidLevy: item.pricing.covidLevy,
       totalTaxes: item.pricing.totalTax,
       vatAmount: item.pricing.vat,
       vatRate: 0.15,
@@ -840,7 +926,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       let sellerTotalVAT = 0;
       let sellerTotalNHIL = 0;
       let sellerTotalGETFund = 0;
-      let sellerTotalCovidLevy = 0;
 
       let sellerTotalVatAmount = 0;
       sellerItems.forEach(item => {
@@ -849,7 +934,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         sellerTotalVAT += (item.vat || 0) * quantity;
         sellerTotalNHIL += (item.nhil || 0) * quantity;
         sellerTotalGETFund += (item.getfund || 0) * quantity;
-        sellerTotalCovidLevy += (item.covidLevy || 0) * quantity;
         sellerTotalVatAmount += (item.vatAmount || 0) * quantity;
       });
 
@@ -858,9 +942,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       sellerTotalVAT = Math.round(sellerTotalVAT * 100) / 100;
       sellerTotalNHIL = Math.round(sellerTotalNHIL * 100) / 100;
       sellerTotalGETFund = Math.round(sellerTotalGETFund * 100) / 100;
-      sellerTotalCovidLevy = Math.round(sellerTotalCovidLevy * 100) / 100;
       sellerTotalVatAmount = Math.round(sellerTotalVatAmount * 100) / 100;
-      const sellerTotalTax = Math.round((sellerTotalVAT + sellerTotalNHIL + sellerTotalGETFund + sellerTotalCovidLevy) * 100) / 100;
+      const sellerTotalTax = Math.round(
+        (sellerTotalVAT + sellerTotalNHIL + sellerTotalGETFund) * 100,
+      ) / 100;
 
       // Dual VAT: who collects VAT on this seller order (for payout: seller gets base+VAT or base only)
       const vatCollectedBy = sellerItems[0]?.vatCollectedBy || 'platform';
@@ -903,7 +988,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
         totalVAT: sellerTotalVAT,
         totalNHIL: sellerTotalNHIL,
         totalGETFund: sellerTotalGETFund,
-        totalCovidLevy: sellerTotalCovidLevy,
         totalTax: sellerTotalTax,
         totalVatAmount: sellerTotalVatAmount,
         vatCollectedBy,
@@ -1050,14 +1134,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     let orderTotalVAT = 0;
     let orderTotalNHIL = 0;
     let orderTotalGETFund = 0;
-    let orderTotalCovidLevy = 0;
 
     savedSellerOrders.forEach(so => {
       orderTotalBasePrice += so.totalBasePrice || 0;
       orderTotalVAT += so.totalVAT || 0;
       orderTotalNHIL += so.totalNHIL || 0;
       orderTotalGETFund += so.totalGETFund || 0;
-      orderTotalCovidLevy += so.totalCovidLevy || 0;
     });
 
     // Round to 2 decimal places
@@ -1065,8 +1147,9 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     orderTotalVAT = Math.round(orderTotalVAT * 100) / 100;
     orderTotalNHIL = Math.round(orderTotalNHIL * 100) / 100;
     orderTotalGETFund = Math.round(orderTotalGETFund * 100) / 100;
-    orderTotalCovidLevy = Math.round(orderTotalCovidLevy * 100) / 100;
-    const orderTotalTax = Math.round((orderTotalVAT + orderTotalNHIL + orderTotalGETFund + orderTotalCovidLevy) * 100) / 100;
+    const orderTotalTax = Math.round(
+      (orderTotalVAT + orderTotalNHIL + orderTotalGETFund) * 100,
+    ) / 100;
 
     // --- International pre‑order shipping & customs (Ghana) ---
     let internationalShippingCost = 0;
@@ -1144,7 +1227,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderStatus: 'pending',
       paymentStatus: 'pending',
       sellerOrder: sellerOrders,
-      totalPrice: orderTotal, // Grand total (VAT-inclusive + shipping + COVID levy)
+      totalPrice: orderTotal, // Grand total (VAT-inclusive + shipping)
       coupon: couponUsed?._id,
       discountAmount: totalDiscount,
       appliedCouponBatchId: couponData?.batchId || null,
@@ -1198,7 +1281,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       totalVAT: orderTotalVAT,
       totalNHIL: orderTotalNHIL,
       totalGETFund: orderTotalGETFund,
-      totalCovidLevy: orderTotalCovidLevy,
       totalTax: orderTotalTax,
       isVATInclusive: true,
       // Initialize tracking system - Set status based on payment method
@@ -1384,13 +1466,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
           newOrder._id.toString(),
           session
         );
-        console.log('[createOrder] Coupon applied to order:', {
-          orderId: newOrder._id,
-          couponId: appliedCouponId,
-        });
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug('[createOrder] Coupon applied to order');
+        }
       } catch (couponApplyError) {
         // Log error but don't fail order creation
-        console.error('[createOrder] Failed to apply coupon to order (non-critical):', couponApplyError.message);
+        logger.warn('[createOrder] Failed to apply coupon to order (non-critical):', couponApplyError.message);
       }
     }
 
@@ -1418,20 +1499,14 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       .lean();
 
     if (!fullOrder) {
-      console.error('[createOrder] ❌ CRITICAL: Order was not found after creation!', {
-        orderId: newOrder._id,
-        userId: req.user.id,
-      });
+      logger.error('[createOrder] Order was not found after creation');
       await session.abortTransaction();
       return next(new AppError('Order was created but could not be retrieved. Please contact support.', 500));
     }
 
-    console.log('[createOrder] ✅ Order created successfully:', {
-      orderId: fullOrder._id,
-      orderNumber: fullOrder.orderNumber,
-      userId: fullOrder.user?._id || fullOrder.user,
-      totalPrice: fullOrder.totalPrice,
-    });
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('[createOrder] Order created successfully');
+    }
 
     // Capture email data for post-response sending (COD + credit_balance only)
     //   paystack / mobile_money → email fires in verifyPaystackPayment or paystackWebhook
@@ -1444,26 +1519,32 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     }
 
 
-    // Send new order alert emails to sellers
-    try {
-      const emailDispatcher = require('../../emails/emailDispatcher');
-      const Seller = require('../../models/user/sellerModel');
+    // Send seller new-order emails only when payment is already confirmed at order creation.
+    // For Paystack/online methods, emails are deferred until payment verification succeeds.
+    if (!isOnlinePayment) {
+      try {
+        const emailDispatcher = require('../../emails/emailDispatcher');
 
-      if (fullOrder.sellerOrder && fullOrder.sellerOrder.length > 0) {
-        for (const sellerOrder of fullOrder.sellerOrder) {
-          if (sellerOrder.seller && sellerOrder.seller.email) {
-            try {
-              await emailDispatcher.sendSellerNewOrder(sellerOrder.seller, fullOrder);
-              logger.info(`[createOrder] ✅ New order email sent to seller ${sellerOrder.seller.email}`);
-            } catch (sellerEmailError) {
-              logger.error(`[createOrder] Error sending email to seller ${sellerOrder.seller.email}:`, sellerEmailError.message);
+        if (fullOrder.sellerOrder && fullOrder.sellerOrder.length > 0) {
+          for (const sellerOrder of fullOrder.sellerOrder) {
+            if (sellerOrder.seller && sellerOrder.seller.email) {
+              try {
+                await emailDispatcher.sendSellerNewOrder(sellerOrder.seller, fullOrder);
+                logger.info(`[createOrder] ✅ New order email sent to seller ${sellerOrder.seller.email}`);
+              } catch (sellerEmailError) {
+                logger.error(`[createOrder] Error sending email to seller ${sellerOrder.seller.email}:`, sellerEmailError.message);
+              }
             }
           }
         }
+      } catch (sellerEmailError) {
+        logger.error('[createOrder] Error sending seller order emails:', sellerEmailError.message);
+        // Don't fail the order if email fails
       }
-    } catch (sellerEmailError) {
-      logger.error('[createOrder] Error sending seller order emails:', sellerEmailError.message);
-      // Don't fail the order if email fails
+    } else {
+      logger.info(
+        `[createOrder] ℹ️ Seller emails deferred for online payment method "${paymentMethodForEmail}".`
+      );
     }
 
     // Fire COD / credit_balance email AFTER the response is sent (after confirmation page renders)
@@ -1481,6 +1562,27 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       });
     }
 
+    // Send buyer push notification for order placement.
+    // Non-blocking: do not fail order creation if push delivery fails.
+    try {
+      const pushNotificationService = require('../../services/pushNotificationService');
+      const buyerId = fullOrder.user?._id || fullOrder.user;
+      if (buyerId) {
+        await pushNotificationService.sendPushToUser(String(buyerId), {
+          title: 'Order Placed',
+          body: `Your order #${fullOrder.orderNumber} has been placed successfully.`,
+          data: {
+            type: 'ORDER_PLACED',
+            orderId: String(fullOrder._id),
+            referenceId: String(fullOrder._id),
+          },
+          priority: 'high',
+        });
+      }
+    } catch (pushError) {
+      logger.error('[createOrder] Order placed push notification failed:', pushError.message);
+    }
+
     res.status(201).json({
       status: 'success',
       data: { order: fullOrder },
@@ -1488,17 +1590,21 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
   } catch (error) {
     await session.abortTransaction();
-    console.error('[createOrder] ❌ Order creation failed:', {
-      error: error.message,
-      stack: error.stack,
-      body: {
-        orderItemsCount: req.body?.orderItems?.length || 0,
-        hasAddress: !!req.body?.address,
-        hasCoupon: !!(req.body?.couponCode || req.body?.couponId),
-        paymentMethod: req.body?.paymentMethod,
-        deliveryMethod: req.body?.deliveryMethod,
-      },
-    });
+    if (process.env.NODE_ENV === 'development') {
+      logger.error('[createOrder] Order creation failed:', {
+        error: error.message,
+        stack: error.stack,
+        body: {
+          orderItemsCount: req.body?.orderItems?.length || 0,
+          hasAddress: !!req.body?.address,
+          hasCoupon: !!(req.body?.couponCode || req.body?.couponId),
+          paymentMethod: req.body?.paymentMethod,
+          deliveryMethod: req.body?.deliveryMethod,
+        },
+      });
+    } else {
+      logger.error('[createOrder] Order creation failed:', error.message);
+    }
     // Return the error message from AppError if it exists, otherwise generic message
     const errorMessage = error instanceof AppError
       ? error.message
@@ -1542,12 +1648,29 @@ exports.getOrderStats = catchAsync(async (req, res, next) => {
     {
       $facet: {
         total: [{ $count: 'count' }],
-        pending: [{ $match: { currentStatus: { $in: ['pending', 'pending_payment'] } } }, { $count: 'count' }],
+        pending: [{
+          $match: {
+            currentStatus: { $in: ['pending', 'pending_payment'] },
+            paymentStatus: { $nin: ['paid', 'completed'] },
+          },
+        }, { $count: 'count' }],
         processing: [{ $match: { currentStatus: { $in: ['processing', 'preparing', 'ready_for_dispatch'] } } }, { $count: 'count' }],
-        confirmed: [{ $match: { currentStatus: 'confirmed' } }, { $count: 'count' }],
+        confirmed: [{
+          $match: {
+            $or: [
+              { currentStatus: 'confirmed' },
+              { paymentStatus: { $in: ['paid', 'completed'] } },
+            ],
+          },
+        }, { $count: 'count' }],
         shipped: [{ $match: { currentStatus: { $in: ['shipped', 'out_for_delivery'] } } }, { $count: 'count' }],
         delivered: [{ $match: { currentStatus: { $in: ['delivered', 'completed'] } } }, { $count: 'count' }],
-        cancelled: [{ $match: { currentStatus: 'cancelled' } }, { $count: 'count' }],
+        cancelled: [{
+          $match: {
+            currentStatus: 'cancelled',
+            paymentStatus: { $nin: ['paid', 'completed'] },
+          },
+        }, { $count: 'count' }],
       }
     },
   ]);
@@ -1570,7 +1693,10 @@ exports.getOrderStats = catchAsync(async (req, res, next) => {
 //get each seller order
 
 exports.getSellerOrders = catchAsync(async (req, res, next) => {
-  const sellerId = req.user._id;
+  const sellerId = req.user?._id || req.user?.id;
+  if (!sellerId) {
+    return next(new AppError('Seller identity is required', 401));
+  }
 
   const sellerOrders = await SellerOrder.find({ seller: sellerId })
     .populate({
@@ -1582,7 +1708,7 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
     })
     .populate({
       path: 'order',
-      select: 'orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status',
+      select: 'orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status orderStatus',
       populate: [
         {
           path: 'user',
@@ -1601,7 +1727,7 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
   for (const so of sellerOrders) {
     if (!so.order) {
       const parentOrder = await Order.findOne({ sellerOrder: so._id })
-        .select('orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status')
+        .select('orderNumber trackingNumber user createdAt paymentMethod paymentStatus paidAt shippingAddress deliveryMethod pickupCenterId dispatchType currentStatus status orderStatus')
         .populate([{ path: 'user', select: 'name email phone' }, { path: 'pickupCenterId', model: 'PickupCenter', select: 'pickupName address city area openingHours googleMapLink' }])
         .lean();
       if (parentOrder) so.order = parentOrder;
@@ -1613,13 +1739,29 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
   // Return empty array instead of 404 - having no orders is a valid state
   const formattedOrders = validSellerOrders.length === 0
     ? []
-    : validSellerOrders.map((so) => ({
+    : validSellerOrders.map((so) => {
+      const normalizedParent = normalizeOrderStatusForPaid({
+        paymentStatus: so.order.paymentStatus,
+        status: so.order.status,
+        currentStatus: so.order.currentStatus,
+        orderStatus: so.order.orderStatus || so.order.status,
+      });
+      const normalizedSellerStatus = isPaymentConfirmedStatus(so.order.paymentStatus) &&
+        ['pending', 'pending_payment', 'cancelled'].includes(
+          String(so.status || '').toLowerCase()
+        )
+        ? 'confirmed'
+        : so.status;
+
+      return ({
       // SellerOrder fields
       _id: so._id,
-      status: so.status,
+      status: normalizedSellerStatus,
+      sellerNotes: so.sellerNotes || '',
       items: so.items,
       subtotal: so.subtotal,
       total: so.total,
+      totalBasePrice: so.totalBasePrice,
       shippingCost: so.shippingCost,
       tax: so.tax,
       commissionRate: so.commissionRate,
@@ -1635,12 +1777,13 @@ exports.getSellerOrders = catchAsync(async (req, res, next) => {
       paidAt: so.order.paidAt,
       shippingAddress: so.order.shippingAddress,
       // Parent order status (source of truth for "completed" / delivered)
-      currentStatus: so.order.currentStatus,
-      orderStatus: so.order.status,
+      currentStatus: normalizedParent.currentStatus,
+      orderStatus: normalizedParent.orderStatus,
+      statusFromParent: normalizedParent.status,
 
       // Parent order ID
       parentOrderId: so.order._id || null,
-    }));
+    })});
 
   res.status(200).json({
     status: 'success',
@@ -1726,6 +1869,40 @@ exports.getOrderBySeller = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     data: { order },
+  });
+});
+
+/**
+ * Update seller notes for a seller order.
+ * PATCH /order/seller-order/:id/notes
+ * Body: { sellerNotes: string }
+ */
+exports.updateSellerOrderNotes = catchAsync(async (req, res, next) => {
+  const sellerOrderId = req.params.id;
+  const { sellerNotes } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(sellerOrderId)) {
+    return next(new AppError('Invalid order ID format', 400));
+  }
+
+  const sellerOrder = await SellerOrder.findById(sellerOrderId);
+  if (!sellerOrder) {
+    return next(new AppError('Order not found', 404));
+  }
+
+  const sellerId = sellerOrder.seller?._id ? sellerOrder.seller._id.toString() : String(sellerOrder.seller);
+  const userId = String(req.user?._id || req.user?.id);
+
+  if (sellerId !== userId) {
+    return next(new AppError('You are not authorized to update this order', 403));
+  }
+
+  sellerOrder.sellerNotes = typeof sellerNotes === 'string' ? sellerNotes : '';
+  await sellerOrder.save({ validateBeforeSave: true });
+
+  res.status(200).json({
+    status: 'success',
+    data: { order: sellerOrder },
   });
 });
 
@@ -1815,7 +1992,7 @@ exports.getUserOrders = catchAsync(async (req, res, next) => {
     }
   } catch (err) {
     // Do not break orders listing if refund lookup fails
-    console.error('[getUserOrders] Error attaching latestRefundRequestId:', err);
+    logger.warn('[getUserOrders] Error attaching latestRefundRequestId:', err?.message || err);
   }
 
   res.status(200).json({
@@ -1840,11 +2017,13 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   }
 
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
-    console.error(`[getUserOrder] Invalid order ID format: ${orderId}`);
+    logger.warn('[getUserOrder] Invalid order ID format');
     return next(new AppError(`Invalid order ID format: ${orderId}`, 400));
   }
 
-  console.log(`[getUserOrder] Fetching order with ID: ${orderId} for user: ${req.user.id}`);
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[getUserOrder] Fetching order details');
+  }
 
   const order = await Order.findById(orderId)
     .populate({
@@ -1892,7 +2071,9 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
 
   // If not found by _id, try finding by orderNumber (in case frontend passed orderNumber instead of _id)
   if (!order) {
-    console.warn(`[getUserOrder] Order not found by _id, trying orderNumber: ${orderId}`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('[getUserOrder] Not found by _id, trying orderNumber');
+    }
     order = await Order.findOne({ orderNumber: orderId })
       .populate({
         path: 'user',
@@ -1936,12 +2117,15 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   }
 
   if (!order) {
-    console.error(`[getUserOrder] Order not found with ID: ${orderId} for user: ${req.user.id}`);
-    console.error(`[getUserOrder] Searched both _id and orderNumber`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.warn('[getUserOrder] Order not found by _id and orderNumber');
+    }
 
     // Additional debugging: Check if any orders exist for this user
     const userOrdersCount = await Order.countDocuments({ user: req.user.id });
-    console.error(`[getUserOrder] User has ${userOrdersCount} total orders`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('[getUserOrder] User order count:', userOrdersCount);
+    }
 
     return next(new AppError(`Order not found with ID: ${orderId}`, 404));
   }
@@ -1954,15 +2138,23 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
   // Convert to object to ensure all fields are included
   let orderData = order.toObject ? order.toObject() : order;
 
-  // Check if shippingAddress is a string ID (reference) or an object (embedded)
-  // If it's a string ID, populate it from the Address model
-  if (orderData.shippingAddress && typeof orderData.shippingAddress === 'string') {
+  // Check if shippingAddress is an Address reference (string/ObjectId) or embedded object.
+  // If it's a reference, populate it from the Address model.
+  if (
+    orderData.shippingAddress &&
+    (typeof orderData.shippingAddress === 'string' ||
+      mongoose.Types.ObjectId.isValid(orderData.shippingAddress))
+  ) {
     try {
-      const address = await Address.findById(orderData.shippingAddress);
+      const addressId =
+        typeof orderData.shippingAddress === 'string'
+          ? orderData.shippingAddress
+          : orderData.shippingAddress.toString();
+      const address = await Address.findById(addressId);
       if (address) {
         orderData.shippingAddress = address.toObject ? address.toObject() : address;
       } else {
-        logger.warn(`[getUserOrder] Address not found for ID: ${orderData.shippingAddress}`);
+        logger.warn(`[getUserOrder] Address not found for ID: ${addressId}`);
         orderData.shippingAddress = null;
       }
     } catch (error) {
@@ -2004,6 +2196,16 @@ exports.getUserOrder = catchAsync(async (req, res, next) => {
       }
     }
   }
+
+  const normalizedBuyerOrder = normalizeOrderStatusForPaid({
+    paymentStatus: orderData?.paymentStatus,
+    status: orderData?.status,
+    currentStatus: orderData?.currentStatus,
+    orderStatus: orderData?.orderStatus || orderData?.status,
+  });
+  orderData.status = normalizedBuyerOrder.status;
+  orderData.currentStatus = normalizedBuyerOrder.currentStatus;
+  orderData.orderStatus = normalizedBuyerOrder.orderStatus;
 
   res.status(200).json({
     status: 'success',
@@ -2059,12 +2261,41 @@ exports.getOrder = catchAsync(async (req, res, next) => {
       return { ...so, sellerId: sellerIdStr || so.sellerId || null };
     });
   }
+  const normalizedAdminOrder = normalizeOrderStatusForPaid({
+    paymentStatus: doc?.paymentStatus,
+    status: doc?.status,
+    currentStatus: doc?.currentStatus,
+    orderStatus: doc?.orderStatus || doc?.status,
+  });
+  doc.status = normalizedAdminOrder.status;
+  doc.currentStatus = normalizedAdminOrder.currentStatus;
+  doc.orderStatus = normalizedAdminOrder.orderStatus;
+
   res.status(200).json({ status: 'success', data: { data: doc } });
 });
 // Override updateOrder to handle status sync and seller balance updates
 exports.updateOrder = catchAsync(async (req, res, next) => {
   const orderId = req.params.id;
   const updateData = req.body;
+  const userRole = req.user?.role;
+  const isModerator = userRole === 'moderator';
+  const isAdminLike = userRole === 'admin' || userRole === 'superadmin';
+
+  const allowedKeys = isModerator
+    ? new Set(['adminNotes'])
+    : new Set(['adminNotes', 'currentStatus', 'message', 'location']);
+
+  const forbiddenKeys = Object.keys(updateData || {}).filter(
+    (key) => !allowedKeys.has(key)
+  );
+  if (forbiddenKeys.length > 0) {
+    return next(
+      new AppError(
+        `Invalid update fields: ${forbiddenKeys.join(', ')}`,
+        400
+      )
+    );
+  }
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -2085,62 +2316,141 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       order.currentStatus === 'delievered' ||
       order.status === 'completed';
 
+    let normalizedNextStatus = null;
+    let requestedCurrentStatus = null;
+
     // If status is being updated, sync all status fields
-    if (updateData.currentStatus) {
-      const newStatus = updateData.currentStatus;
-      order.currentStatus = newStatus;
+    if (updateData.currentStatus !== undefined) {
+      if (!isAdminLike) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(new AppError('You are not allowed to update order status', 403));
+      }
+
+      requestedCurrentStatus = updateData.currentStatus;
+      if (typeof requestedCurrentStatus !== 'string') {
+        await session.abortTransaction();
+        session.endSession();
+        return next(new AppError('Invalid currentStatus value', 400));
+      }
+
+      normalizedNextStatus =
+        requestedCurrentStatus === 'delievered'
+          ? 'delivered'
+          : requestedCurrentStatus;
+
+      // Enforce safe status transitions + payment gating
+      const transitionCheck = validateStatusTransition(
+        order,
+        normalizedNextStatus,
+        userRole
+      );
+      if (!transitionCheck.allowed) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(
+          new AppError(transitionCheck.reason || 'Invalid status transition', 400)
+        );
+      }
+
+      const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+      const isPaid =
+        rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
+      if (
+        !isPaid &&
+        !['cancelled', 'refunded'].includes(normalizedNextStatus) &&
+        normalizedNextStatus !== order.currentStatus
+      ) {
+        await session.abortTransaction();
+        session.endSession();
+        return next(
+          new AppError(
+            'Cannot update order status while payment is pending. You may only cancel unpaid orders.',
+            400
+          )
+        );
+      }
+
+      order.currentStatus = normalizedNextStatus;
 
       // Sync legacy status fields for backward compatibility
-      if (newStatus === 'delivered') {
+      if (normalizedNextStatus === 'delivered') {
         order.orderStatus = 'delievered';
         order.FulfillmentStatus = 'delievered';
         order.status = 'completed';
-      } else if (newStatus === 'cancelled') {
+      } else if (normalizedNextStatus === 'cancelled') {
         order.orderStatus = 'cancelled';
         order.FulfillmentStatus = 'cancelled';
         order.status = 'cancelled';
-      } else if (newStatus === 'refunded') {
+      } else if (normalizedNextStatus === 'refunded') {
         order.status = 'cancelled';
         order.orderStatus = 'cancelled';
         order.FulfillmentStatus = 'cancelled';
-      } else if (newStatus === 'out_for_delivery') {
+      } else if (
+        normalizedNextStatus === 'out_for_delivery' ||
+        normalizedNextStatus === 'delivery_attempted'
+      ) {
         order.orderStatus = 'shipped';
         order.FulfillmentStatus = 'shipped';
         order.status = 'processing';
-      } else if (newStatus === 'confirmed' || newStatus === 'payment_completed') {
+      } else if (
+        normalizedNextStatus === 'confirmed' ||
+        normalizedNextStatus === 'payment_completed'
+      ) {
         // Confirmed status means payment is complete - set status to confirmed
         order.status = 'confirmed';
         order.paymentStatus = 'completed';
-      } else if (['processing', 'preparing', 'ready_for_dispatch'].includes(newStatus)) {
+      } else if (
+        ['processing', 'preparing', 'ready_for_dispatch'].includes(
+          normalizedNextStatus
+        )
+      ) {
         order.status = 'processing';
       }
 
       // Add tracking history entry
       order.trackingHistory.push({
-        status: newStatus,
-        message: updateData.message || 'Order status updated',
-        location: updateData.location || '',
+        status: normalizedNextStatus,
+        message:
+          typeof updateData.message === 'string' && updateData.message.trim()
+            ? updateData.message
+            : 'Order status updated',
+        location:
+          typeof updateData.location === 'string' && updateData.location.trim()
+            ? updateData.location
+            : '',
         updatedBy: req.user.id,
         updatedByModel: req.user.role === 'admin' ? 'Admin' : req.user.role === 'seller' ? 'Seller' : 'User',
         timestamp: new Date(),
       });
     }
 
-    // Update other fields
-    Object.keys(updateData).forEach((key) => {
-      if (key !== 'currentStatus' && key !== 'message' && key !== 'location') {
-        order[key] = updateData[key];
+    // Update admin notes only (prevents mass-assignment of order fields)
+    if (updateData.adminNotes !== undefined) {
+      if (typeof updateData.adminNotes !== 'string') {
+        await session.abortTransaction();
+        session.endSession();
+        return next(new AppError('Invalid adminNotes', 400));
       }
-    });
+      order.adminNotes = updateData.adminNotes;
+    }
 
     // If client sent only legacy "delivered" fields (orderStatus/FulfillmentStatus 'delievered' or status 'completed')
     // without currentStatus, treat as delivered so seller crediting runs.
     let effectiveStatusBecameDelivered = false;
     const isDeliveredViaLegacy =
-      (order.orderStatus === 'delievered' || order.FulfillmentStatus === 'delievered' || order.status === 'completed') &&
+      (order.orderStatus === 'delievered' ||
+        order.FulfillmentStatus === 'delievered' ||
+        order.status === 'completed') &&
       order.currentStatus !== 'delivered' &&
       order.currentStatus !== 'delievered';
-    if (isDeliveredViaLegacy) {
+
+    // Prevent financial side effects on unrelated updates (e.g. adminNotes edit)
+    if (
+      isDeliveredViaLegacy &&
+      updateData.currentStatus !== undefined &&
+      normalizedNextStatus === 'delivered'
+    ) {
       order.currentStatus = 'delivered';
       order.orderStatus = 'delievered';
       order.FulfillmentStatus = 'delievered';
@@ -2157,11 +2467,17 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       logger.info(`[updateOrder] Order ${orderId} had legacy delivered status; set currentStatus to 'delivered' for crediting`);
     }
     // Handle stock restoration on cancellation/refund
-    if (updateData.currentStatus && ['cancelled', 'refunded'].includes(updateData.currentStatus) && !['cancelled', 'refunded'].includes(previousStatus)) {
+    if (
+      normalizedNextStatus &&
+      ['cancelled', 'refunded'].includes(normalizedNextStatus) &&
+      !['cancelled', 'refunded'].includes(previousStatus)
+    ) {
       try {
         await order.populate('orderItems');
         await stockService.restoreOrderStock(order.orderItems, session);
-        logger.info(`[updateOrder] Stock restored for order ${orderId} (Status: ${updateData.currentStatus})`);
+        logger.info(
+          `[updateOrder] Stock restored for order ${orderId} (Status: ${normalizedNextStatus})`
+        );
       } catch (stockError) {
         await session.abortTransaction();
         session.endSession();
@@ -2175,10 +2491,12 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
 
     // POST-COMMIT ACTIONS
     // Sync SellerOrder status with Order status if currentStatus was updated
-    if (updateData.currentStatus || effectiveStatusBecameDelivered) {
+    if (normalizedNextStatus || effectiveStatusBecameDelivered) {
       try {
         const { syncSellerOrderStatus } = require('../../utils/helpers/syncSellerOrderStatus');
-        const statusToSync = effectiveStatusBecameDelivered ? 'delivered' : updateData.currentStatus;
+        const statusToSync = effectiveStatusBecameDelivered
+          ? 'delivered'
+          : normalizedNextStatus;
         const syncResult = await syncSellerOrderStatus(orderId, statusToSync);
         logger.info('[updateOrder] SellerOrder sync result:', syncResult);
       } catch (error) {
@@ -2186,8 +2504,9 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       }
     }
 
-    // Credit sellers ONLY when order status becomes "delivered"
-    if ((updateData.currentStatus === 'delivered' || effectiveStatusBecameDelivered) && !wasCompleted) {
+    // Attempt seller credit on every delivered update.
+    // orderService.creditSellerForOrder is idempotent and prevents double-crediting.
+    if (normalizedNextStatus === 'delivered' || effectiveStatusBecameDelivered) {
       try {
         const balanceUpdateResult = await orderService.creditSellerForOrder(
           orderId,
@@ -2296,6 +2615,13 @@ exports.deleteOrder = catchAsync(async (req, res, next) => {
 
   // USER FLOW: Cancel + archive instead of hard delete
   if (role === 'user') {
+    // SECURITY: Prevent IDOR by ensuring the buyer owns the order
+    if (!order.user || order.user.toString() !== req.user.id.toString()) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(new AppError('You are not authorized to cancel this order', 403));
+    }
+
     const isPaidOrShipped =
       ['paid', 'completed'].includes(order.paymentStatus) ||
       ['paid', 'confirmed', 'processing', 'partially_shipped', 'completed'].includes(order.status) ||
@@ -2789,6 +3115,10 @@ exports.updateOrderAddressAndRecalculate = catchAsync(async (req, res, next) => 
 exports.sendOrderDetailEmail = catchAsync(async (req, res, next) => {
   const { orderId } = req.params;
 
+  if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+    return next(new AppError('Invalid order ID format', 400));
+  }
+
   // Get order with all populated fields
   const order = await Order.findById(orderId)
     .populate({
@@ -2804,6 +3134,16 @@ exports.sendOrderDetailEmail = catchAsync(async (req, res, next) => {
 
   if (!order) {
     return next(new AppError('Order not found', 404));
+  }
+
+  // SECURITY: Prevent IDOR by ensuring the requester owns the order
+  const ownerId = order.user?._id
+    ? order.user._id.toString()
+    : order.user
+      ? order.user.toString()
+      : null;
+  if (!ownerId || ownerId !== req.user.id.toString()) {
+    return next(new AppError('You are not authorized to send details for this order', 403));
   }
 
   // Get user email

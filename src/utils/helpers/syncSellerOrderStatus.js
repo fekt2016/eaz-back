@@ -15,6 +15,7 @@ const mapOrderStatusToSellerOrderStatus = (orderStatus) => {
     'preparing': 'processing',
     'ready_for_dispatch': 'processing',
     'out_for_delivery': 'shipped',
+    'delivery_attempted': 'shipped',
     'delivered': 'delivered',
     'cancelled': 'cancelled',
     'refunded': 'cancelled',

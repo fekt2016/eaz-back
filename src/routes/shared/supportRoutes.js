@@ -1,6 +1,10 @@
 const express = require('express');
 const supportController = require('../../controllers/shared/supportController');
 const authController = require('../../controllers/buyer/authController');
+const {
+  supportTicketCreateLimiter,
+  supportTicketReplyLimiter,
+} = require('../../middleware/rateLimiting/supportLimiter');
 
 const router = express.Router();
 
@@ -10,7 +14,9 @@ router.use(authController.protect);
 // User/Seller routes
 router.post(
   '/tickets',
+  supportTicketCreateLimiter,
   supportController.uploadSupportFiles,
+  supportController.validateSupportFileSignatures,
   supportController.createTicket
 );
 
@@ -20,7 +26,9 @@ router.get('/tickets/:id', supportController.getTicketById);
 
 router.post(
   '/tickets/:id/reply',
+  supportTicketReplyLimiter,
   supportController.uploadSupportFiles,
+  supportController.validateSupportFileSignatures,
   supportController.replyToTicket
 );
 

@@ -13,11 +13,52 @@ const APIFeature = require('../../utils/helpers/apiFeatures');
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new AppError('Not an image! Please upload an image', 400), false);
   }
+};
+
+const detectImageTypeFromBuffer = (buffer) => {
+  if (!buffer || !Buffer.isBuffer(buffer)) return null;
+
+  // JPEG: FF D8 FF
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return 'image/jpeg';
+  }
+
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+
+  // WEBP: RIFF....WEBP
+  if (buffer.length >= 12) {
+    const riffHeader = buffer.toString('ascii', 0, 4);
+    const webpHeader = buffer.toString('ascii', 8, 12);
+    if (riffHeader === 'RIFF' && webpHeader === 'WEBP') {
+      return 'image/webp';
+    }
+  }
+
+  return null;
 };
 
 const upload = multer({
@@ -42,6 +83,12 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
         req.file.buffer instanceof Buffer
           ? req.file.buffer
           : Buffer.from(req.file.buffer);
+
+      const detectedMime = detectImageTypeFromBuffer(imageBuffer);
+      if (!detectedMime || detectedMime !== req.file.mimetype) {
+        throw new AppError('Invalid image file type', 400);
+      }
+
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
       // Process cover image using central utility (handles duplicates)
@@ -58,7 +105,7 @@ exports.resizeCategoryImages = catchAsync(async (req, res, next) => {
       req.body.image = coverResult.secure_url;
     }
   } catch (err) {
-    logger.info(err.message);
+    return next(err);
   }
 
   next();

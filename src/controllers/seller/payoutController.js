@@ -87,28 +87,20 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     return next(new AppError('Seller not found', 404));
   }
 
-  // Calculate total withdrawals (sum of all paid/approved withdrawal requests)
-  // Use amountRequested if available (the actual amount that left the account), otherwise use amount
-  const totalWithdrawals = await PaymentRequest.aggregate([
+  // Calculate total withdrawn: sum debit transactions linked to a payout request (paid withdrawals)
+  // Using Transaction is authoritative — covers both PaymentRequest and WithdrawalRequest paths
+  const withdrawnAgg = await Transaction.aggregate([
     {
       $match: {
         seller: new mongoose.Types.ObjectId(sellerId),
-        status: { $in: ['paid', 'approved', 'success'] }, // Only count successful withdrawals
+        type: 'debit',
+        status: 'completed',
+        payoutRequest: { $exists: true, $ne: null },
       },
     },
-    {
-      $group: {
-        _id: null,
-        total: {
-          $sum: {
-            $ifNull: ['$amountRequested', '$amount'] // Use amountRequested if available, fallback to amount
-          }
-        },
-      },
-    },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
-
-  const totalWithdrawn = totalWithdrawals.length > 0 ? totalWithdrawals[0].total : 0;
+  const totalWithdrawn = withdrawnAgg[0]?.total || 0;
 
   // Ensure withdrawableBalance is calculated correctly
   seller.calculateWithdrawableBalance();
@@ -122,9 +114,19 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     logger.info(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
   }
 
-  // Calculate total revenue: balance (current) + totalWithdrawn (all time)
-  // This represents all earnings from delivered orders
-  const totalRevenue = (seller.balance || 0) + (totalWithdrawn || 0);
+  // Calculate total revenue: order earnings + admin adjustments
+  const revenueAgg = await Transaction.aggregate([
+    {
+      $match: {
+        seller: new mongoose.Types.ObjectId(sellerId),
+        source: { $in: ['order_delivery', 'admin_adjustment'] },
+        type: 'credit',
+        status: 'completed',
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+  const totalRevenue = revenueAgg[0]?.total || 0;
 
   // Calculate available balance for verification
   const calculatedAvailableBalance = seller.withdrawableBalance || 0;
@@ -139,8 +141,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
     pendingBalance: seller.pendingBalance, // Funds in withdrawal requests awaiting approval/OTP
     withdrawableBalance: seller.withdrawableBalance,
     availableBalance: calculatedAvailableBalance,
-    totalWithdrawn, // Total amount withdrawn by seller
-    totalRevenue, // Total revenue (balance + totalWithdrawn)
+    totalWithdrawn, // Sum of completed debit transactions linked to payout requests
+    totalRevenue, // Sum of all completed credit transactions (true lifetime earnings)
     calculatedWithdrawable,
     // Verification checks
     balanceCheck: balanceCheck < 0.01 ? '✅ PASS' : `❌ FAIL (diff: ${balanceCheck.toFixed(2)})`,
@@ -164,8 +166,8 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
       pendingBalance: seller.pendingBalance || 0, // Funds in withdrawal requests awaiting approval/OTP
       withdrawableBalance: seller.withdrawableBalance || 0, // Available balance (can be withdrawn)
       availableBalance: seller.withdrawableBalance || 0, // Alias for backward compatibility
-      totalWithdrawn: totalWithdrawn || 0, // Total amount withdrawn by seller (all time)
-      totalRevenue: totalRevenue || 0, // Total revenue = balance + totalWithdrawn (all earnings from delivered orders)
+      totalWithdrawn: totalWithdrawn || 0, // Sum of completed debit transactions linked to payout requests
+      totalRevenue: totalRevenue || 0, // Sum of all completed credit transactions (true lifetime earnings)
       lockedReason: seller.lockedReason, // Reason for admin lock (dispute/issue)
       lockedBy: seller.lockedBy, // Admin who locked the funds
       lockedAt: seller.lockedAt, // When funds were locked
@@ -237,8 +239,8 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
     logger.info(`  Pending Balance: ${oldPendingBalance} - ${amount} = ${seller.pendingBalance}`);
     logger.info(`  Withdrawable Balance: ${seller.withdrawableBalance}`);
 
-    // Update payment request status (PaymentRequest doesn't have 'cancelled', use 'cancelled' or 'rejected')
-    withdrawalRequest.status = 'rejected'; // 'rejected' is the existing enum for final cancellation
+    // Update payment request status — 'cancelled' distinguishes seller self-cancel from admin rejection
+    withdrawalRequest.status = 'cancelled';
     withdrawalRequest.rejectionReason = 'Cancelled by seller';
     await withdrawalRequest.save({ session });
 
@@ -260,6 +262,7 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
         [
           {
             seller: sellerId,
+            source: 'withdrawal',
             amount: withdrawalRequest.amount,
             type: 'debit',
             description: `Withdrawal Cancelled - Request #${withdrawalRequest._id}`,
@@ -278,7 +281,6 @@ exports.cancelWithdrawalRequest = catchAsync(async (req, res, next) => {
       message: 'Withdrawal request cancelled successfully',
       data: {
         withdrawalRequest,
-        transaction: transaction[0],
       },
     });
   } catch (error) {
@@ -405,24 +407,20 @@ exports.deleteWithdrawalRequest = catchAsync(async (req, res, next) => {
       });
     }
 
-    // Create a "refund" transaction record
-    await Transaction.create(
-      [
-        {
-          seller: sellerId,
-          amount: withdrawalRequest.amount,
-          type: 'credit',
-          description: `Withdrawal Request Deactivated - Refund for Request #${withdrawalRequest._id}`,
-          status: 'completed',
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id,
-            action: 'deactivation_refund',
-            deactivatedAt: new Date(),
-          },
-        },
-      ],
-      { session }
-    );
+    // SECURITY FIX: Do NOT create a credit transaction here — that inflates totalRevenue.
+    // The original pending debit transaction already exists; just cancel it.
+    const existingTx = await Transaction.findOne({
+      seller: sellerId,
+      payoutRequest: withdrawalRequest._id,
+      type: 'debit',
+    }).session(session);
+
+    if (existingTx) {
+      existingTx.status = 'cancelled';
+      existingTx.description = `Withdrawal Deactivated - Request #${withdrawalRequest._id}`;
+      await existingTx.save({ session });
+      logger.info(`[deleteWithdrawalRequest] Cancelled existing transaction ${existingTx._id}`);
+    }
 
     // Deactivate the payment request instead of deleting it
     withdrawalRequest.isActive = false;
@@ -469,46 +467,52 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
     return next(new AppError('PIN must be 4-6 digits', 400));
   }
 
-  // Find payment request
-  const withdrawalRequest = await PaymentRequest.findOne({
-    _id: id,
-    seller: sellerId,
-  });
-
-  if (!withdrawalRequest) {
-    return next(new AppError('Withdrawal request not found', 404));
-  }
-
-  // Check if PIN is required (for mobile money transfers)
-  const isMobileMoney = ['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(
-    withdrawalRequest.paymentMethod
-  );
-
-  // Check if PIN is required - use requiresPin field or check if it's mobile money
-  const requiresPin = withdrawalRequest.requiresPin !== undefined
-    ? withdrawalRequest.requiresPin
-    : (isMobileMoney ? true : false);
-
-  if (!requiresPin) {
-    return next(new AppError('This withdrawal request does not require a PIN', 400));
-  }
-
-  // Check if PIN has already been submitted
-  if (withdrawalRequest.pinSubmitted) {
-    return next(new AppError('PIN has already been submitted for this withdrawal', 400));
-  }
-
-  // Check if payment request has transfer code
-  if (!withdrawalRequest.paystackTransferCode) {
-    return next(new AppError('Transfer code not found. Please contact support.', 400));
-  }
-
-  // Check if payment request is in processing status (or pending for mobile money)
-  if (withdrawalRequest.status !== 'processing' && withdrawalRequest.status !== 'pending') {
-    return next(new AppError('This withdrawal request is not awaiting PIN submission', 400));
-  }
+  // ── Atomic session to prevent race conditions ──────────────────────
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
+    // Find payment request WITH session lock
+    const withdrawalRequest = await PaymentRequest.findOne({
+      _id: id,
+      seller: sellerId,
+    }).session(session);
+
+    if (!withdrawalRequest) {
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request not found', 404));
+    }
+
+    // Check if PIN is required (for mobile money transfers)
+    const isMobileMoney = ['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(
+      withdrawalRequest.paymentMethod
+    );
+
+    const requiresPin = withdrawalRequest.requiresPin !== undefined
+      ? withdrawalRequest.requiresPin
+      : (isMobileMoney ? true : false);
+
+    if (!requiresPin) {
+      await session.abortTransaction();
+      return next(new AppError('This withdrawal request does not require a PIN', 400));
+    }
+
+    // SECURITY: Prevent replay — check if PIN has already been submitted
+    if (withdrawalRequest.pinSubmitted) {
+      await session.abortTransaction();
+      return next(new AppError('PIN has already been submitted for this withdrawal', 400));
+    }
+
+    if (!withdrawalRequest.paystackTransferCode) {
+      await session.abortTransaction();
+      return next(new AppError('Transfer code not found. Please contact support.', 400));
+    }
+
+    if (withdrawalRequest.status !== 'processing' && withdrawalRequest.status !== 'pending') {
+      await session.abortTransaction();
+      return next(new AppError('This withdrawal request is not awaiting PIN submission', 400));
+    }
+
     // Submit PIN to Paystack
     const result = await payoutService.submitTransferPin(
       withdrawalRequest.paystackTransferCode,
@@ -517,31 +521,56 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
 
     // Update payment request
     withdrawalRequest.pinSubmitted = true;
-
-    // Update status based on result
-    if (result.status === 'success') {
-      withdrawalRequest.status = 'paid';
-    } else if (result.status === 'failed') {
-      withdrawalRequest.status = 'failed';
-    }
-
-    // Update metadata with PIN submission details
     withdrawalRequest.metadata = {
       ...(withdrawalRequest.metadata || {}),
       pinSubmittedAt: new Date(),
       pinSubmissionResult: result.status,
     };
 
-    await withdrawalRequest.save();
+    if (result.status === 'success') {
+      withdrawalRequest.status = 'paid';
+      withdrawalRequest.paidAt = new Date();
 
-    // If transfer is successful, update transaction status
-    if (result.status === 'success' && withdrawalRequest.transaction) {
-      const transaction = await Transaction.findById(withdrawalRequest.transaction);
-      if (transaction) {
-        transaction.status = 'completed';
-        await transaction.save();
+      // SECURITY FIX: Deduct balance + pendingBalance on successful PIN transfer
+      const seller = await Seller.findById(sellerId).session(session);
+      if (seller) {
+        const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+        const oldPendingBalance = seller.pendingBalance || 0;
+        const oldBalance = seller.balance || 0;
+
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+        seller.balance = Math.max(0, oldBalance - amountRequested);
+        seller.calculateWithdrawableBalance();
+        await seller.save({ session });
+
+        logger.info(`[submitTransferPin] Balance deducted for seller ${sellerId}: balance ${oldBalance} → ${seller.balance}, pending ${oldPendingBalance} → ${seller.pendingBalance}`);
+      }
+    } else if (result.status === 'failed') {
+      withdrawalRequest.status = 'failed';
+
+      // Refund pendingBalance on failure
+      const seller = await Seller.findById(sellerId).session(session);
+      if (seller) {
+        const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+        seller.pendingBalance = Math.max(0, (seller.pendingBalance || 0) - amountRequested);
+        seller.calculateWithdrawableBalance();
+        await seller.save({ session });
       }
     }
+
+    await withdrawalRequest.save({ session });
+
+    // Update linked transaction status
+    const txQuery = withdrawalRequest.transaction
+      ? { _id: withdrawalRequest.transaction }
+      : { payoutRequest: withdrawalRequest._id, type: 'debit' };
+    const transaction = await Transaction.findOne(txQuery).session(session);
+    if (transaction) {
+      transaction.status = result.status === 'success' ? 'completed' : (result.status === 'failed' ? 'failed' : transaction.status);
+      await transaction.save({ session });
+    }
+
+    await session.commitTransaction();
 
     res.status(200).json({
       status: 'success',
@@ -554,6 +583,9 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
       },
     });
   } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     logger.error('[submitTransferPin] Error:', error);
 
     if (error instanceof AppError) {
@@ -561,6 +593,8 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
     }
 
     return next(new AppError(error.message || 'Failed to submit PIN', 500));
+  } finally {
+    session.endSession();
   }
 });
 
@@ -569,96 +603,25 @@ exports.submitTransferPin = catchAsync(async (req, res, next) => {
  * POST /api/v1/seller/payout/request/:id/verify-otp
  */
 exports.verifyOtp = catchAsync(async (req, res, next) => {
-  // Initial diagnostic logging
-  logger.info("🚀 VERIFY OTP CONTROLLER HIT:", {
-    withdrawalId: req.params.id,
-    sellerId: req.user?.id,
-    body: req.body
-  });
-
-  logger.info('═══════════════════════════════════════════════════════════');
-  logger.info('[verifyOtp] 🔍 FULL DEBUG: verifyOtp controller called');
-  logger.info('═══════════════════════════════════════════════════════════');
-
   const { id } = req.params;
   const { otp } = req.body;
 
-  logger.info('[verifyOtp] Request Parameters:', {
-    withdrawalId: id,
-    otpLength: otp ? otp.length : 0,
-    otpPrefix: otp ? otp.substring(0, 2) + '****' : 'missing'
-  });
+  // SECURITY: Minimal logging — never log OTP values, cookies, or auth headers
+  logger.info(`[verifyOtp] Called for withdrawal ${id} by seller ${req.user?.id}`);
 
-  logger.info('[verifyOtp] Request Headers:', {
-    authorization: req.headers.authorization ? 'present (length: ' + req.headers.authorization.length + ')' : 'missing',
-    cookie: req.headers.cookie ? 'present (length: ' + req.headers.cookie.length + ')' : 'missing',
-    'content-type': req.headers['content-type'],
-    'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
-  });
-
-  logger.info('[verifyOtp] Request Cookies:', {
-    hasCookies: !!req.cookies,
-    cookieKeys: req.cookies ? Object.keys(req.cookies) : 'none',
-    seller_jwt: req.cookies?.seller_jwt ? 'present (length: ' + req.cookies.seller_jwt.length + ')' : 'missing',
-    main_jwt: req.cookies?.main_jwt ? 'present' : 'missing',
-    admin_jwt: req.cookies?.admin_jwt ? 'present' : 'missing'
-  });
-
-  logger.info('[verifyOtp] Request User (req.user);:', {
-    hasUser: !!req.user,
-    userId: req.user?.id,
-    userRole: req.user?.role,
-    userEmail: req.user?.email || req.user?.phone,
-    userObject: req.user ? {
-      id: req.user.id,
-      role: req.user.role,
-      email: req.user.email,
-      phone: req.user.phone
-    } : 'null'
-  });
-
-  // CRITICAL: Check if req.user exists (authentication check)
+  // Authentication check
   if (!req.user || !req.user.id) {
-    logger.error('═══════════════════════════════════════════════════════════');
-    logger.error('[verifyOtp] ❌ AUTHENTICATION ERROR: req.user is missing');
-    logger.error('═══════════════════════════════════════════════════════════');
-    logger.error('[verifyOtp] This means protectSeller middleware failed or did not run');
-    logger.error('[verifyOtp] Request details:', {
-      path: req.path,
-      originalUrl: req.originalUrl,
-      method: req.method,
-      headers: {
-        authorization: req.headers.authorization ? 'present' : 'missing',
-        cookie: req.headers.cookie ? 'present' : 'missing'
-      },
-      cookies: req.cookies ? Object.keys(req.cookies) : 'none',
-      hasUser: !!req.user
-    });
-    logger.error('[verifyOtp] 🛑 RETURNING 401 - Authentication failed');
-    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('[verifyOtp] Authentication failed — req.user missing');
     return next(new AppError('You are not authenticated. Please log in to get access.', 401));
   }
 
   const sellerId = req.user.id;
 
-  logger.info('[verifyOtp] ✅ Authentication successful:', {
-    sellerId: sellerId,
-    sellerRole: req.user.role,
-    sellerEmail: req.user.email || req.user.phone
-  });
-  logger.info('[verifyOtp] Request details:', {
-    withdrawalId: id,
-    otpLength: otp ? otp.length : 0,
-    sellerId: sellerId
-  });
-
-  // Validate input - return 400 (Bad Request) for validation errors, NOT 401
-  if (!otp || String(otp).length !== 6) {
-    logger.warn(`[verifyOtp] ⚠️ Validation error - Invalid OTP format: length=${otp ? String(otp).length : 0}`);
+  // Validate OTP format — SECURITY: never return the OTP value in response
+  if (!otp || !/^\d{6}$/.test(String(otp))) {
     return res.status(400).json({
       success: false,
-      message: 'OTP must be 6 digits',
-      debugOtp: otp
+      message: 'OTP must be exactly 6 digits',
     });
   }
 
@@ -666,15 +629,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // Find withdrawal request (try PaymentRequest first, then WithdrawalRequest)
-    let withdrawalRequest = await PaymentRequest.findById(id).session(session);
-    let isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      isPaymentRequest = false;
-    }
+    const withdrawalRequest = await PaymentRequest.findById(id).session(session);
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -683,8 +638,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       return next(new AppError('Withdrawal request not found', 404));
     }
 
-    // Log withdrawal object
-    logger.info("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
+    // SECURITY: Don't log full withdrawal object — may contain sensitive payment details
 
     // Security: Verify seller owns this withdrawal
     const requestSellerId = withdrawalRequest.seller?._id
@@ -827,10 +781,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: `Transfer is not currently awaiting OTP verification. Current status: ${statusResponse.data?.data?.status}. Please try resending the OTP first.`,
-          paystack: {
-            status: statusResponse.data?.data?.status,
-            transferCode: transferCode
-          },
+          // SECURITY: Internal transfer details not exposed
           errorCode: 'TRANSFER_NOT_AWAITING_OTP',
           suggestion: 'Click "Resend PIN" to get a new OTP and put the transfer back into OTP status.'
         });
@@ -840,79 +791,34 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       // Continue anyway - try to verify
     }
 
-    // Log data before calling Paystack
-    logger.info("📤 DATA SENT TO PAYSTACK OTP VERIFY:", {
-      otp: req.body.otp,
-      transferCode: withdrawalRequest?.transferCode || transferCode,
-    });
-
-    logger.info("🧾 WITHDRAWAL OBJECT:", withdrawalRequest);
-
-    if (!withdrawalRequest?.transferCode && !transferCode) {
-      logger.error("❌ ERROR: transferCode is missing! Paystack will return 400.");
+    // SECURITY: Only log non-sensitive identifiers
+    if (!transferCode) {
+      logger.error('[verifyOtp] transferCode is missing — Paystack will return 400');
     }
-
-    // Log raw Paystack payload before sending
-    logger.info('💳 PAYSTACK OTP REQUEST:', {
-      url: paystackUrl,
-      payload: otpPayload,
-      headers: {
-        ...paystackHeaders,
-        Authorization: paystackHeaders.Authorization ? `Bearer ${paystackHeaders.Authorization.substring(7, 15)}...` : 'missing'
-      }
-    });
+    logger.info(`[verifyOtp] Sending OTP verification to Paystack for transfer ${transferCode}`);
 
     try {
-      logger.info("📤 SENDING PAYSTACK OTP VERIFY REQUEST:", {
-        otp: otpPayload.otp,
-        transfer_code: transferCode,
-        url: paystackUrl
-      });
-
       // Use the payload we prepared (with trimmed OTP)
       paystackResponse = await axios.post(paystackUrl, otpPayload, {
         headers: paystackHeaders,
         timeout: 30000 // 30 second timeout
       });
 
-      logger.info("💳 PAYSTACK RESPONSE:", paystackResponse.data);
-
-      logger.info(`[verifyOtp] ✅ Paystack finalize_transfer response received:`, {
-        status: paystackResponse.data?.status,
-        hasData: !!paystackResponse.data?.data,
-        dataKeys: paystackResponse.data?.data ? Object.keys(paystackResponse.data.data) : [],
-        responseStructure: JSON.stringify(paystackResponse.data, null, 2).substring(0, 1000)
-      });
-
-      // Log the full response for debugging
-      logger.info(`[verifyOtp] 📋 Full Paystack response:`, JSON.stringify(paystackResponse.data, null, 2));
+      // SECURITY: Only log status, never full Paystack response (may contain account details)
+      logger.info(`[verifyOtp] Paystack response status: ${paystackResponse.data?.status}, transfer: ${paystackResponse.data?.data?.status || 'unknown'}`);
     } catch (err) {
       await session.abortTransaction();
 
-      logger.info("🔥 PAYSTACK OTP VERIFICATION ERROR RAW RESPONSE:",
-        err.response?.data || err.message
-      );
-
-      logger.error("❌ PAYSTACK ERROR:", err.response?.data || err.message);
-
-      // Log raw Paystack error response
-      logger.error('❌ PAYSTACK ERROR RAW:', err);
-      logger.error('❌ PAYSTACK ERROR RESPONSE:', err.response?.data);
-      logger.error('❌ PAYSTACK STATUS:', err.response?.status);
-      logger.error('❌ PAYSTACK HEADERS:', err.response?.headers);
-
-      const paystackError = err.response?.data;
-      const paystackMessage = paystackError?.message || err.message || 'Paystack OTP verification failed';
+      // SECURITY: Log only error message, not full Paystack response or headers
+      const paystackMessage = err.response?.data?.message || err.message || 'Paystack OTP verification failed';
+      logger.error(`[verifyOtp] Paystack error: ${paystackMessage} (status: ${err.response?.status})`);
 
       // Check for specific Paystack error: "Transfer is not currently awaiting OTP"
       if (paystackMessage.includes('not currently awaiting OTP') ||
         paystackMessage.includes('not awaiting OTP')) {
-        logger.error('❌ PAYSTACK ERROR: Transfer is not awaiting OTP - may need to resend OTP or transfer already completed');
-
         return res.status(400).json({
           success: false,
-          message: "This transfer is not currently awaiting OTP verification. The OTP may have expired, been already verified, or the transfer may have been completed. Please try resending the OTP.",
-          paystack: paystackError,
+          message: "This transfer is not currently awaiting OTP verification. The OTP may have expired or the transfer may have been completed. Please try resending the OTP.",
           errorCode: 'TRANSFER_NOT_AWAITING_OTP',
           suggestion: 'Try clicking "Resend PIN" to get a new OTP, or check if the transfer was already completed.'
         });
@@ -920,8 +826,8 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
       return res.status(400).json({
         success: false,
-        message: "Paystack OTP verification failed",
-        paystack: paystackError
+        message: "Paystack OTP verification failed. Please try again.",
+        errorCode: 'PAYSTACK_ERROR',
       });
     }
 
@@ -950,7 +856,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: "This transfer is not currently awaiting OTP verification. The OTP may have expired, been already verified, or the transfer may have been completed. Please try resending the OTP.",
-          paystack: paystackResponse.data,
+          // SECURITY: Never leak full Paystack response to client
           errorCode: 'TRANSFER_NOT_AWAITING_OTP',
           suggestion: 'Try clicking "Resend PIN" to get a new OTP, or check if the transfer was already completed.'
         });
@@ -960,7 +866,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: "Invalid OTP. Please check and try again.",
-          paystack: paystackResponse.data,
+          // SECURITY: Never leak full Paystack response to client
           errorCode: 'INVALID_OTP'
         });
       }
@@ -969,7 +875,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
         return res.status(400).json({
           success: false,
           message: "OTP has expired. Please click 'Resend PIN' to receive a new OTP.",
-          paystack: paystackResponse.data,
+          // SECURITY: Never leak full Paystack response to client
           errorCode: 'OTP_EXPIRED',
           suggestion: 'Click "Resend PIN" to get a new OTP.'
         });
@@ -1042,7 +948,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Transfer failed after OTP verification. The amount has been refunded to your available balance.',
-        paystack: transferData,
+        // SECURITY: Paystack details not exposed to client
         errorCode: 'TRANSFER_FAILED',
         refunded: true
       });
@@ -1108,7 +1014,7 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Your OTP session has expired. The amount has been refunded to your available balance. Click Resend PIN to restart the transfer.',
-        paystack: transferData,
+        // SECURITY: Paystack details not exposed to client
         errorCode: 'OTP_SESSION_EXPIRED',
         suggestion: 'Click "Resend PIN" to create a new transfer session.',
         refunded: true
@@ -1232,8 +1138,9 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
     logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
     logger.info(`  Available Balance: ${seller.withdrawableBalance} (recalculated);`);
 
-    // Update withdrawal request status
-    withdrawalRequest.status = 'approved';
+    // Update withdrawal request status — SECURITY FIX: must be 'paid', not 'approved'
+    // 'approved' means admin approved but money hasn't left yet; 'paid' = transfer complete
+    withdrawalRequest.status = 'paid';
     withdrawalRequest.pinSubmitted = true;
     withdrawalRequest.paidAt = new Date();
 
@@ -1450,18 +1357,9 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   let withdrawalRequest = null;
-  let isPaymentRequest = false;
 
   try {
-    // Find withdrawal request (try PaymentRequest first, then WithdrawalRequest)
     withdrawalRequest = await PaymentRequest.findById(id).session(session);
-    isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      isPaymentRequest = false;
-    }
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -1559,27 +1457,19 @@ exports.requestWithdrawalReversal = catchAsync(async (req, res, next) => {
 
     await withdrawalRequest.save({ session });
 
-    // Create transaction record for reversal
-    await Transaction.create(
-      [
-        {
-          seller: sellerId,
-          amount: amountRequested,
-          type: 'credit',
-          description: `Withdrawal Reversal Request - Refund for Request #${withdrawalRequest._id}. Reason: ${reason}`,
-          status: 'completed',
-          metadata: {
-            withdrawalRequestId: withdrawalRequest._id,
-            action: 'withdrawal_reversal_request',
-            reversedAt: new Date(),
-            reversedBy: sellerId,
-            reverseReason: reason,
-            originalAmount: amountRequested,
-          },
-        },
-      ],
-      { session }
-    );
+    // SECURITY FIX: Cancel the existing pending debit instead of creating a credit
+    // Creating a credit inflates totalRevenue over time
+    const existingTx = await Transaction.findOne({
+      seller: sellerId,
+      payoutRequest: withdrawalRequest._id,
+      type: 'debit',
+    }).session(session);
+
+    if (existingTx) {
+      existingTx.status = 'cancelled';
+      existingTx.description = `Withdrawal Reversed - Request #${withdrawalRequest._id}. Reason: ${reason}`;
+      await existingTx.save({ session });
+    }
 
     // Log seller revenue history
     try {
@@ -1667,15 +1557,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
 
   try {
-    // Find withdrawal request (try PaymentRequest first, then WithdrawalRequest)
-    let withdrawalRequest = await PaymentRequest.findById(id).populate('seller', 'name shopName');
-    let isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-      withdrawalRequest = await WithdrawalRequest.findById(id).populate('seller', 'name shopName');
-      isPaymentRequest = false;
-    }
+    const withdrawalRequest = await PaymentRequest.findById(id).populate('seller', 'name shopName');
 
     if (!withdrawalRequest) {
       return next(new AppError('Withdrawal request not found', 404));
@@ -1717,10 +1599,8 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
     if (!recipientCode) {
       logger.info('⚠️ [resendOtp] Recipient code not found. Recreating from payment details...');
 
-      // Get payment method and details
-      const paymentMethod = isPaymentRequest
-        ? (withdrawalRequest.paymentMethod || withdrawalRequest.payoutMethod)
-        : (withdrawalRequest.payoutMethod || withdrawalRequest.paymentMethod);
+      // Get payment method and details (payoutMethod is a virtual alias for paymentMethod)
+      const paymentMethod = withdrawalRequest.paymentMethod;
       const paymentDetails = withdrawalRequest.paymentDetails || {};
 
       if (!paymentMethod || !paymentDetails || Object.keys(paymentDetails).length === 0) {

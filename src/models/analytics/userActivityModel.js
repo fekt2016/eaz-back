@@ -5,7 +5,7 @@ const userActivitySchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false, // Optional for guest/session-based tracking
     },
     productId: {
       type: mongoose.Schema.Types.ObjectId,

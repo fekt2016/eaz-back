@@ -147,7 +147,6 @@ exports.getRevenueAnalytics = catchAsync(async (req, res, next) => {
         vat: { $sum: '$totalVAT' },
         nhil: { $sum: '$totalNHIL' },
         getfund: { $sum: '$totalGETFund' },
-        covidLevy: { $sum: '$totalCovidLevy' },
         basePrice: { $sum: '$totalBasePrice' },
       },
     },
@@ -213,7 +212,6 @@ exports.getRevenueAnalytics = catchAsync(async (req, res, next) => {
   const totalVAT = revenueTimeline.reduce((sum, day) => sum + (day.vat || 0), 0);
   const totalNHIL = revenueTimeline.reduce((sum, day) => sum + (day.nhil || 0), 0);
   const totalGETFund = revenueTimeline.reduce((sum, day) => sum + (day.getfund || 0), 0);
-  const totalCovidLevy = revenueTimeline.reduce((sum, day) => sum + (day.covidLevy || 0), 0);
   const totalCommission = commissionTimeline.reduce((sum, day) => sum + (day.commission || 0), 0);
   const totalWithholding = withholdingTimeline.reduce((sum, day) => sum + (day.withholdingTax || 0), 0);
 
@@ -228,7 +226,6 @@ exports.getRevenueAnalytics = catchAsync(async (req, res, next) => {
         vat: day.vat || 0,
         nhil: day.nhil || 0,
         getfund: day.getfund || 0,
-        covidLevy: day.covidLevy || 0,
         basePrice: day.basePrice || 0,
       })),
       commissionTimeline: commissionTimeline.map(day => ({
@@ -246,10 +243,9 @@ exports.getRevenueAnalytics = catchAsync(async (req, res, next) => {
         totalVAT,
         totalNHIL,
         totalGETFund,
-        totalCovidLevy,
         totalCommission,
         totalWithholding,
-        totalTax: totalVAT + totalNHIL + totalGETFund + totalCovidLevy,
+        totalTax: totalVAT + totalNHIL + totalGETFund,
       },
     },
   });
@@ -699,7 +695,6 @@ exports.getTaxAnalytics = catchAsync(async (req, res, next) => {
         totalVAT: { $sum: '$totalVAT' },
         totalNHIL: { $sum: '$totalNHIL' },
         totalGETFund: { $sum: '$totalGETFund' },
-        totalCovidLevy: { $sum: '$totalCovidLevy' },
         totalRevenue: { $sum: '$totalPrice' },
         totalBasePrice: { $sum: '$totalBasePrice' },
       },
@@ -753,7 +748,6 @@ exports.getTaxAnalytics = catchAsync(async (req, res, next) => {
         totalVAT: 0,
         totalNHIL: 0,
         totalGETFund: 0,
-        totalCovidLevy: 0,
         totalRevenue: 0,
         totalBasePrice: 0,
       },
@@ -1222,6 +1216,111 @@ exports.recordView = catchAsync(async (req, res, next) => {
     status: 'success',
     message: 'View recorded successfully',
   });
+});
+
+/**
+ * Record Screen View (mobile app)
+ * POST /api/v1/analytics/screen-views
+ */
+exports.recordScreenView = catchAsync(async (req, res, next) => {
+  const { screen, sessionId } = req.body;
+  if (!screen) {
+    return next(new AppError('Screen name is required', 400));
+  }
+  const userId = req.user?.id || req.user?._id;
+  if (userId) {
+    const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    logActivityAsync({
+      userId,
+      role,
+      action: 'VIEW_PAGE',
+      description: `Viewed screen: ${screen}`,
+      req,
+      metadata: { screen, sessionId: sessionId || null },
+      activityType: 'OTHER',
+      riskLevel: 'low',
+    }).catch(() => {});
+  }
+  res.status(200).json({ status: 'success', message: 'Screen view recorded' });
+});
+
+/**
+ * Record Search Query (mobile app)
+ * POST /api/v1/analytics/search
+ */
+exports.recordSearchQuery = catchAsync(async (req, res, next) => {
+  const { query, sessionId } = req.body;
+  if (!query || typeof query !== 'string') {
+    return next(new AppError('Query is required', 400));
+  }
+  const userId = req.user?.id || req.user?._id;
+  if (userId) {
+    const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    logActivityAsync({
+      userId,
+      role,
+      action: 'SEARCH',
+      description: `Searched: ${query.substring(0, 50)}`,
+      req,
+      metadata: { query: query.substring(0, 200), sessionId: sessionId || null },
+      activityType: 'OTHER',
+      riskLevel: 'low',
+    }).catch(() => {});
+  }
+  res.status(200).json({ status: 'success', message: 'Search recorded' });
+});
+
+/**
+ * Record Category View (mobile app)
+ * POST /api/v1/analytics/category-views
+ */
+exports.recordCategoryView = catchAsync(async (req, res, next) => {
+  const { categoryId, categoryName, sessionId } = req.body;
+  const userId = req.user?.id || req.user?._id;
+  if (userId) {
+    const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    logActivityAsync({
+      userId,
+      role,
+      action: 'VIEW_PAGE',
+      description: `Viewed category: ${categoryName || categoryId || 'unknown'}`,
+      req,
+      metadata: { categoryId: categoryId || null, categoryName: categoryName || null, sessionId: sessionId || null },
+      activityType: 'OTHER',
+      riskLevel: 'low',
+    }).catch(() => {});
+  }
+  res.status(200).json({ status: 'success', message: 'Category view recorded' });
+});
+
+/**
+ * Record Seller Profile View (mobile app)
+ * POST /api/v1/analytics/seller-views
+ */
+exports.recordSellerView = catchAsync(async (req, res, next) => {
+  const { sellerId, sessionId } = req.body;
+  if (!sellerId) {
+    return next(new AppError('Seller ID is required', 400));
+  }
+  const userId = req.user?.id || req.user?._id;
+  if (userId) {
+    const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    logActivityAsync({
+      userId,
+      role,
+      action: 'VIEW_PAGE',
+      description: `Viewed seller: ${sellerId}`,
+      req,
+      metadata: { sellerId, sessionId: sessionId || null },
+      activityType: 'OTHER',
+      riskLevel: 'low',
+    }).catch(() => {});
+  }
+  res.status(200).json({ status: 'success', message: 'Seller view recorded' });
 });
 
 /**

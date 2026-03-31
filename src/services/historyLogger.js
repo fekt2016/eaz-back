@@ -116,6 +116,7 @@ async function logSellerRevenue({
   payoutRequestId = null,
   balanceBefore = null,
   balanceAfter = null,
+  session = null,
   metadata = {},
 }) {
   try {
@@ -141,15 +142,18 @@ async function logSellerRevenue({
 
     // Check for duplicate by reference (idempotency)
     if (reference) {
-      const existing = await SellerRevenueHistory.findOne({ reference }).lean();
+      let existingQuery = SellerRevenueHistory.findOne({ reference });
+      if (session) {
+        existingQuery = existingQuery.session(session);
+      }
+      const existing = await existingQuery.lean();
       if (existing) {
         logger.info(`[HistoryLogger] Duplicate seller revenue history entry found for reference ${reference}, skipping`);
         return existing;
       }
     }
 
-    // Create history entry
-    const historyEntry = await SellerRevenueHistory.create({
+    const historyPayload = {
       sellerId,
       type,
       amount,
@@ -162,7 +166,16 @@ async function logSellerRevenue({
       adminId,
       payoutRequestId,
       metadata,
-    });
+    };
+
+    // Create history entry (participate in transaction session when provided)
+    let historyEntry;
+    if (session) {
+      const docs = await SellerRevenueHistory.create([historyPayload], { session });
+      historyEntry = docs[0];
+    } else {
+      historyEntry = await SellerRevenueHistory.create(historyPayload);
+    }
 
     logger.info(`[HistoryLogger] Seller revenue history logged: ${type} for seller ${sellerId}, amount: ${amount}, balance: ${finalBalanceBefore} → ${finalBalanceAfter}`);
     return historyEntry;

@@ -46,14 +46,13 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
         select: 'name shopName email',
       },
     })
-    .select('totalBasePrice totalVAT totalNHIL totalGETFund totalCovidLevy totalTax totalPrice createdAt sellerOrder');
+    .select('totalBasePrice totalVAT totalNHIL totalGETFund totalTax totalPrice createdAt sellerOrder');
 
   // Aggregate tax totals (including VAT withheld by platform for non-VAT-registered sellers)
   let totalBasePrice = 0;
   let totalVAT = 0;
   let totalNHIL = 0;
   let totalGETFund = 0;
-  let totalCovidLevy = 0;
   let totalTax = 0;
   let totalSales = 0;
   let orderCount = 0;
@@ -67,7 +66,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     totalVAT += order.totalVAT || 0;
     totalNHIL += order.totalNHIL || 0;
     totalGETFund += order.totalGETFund || 0;
-    totalCovidLevy += order.totalCovidLevy || 0;
     totalTax += order.totalTax || 0;
     totalSales += order.totalPrice || 0;
     orderCount++;
@@ -87,7 +85,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
               totalVAT: 0,
               totalNHIL: 0,
               totalGETFund: 0,
-              totalCovidLevy: 0,
               totalTax: 0,
               totalSales: 0,
               orderCount: 0,
@@ -99,7 +96,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
           sellerBreakdown[sellerId].totalVAT += so.totalVAT || 0;
           sellerBreakdown[sellerId].totalNHIL += so.totalNHIL || 0;
           sellerBreakdown[sellerId].totalGETFund += so.totalGETFund || 0;
-          sellerBreakdown[sellerId].totalCovidLevy += so.totalCovidLevy || 0;
           sellerBreakdown[sellerId].totalTax += so.totalTax || 0;
           sellerBreakdown[sellerId].totalSales += so.total || 0;
           sellerBreakdown[sellerId].orderCount++;
@@ -116,7 +112,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
   totalVAT = Math.round(totalVAT * 100) / 100;
   totalNHIL = Math.round(totalNHIL * 100) / 100;
   totalGETFund = Math.round(totalGETFund * 100) / 100;
-  totalCovidLevy = Math.round(totalCovidLevy * 100) / 100;
   totalTax = Math.round(totalTax * 100) / 100;
   totalSales = Math.round(totalSales * 100) / 100;
 
@@ -128,7 +123,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
     seller.totalVAT = Math.round(seller.totalVAT * 100) / 100;
     seller.totalNHIL = Math.round(seller.totalNHIL * 100) / 100;
     seller.totalGETFund = Math.round(seller.totalGETFund * 100) / 100;
-    seller.totalCovidLevy = Math.round(seller.totalCovidLevy * 100) / 100;
     seller.totalTax = Math.round(seller.totalTax * 100) / 100;
     seller.totalSales = Math.round(seller.totalSales * 100) / 100;
     seller.vatWithheld = Math.round((seller.vatWithheld || 0) * 100) / 100;
@@ -175,7 +169,6 @@ exports.getVATSummary = catchAsync(async (req, res, next) => {
       totalVAT,
       totalNHIL,
       totalGETFund,
-      totalCovidLevy,
       totalTax,
       totalSales,
       orderCount,
@@ -218,19 +211,17 @@ exports.getUnremittedVAT = catchAsync(async (req, res, next) => {
   }
 
   const orders = await Order.find(query)
-    .select('orderNumber totalVAT totalNHIL totalGETFund totalCovidLevy totalTax totalPrice createdAt paymentStatus status');
+    .select('orderNumber totalVAT totalNHIL totalGETFund totalTax totalPrice createdAt paymentStatus status');
 
   let totalUnremittedVAT = 0;
   let totalUnremittedNHIL = 0;
   let totalUnremittedGETFund = 0;
-  let totalUnremittedCovidLevy = 0;
   let totalUnremittedTax = 0;
 
   const unremittedOrders = orders.map((order) => {
     totalUnremittedVAT += order.totalVAT || 0;
     totalUnremittedNHIL += order.totalNHIL || 0;
     totalUnremittedGETFund += order.totalGETFund || 0;
-    totalUnremittedCovidLevy += order.totalCovidLevy || 0;
     totalUnremittedTax += order.totalTax || 0;
 
     return {
@@ -239,7 +230,6 @@ exports.getUnremittedVAT = catchAsync(async (req, res, next) => {
       totalVAT: order.totalVAT || 0,
       totalNHIL: order.totalNHIL || 0,
       totalGETFund: order.totalGETFund || 0,
-      totalCovidLevy: order.totalCovidLevy || 0,
       totalTax: order.totalTax || 0,
       totalPrice: order.totalPrice || 0,
       createdAt: order.createdAt,
@@ -252,7 +242,6 @@ exports.getUnremittedVAT = catchAsync(async (req, res, next) => {
   totalUnremittedVAT = Math.round(totalUnremittedVAT * 100) / 100;
   totalUnremittedNHIL = Math.round(totalUnremittedNHIL * 100) / 100;
   totalUnremittedGETFund = Math.round(totalUnremittedGETFund * 100) / 100;
-  totalUnremittedCovidLevy = Math.round(totalUnremittedCovidLevy * 100) / 100;
   totalUnremittedTax = Math.round(totalUnremittedTax * 100) / 100;
 
   res.status(200).json({
@@ -265,7 +254,6 @@ exports.getUnremittedVAT = catchAsync(async (req, res, next) => {
       totalUnremittedVAT,
       totalUnremittedNHIL,
       totalUnremittedGETFund,
-      totalUnremittedCovidLevy,
       totalUnremittedTax,
       orderCount: unremittedOrders.length,
     },
@@ -305,13 +293,8 @@ exports.getTaxRates = catchAsync(async (req, res, next) => {
           percentage: (rates.totalVATComponents * 100).toFixed(0) + '%',
           description: 'Total VAT components (embedded in price)',
         },
-        covidLevy: {
-          rate: rates.covidLevy,
-          percentage: (rates.covidLevy * 100).toFixed(0) + '%',
-          description: 'COVID-19 Health Recovery Levy (added on top)',
-        },
       },
-      note: 'Prices are VAT-inclusive. VAT components (15%) are embedded in the price. COVID levy (1%) is added on top.',
+      note: 'Prices are VAT-inclusive. VAT components are embedded in the price.',
     },
   });
 });

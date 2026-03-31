@@ -2,6 +2,51 @@ const ActivityLog = require('../../models/activityLog/activityLogModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 
+const buildActivityLogFilter = (query = {}) => {
+  const filter = {};
+
+  if (query.role) {
+    filter.role = query.role;
+  }
+
+  if (query.platform) {
+    filter.platform = query.platform;
+  }
+
+  if (query.activityType) {
+    filter.activityType = query.activityType;
+  }
+
+  if (query.riskLevel) {
+    filter.riskLevel = query.riskLevel;
+  }
+
+  if (query.startDate || query.endDate) {
+    filter.timestamp = {};
+    if (query.startDate) {
+      filter.timestamp.$gte = new Date(query.startDate);
+    }
+    if (query.endDate) {
+      filter.timestamp.$lte = new Date(query.endDate);
+    }
+  }
+
+  if (query.search) {
+    filter.$or = [
+      { action: { $regex: query.search, $options: 'i' } },
+      { description: { $regex: query.search, $options: 'i' } },
+      { ipAddress: { $regex: query.search, $options: 'i' } },
+      { userAgent: { $regex: query.search, $options: 'i' } },
+    ];
+  }
+
+  if (query.userId) {
+    filter.userId = query.userId;
+  }
+
+  return filter;
+};
+
 /**
  * Get paginated activity logs
  * GET /api/v1/logs
@@ -11,54 +56,7 @@ exports.getActivityLogs = catchAsync(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 50;
   const skip = (page - 1) * limit;
 
-  // Build filter
-  const filter = {};
-
-  // Role filter
-  if (req.query.role) {
-    filter.role = req.query.role;
-  }
-
-  // Platform filter
-  if (req.query.platform) {
-    filter.platform = req.query.platform;
-  }
-
-  // Activity type filter
-  if (req.query.activityType) {
-    filter.activityType = req.query.activityType;
-  }
-
-  // Risk level filter
-  if (req.query.riskLevel) {
-    filter.riskLevel = req.query.riskLevel;
-  }
-
-  // Date range filter
-  if (req.query.startDate || req.query.endDate) {
-    filter.timestamp = {};
-    if (req.query.startDate) {
-      filter.timestamp.$gte = new Date(req.query.startDate);
-    }
-    if (req.query.endDate) {
-      filter.timestamp.$lte = new Date(req.query.endDate);
-    }
-  }
-
-  // Search filter (action, description, ipAddress, or userAgent)
-  if (req.query.search) {
-    filter.$or = [
-      { action: { $regex: req.query.search, $options: 'i' } },
-      { description: { $regex: req.query.search, $options: 'i' } },
-      { ipAddress: { $regex: req.query.search, $options: 'i' } },
-      { userAgent: { $regex: req.query.search, $options: 'i' } },
-    ];
-  }
-
-  // User filter
-  if (req.query.userId) {
-    filter.userId = req.query.userId;
-  }
+  const filter = buildActivityLogFilter(req.query);
 
   // Execute query
   const logs = await ActivityLog.find(filter)
@@ -82,6 +80,139 @@ exports.getActivityLogs = catchAsync(async (req, res, next) => {
     totalPages: Math.ceil(total / limit),
     data: {
       logs,
+    },
+  });
+});
+
+/**
+ * Get homepage experiment analytics from activity logs
+ * GET /api/v1/logs/stats/homepage-experiments
+ */
+exports.getHomepageExperimentStats = catchAsync(async (req, res, next) => {
+  const filter = buildActivityLogFilter(req.query);
+  filter.description = { $regex: '^Viewed screen: home:' };
+
+  const results = await ActivityLog.aggregate([
+    { $match: filter },
+    {
+      $addFields: {
+        __screen: {
+          $substrCP: ['$description', 16, { $strLenCP: '$description' }],
+        },
+      },
+    },
+    {
+      $addFields: {
+        __parts: { $split: ['$__screen', ':'] },
+      },
+    },
+    {
+      $match: {
+        $expr: { $eq: [{ $arrayElemAt: ['$__parts', 0] }, 'home'] },
+      },
+    },
+    {
+      $project: {
+        eventName: { $ifNull: [{ $arrayElemAt: ['$__parts', 1] }, 'unknown'] },
+        variant: {
+          $toUpper: {
+            $ifNull: [{ $arrayElemAt: ['$__parts', 2] }, 'UNKNOWN'],
+          },
+        },
+        dateKey: {
+          $dateToString: { format: '%Y-%m-%d', date: '$timestamp' },
+        },
+      },
+    },
+    {
+      $facet: {
+        totals: [
+          {
+            $group: {
+              _id: null,
+              totalEvents: { $sum: 1 },
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+        ],
+        byVariant: [
+          {
+            $group: {
+              _id: '$variant',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+        byDay: [
+          {
+            $group: {
+              _id: '$dateKey',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+      },
+    },
+  ]);
+
+  const aggregate = results[0] || {};
+  const totals = aggregate.totals?.[0] || {
+    totalEvents: 0,
+    impressions: 0,
+    interactions: 0,
+  };
+
+  const ctr =
+    totals.impressions > 0
+      ? (totals.interactions / totals.impressions) * 100
+      : 0;
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      totalEvents: totals.totalEvents || 0,
+      impressions: totals.impressions || 0,
+      interactions: totals.interactions || 0,
+      ctr,
+      byVariant: (aggregate.byVariant || []).map((item) => ({
+        variant: item._id || 'UNKNOWN',
+        impressions: item.impressions || 0,
+        interactions: item.interactions || 0,
+      })),
+      byDay: (aggregate.byDay || []).map((item) => ({
+        date: item._id,
+        impressions: item.impressions || 0,
+        interactions: item.interactions || 0,
+      })),
     },
   });
 });

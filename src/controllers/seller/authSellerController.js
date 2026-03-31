@@ -341,11 +341,25 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
   }
 
   // SECURITY: Check if account is verified (REQUIRED before login)
-  // Treat as verified if: emailVerified flag is set, OR onboarding/verification status is 'verified' (admin-approved or legacy)
+  // Treat as verified if:
+  // - emailVerified flag is true, OR
+  // - onboarding/verification status is verified, OR
+  // - business verification flag is true, OR
+  // - account is active/admin-approved (legacy migration-safe)
   const isEmailVerified = seller.verification?.emailVerified === true;
   const isOnboardingVerified = seller.onboardingStage === 'verified';
   const isVerificationStatusVerified = seller.verificationStatus === 'verified';
-  const consideredVerified = isEmailVerified || isOnboardingVerified || isVerificationStatusVerified;
+  const isBusinessVerified = seller.verification?.businessVerified === true;
+  const isLegacyAdminApproved =
+    seller.status === 'active' ||
+    Boolean(seller.verifiedAt) ||
+    Boolean(seller.verifiedBy);
+  const consideredVerified =
+    isEmailVerified ||
+    isOnboardingVerified ||
+    isVerificationStatusVerified ||
+    isBusinessVerified ||
+    isLegacyAdminApproved;
 
   if (!consideredVerified) {
     // Production-safe logging (no sensitive data)
@@ -355,6 +369,7 @@ exports.loginSeller = catchAsync(async (req, res, next) => {
       emailVerified: seller.verification?.emailVerified || false,
       onboardingStage: seller.onboardingStage,
       verificationStatus: seller.verificationStatus,
+      businessVerified: seller.verification?.businessVerified || false,
       status: seller.status,
       timestamp: new Date().toISOString(),
       ip: req.ip,
@@ -1983,11 +1998,20 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
     timestamp: new Date().toISOString(),
   });
 
-  // Extract token from seller_jwt cookie ONLY
+  // Extract token: cookie first (web), then Authorization Bearer (mobile when cookie not sent e.g. FormData)
   let token = null;
   if (req.cookies && req.cookies.seller_jwt) {
     token = req.cookies.seller_jwt;
     console.log(`[protectSeller] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
+  } else if (
+    req.headers.authorization &&
+    typeof req.headers.authorization === 'string' &&
+    req.headers.authorization.startsWith('Bearer ')
+  ) {
+    token = req.headers.authorization.slice(7).trim();
+    if (token) {
+      console.log(`[protectSeller] ✅ Token from Authorization header for ${method} ${fullPath}`);
+    }
   }
 
   if (!token) {

@@ -154,12 +154,64 @@ exports.SellerDeleteProduct = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * Duplicate a product (seller's own). Creates a copy with name " (Copy)", status inactive.
+ * POST /seller/me/products/:productId/duplicate
+ */
+exports.duplicateProduct = catchAsync(async (req, res, next) => {
+  const productId = req.params.productId || req.params.id;
+  if (!productId) {
+    return next(new AppError('Product ID is required', 400));
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    return next(new AppError('No product found with that ID', 404));
+  }
+
+  const sellerId = (req.user._id || req.user.id).toString();
+  if (req.user.role !== 'admin' && product.seller.toString() !== sellerId) {
+    return next(new AppError('You do not have permission to duplicate this product', 403));
+  }
+
+  const raw = product.toObject ? product.toObject() : { ...product };
+  delete raw._id;
+  delete raw.__v;
+  delete raw.createdAt;
+  delete raw.updatedAt;
+  raw.name = (raw.name || 'Product').trim() + ' (Copy)';
+  raw.status = 'inactive';
+  raw.seller = req.user._id || req.user.id;
+
+  if (Array.isArray(raw.variants)) {
+    raw.variants = raw.variants.map((v) => {
+      const variant = { ...v };
+      delete variant._id;
+      return variant;
+    });
+  }
+
+  const duplicate = new Product(raw);
+  await duplicate.save();
+
+  res.status(201).json({
+    status: 'success',
+    data: { product: duplicate },
+  });
+});
+
 // Multer configuration for file uploads
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
   // Allow images and PDFs
-  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ];
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new AppError('Only images and PDF files are allowed', 400), false);
@@ -282,7 +334,6 @@ exports.updateSellerImage = catchAsync(async (req, res, next) => {
 
 exports.updateMe = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
-  console.log("body", req.body);
   let { name, email, phone, shopAddress, shopName, shopDescription, location, shopLocation, digitalAddress, socialMediaLinks, paymentMethods } = req.body;
 
   // Parse JSON strings if they exist (from FormData)
@@ -329,10 +380,6 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   if (shopName !== undefined) updateData.shopName = shopName;
   if (shopDescription !== undefined) updateData.shopDescription = shopDescription;
   if (digitalAddress !== undefined) updateData.digitalAddress = digitalAddress;
-
-  console.log('[updateMe] Request body phone:', phone, 'Type:', typeof phone);
-  console.log('[updateMe] Update data:', JSON.stringify(updateData, null, 2));
-  console.log('[updateMe] Phone in updateData:', updateData.phone);
 
   // Update shopLocation (shop address) if provided
   if (addressData && typeof addressData === 'object') {
@@ -593,8 +640,6 @@ exports.updateMe = catchAsync(async (req, res, next) => {
   }
 
   // Standard update for non-paymentMethods fields
-  console.log('[updateMe] About to update seller with data:', JSON.stringify(updateData, null, 2));
-  console.log('[updateMe] Phone field in updateData:', updateData.phone);
   const seller = await Seller.findByIdAndUpdate(
     sellerId,
     updateData,
@@ -604,9 +649,6 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     },
   );
   if (!seller) return next(new AppError('No seller found with that ID', 404));
-
-  console.log('[updateMe] Seller updated successfully. New phone value:', seller.phone);
-  console.log('[updateMe] Full seller object phone:', JSON.stringify(seller.phone));
 
   // Auto-update onboarding if business info is complete
   const hasBusinessInfo =

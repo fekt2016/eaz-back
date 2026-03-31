@@ -16,6 +16,169 @@ const { logSellerRevenue } = require('../../services/historyLogger');
 const payoutService = require('../../services/payoutService');
 const logger = require('../../utils/logger');
 
+const sendBuyerPaymentSuccessPush = async (order, transaction, source) => {
+  try {
+    const pushNotificationService = require('../../services/pushNotificationService');
+    const buyerId = order?.user?._id || order?.user;
+    if (!buyerId) return;
+
+    const paymentChannel =
+      transaction?.channel ||
+      transaction?.authorization?.channel ||
+      order?.paymentMethod ||
+      'paystack';
+
+    await pushNotificationService.sendPushToUser(String(buyerId), {
+      title: 'Payment Successful',
+      body: `Payment for order #${order.orderNumber} was successful.`,
+      data: {
+        type: 'PAYMENT_SUCCESS',
+        orderId: String(order._id),
+        amount: Number(order.totalPrice || 0),
+        currency: 'GHS',
+        paymentChannel,
+        paymentMethod: order.paymentMethod || 'paystack',
+        source,
+        referenceId: String(order._id),
+      },
+      priority: 'high',
+    });
+  } catch (pushError) {
+    logger.error('[Payment Push] Failed to send PAYMENT_SUCCESS push:', pushError.message);
+  }
+};
+
+const sendBuyerPaymentFailedPush = async (order, transaction, source) => {
+  try {
+    const pushNotificationService = require('../../services/pushNotificationService');
+    const buyerId = order?.user?._id || order?.user;
+    if (!buyerId) return;
+
+    const paymentChannel =
+      transaction?.channel ||
+      transaction?.authorization?.channel ||
+      order?.paymentMethod ||
+      'paystack';
+
+    await pushNotificationService.sendPushToUser(String(buyerId), {
+      title: 'Payment Failed',
+      body: `Payment for order #${order.orderNumber} could not be completed.`,
+      data: {
+        type: 'PAYMENT_FAILED',
+        orderId: String(order._id),
+        amount: Number(order.totalPrice || 0),
+        currency: 'GHS',
+        paymentChannel,
+        paymentMethod: order.paymentMethod || 'paystack',
+        source,
+        referenceId: String(order._id),
+      },
+      priority: 'high',
+    });
+  } catch (pushError) {
+    logger.error('[Payment Push] Failed to send PAYMENT_FAILED push:', pushError.message);
+  }
+};
+
+const sendBuyerPaymentSuccessEmail = async (order, source) => {
+  try {
+    const emailDispatcher = require('../../emails/emailDispatcher');
+    const buyerId = order?.user?._id || order?.user;
+    if (!buyerId) return;
+
+    const buyer = await User.findById(buyerId).select('name email').lean();
+    if (!buyer?.email) return;
+
+    await emailDispatcher.sendPaymentSuccess(buyer, order);
+    logger.info(
+      `[Payment Email] ✅ PAYMENT_SUCCESS email sent to ${buyer.email} (${source})`
+    );
+  } catch (emailError) {
+    logger.error(
+      '[Payment Email] Failed to send PAYMENT_SUCCESS email:',
+      emailError.message
+    );
+  }
+};
+
+const sendBuyerPaymentFailedEmail = async (order, reason, source) => {
+  try {
+    const emailDispatcher = require('../../emails/emailDispatcher');
+    const buyerId = order?.user?._id || order?.user;
+    if (!buyerId) return;
+
+    const buyer = await User.findById(buyerId).select('name email').lean();
+    if (!buyer?.email) return;
+
+    await emailDispatcher.sendPaymentFailed(buyer, order, reason);
+    logger.info(
+      `[Payment Email] ✅ PAYMENT_FAILED email sent to ${buyer.email} (${source})`
+    );
+  } catch (emailError) {
+    logger.error(
+      '[Payment Email] Failed to send PAYMENT_FAILED email:',
+      emailError.message
+    );
+  }
+};
+
+const sendSellerOrderEmailsAfterPayment = async (orderId, source) => {
+  try {
+    const emailDispatcher = require('../../emails/emailDispatcher');
+    const fullOrder = await Order.findById(orderId)
+      .populate('orderItems')
+      .populate({
+        path: 'sellerOrder',
+        populate: { path: 'seller', select: 'email name shopName' },
+      })
+      .lean();
+
+    if (!fullOrder?.sellerOrder?.length) {
+      return;
+    }
+
+    for (const sellerOrder of fullOrder.sellerOrder) {
+      const seller = sellerOrder?.seller;
+      if (!seller?.email) continue;
+
+      try {
+        await emailDispatcher.sendSellerNewOrder(seller, fullOrder);
+        logger.info(
+          `[Payment Email] ✅ Seller new-order email sent to ${seller.email} (${source})`
+        );
+      } catch (sellerEmailError) {
+        logger.error(
+          `[Payment Email] Failed seller new-order email (${source}) for ${seller.email}:`,
+          sellerEmailError.message
+        );
+      }
+    }
+  } catch (error) {
+    logger.error(
+      `[Payment Email] Failed to prepare seller emails (${source}):`,
+      error.message
+    );
+  }
+};
+
+const sendAdminOrderPaidAlertAfterPayment = async (orderId, source) => {
+  try {
+    const emailDispatcher = require('../../emails/emailDispatcher');
+    const fullOrder = await Order.findById(orderId).lean();
+    if (!fullOrder) return;
+
+    await emailDispatcher.sendAdminOrderPaidAlert(fullOrder);
+    logger.info(
+      `[Payment Email] ✅ Admin paid-order alert sent (source: ${source}, order: ${orderId})`
+    );
+  } catch (error) {
+    logger.error(
+      `[Payment Email] Failed admin paid-order alert (${source}):`,
+      error.message
+    );
+  }
+};
+
 exports.getAllPayment = handleFactory.getAll(Payment);
 exports.getPayment = handleFactory.getOne(Payment);
 exports.createPayment = handleFactory.createOne(Payment);
@@ -24,24 +187,21 @@ exports.updatePayment = handleFactory.updateOne(Payment);
 
 // Initialize Paystack payment for mobile money
 exports.initializePaystack = catchAsync(async (req, res, next) => {
-  // 🔍 DEBUG: Log the entire request body to see what we received
-  console.log('[initializePaystack] 🔍 DEBUG - Request received:');
-  console.log('[initializePaystack] Request body:', JSON.stringify(req.body, null, 2));
-  console.log('[initializePaystack] Request body keys:', Object.keys(req.body || {}));
-  console.log('[initializePaystack] orderId:', req.body?.orderId, '(type:', typeof req.body?.orderId, ')');
-  console.log('[initializePaystack] amount:', req.body?.amount, '(type:', typeof req.body?.amount, ')');
-  console.log('[initializePaystack] email:', req.body?.email, '(type:', typeof req.body?.email, ')');
+  // SECURITY: Never log payment inputs in production.
+  // In dev we only log non-sensitive keys to help troubleshoot payload shape.
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[initializePaystack] DEBUG keys:', Object.keys(req.body || {}));
+  }
 
-  const { orderId, email } = req.body;
+  const { orderId, email, callbackBaseUrl } = req.body;
 
   // SECURITY: Do NOT accept amount from request body - always calculate from order
   // Enhanced validation
   const missingFields = [];
   if (!orderId) missingFields.push('orderId');
-  if (!email || email.trim() === '') missingFields.push('email');
 
   if (missingFields.length > 0) {
-    console.error('[initializePaystack] ❌ Missing required fields:', missingFields);
+    logger.warn('[initializePaystack] Missing required fields:', missingFields);
     return next(
       new AppError(
         'Invalid request. Please provide all required information.',
@@ -57,36 +217,59 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     return next(new AppError('Requested resource not found', 404));
   }
 
-  // SECURITY FIX: Verify order is unpaid before allowing payment initialization
-  if (order.paymentStatus !== 'pending') {
-    console.error(`[Payment Init] ❌ Order ${orderId} payment status is not pending:`, order.paymentStatus);
-    if (order.paymentStatus === 'paid') {
-      return next(new AppError('This action cannot be completed', 400));
-    }
-    return next(new AppError('This action cannot be completed at this time', 400));
+  // SECURITY FIX: Verify order is payable before allowing payment initialization.
+  // Allow retries for any unpaid state, but block clearly non-payable states.
+  const paymentStatus = String(order.paymentStatus || '').toLowerCase();
+  const status = String(order.status || '').toLowerCase();
+  const orderStatus = String(order.orderStatus || '').toLowerCase();
+  const isAlreadyPaid = ['paid', 'completed'].includes(paymentStatus);
+  const isRefunded = ['refunded', 'partial_refund'].includes(paymentStatus);
+  const isCancelled =
+    status === 'cancelled' || orderStatus === 'cancelled';
+
+  if (isAlreadyPaid || isRefunded || isCancelled) {
+    logger.warn('[Payment Init] Order is not payable in current state:', {
+      paymentStatus: order.paymentStatus,
+      status: order.status,
+      orderStatus: order.orderStatus,
+    });
+    return next(new AppError('This order cannot be paid in its current state.', 400));
+  }
+
+  // Resolve payer email safely:
+  // 1) request body email
+  // 2) populated order.user.email
+  // 3) DB lookup by order.user
+  let payerEmail = typeof email === 'string' ? email.trim() : '';
+  if (!payerEmail) {
+    payerEmail = order.user?.email || '';
+  }
+  if (!payerEmail) {
+    const buyerDoc = await User.findById(order.user).select('email').lean();
+    payerEmail = buyerDoc?.email || '';
+  }
+  if (!payerEmail) {
+    return next(new AppError('Unable to initialize payment at this time. Please update your account email and try again.', 400));
   }
 
   // SECURITY FIX #15: Server-side amount validation
-  // NEVER trust frontend amount - always use server-side order total
-  const serverAmount = order.totalPrice;
+  // NEVER trust frontend amount - always use server-side order values.
+  const toNumber = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
 
-  // CRITICAL: Log order details for debugging
-  console.log(`[Payment Init] 🔍 Order ${orderId} details:`, {
-    totalPrice: order.totalPrice,
-    subtotal: order.subtotal,
-    shippingCost: order.shippingCost,
-    shippingFee: order.shippingFee,
-    discountAmount: order.discountAmount,
-    tax: order.tax,
-    orderItemsCount: order.orderItems?.length || 0,
-    orderStatus: order.orderStatus,
-    paymentStatus: order.paymentStatus,
-  });
+  const serverAmount =
+    toNumber(order.totalPrice) ||
+    toNumber(order.totalAmount) ||
+    (toNumber(order.subtotal) + toNumber(order.shippingCost) - toNumber(order.discountAmount));
+
+  // SECURITY: Avoid logging order/payment details.
 
   // CRITICAL: Validate that order has a valid totalPrice
   if (!serverAmount || serverAmount === null || serverAmount === undefined || isNaN(serverAmount)) {
-    console.error(`[Payment Init] ❌ Order ${orderId} has invalid totalPrice:`, serverAmount);
-    console.error(`[Payment Init] Order details:`, {
+    logger.warn('[Payment Init] Invalid order totalPrice:', serverAmount);
+    logger.warn('[Payment Init] Order details snapshot:', {
       totalPrice: order.totalPrice,
       subtotal: order.subtotal,
       shippingCost: order.shippingCost,
@@ -96,8 +279,8 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   }
 
   if (serverAmount <= 0) {
-    console.error(`[Payment Init] ❌ Order ${orderId} has zero or negative totalPrice:`, serverAmount);
-    console.error(`[Payment Init] Order details:`, {
+    logger.warn('[Payment Init] Order totalPrice is <= 0:', serverAmount);
+    logger.warn('[Payment Init] Order details snapshot:', {
       totalPrice: order.totalPrice,
       subtotal: order.subtotal,
       shippingCost: order.shippingCost,
@@ -115,26 +298,14 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
   // CRITICAL: Validate Paystack amount is valid (must be > 0 after conversion)
   if (!paystackAmount || paystackAmount <= 0 || isNaN(paystackAmount)) {
-    console.error(`[Payment Init] ❌ Invalid Paystack amount calculated:`, {
+    logger.warn('[Payment Init] Invalid Paystack amount calculated:', {
       serverAmount,
       paystackAmount,
-      orderId,
     });
     return next(new AppError('Invalid request. Please try again or contact support.', 400));
   }
 
-  // DEBUG: Log user IDs to identify authorization issue
-  console.log('[Payment Init] 🔍 DEBUG - User Authorization Check:');
-  console.log('[Payment Init] ORDER USER:', order.user.toString(), 'Type:', typeof order.user);
-  console.log('[Payment Init] REQUEST USER:', req.user.id.toString(), 'Type:', typeof req.user.id);
-  console.log('[Payment Init] Order User ID (raw):', order.user);
-  console.log('[Payment Init] Request User ID (raw):', req.user.id);
-  console.log('[Payment Init] Are they equal?', order.user.toString() === req.user.id.toString());
-  console.log('[Payment Init] Order ID:', orderId);
-  console.log('[Payment Init] Request headers:', {
-    authorization: req.headers.authorization ? 'Bearer ***' : 'MISSING',
-    cookie: req.headers.cookie ? 'Present' : 'MISSING',
-  });
+  // SECURITY: do not log identifiers/authorization info.
 
   // Handle populated user object (from .populate('user'))
   const orderUserId = order.user?._id
@@ -148,14 +319,11 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     : req.user?.id?.toString() || String(req.user.id);
 
   if (orderUserId !== requestUserId) {
-    console.error('[Payment Init] ❌ AUTHORIZATION FAILED:');
-    console.error('[Payment Init] Order belongs to user:', orderUserId);
-    console.error('[Payment Init] Request is from user:', requestUserId);
-    console.error('[Payment Init] These do not match!');
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('[Payment Init] Authorization failed: user mismatch');
+    }
     return next(new AppError('You do not have permission to perform this action', 403));
   }
-
-  console.log('[Payment Init] ✅ Authorization check passed');
 
   // Get Paystack secret key from environment
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -177,6 +345,72 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     return s.includes('admin') || s.includes('eazadmin') || s.includes(':5174');
   };
 
+  const isPublicCallbackHost = (normalizedUrl) => {
+    if (!normalizedUrl) return false;
+    try {
+      const parsed = new URL(normalizedUrl);
+      const host = parsed.hostname.toLowerCase();
+      const isIpv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host);
+      const isIpv6 = host.includes(':');
+
+      if (
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '0.0.0.0' ||
+        host.endsWith('.local')
+      ) {
+        return false;
+      }
+
+      // Private LAN ranges are not reachable by Paystack callbacks.
+      if (
+        /^10\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+      ) {
+        return false;
+      }
+
+      // Force domain-based callbacks for Paystack (avoid raw IP redirects).
+      if (isIpv4 || isIpv6) {
+        return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const normalizeCallbackBaseUrl = (candidateUrl) => {
+    if (!candidateUrl || typeof candidateUrl !== 'string') return null;
+
+    const trimmed = candidateUrl.trim().replace(/\/$/, '');
+    if (!trimmed) return null;
+    if (!/^https?:\/\//i.test(trimmed)) return null;
+
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      const isLocalHost =
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '0.0.0.0';
+
+      // Paystack/browser redirects are more reliable with TLS in non-local envs.
+      if (parsed.protocol === 'http:' && !isLocalHost) {
+        parsed.protocol = 'https:';
+      }
+
+      return parsed.toString().replace(/\/$/, '');
+    } catch (error) {
+      logger.warn(
+        '[Paystack Initialize] Invalid callback base URL candidate ignored'
+      );
+      return null;
+    }
+  };
+
   const envCallback = process.env.PAYSTACK_CALLBACK_BASE_URL;
   const envFrontend = process.env.FRONTEND_URL;
   const envMain = process.env.MAIN_APP_URL;
@@ -190,20 +424,35 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     NODE_ENV: process.env.NODE_ENV || 'undefined',
   });
 
-  // Priority: PAYSTACK_CALLBACK_BASE_URL > FRONTEND_URL > MAIN_APP_URL > EAZMAIN_URL
+  // Priority: request callbackBaseUrl > PAYSTACK_CALLBACK_BASE_URL > FRONTEND_URL
+  // > MAIN_APP_URL > EAZMAIN_URL
   // Accept any valid http(s) URL that is not admin-like (e.g. https://saiisai.com works).
   let baseUrl = null;
-  for (const candidate of [envCallback, envFrontend, envMain, envEazmain]) {
-    if (!candidate || typeof candidate !== 'string') continue;
-    const trimmed = candidate.trim().replace(/\/$/, '');
-    if (!trimmed) continue;
-    if (rejectAdmin(trimmed)) {
-      logger.warn('[Paystack Initialize] Skipping admin-like URL:', trimmed);
+  const candidateSources = [
+    { value: callbackBaseUrl, source: 'request.callbackBaseUrl' },
+    { value: envCallback, source: 'PAYSTACK_CALLBACK_BASE_URL' },
+    { value: envFrontend, source: 'FRONTEND_URL' },
+    { value: envMain, source: 'MAIN_APP_URL' },
+    { value: envEazmain, source: 'EAZMAIN_URL' },
+  ];
+
+  for (const { value, source } of candidateSources) {
+    const candidate = value;
+    const normalized = normalizeCallbackBaseUrl(candidate);
+    if (!normalized) continue;
+    if (rejectAdmin(normalized)) {
+      logger.warn('[Paystack Initialize] Skipping admin-like URL:', normalized);
       continue;
     }
-    if (!/^https?:\/\//i.test(trimmed)) continue;
-    baseUrl = trimmed;
-    logger.info('[Paystack Initialize] ✅ Using base URL from env:', baseUrl);
+    if (!isPublicCallbackHost(normalized)) {
+      logger.warn(
+        '[Paystack Initialize] Skipping non-public/non-domain callback URL:',
+        normalized
+      );
+      continue;
+    }
+    baseUrl = normalized;
+    logger.info(`[Paystack Initialize] ✅ Using base URL from ${source}:`, baseUrl);
     break;
   }
 
@@ -272,15 +521,17 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
   // baseUrl is already validated and cleaned above, so use it directly.
   const callbackUrl = `${baseUrl}/order-confirmation?orderId=${order._id}`;
 
-  // CRITICAL: Log all environment variables for debugging BEFORE validation
-  logger.info('[Paystack Initialize] 🔍 Environment Variables Check:', {
-    MAIN_APP_URL: process.env.MAIN_APP_URL || 'NOT SET',
-    EAZMAIN_URL: process.env.EAZMAIN_URL || 'NOT SET',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
-    ADMIN_URL: process.env.ADMIN_URL || 'NOT SET',
-    selectedBaseUrl: baseUrl,
-    finalCallbackUrl: callbackUrl,
-  });
+  // SECURITY: Never log callback URLs or order identifiers.
+  // In development we only log which base URL was selected.
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('[Paystack Initialize] Environment variables check:', {
+      MAIN_APP_URL: process.env.MAIN_APP_URL || 'NOT SET',
+      EAZMAIN_URL: process.env.EAZMAIN_URL || 'NOT SET',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT SET',
+      ADMIN_URL: process.env.ADMIN_URL || 'NOT SET',
+      selectedBaseUrl: baseUrl,
+    });
+  }
 
   // Final validation of the complete callback URL – if it looks like an admin
   // URL, fail fast instead of silently changing it.
@@ -302,11 +553,12 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     );
   }
 
-  logger.info('[Paystack Initialize] ✅ Callback URL configured correctly:', callbackUrl);
-  logger.info('[Paystack Initialize] Expected final URL:', `${callbackUrl}&reference=XXX&trxref=XXX`);
+  if (process.env.NODE_ENV === 'development') {
+    logger.info('[Paystack Initialize] Callback URL configured correctly (dev only)');
+  }
 
   const payload = {
-    email,
+    email: payerEmail,
     amount: paystackAmount, // Use server-calculated amount in kobo/pesewas
     metadata: {
       orderId: order._id.toString(),
@@ -321,8 +573,7 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
     callback_url: callbackUrl,
   };
 
-  logger.info('[Paystack Initialize] Paystack Payload callback_url:', payload.callback_url);
-  logger.info('[Paystack Initialize] Order ID:', order._id.toString());
+  // SECURITY: avoid logging callback URLs / order IDs
 
   try {
     // Make request to Paystack using axios
@@ -369,12 +620,10 @@ exports.initializePaystack = catchAsync(async (req, res, next) => {
 
 // Verify Paystack payment and update order status
 exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
-  const { reference, orderId } = req.query;
+  const { reference, orderId } = req.body || {};
 
-  // Validate input
-  if (!reference) {
-    return next(new AppError('Invalid request. Please provide all required information.', 400));
-  }
+  // Validate input (basic guard; full validation is done in middleware)
+  if (!reference) return next(new AppError('Invalid request.', 400));
 
   // Get Paystack secret key from environment
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -382,8 +631,13 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     return next(new AppError('Service temporarily unavailable. Please contact support.', 500));
   }
 
+  const buyerId = req.user?.id ?? req.user?._id;
+  if (!buyerId) {
+    return next(new AppError('You are not logged in! Please log in to get access.', 401));
+  }
+
   try {
-    logger.info(`[Payment Verification] Verifying payment with reference: ${reference}, orderId: ${orderId}`);
+    logger.info('[Payment Verification] Verifying Paystack payment');
 
     // Verify payment with Paystack
     const response = await axios.get(
@@ -396,7 +650,6 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     );
 
     logger.info(`[Payment Verification] Paystack response status: ${response.data?.status}`);
-    logger.info(`[Payment Verification] Paystack response data:`, JSON.stringify(response.data, null, 2));
 
     // Check if Paystack returned an error
     if (response.data.status === false) {
@@ -407,7 +660,7 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
 
     // Check if response has the expected structure
     if (!response.data || response.data.status !== true || !response.data.data) {
-      console.error(`[Payment Verification] Invalid response structure:`, response.data);
+      logger.error('[Payment Verification] Invalid Paystack response structure');
       return next(new AppError('Request could not be processed. Please try again.', 400));
     }
 
@@ -418,25 +671,63 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
     let order;
     if (orderId) {
       order = await Order.findById(orderId);
-      logger.info(`[Payment Verification] Found order by ID: ${order ? order._id : 'not found'}`);
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(`[Payment Verification] Found order by ID (dev): ${order ? order._id : 'not found'}`);
+      }
     } else {
       // Find order by payment reference
       order = await Order.findOne({ paymentReference: reference });
-      logger.info(`[Payment Verification] Found order by reference: ${order ? order._id : 'not found'}`);
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(
+          `[Payment Verification] Found order by reference (dev): ${order ? order._id : 'not found'}`
+        );
+      }
     }
 
     if (!order) {
-      console.error(`[Payment Verification] Order not found for reference: ${reference}, orderId: ${orderId}`);
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug('[Payment Verification] Order not found (dev)');
+      }
       return next(new AppError('Requested resource not found', 404));
     }
 
     // Check if payment was successful
     if (transaction.status === 'success') {
-      logger.info(`[Payment Verification] Payment successful for order: ${order._id}`);
+      // SECURITY: Prevent IDOR. Only allow the logged-in buyer to transition
+      // their own order to paid/confirmed.
+      const orderOwnerId = order.user?._id ? order.user._id : order.user;
+      if (!orderOwnerId || orderOwnerId.toString() !== buyerId.toString()) {
+        return next(new AppError('You are not authorized to perform this action', 403));
+      }
 
-      // Prevent double updates - if already paid, return existing order
-      if (order.paymentStatus === 'paid') {
-        logger.info(`[Payment Verification] Order ${order._id} already paid, returning existing order`);
+      // SECURITY: If Paystack included an orderId in metadata, ensure it matches.
+      const transactionOrderId = transaction?.metadata?.orderId;
+      if (transactionOrderId && order._id.toString() !== transactionOrderId.toString()) {
+        return next(new AppError('Payment order mismatch', 400));
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        logger.info('[Payment Verification] Payment successful (dev)');
+      }
+
+      // Prevent double updates - if already paid/completed, return existing order
+      if (['paid', 'completed'].includes(order.paymentStatus)) {
+        const hasCancelledStatus =
+          order.status === 'cancelled' ||
+          order.currentStatus === 'cancelled' ||
+          order.orderStatus === 'cancelled';
+
+        // Self-heal legacy/inconsistent records: paid orders must not remain cancelled.
+        if (hasCancelledStatus) {
+          order.status = 'confirmed';
+          order.currentStatus = 'confirmed';
+          order.orderStatus = 'confirmed';
+          await order.save({ validateBeforeSave: false });
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('[Payment Verification] Order already paid/completed (dev)');
+        }
         return res.status(200).json({
           success: true,
           status: 'success',
@@ -534,7 +825,11 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       });
 
       await order.save({ validateBeforeSave: false });
-      logger.info(`[Payment Verification] Order ${order._id} updated successfully - Status: confirmed`);
+      if (process.env.NODE_ENV === 'development') {
+        logger.info('[Payment Verification] Order updated successfully (dev)');
+      }
+
+      await sendBuyerPaymentSuccessPush(order, transaction, 'verify');
 
       // Stock was already reduced at order creation.
 
@@ -542,10 +837,14 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       const orderController = require('./orderController');
       try {
         await orderController.updateProductTotalSold(order);
-        console.log(`[Payment Verification] Updated totalSold for products in order ${order._id}`);
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug('[Payment Verification] Updated product totalSold (dev)');
+        }
       } catch (soldError) {
         // Log error but don't fail payment - sold count update is non-critical
-        console.error('[Payment Verification] Error updating product totalSold:', soldError);
+        logger.error('[Payment Verification] Error updating product totalSold:', {
+          message: soldError?.message,
+        });
       }
 
       // Sync SellerOrder status and payment status (DO NOT credit sellers - they get paid on delivery)
@@ -568,7 +867,9 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
             sellerOrder.paymentReference = reference;
             sellerOrder.paidAt = order.paidAt;
             await sellerOrder.save({ validateBeforeSave: false });
-            logger.info(`[Payment Verification] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
+            if (process.env.NODE_ENV === 'development') {
+              logger.info('[Payment Verification] SellerOrder updated (dev)');
+            }
           }
         }
 
@@ -605,6 +906,9 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
                 Order.findByIdAndUpdate(savedOrderId, { $set: { confirmationEmailSent: true } })
                   .catch(err => logger.error('[Payment Verification] Failed to set confirmationEmailSent:', err.message));
               }
+
+              await sendSellerOrderEmailsAfterPayment(savedOrderId, 'verify');
+              await sendAdminOrderPaidAlertAfterPayment(savedOrderId, 'verify');
             } catch (emailErr) {
               logger.error('[Payment Verification] Post-response email failed:', emailErr.message);
             }
@@ -644,6 +948,14 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       logger.info(`[Payment Verification] Payment not successful. Status: ${transaction.status}`);
       order.paymentStatus = transaction.status === 'failed' ? 'failed' : 'pending';
       await order.save();
+      if (transaction.status === 'failed') {
+        await sendBuyerPaymentFailedPush(order, transaction, 'verify');
+        await sendBuyerPaymentFailedEmail(
+          order,
+          transaction.gateway_response || transaction.message,
+          'verify'
+        );
+      }
 
       const statusMessage = transaction.status === 'pending'
         ? 'Payment is still pending. Please wait for confirmation.'
@@ -652,12 +964,14 @@ exports.verifyPaystackPayment = catchAsync(async (req, res, next) => {
       return next(new AppError(statusMessage, 400));
     }
   } catch (error) {
+    const debug = process.env.NODE_ENV === 'development'
+      ? { reference, orderId }
+      : {};
     logger.error('[Payment Verification] Error details:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      reference,
-      orderId,
+      ...debug,
     });
 
     // Handle specific Paystack API errors
@@ -700,7 +1014,9 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
 
       // Handle wallet top-up
       if (transactionType === 'wallet_topup' && transaction.status === 'success') {
-        logger.info(`[Paystack Webhook] Processing wallet top-up: ${reference}`);
+        if (process.env.NODE_ENV === 'development') {
+          logger.info(`[Paystack Webhook] Processing wallet top-up (dev)`);
+        }
 
         try {
           const walletService = require('../../services/walletService');
@@ -750,11 +1066,28 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
       }
 
       if (order && transaction.status === 'success') {
-        logger.info(`[Paystack Webhook] Processing successful payment for order: ${order._id}`);
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('[Paystack Webhook] Processing successful payment (dev)');
+        }
 
         // Prevent double updates - if already paid, skip
-        if (order.paymentStatus === 'paid') {
-          logger.info(`[Paystack Webhook] Order ${order._id} already paid, skipping update`);
+        if (['paid', 'completed'].includes(order.paymentStatus)) {
+          const hasCancelledStatus =
+            order.status === 'cancelled' ||
+            order.currentStatus === 'cancelled' ||
+            order.orderStatus === 'cancelled';
+
+          // Self-heal legacy/inconsistent records: paid orders must not remain cancelled.
+          if (hasCancelledStatus) {
+            order.status = 'confirmed';
+            order.currentStatus = 'confirmed';
+            order.orderStatus = 'confirmed';
+            await order.save({ validateBeforeSave: false });
+          }
+
+          if (process.env.NODE_ENV === 'development') {
+            logger.info('[Paystack Webhook] Payment already paid/completed (dev)');
+          }
           return res.status(200).json({ received: true });
         }
 
@@ -835,7 +1168,11 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         });
 
         await order.save({ validateBeforeSave: false });
-        logger.info(`[Paystack Webhook] Order ${order._id} updated successfully - Status: confirmed`);
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('[Paystack Webhook] Order updated successfully (dev)');
+        }
+
+        await sendBuyerPaymentSuccessPush(order, transaction, 'webhook');
 
         // Capture email data for post-response sending
         const webhookOrderId = order._id;
@@ -848,10 +1185,14 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
         const orderController = require('./orderController');
         try {
           await orderController.updateProductTotalSold(order);
-          console.log(`[Paystack Webhook] Updated totalSold for products in order ${order._id}`);
+          if (process.env.NODE_ENV === 'development') {
+            logger.debug('[Paystack Webhook] Updated product totalSold (dev)');
+          }
         } catch (soldError) {
           // Log error but don't fail webhook - sold count update is non-critical
-          console.error('[Paystack Webhook] Error updating product totalSold:', soldError);
+          logger.error('[Paystack Webhook] Error updating product totalSold:', {
+            message: soldError?.message,
+          });
         }
 
         // Sync SellerOrder status and payment status (DO NOT credit sellers - they get paid on delivery)
@@ -874,7 +1215,9 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
               sellerOrder.paymentReference = reference;
               sellerOrder.paidAt = order.paidAt;
               await sellerOrder.save({ validateBeforeSave: false });
-              logger.info(`[Paystack Webhook] Updated SellerOrder ${sellerOrder._id} - status: confirmed, paymentStatus: paid`);
+              if (process.env.NODE_ENV === 'development') {
+                logger.info('[Paystack Webhook] SellerOrder updated (dev)');
+              }
             }
           }
 
@@ -888,6 +1231,37 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Handle failed payment event
+  if (event && event.event === 'charge.failed') {
+    const transaction = event.data;
+    const reference = transaction?.reference;
+    const orderId = transaction?.metadata?.orderId;
+
+    let order;
+    if (orderId) {
+      order = await Order.findById(orderId);
+    } else if (reference) {
+      order = await Order.findOne({ paymentReference: reference });
+    }
+
+    if (order && order.paymentStatus !== 'paid') {
+      order.paymentStatus = 'failed';
+      await order.save({ validateBeforeSave: false });
+
+      await sendBuyerPaymentFailedPush(order, transaction, 'webhook');
+      await sendBuyerPaymentFailedEmail(
+        order,
+        transaction?.gateway_response || transaction?.message,
+        'webhook'
+      );
+      logger.info(
+        `[Paystack Webhook] Marked order ${order._id} payment as failed`
+      );
+    }
+
+    return res.status(200).json({ received: true });
+  }
+
   // Handle transfer events (payouts)
   if (event && (event.event === 'transfer.success' || event.event === 'transfer.failed' || event.event === 'transfer.reversed')) {
     const transfer = event.data;
@@ -895,7 +1269,11 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
       const transferCode = transfer.transfer_code;
       const reference = transfer.reference;
 
-      logger.info(`[Paystack Webhook] Processing transfer event: ${event.event}, reference: ${reference}, code: ${transferCode}`);
+      if (process.env.NODE_ENV === 'development') {
+        logger.info(
+          `[Paystack Webhook] Processing transfer event (dev): ${event.event}`
+        );
+      }
 
       try {
         const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
@@ -962,6 +1340,8 @@ exports.paystackWebhook = catchAsync(async (req, res, next) => {
             Order.findByIdAndUpdate(webhookOrderId, { $set: { confirmationEmailSent: true } })
               .catch(err => logger.error('[Paystack Webhook] Failed to set confirmationEmailSent:', err.message));
           }
+          await sendSellerOrderEmailsAfterPayment(webhookOrderId, 'webhook');
+          await sendAdminOrderPaidAlertAfterPayment(webhookOrderId, 'webhook');
         } catch (emailErr) {
           logger.error('[Paystack Webhook] Post-response email failed:', emailErr.message);
         }

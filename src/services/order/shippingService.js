@@ -3,6 +3,8 @@
  * Handles shipping cost calculations, tracking number generation, and delivery agent assignment
  */
 
+const crypto = require('crypto');
+
 /**
  * Calculate shipping cost based on items, seller location, and delivery address
  * @param {Array} items - Order items
@@ -55,15 +57,16 @@ exports.calculateShippingCost = (items, sellerLocation, deliveryAddress) => {
 
 /**
  * Generate a unique tracking number
- * @returns {String} Tracking number in format: EAZ-YYYYMMDD-XXXXXX
+ * @returns {String} Tracking number in format: EAZ-YYYYMMDD-<unpredictable>
  */
 exports.generateTrackingNumber = () => {
   const date = new Date();
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  // Generate 6 random digits
-  const random = Math.floor(100000 + Math.random() * 900000).toString();
+  // Use cryptographically secure randomness to prevent tracking-number enumeration.
+  // 8 bytes => 16 hex chars (~2^64 possibilities).
+  const random = crypto.randomBytes(8).toString('hex').toUpperCase();
 
   return `EAZ-${year}${month}${day}-${random}`;
 };

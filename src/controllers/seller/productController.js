@@ -201,18 +201,40 @@ exports.setProductIds = (req, res, next) => {
 //Create product by seller
 const multerStorage = multer.memoryStorage();
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new AppError('Not an image! Please upload an image', 400), false);
+  // Restrict allowed form fields and mime types to reduce upload abuse.
+  const allowedMimes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+  ]);
+
+  const fieldname = String(file.fieldname || '');
+  const isAllowedField =
+    fieldname === 'imageCover' ||
+    fieldname === 'newImages' ||
+    fieldname === 'video' ||
+    /^variantImages\[\d+\]$/.test(fieldname) ||
+    /^variants\[\d+\]\[images\]$/.test(fieldname);
+
+  if (!isAllowedField) {
+    return cb(new AppError('Unexpected upload field', 400), false);
   }
+
+  if (!allowedMimes.has(file.mimetype)) {
+    return cb(new AppError('Unsupported file type', 400), false);
+  }
+
+  cb(null, true);
 };
 
 const upload = multer({
   storage: multerStorage,
   fileFilter: multerFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    // Prevent memory DoS; keep conservative totals.
+    fileSize: 25 * 1024 * 1024,
+    files: 20,
   },
 });
 exports.conditionalUpload = (req, res, next) => {
@@ -246,7 +268,13 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
   }
 
   req.files = filesObj;
-  console.log('req.files', req.files);
+  const totalUploadedFiles = Object.values(req.files || {}).reduce(
+    (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+    0,
+  );
+  if (totalUploadedFiles > 8) {
+    return next(new AppError('Maximum 8 images are allowed per product', 400));
+  }
   let parseExistingImages = [];
   let imagesUrls = [];
   try {
@@ -278,9 +306,55 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         });
       };
 
+      const detectMediaFromBuffer = (buffer) => {
+        if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+        // JPEG: FF D8 FF
+        if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+          return 'image/jpeg';
+        }
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        const pngSig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        if (buffer.slice(0, 8).equals(pngSig)) {
+          return 'image/png';
+        }
+        // WEBP: RIFF....WEBP
+        if (
+          buffer.slice(0, 4).toString('ascii') === 'RIFF' &&
+          buffer.slice(8, 12).toString('ascii') === 'WEBP'
+        ) {
+          return 'image/webp';
+        }
+        // MP4: ....ftyp....
+        if (buffer.slice(4, 8).toString('ascii') === 'ftyp') {
+          return 'video/mp4';
+        }
+        return null;
+      };
+
+      const assertExpectedFileType = (file, expected) => {
+        const detected = detectMediaFromBuffer(file?.buffer);
+        if (!detected) {
+          throw new AppError('Invalid media file', 400);
+        }
+
+        if (expected === 'image') {
+          if (!['image/jpeg', 'image/png', 'image/webp'].includes(detected)) {
+            throw new AppError('Invalid image file', 400);
+          }
+          return;
+        }
+
+        if (expected === 'video') {
+          if (detected !== 'video/mp4') {
+            throw new AppError('Invalid video file', 400);
+          }
+        }
+      };
+
       // Process cover image
       if (req.files.imageCover && req.files.imageCover[0]) {
         const coverFile = req.files.imageCover[0];
+        assertExpectedFileType(coverFile, 'image');
         const coverResult = await uploadFromBuffer(coverFile.buffer, {
           folder: 'products',
           public_id: `${uniqueSuffix}-cover`,
@@ -291,7 +365,9 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         });
 
         req.body.imageCover = coverResult.secure_url;
-        logger.info('Cover image URL:', req.body.imageCover);
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('Cover image URL (dev):', req.body.imageCover);
+        }
       }
 
       // Process product additional images
@@ -299,6 +375,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
         const newImages = req.files.newImages;
 
         const imagesPromises = newImages.map(async (file, i) => {
+          assertExpectedFileType(file, 'image');
           const result = await uploadFromBuffer(file.buffer, {
             folder: 'products',
             public_id: `${uniqueSuffix}-image-${i}`,
@@ -307,10 +384,39 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
               { quality: 'auto', fetch_format: 'auto' },
             ],
           });
-          return result.secure_url;
+          return {
+            url: result.secure_url,
+            thumbnail: result.secure_url,
+            medium: result.secure_url,
+            large: result.secure_url,
+            publicId: result.public_id,
+            position: i,
+            alt: req.body.name || '',
+            width: result.width || null,
+            height: result.height || null,
+            format: result.format || 'webp',
+            size: result.bytes || null,
+          };
         });
 
         imagesUrls = await Promise.all(imagesPromises);
+      }
+
+      // Process product video
+      if (req.files.video && req.files.video[0]) {
+        const videoFile = req.files.video[0];
+        assertExpectedFileType(videoFile, 'video');
+        const videoResult = await uploadFromBuffer(videoFile.buffer, {
+          folder: 'products/videos',
+          public_id: `${uniqueSuffix}-video`,
+          resource_type: 'video',
+          // No complex transformations for video yet to ensure quick processing
+        });
+
+        req.body.video = videoResult.secure_url;
+        if (process.env.NODE_ENV === 'development') {
+          logger.info('Video URL (dev):', req.body.video);
+        }
       }
 
       // Handle variant images
@@ -343,6 +449,7 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
 
           if (variantImageFiles) {
             const variantImagesPromises = variantImageFiles.map(async (file, imgIndex) => {
+                assertExpectedFileType(file, 'image');
               const result = await uploadFromBuffer(file.buffer, {
                 folder: 'products/variants',
                 public_id: `${uniqueSuffix}-variant-${i}-image-${imgIndex}`,
@@ -390,7 +497,6 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       }
 
       req.body.images = [...parseExistingImages, ...imagesUrls];
-      logger.info('All images:', req.body);
     }
   } catch (err) {
     logger.error('[resizeProductImages] Error processing images:', {
@@ -398,6 +504,11 @@ exports.resizeProductImages = catchAsync(async (req, res, next) => {
       stack: err.stack,
       filesCount: req.files ? Object.keys(req.files).length : 0,
     });
+
+    // If the upload contains an invalid/forbidden media type, reject the request.
+    if (err instanceof AppError || err.statusCode === 400) {
+      return next(err);
+    }
 
     // If it's a critical error (like Cloudinary config), return error
     if (err.message && err.message.includes('not configured')) {
@@ -420,8 +531,10 @@ exports.bestProductPrice = async () => {
 };
 //get product count by category
 exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
-  console.time('category-counts');
-  console.log('[CATEGORY-COUNTS] Request received');
+  if (process.env.NODE_ENV === 'development') {
+    console.time('category-counts');
+    console.log('[CATEGORY-COUNTS] Request received');
+  }
 
   // PERFORMANCE FIX: Add allowDiskUse(true) for large aggregations
   // This allows MongoDB to use disk for temporary files when memory is insufficient
@@ -470,8 +583,12 @@ exports.getProductCountByCategory = catchAsync(async (req, res, next) => {
     },
   ]).allowDiskUse(true); // PERFORMANCE FIX: Allow disk use for large aggregations
 
-  console.timeEnd('category-counts');
-  console.log(`[CATEGORY-COUNTS] ✅ Returned ${productCounts.length} category counts`);
+  if (process.env.NODE_ENV === 'development') {
+    console.timeEnd('category-counts');
+    console.log(
+      `[CATEGORY-COUNTS] ✅ Returned ${productCounts.length} category counts`,
+    );
+  }
 
   res.status(200).json({
     status: 'success',
@@ -578,8 +695,18 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   console.time('getAllProduct');
   console.log('🔍 [getAllProduct] Products request hit');
 
-  // Check if user is admin - handle both admin and superadmin roles
-  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'moderator');
+  // Treat admin privileges on shared /product route only when request context
+  // actually comes from admin app/route. This prevents buyer app sessions that
+  // carry admin_jwt cookie from seeing unapproved products.
+  const requestPlatform = String(req.headers['x-platform'] || '').toLowerCase();
+  const isAdminContext = requestPlatform === 'eazadmin' || req.originalUrl.startsWith('/api/v1/admin');
+  const isAdmin = Boolean(
+    isAdminContext &&
+    req.user &&
+    (req.user.role === 'admin' ||
+      req.user.role === 'superadmin' ||
+      req.user.role === 'moderator')
+  );
 
   // Set default limit based on user role
   // Admins can see more products at once for better management
@@ -901,16 +1028,15 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     return next(new AppError('Product ID is required', 400));
   }
 
-  // Validate ObjectId format
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return next(new AppError(`Invalid product ID format: ${id}`, 400));
-  }
+  // Support both ObjectId and slug lookup
+  const isObjectId = mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id;
+  const productId = isObjectId ? new mongoose.Types.ObjectId(id) : null;
+  logger.info('productId or slug', productId || id);
 
-  const productId = new mongoose.Types.ObjectId(id);
-  logger.info('productId', productId);
-
-  // Fetch product with seller populated, but also get raw seller ID
-  const product = await Product.findById(productId)
+  // Fetch product with seller populated - by _id or by slug
+  const product = await (productId
+    ? Product.findById(productId)
+    : Product.findOne({ slug: id }))
     .populate({
       path: 'parentCategory',
       select: 'name slug',
@@ -922,9 +1048,11 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     .lean(); // Use lean() to get plain object for easier ID access
 
   if (!product) {
-    logger.info('[getProductById] Product not found in database:', productId);
+    logger.info('[getProductById] Product not found in database:', productId || id);
     return next(new AppError('Product not found', 404));
   }
+
+  const resolvedProductId = product._id;
 
   // Get seller ID from product - handle both populated and unpopulated cases
   let productSellerId = null;
@@ -939,7 +1067,15 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   }
 
   // Check if current user is admin or seller who owns this product
-  const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superadmin' || req.user.role === 'moderator');
+  const requestPlatform = String(req.headers['x-platform'] || '').toLowerCase();
+  const isAdminContext = requestPlatform === 'eazadmin' || req.originalUrl.startsWith('/api/v1/admin');
+  const isAdmin = Boolean(
+    isAdminContext &&
+    req.user &&
+    (req.user.role === 'admin' ||
+      req.user.role === 'superadmin' ||
+      req.user.role === 'moderator')
+  );
   let isSellerOwnProduct = false;
   if (req.user && productSellerId) {
     const userIdStr = req.user.id?.toString() || req.user._id?.toString();
@@ -1012,7 +1148,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     // If not seller's own product and cannot access (not approved and not undefined), deny access
     if (!isSellerOwnProduct && !canAccess) {
       logger.info('[getProductById] ❌ Access denied:', {
-        productId: productId,
+        productId: resolvedProductId,
         productModerationStatus: moderationStatus,
         originalModerationStatus: product.moderationStatus,
         userRole: req.user?.role,
@@ -1032,7 +1168,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   }
 
   // Fetch product as plain object so populated seller is guaranteed in JSON response (buyer PDP seller card)
-  const productResponse = await Product.findById(productId)
+  const productResponse = await Product.findById(resolvedProductId)
     .populate({
       path: 'parentCategory',
       select: 'name slug _id',
@@ -1063,6 +1199,36 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   }
 
   productResponse.promoPrice = 0;
+
+  // Include approved reviews in product response; also pending for the current user (matches getProductReviews)
+  let reviewStatusFilter = { status: 'approved' };
+  if (req.user && req.user.role === 'admin') {
+    reviewStatusFilter = {};
+  } else if (req.user) {
+    const userId = req.user._id || req.user.id;
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      reviewStatusFilter = {
+        $or: [
+          { status: 'approved' },
+          { status: 'pending', user: new mongoose.Types.ObjectId(userId.toString()) },
+        ],
+      };
+    }
+  }
+  const productReviews = await Review.find({
+    product: resolvedProductId,
+    ...reviewStatusFilter,
+  })
+    .populate({ path: 'user', select: 'name photo' })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+  productResponse.reviews = productReviews;
+  productResponse.reviewsCount = productReviews.length;
+  productResponse.reviewsAverage = productReviews.length > 0
+    ? Math.round((productReviews.reduce((s, r) => s + (r.rating || 0), 0) / productReviews.length) * 10) / 10
+    : productResponse.ratingsAverage ?? 0;
+
   // Promotional discounts = Ads (link + discountPercent). Seller discounts are separate.
   if (productResponse?.variants?.length > 0) {
     const promosFromAds = await getPromosFromAds();
@@ -1505,6 +1671,17 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     } catch (err) {
       console.warn('[updateProduct] Failed to parse images field, treating as new images array');
       // If parsing fails, it might be a new images array, let middleware handle it
+    }
+  }
+
+  const { validateSellerProductImageUrls } = require('../../utils/validateSellerProductImageUrls');
+  if (req.body.existingImages && Array.isArray(req.body.existingImages)) {
+    const imageUrlErr = validateSellerProductImageUrls({
+      existingImages: req.body.existingImages,
+      imageCover: req.body.imageCover,
+    });
+    if (imageUrlErr) {
+      return next(new AppError(imageUrlErr, 400));
     }
   }
 
@@ -2001,6 +2178,9 @@ exports.createProductVariant = catchAsync(async (req, res, next) => {
     condition: req.body.condition || 'new', // Default to 'new' if not provided
   };
 
+  console.log('DEBUG: Creating product with condition:', req.body.condition);
+  console.log('DEBUG: Final variant data condition:', variantData.condition);
+
   // Handle attributes
   if (req.body.attributes) {
     let attributes = req.body.attributes;
@@ -2166,7 +2346,10 @@ exports.updateProductVariant = catchAsync(async (req, res, next) => {
   if (req.body.stock !== undefined) variant.stock = parseInt(req.body.stock);
   if (req.body.sku !== undefined) variant.sku = req.body.sku;
   if (req.body.status !== undefined) variant.status = req.body.status;
-  if (req.body.condition !== undefined) variant.condition = req.body.condition; // Update condition field
+  if (req.body.condition !== undefined) {
+    console.log('DEBUG: Updating variant condition to:', req.body.condition);
+    variant.condition = req.body.condition; // Update condition field
+  }
   if (req.body.originalPrice !== undefined) variant.originalPrice = parseFloat(req.body.originalPrice);
   if (req.body.discount !== undefined) variant.discount = parseFloat(req.body.discount);
 

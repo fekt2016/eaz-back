@@ -43,12 +43,12 @@ const adminActionLogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     required: false, // Not required for payout verification actions
     index: true,
-    comment: 'Reference to PaymentRequest or WithdrawalRequest (null for payout verification)',
+    comment: 'Reference to PaymentRequest (null for payout verification)',
   },
   withdrawalType: {
     type: String,
-    enum: ['PaymentRequest', 'WithdrawalRequest'],
-    required: false, // Not required for payout verification actions
+    enum: ['PaymentRequest'],
+    required: false,
   },
   sellerId: {
     type: mongoose.Schema.Types.ObjectId,

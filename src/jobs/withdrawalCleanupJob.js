@@ -7,7 +7,6 @@
 const cron = require('node-cron');
 const mongoose = require('mongoose');
 const PaymentRequest = require('../models/payment/paymentRequestModel');
-const WithdrawalRequest = require('../models/payout/withdrawalRequestModel');
 const Seller = require('../models/user/sellerModel');
 const financeAudit = require('../services/financeAuditService');
 const logger = require('../utils/logger');
@@ -28,21 +27,11 @@ async function cleanupStuckWithdrawals() {
   try {
     const cutoffTime = new Date(Date.now() - STUCK_WITHDRAWAL_TIMEOUT_MS);
     
-    // Find stuck PaymentRequests
-    const stuckPaymentRequests = await PaymentRequest.find({
-      status: { $in: ['awaiting_paystack_otp', 'processing', 'otp_expired'] },
-      updatedAt: { $lt: cutoffTime },
-      reversed: { $ne: true }, // Not already reversed
-    }).session(session);
-    
-    // Find stuck WithdrawalRequests
-    const stuckWithdrawalRequests = await WithdrawalRequest.find({
+    const allStuck = await PaymentRequest.find({
       status: { $in: ['awaiting_paystack_otp', 'processing', 'otp_expired'] },
       updatedAt: { $lt: cutoffTime },
       reversed: { $ne: true },
     }).session(session);
-    
-    const allStuck = [...stuckPaymentRequests, ...stuckWithdrawalRequests];
     
     logger.info(`[WithdrawalCleanupJob] Found ${allStuck.length} stuck withdrawals`);
     
@@ -99,7 +88,29 @@ async function cleanupStuckWithdrawals() {
           
           logger.info(`[WithdrawalCleanupJob] ✅ Refunded stuck withdrawal ${withdrawal._id} for seller ${sellerId}: GH₵${amountRequested}`);
         } else {
-          logger.warn(`[WithdrawalCleanupJob] ⚠️ Cannot refund withdrawal ${withdrawal._id}: pendingBalance (${oldPendingBalance}); < amount (${amountRequested})`);
+          // SECURITY FIX: Still mark as failed even if pendingBalance is inconsistent
+          // Otherwise this withdrawal gets re-processed every hour forever and funds stay stuck
+          logger.warn(`[WithdrawalCleanupJob] pendingBalance (${oldPendingBalance}) < amount (${amountRequested}) for ${withdrawal._id} — marking failed without full refund`);
+
+          // Refund whatever pendingBalance is available
+          if (oldPendingBalance > 0) {
+            seller.pendingBalance = 0;
+            seller.calculateWithdrawableBalance();
+            await seller.save({ session });
+          }
+
+          withdrawal.status = 'failed';
+          withdrawal.otpSessionStatus = 'abandoned';
+          if (!withdrawal.metadata) withdrawal.metadata = {};
+          withdrawal.metadata.autoRefundedAt = new Date();
+          withdrawal.metadata.autoRefundReason = 'Stuck withdrawal auto-failed (pendingBalance mismatch)';
+          withdrawal.metadata.pendingBalanceMismatch = true;
+          await withdrawal.save({ session });
+
+          errors.push({
+            withdrawalId: withdrawal._id,
+            error: `pendingBalance mismatch: ${oldPendingBalance} < ${amountRequested}`,
+          });
         }
       } catch (error) {
         logger.error(`[WithdrawalCleanupJob] ❌ Error processing withdrawal ${withdrawal._id}:`, error);

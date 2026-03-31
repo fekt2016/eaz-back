@@ -252,6 +252,7 @@ const sendSellerOrderStatusUpdate = async (seller, order, status) => {
     preparing: 'Preparing',
     ready_for_dispatch: 'Ready for Dispatch',
     out_for_delivery: 'Out for Delivery',
+    delivery_attempted: 'Delivery Attempted',
     delivered: 'Delivered',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
@@ -304,6 +305,71 @@ const sendSellerOrderStatusUpdate = async (seller, order, status) => {
     to: seller.email,
     subject: `Order #${orderNumber} Status Updated to ${statusLabel} - ${brandConfig.name}`,
     text: `Hello ${seller.name || seller.shopName || 'Seller'}, the status of order #${orderNumber} has been updated to "${statusLabel}". View order: ${sellerDashboardUrl}`,
+    html: htmlContent,
+  });
+};
+
+/**
+ * Send seller credit alert email after order delivery payout.
+ * @param {Object} seller - Seller object with email and name/shopName
+ * @param {Object} order - Order object
+ * @param {number} amount - Credited amount
+ */
+const sendSellerCreditAlert = async (seller, order, amount) => {
+  const brandConfig = {
+    name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+    url: process.env.SELLER_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com',
+  };
+
+  const orderId = order._id || order.id;
+  const orderNumber = order.orderNumber || orderId || 'N/A';
+  const sellerDashboardUrl = `${brandConfig.url}/dashboard/orders/${orderId}`;
+  const creditAmount = Number(amount || 0).toFixed(2);
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #16a34a; }
+        .button { display: inline-block; padding: 12px 30px; background: #16a34a; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>💰 Seller Credit Received</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${seller.name || seller.shopName || 'Seller'},</p>
+          <p>You have received a payout credit for a delivered order.</p>
+          <div class="info-box">
+            <p><strong>Order Number:</strong> ${orderNumber}</p>
+            <p><strong>Credited Amount:</strong> GH₵${creditAmount}</p>
+            <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+          <p style="text-align: center;">
+            <a href="${sellerDashboardUrl}" class="button">View Order</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Best regards,<br>The ${brandConfig.name} Team</p>
+          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `Seller Credit: GH₵${creditAmount} for Order #${orderNumber} - ${brandConfig.name}`,
+    text: `Hello ${seller.name || seller.shopName || 'Seller'}, you have been credited GH₵${creditAmount} for delivered order #${orderNumber}. View order: ${sellerDashboardUrl}`,
     html: htmlContent,
   });
 };
@@ -902,6 +968,73 @@ const sendPaymentSuccess = async (user, order) => {
   });
 };
 
+/**
+ * Send payment failed email to buyer
+ * @param {Object} user - User object with email and name
+ * @param {Object} order - Order object
+ * @param {string} reason - Failure reason
+ */
+const sendPaymentFailed = async (user, order, reason = null) => {
+  const brandConfig = {
+    name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+    url: process.env.FRONTEND_URL || 'https://saiisai.com',
+  };
+
+  const orderUrl = `${brandConfig.url}/orders/${order._id || order.id}`;
+  const orderTotal = order.totalPrice || order.total || 0;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #dc3545 0%, #b91c1c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .warning-box { background: #f8d7da; border-left: 4px solid #dc3545; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 30px; background: #4361ee; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Payment Failed</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${user.name || 'Customer'},</p>
+          <div class="warning-box">
+            <p><strong>We could not complete your payment.</strong></p>
+          </div>
+          <div class="info-box">
+            <p><strong>Order Number:</strong> ${order.orderNumber || order._id || 'N/A'}</p>
+            <p><strong>Amount:</strong> GH₵${orderTotal.toFixed(2)}</p>
+            <p><strong>Reason:</strong> ${reason || 'The payment was not successful. Please try again.'}</p>
+          </div>
+          <p>You can retry payment from your order details page.</p>
+          <p style="text-align: center;">
+            <a href="${orderUrl}" class="button">Retry Payment</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Best regards,<br>The ${brandConfig.name} Team</p>
+          <p>© ${new Date().getFullYear()} ${brandConfig.name}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject: `Payment Failed - Order #${order.orderNumber || order._id || 'N/A'} - ${brandConfig.name}`,
+    text: `Hello ${user.name || 'Customer'}, payment for order #${order.orderNumber || order._id || 'N/A'} could not be completed. ${reason || 'Please retry payment from your order details.'}`,
+    html: htmlContent,
+  });
+};
+
 
 // ============================================================================
 // BUYER — ORDER CANCELLED
@@ -1348,6 +1481,48 @@ const sendAdminNewProductAlert = async (product, seller) => {
 };
 
 // ============================================================================
+// ADMIN — ORDER PAID ALERT
+// ============================================================================
+const sendAdminOrderPaidAlert = async (order) => {
+  const BRAND_NAME = process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai';
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SUPPORT_EMAIL || 'admin@saiisai.com';
+  const ADMIN_URL = process.env.ADMIN_DASHBOARD_URL || process.env.FRONTEND_URL || 'https://saiisai.com';
+  const orderUrl = `${ADMIN_URL}/admin/orders`;
+  const amount = Number(order?.totalPrice || order?.totalAmount || 0);
+
+  const html = `<!DOCTYPE html><html><head><style>
+    body{font-family:'Inter',sans-serif;line-height:1.6;color:#333;margin:0;}
+    .wrap{max-width:600px;margin:0 auto;padding:24px;}
+    .hd{background:linear-gradient(135deg,#16A34A,#15803D);color:#fff;padding:28px;text-align:center;border-radius:10px 10px 0 0;}
+    .bd{background:#fff;padding:28px;border-radius:0 0 10px 10px;}
+    .info{background:#ECFDF3;border-left:4px solid #16A34A;padding:14px 18px;border-radius:6px;margin:18px 0;}
+    .info p{margin:4px 0;font-size:14px;}
+    .btn{display:inline-block;padding:12px 28px;background:#4361EE;color:#fff!important;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;}
+    .ft{margin-top:24px;padding-top:16px;border-top:1px solid #EEE;font-size:12px;color:#888;text-align:center;}
+  </style></head><body><div class="wrap">
+    <div class="hd"><h1 style="margin:0;font-size:22px;">✅ Order Paid — Action Required</h1></div>
+    <div class="bd">
+      <p>A Paystack payment has been confirmed. Sellers can now prepare shipment.</p>
+      <div class="info">
+        <p><strong>Order #:</strong> ${order?.orderNumber || order?._id || 'N/A'}</p>
+        <p><strong>Amount:</strong> GH₵${amount.toFixed(2)}</p>
+        <p><strong>Payment Method:</strong> ${order?.paymentMethod || 'paystack'}</p>
+        <p><strong>Paid At:</strong> ${order?.paidAt ? new Date(order.paidAt).toDateString() : new Date().toDateString()}</p>
+      </div>
+      <p style="text-align:center;"><a href="${orderUrl}" class="btn">Open Admin Orders</a></p>
+    </div>
+    <div class="ft">© ${new Date().getFullYear()} ${BRAND_NAME}</div>
+  </div></body></html>`;
+
+  return await sendEmail({
+    to: adminEmail,
+    subject: `✅ Paid Order Alert — #${order?.orderNumber || order?._id || 'N/A'} — GH₵${amount.toFixed(2)}`,
+    text: `Paid order confirmed: #${order?.orderNumber || order?._id || 'N/A'} (${order?.paymentMethod || 'paystack'}) for GH₵${amount.toFixed(2)}. Review: ${orderUrl}`,
+    html,
+  });
+};
+
+// ============================================================================
 // BUYER — PASSWORD CHANGED CONFIRMATION
 // ============================================================================
 const sendPasswordChangedEmail = async (user) => {
@@ -1396,9 +1571,11 @@ module.exports = {
   // Orders — seller
   sendSellerNewOrder,
   sendSellerOrderStatusUpdate,
+  sendSellerCreditAlert,
   sendOrderCancelledSeller,
   // Payments
   sendPaymentSuccess,
+  sendPaymentFailed,
   // Wallet
   sendWalletCredit,
   sendWalletDebit,
@@ -1422,4 +1599,5 @@ module.exports = {
   sendAdminRefundAlert,
   sendAdminNewSellerAlert,
   sendAdminNewProductAlert,
+  sendAdminOrderPaidAlert,
 };

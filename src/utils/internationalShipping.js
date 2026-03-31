@@ -100,7 +100,6 @@ function getCustomsRateByCategory(category) {
  *  - NHIL = 2.5%
  *  - GETFund = 2.5%
  *  - EXIM = 0.75%
- *  - COVID levy is NOT applied for this estimate
  *  - Total customs = Import Duty + VAT + NHIL + GETFund + EXIM (+ optional clearingFee)
  *  - A 5% buffer can be applied on top of the computed total for risk protection.
  *

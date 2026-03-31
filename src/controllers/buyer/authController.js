@@ -1349,7 +1349,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     fullPath.startsWith('/api/v1/seller') ||
     fullPath.startsWith('/api/v1/support/seller') ||
     fullPath.startsWith('/api/v1/paymentrequest') ||
-    fullPath.startsWith('/api/v1/paymentmethod') || // Payment method routes (sellers need to add payment methods)
+    // Payment method routes are shared: buyers use main_jwt, sellers use seller_jwt – do NOT treat as seller-only
     fullPath.includes('/order/get-seller-orders') ||
     fullPath.includes('/order/seller-order/') ||
     fullPath.startsWith('/api/v1/analytics/seller') || // Seller analytics endpoints
@@ -1401,6 +1401,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     (method === 'GET' && (fullPath === '/api/v1/review' || fullPath.startsWith('/api/v1/review?'))) ||
     (fullPath === '/api/v1/order' && method === 'GET') ||
     (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
+    (fullPath === '/api/v1/order/reconcile-seller-credits' && method === 'POST') ||
+    (fullPath === '/api/v1/order/reconcile-seller-credit' && method === 'POST') ||
+    (fullPath.startsWith('/api/v1/order/reconcile-seller-credit/') && method === 'POST') ||
     (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status')) ||
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
@@ -1417,7 +1420,10 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
   // Check for support ticket creation - can be used by any authenticated user
   const isSharedSupportRoute = fullPath === '/api/v1/support/tickets' && method === 'POST';
-  
+
+  // Payment method routes: buyers (main_jwt), sellers (seller_jwt), admins (admin_jwt) can all access
+  const isSharedPaymentMethodRoute = fullPath.startsWith('/api/v1/paymentmethod');
+
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
   const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
@@ -1481,6 +1487,20 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   if (!token) {
+    // For payment method routes, try main_jwt (buyer), seller_jwt (seller), admin_jwt (admin)
+    if (isSharedPaymentMethodRoute && req.cookies) {
+      if (req.cookies.main_jwt) {
+        token = req.cookies.main_jwt;
+        logger.info(`[Auth] ✅ Token found in main_jwt cookie for payment method route: ${method} ${fullPath}`);
+      } else if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+        logger.info(`[Auth] ✅ Token found in seller_jwt cookie for payment method route: ${method} ${fullPath}`);
+      } else if (req.cookies.admin_jwt) {
+        token = req.cookies.admin_jwt;
+        logger.info(`[Auth] ✅ Token found in admin_jwt cookie for payment method route: ${method} ${fullPath}`);
+      }
+    }
+
     // For shared support routes, check multiple cookies (seller, buyer, admin)
     if (isSharedSupportRoute && req.cookies) {
       // Try seller_jwt first (sellers creating tickets)
@@ -1773,6 +1793,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.match(/^\/api\/v1\/seller\/[^/]+$/) && method === 'GET' && fullPath !== '/api/v1/seller/me' && fullPath !== '/api/v1/seller/reviews') || // GET /seller/:id is admin-only
     ((fullPath === '/api/v1/order' && method === 'GET') ||
      (fullPath === '/api/v1/order/backfill-seller-credits' && method === 'POST') ||
+     (fullPath === '/api/v1/order/reconcile-seller-credits' && method === 'POST') ||
+     (fullPath === '/api/v1/order/reconcile-seller-credit' && method === 'POST') ||
+     (fullPath.startsWith('/api/v1/order/reconcile-seller-credit/') && method === 'POST') ||
      (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
      (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status'))) ||
     // Admin-only user routes: GET /api/v1/users (getAllUsers), GET/PATCH/DELETE /api/v1/users/:id

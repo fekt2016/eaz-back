@@ -314,7 +314,8 @@ const logger = require('../../utils/logger');
         },
       });
     } catch (error) {
-      return next(new AppError(error.message, 404));
+      // No matching rate configured — 400 avoids confusion with unknown route (404)
+      return next(new AppError(error.message, 400));
     }
   }
 });

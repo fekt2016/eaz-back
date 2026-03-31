@@ -55,11 +55,6 @@ const sellerOrderSchema = new mongoose.Schema({
     default: 0,
     comment: 'Total GETFund (2.5%)',
   },
-  totalCovidLevy: {
-    type: Number,
-    default: 0,
-    comment: 'Total COVID levy (1%)',
-  },
   totalTax: {
     type: Number,
     default: 0,
@@ -154,6 +149,11 @@ const sellerOrderSchema = new mongoose.Schema({
   dispatchType: {
     type: String,
     enum: ['EAZSHOP', 'SELLER'],
+  },
+  sellerNotes: {
+    type: String,
+    default: '',
+    comment: 'Seller internal notes for this order',
   },
 }, {
   timestamps: true,

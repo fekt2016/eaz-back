@@ -63,9 +63,9 @@ exports.extractTaxFromPrice = async (vatInclusivePrice, settings = null) => {
     settings = await getSettings();
   }
 
-  const vatRate = settings.vatRate || 0.125;
-  const nhilRate = settings.nhilRate || 0.025;
-  const getfundRate = settings.getfundRate || 0.025;
+  const vatRate = settings.vatRate ?? 0.125;
+  const nhilRate = settings.nhilRate ?? 0.025;
+  const getfundRate = settings.getfundRate ?? 0.025;
   const totalVATRate = vatRate + nhilRate + getfundRate;
   const vatInclusiveFactor = 1 + totalVATRate;
 
@@ -89,25 +89,7 @@ exports.extractTaxFromPrice = async (vatInclusivePrice, settings = null) => {
 };
 
 /**
- * Calculate COVID levy on base price
- * @param {Number} basePrice - Price before VAT
- * @param {Object} settings - Optional platform settings (if not provided, will fetch)
- * @returns {Promise<Number>|Number} COVID levy amount
- */
-exports.calculateCovidLevy = async (basePrice, settings = null) => {
-  if (!basePrice || basePrice <= 0) return 0;
-
-  // Get settings if not provided
-  if (!settings) {
-    settings = await getSettings();
-  }
-
-  const covidLevyRate = settings.covidLevyRate || 0.01;
-  return Math.round(basePrice * covidLevyRate * 100) / 100;
-};
-
-/**
- * Calculate total price with COVID levy
+ * Calculate total price
  * @param {Number} vatInclusivePrice - Price that includes VAT
  * @param {Object} settings - Optional platform settings (if not provided, will fetch)
  * @returns {Promise<Object>|Object} Complete price breakdown
@@ -119,14 +101,12 @@ exports.calculateCompletePrice = async (vatInclusivePrice, settings = null) => {
   }
 
   const taxBreakdown = await exports.extractTaxFromPrice(vatInclusivePrice, settings);
-  const covidLevy = await exports.calculateCovidLevy(taxBreakdown.basePrice, settings);
-  const grandTotal = vatInclusivePrice + covidLevy;
+  const grandTotal = vatInclusivePrice;
 
   return {
     ...taxBreakdown,
-    covidLevy: Math.round(covidLevy * 100) / 100,
     grandTotal: Math.round(grandTotal * 100) / 100,
-    totalTax: Math.round((taxBreakdown.totalVATComponents + covidLevy) * 100) / 100,
+    totalTax: Math.round(taxBreakdown.totalVATComponents * 100) / 100,
   };
 };
 
@@ -141,7 +121,6 @@ exports.calculateOrderTaxBreakdown = async (items, settings = null) => {
   let totalVAT = 0;
   let totalNHIL = 0;
   let totalGETFund = 0;
-  let totalCovidLevy = 0;
   let totalVATInclusive = 0;
 
   // Get settings if not provided
@@ -159,13 +138,10 @@ exports.calculateOrderTaxBreakdown = async (items, settings = null) => {
     const itemVAT = breakdown.vat * quantity;
     const itemNHIL = breakdown.nhil * quantity;
     const itemGETFund = breakdown.getfund * quantity;
-    const itemCovidLevy = breakdown.covidLevy * quantity;
-
     totalBasePrice += itemBasePrice;
     totalVAT += itemVAT;
     totalNHIL += itemNHIL;
     totalGETFund += itemGETFund;
-    totalCovidLevy += itemCovidLevy;
     totalVATInclusive += itemTotal;
 
     return {
@@ -174,13 +150,11 @@ exports.calculateOrderTaxBreakdown = async (items, settings = null) => {
       vat: breakdown.vat,
       nhil: breakdown.nhil,
       getfund: breakdown.getfund,
-      covidLevy: breakdown.covidLevy,
       totalTax: breakdown.totalTax,
       itemBasePrice,
       itemVAT,
       itemNHIL,
       itemGETFund,
-      itemCovidLevy,
       itemTotalTax: breakdown.totalTax * quantity,
     };
   }));
@@ -192,10 +166,9 @@ exports.calculateOrderTaxBreakdown = async (items, settings = null) => {
       totalVAT: Math.round(totalVAT * 100) / 100,
       totalNHIL: Math.round(totalNHIL * 100) / 100,
       totalGETFund: Math.round(totalGETFund * 100) / 100,
-      totalCovidLevy: Math.round(totalCovidLevy * 100) / 100,
       totalVATInclusive: Math.round(totalVATInclusive * 100) / 100,
-      totalTax: Math.round((totalVAT + totalNHIL + totalGETFund + totalCovidLevy) * 100) / 100,
-      grandTotal: Math.round((totalVATInclusive + totalCovidLevy) * 100) / 100,
+      totalTax: Math.round((totalVAT + totalNHIL + totalGETFund) * 100) / 100,
+      grandTotal: Math.round(totalVATInclusive * 100) / 100,
     },
   };
 };
@@ -326,17 +299,14 @@ exports.getTaxRates = async (settings = null) => {
     settings = await getSettings();
   }
 
-  const vatRate = settings.vatRate || 0.125;
-  const nhilRate = settings.nhilRate || 0.025;
-  const getfundRate = settings.getfundRate || 0.025;
-  const covidLevyRate = settings.covidLevyRate || 0.01;
-
+  const vatRate = settings.vatRate ?? 0.125;
+  const nhilRate = settings.nhilRate ?? 0.025;
+  const getfundRate = settings.getfundRate ?? 0.025;
   return {
     vat: vatRate,
     nhil: nhilRate,
     getfund: getfundRate,
     totalVATComponents: vatRate + nhilRate + getfundRate,
-    covidLevy: covidLevyRate,
   };
 };
 
@@ -368,8 +338,8 @@ exports.calculateWithholdingTax = async (amount, taxCategory = 'individual', set
   }
 
   const withholdingRate = taxCategory === 'company'
-    ? (settings.withholdingCompany || 0.15)
-    : (settings.withholdingIndividual || 0.03);
+    ? (settings.withholdingCompany ?? 0.15)
+    : (settings.withholdingIndividual ?? 0.03);
 
   const withholdingTax = Math.round(amount * withholdingRate * 100) / 100;
   const amountPaidToSeller = Math.round((amount - withholdingTax) * 100) / 100;
@@ -393,7 +363,6 @@ exports.formatTaxBreakdown = (breakdown) => {
     vat: breakdown.vat?.toFixed(2) || '0.00',
     nhil: breakdown.nhil?.toFixed(2) || '0.00',
     getfund: breakdown.getfund?.toFixed(2) || '0.00',
-    covidLevy: breakdown.covidLevy?.toFixed(2) || '0.00',
     totalTax: breakdown.totalTax?.toFixed(2) || '0.00',
     vatInclusivePrice: breakdown.vatInclusivePrice?.toFixed(2) || '0.00',
     grandTotal: breakdown.grandTotal?.toFixed(2) || '0.00',

@@ -17,11 +17,11 @@ function calcShipping(zone, weight, shippingType = 'standard', fragile = false) 
   // Base calculation: baseRate + (perKgRate * weight)
   let fee = zone.baseRate + (zone.perKgRate * actualWeight);
 
-  // Apply multipliers based on shipping type
+  // Apply multipliers (next-day ↔ express swapped vs stored zone fields)
   if (shippingType === 'same_day') {
-    fee *= zone.sameDayMultiplier;
-  } else if (shippingType === 'express') {
     fee *= zone.expressMultiplier;
+  } else if (shippingType === 'express') {
+    fee *= zone.sameDayMultiplier;
   }
   // 'standard' uses base rate (multiplier = 1.0)
 
@@ -52,9 +52,9 @@ function calcShippingWithBreakdown(zone, weight, shippingType = 'standard', frag
 
   let multiplier = 1.0;
   if (shippingType === 'same_day') {
-    multiplier = zone.sameDayMultiplier;
-  } else if (shippingType === 'express') {
     multiplier = zone.expressMultiplier;
+  } else if (shippingType === 'express') {
+    multiplier = zone.sameDayMultiplier;
   }
 
   const feeAfterMultiplier = subtotal * multiplier;

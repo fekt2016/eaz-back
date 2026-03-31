@@ -12,6 +12,7 @@ const { getAllOrder,
   OrderDeleteOrderItem,
   getSellerOrders,
   getOrderBySeller,
+  updateSellerOrderNotes,
   updateOrderShippingAddress,
   updateOrderAddressAndRecalculate,
   payShippingDifference,
@@ -29,6 +30,7 @@ const { requestRefund, getRefundStatus, selectReturnShippingMethod } = require('
 const authController = require('../../controllers/buyer/authController');
 const platformSettingsController = require('../../controllers/admin/platformSettingsController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
+const { trackingNumberLimiter } = require('../../middleware/rateLimiting/trackingLimiter');
 // SECURITY FIX #5: Input validation for orders
 const { validateOrder, handleValidationErrors } = require('../../middleware/validation/orderValidator');
 
@@ -46,8 +48,18 @@ router
     createOrder
   );
 
-router.get('/get/totalsales', authController.protect, totalSales);
-router.get('/get/count', authController.protect, getCount);
+router.get(
+  '/get/totalsales',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  totalSales
+);
+router.get(
+  '/get/count',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  getCount
+);
 router.get('/get/stats', authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getOrderStats);
 // router.get('/get/userorders', authController.protect, getUserOrder);
 
@@ -68,15 +80,22 @@ router
   .route('/get-seller-orders')
   .get(
     authController.protect,
-    authController.restrictTo('seller'),
+    authController.restrictTo('seller', 'official_store'),
     getSellerOrders,
   );
 router.get(
   '/seller-order/:id',
   authController.protect,
-  authController.restrictTo('seller'),
+  authController.restrictTo('seller', 'official_store'),
   validateObjectId('id'), // SECURITY FIX #6
   getOrderBySeller,
+);
+router.patch(
+  '/seller-order/:id/notes',
+  authController.protect,
+  authController.restrictTo('seller', 'official_store'),
+  validateObjectId('id'),
+  updateSellerOrderNotes,
 );
 router
   .route('/get-user-orders')
@@ -100,6 +119,29 @@ router.post(
   authController.protect,
   authController.restrictTo('admin', 'superadmin', 'moderator'),
   require('../../controllers/admin/orderController').backfillSellerCredits
+);
+
+// Admin reconciliation: fix delivered orders with history but missing seller credit tx
+router.post(
+  '/reconcile-seller-credits',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  require('../../controllers/admin/orderController').reconcileSellerCredits
+);
+
+router.post(
+  '/reconcile-seller-credit/:orderId',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  require('../../controllers/admin/orderController').reconcileSingleSellerCredit
+);
+
+router.post(
+  '/reconcile-seller-credit',
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  require('../../controllers/admin/orderController')
+    .reconcileSingleSellerCreditByIdentifier
 );
 
 // Update order shipping address (user only, within 24 hours)
@@ -154,6 +196,7 @@ router.post(
 router.patch(
   '/:orderId/driver-location',
   authController.protect,
+  authController.restrictTo('driver', 'seller', 'admin', 'superadmin', 'moderator'),
   updateDriverLocation
 );
 
@@ -166,6 +209,7 @@ router.get(
 // Public tracking by tracking number (no auth required)
 router.get(
   '/track/:trackingNumber',
+  trackingNumberLimiter,
   getOrderByTrackingNumber
 );
 

@@ -118,11 +118,11 @@ exports.getFollowedSellerProducts = catchAsync(async (req, res, next) => {
     });
   }
 
-  // Match seller public page: show products that are active/out_of_stock and not deleted.
-  // Include both approved and pending so products visible on the seller's shop page also show here.
+  // Buyer-facing section: show only products approved by admin and visible for sale.
   const filter = {
     seller: { $in: sellerIds },
-    status: { $in: ['active', 'out_of_stock'] },
+    moderationStatus: 'approved',
+    status: { $in: ['active', 'out_of_stock', 'outOfStock'] },
     isDeleted: { $ne: true },
     isDeletedByAdmin: { $ne: true },
     isDeletedBySeller: { $ne: true },

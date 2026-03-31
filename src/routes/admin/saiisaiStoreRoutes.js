@@ -37,6 +37,9 @@ router.patch('/products/:id/unmark-official', saiisaiStoreController.unmarkProdu
 // Orders routes
 router.get('/orders', saiisaiStoreController.getOfficialStoreOrders);
 
+// Official store analytics (credits split EazShop main vs accepted sellers)
+router.get('/analytics', saiisaiStoreController.getOfficialStoreAnalytics);
+
 // Shipping fees routes
 router
   .route('/shipping-fees')

@@ -3,6 +3,7 @@ const AppError = require('../../utils/errors/appError');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
 const logger = require('../../utils/logger');
+const { validateSellerProductImageUrls } = require('../../utils/validateSellerProductImageUrls');
 // import cloudinary from '../../utils/storage/cloudinary.js';
 // import { uploadToCloudinary } from '../../utils/storage/cloudinary.js';
 
@@ -229,7 +230,102 @@ exports.createOne = (Model) => catchAsync(async (req, res, next) => {
     if (body.subCategory && !mongoose.isValidObjectId(body.subCategory)) {
       return next(new AppError('Invalid subCategory ID format', 400));
     }
-    
+
+    // Product (multipart): parse JSON string fields and normalize shapes so Mongoose + pre-validate hooks work
+    if (Model.modelName === 'Product') {
+      if (body.images && typeof body.images === 'string') {
+        try {
+          body.images = JSON.parse(body.images);
+        } catch (err) {
+          return next(new AppError('Invalid images format', 400));
+        }
+      }
+      if (body.specifications && typeof body.specifications === 'string') {
+        try {
+          body.specifications = JSON.parse(body.specifications);
+        } catch (err) {
+          return next(new AppError('Invalid specifications format', 400));
+        }
+      }
+      if (body.tags && typeof body.tags === 'string') {
+        try {
+          body.tags = JSON.parse(body.tags);
+        } catch (err) {
+          return next(new AppError('Invalid tags format', 400));
+        }
+      }
+
+      const imageUrlErr = validateSellerProductImageUrls({
+        images: body.images,
+        imageCover: body.imageCover,
+      });
+      if (imageUrlErr) {
+        return next(new AppError(imageUrlErr, 400));
+      }
+
+      if (body.manufacturer !== undefined) {
+        if (typeof body.manufacturer === 'string' && body.manufacturer.trim() !== '') {
+          body.manufacturer = { name: body.manufacturer.trim() };
+        } else if (
+          body.manufacturer === '' ||
+          body.manufacturer === null ||
+          (typeof body.manufacturer === 'string' && body.manufacturer.trim() === '')
+        ) {
+          body.manufacturer = null;
+        }
+      }
+      if (body.warranty !== undefined) {
+        if (typeof body.warranty === 'string' && body.warranty.trim() !== '') {
+          const warrantyStr = body.warranty.trim().toLowerCase();
+          const durationMatch = warrantyStr.match(/(\d+)/);
+          const duration = durationMatch ? parseInt(durationMatch[1], 10) : null;
+          const type = warrantyStr.includes('year')
+            ? 'year'
+            : warrantyStr.includes('month')
+              ? 'month'
+              : 'standard';
+          body.warranty = {
+            duration: duration || 1,
+            type,
+            details: body.warranty.trim(),
+          };
+        } else if (body.warranty === '' || body.warranty === null) {
+          body.warranty = null;
+        }
+      }
+      if (body.isPreOrder === 'true' || body.isPreOrder === true) {
+        body.isPreOrder = true;
+      } else if (body.isPreOrder === 'false' || body.isPreOrder === false) {
+        body.isPreOrder = false;
+      }
+      if (body.returnWindowDays !== undefined && body.returnWindowDays !== '') {
+        const rw = parseInt(body.returnWindowDays, 10);
+        if (Number.isNaN(rw)) {
+          return next(new AppError('Invalid return window', 400));
+        }
+        body.returnWindowDays = rw;
+      }
+      if (body.variants && Array.isArray(body.variants)) {
+        body.variants = body.variants.map((variant) => {
+          const nextVariant = { ...variant };
+          if (nextVariant.originalPrice !== undefined && nextVariant.originalPrice !== '') {
+            const op = parseFloat(nextVariant.originalPrice);
+            if (!Number.isNaN(op) && op > 0) {
+              nextVariant.originalPrice = op;
+            } else {
+              delete nextVariant.originalPrice;
+            }
+          } else {
+            delete nextVariant.originalPrice;
+          }
+          nextVariant.attributes = (nextVariant.attributes || []).filter(
+            (a) => a && a.key && String(a.value).trim() !== '',
+          );
+          return nextVariant;
+        });
+      }
+    }
+
     // 3. Create document
     let doc;
     try {

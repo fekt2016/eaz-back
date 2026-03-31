@@ -120,13 +120,22 @@ shippingRateSchema.pre('save', function(next) {
 });
 
 shippingRateSchema.statics.findRate = async function(weight, shippingType, zone) {
-  return await this.findOne({
+  const exact = await this.findOne({
     shippingType,
     zone,
     weightMin: { $lte: weight },
     weightMax: { $gte: weight },
     isActive: true,
   }).sort({ weightMin: 1 });
+
+  if (exact) return exact;
+
+  // Heavier than largest configured bracket (or missing heavy tiers in DB)
+  return await this.findOne({
+    shippingType,
+    zone,
+    isActive: true,
+  }).sort({ weightMax: -1 });
 };
 
 
@@ -139,18 +148,27 @@ shippingRateSchema.statics.calculateFee = async function(weight, shippingType, z
       `No shipping rate found for weight ${weight}kg, zone ${zone}`
     );
   }
-  
-  // Calculate base cost: baseFee + (weight * perKgFee) + weightAddOn
-  const baseCost = rate.baseFee + (weight * rate.perKgFee) + (rate.weightAddOn || 0);
+
+  const bracketCeiling = rate.weightMax;
+  const overflowKg = Math.max(0, weight - bracketCeiling);
+  const linearWeight = Math.min(weight, bracketCeiling);
+  let baseCost =
+    rate.baseFee +
+    linearWeight * rate.perKgFee +
+    (rate.weightAddOn || 0);
+  if (overflowKg > 0) {
+    const overflowPerKg = rate.perKgFee > 0 ? rate.perKgFee : 3;
+    baseCost += overflowKg * overflowPerKg;
+  }
   
   // Apply shipping type multiplier
   let multiplier = 1.0;
   if (shippingType === 'standard') {
     multiplier = rate.standardMultiplier || 1.0;
   } else if (shippingType === 'same_day') {
-    multiplier = rate.sameDayMultiplier || 1.2;
-  } else if (shippingType === 'express') {
     multiplier = rate.expressMultiplier || 1.4;
+  } else if (shippingType === 'express') {
+    multiplier = rate.sameDayMultiplier || 1.2;
   }
   
   const fee = baseCost * multiplier;

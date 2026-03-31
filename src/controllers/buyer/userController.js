@@ -12,14 +12,19 @@ const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
 const multerStorage = multer.memoryStorage();
 
 const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new AppError('Not an image! Please upload an image', 400), false);
   }
 };
 
-const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+});
 
 const filterObj = (obj, ...allowedFields) => {
   const newObj = {};
@@ -30,7 +35,6 @@ const filterObj = (obj, ...allowedFields) => {
 };
 exports.uploadUserPhoto = upload.single('photo');
 exports.resizeUserPhoto = catchAsync(async (req, res, next) => {
-  logger.info('file', req.file);
   if (!req.file) return next();
 
   // Get Cloudinary instance from app

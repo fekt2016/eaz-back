@@ -6,35 +6,82 @@ const AdminActionLog = require('../models/admin/adminActionLogModel');
 
 class ShippingChargeService {
     /**
-     * 1. Get the current active shipping rate. Defaults to 20% if none exist.
-     * @returns {Object} { platformCutPercentage, _id }
+     * 1. Get the current active shipping rate. 
+     * Priority: PlatformFee (SHIPPING_CUT) > PlatformShippingRate > Default 20%
+     * @returns {Object} { platformCutPercentage, source }
      */
     async getActiveShippingRate() {
-        let rate = await PlatformShippingRate.findOne({ isActive: true });
-        if (!rate) {
-            return { platformCutPercentage: 20 };
+        // Source 1: PlatformFee model (New Single Source of Truth)
+        try {
+            const PlatformFee = mongoose.model('PlatformFee');
+            const shippingCutFee = await PlatformFee.findOne({
+                code: 'SHIPPING_CUT',
+                isActive: true
+            });
+
+            if (shippingCutFee) {
+                return {
+                    platformCutPercentage: shippingCutFee.value,
+                    source: 'PlatformFee',
+                    feeId: shippingCutFee._id
+                };
+            }
+        } catch (err) {
+            console.error('[ShippingRevenue] Error fetching PlatformFee:', err.message);
         }
-        return rate;
+
+        // Source 2: Legacy PlatformShippingRate collection
+        let rate = await PlatformShippingRate.findOne({ isActive: true });
+        if (rate) {
+            return {
+                platformCutPercentage: rate.platformCutPercentage,
+                source: 'PlatformShippingRate',
+                feeId: rate._id
+            };
+        }
+
+        // Source 3: Code default (Last resort)
+        console.warn('[ShippingRevenue] No shipping rate found in DB. Using default 20%. Run seeder to fix.');
+        return { platformCutPercentage: 20, source: 'Default' };
     }
 
     /**
      * 2. Calculate the shipping charge details.
      * @param {Object} order 
-     * @returns {Object} { totalShippingAmount, platformCut, dispatcherPayout, platformCutRate }
+     * @returns {Object} { totalShippingAmount, platformCut, dispatcherPayout, platformCutRate, source }
      */
     async calculateShippingCharge(order) {
-        const rate = await this.getActiveShippingRate();
-        const platformCutPercentage = rate.platformCutPercentage;
-        const totalShippingAmount = order.shippingCost || 0;
+        const rateInfo = await this.getActiveShippingRate();
+        const platformCutPercentage = rateInfo.platformCutPercentage;
 
-        const platformCut = totalShippingAmount * (platformCutPercentage / 100);
-        const dispatcherPayout = totalShippingAmount - platformCut;
+        // Fix 2: Field name standardization
+        const totalShippingAmount =
+            order.shippingFee ??      // primary field
+            order.shippingCost ??     // fallback for legacy
+            0;                        // safe default
+
+        if (!order.shippingFee && !order.shippingCost) {
+            console.warn(`[ShippingRevenue] No shipping fee found on order ${order._id}. Both shippingFee and shippingCost are missing or 0.`);
+        }
+
+        const platformCut = Math.round((totalShippingAmount * (platformCutPercentage / 100)) * 100) / 100;
+        const dispatcherPayout = Math.round((totalShippingAmount - platformCut) * 100) / 100;
+
+        console.log('[ShippingRevenue] Calculation', {
+            orderId: order._id,
+            totalShippingAmount,
+            platformCutRate: platformCutPercentage,
+            platformCut,
+            source: rateInfo.source
+        });
 
         return {
             totalShippingAmount,
             platformCut,
             dispatcherPayout,
-            platformCutRate: platformCutPercentage
+            platformCutRate: platformCutPercentage,
+            source: rateInfo.source,
+            platformFeeId: rateInfo.source === 'PlatformFee' ? rateInfo.feeId : null
         };
     }
 
@@ -46,64 +93,103 @@ class ShippingChargeService {
      */
     async createShippingChargeRecord(orderId, session) {
         // Check if it already exists to prevent duplicates
-        let existingCharge = await ShippingCharge.findOne({ orderId }).session(session);
+        const chargeQuery = ShippingCharge.findOne({ orderId });
+        if (session) chargeQuery.session(session);
+        let existingCharge = await chargeQuery;
         if (existingCharge) {
             return existingCharge;
         }
 
         const Order = mongoose.model('Order');
-        const order = await Order.findById(orderId).session(session);
+        // Populate sellerOrder to get seller reference if needed
+        const orderQuery = Order.findById(orderId).populate('sellerOrder');
+        if (session) orderQuery.session(session);
+        const order = await orderQuery;
         if (!order) {
             throw new Error('Order not found for shipping charge calculation');
         }
 
+        console.log('[ShippingRevenue] Starting record creation', {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            shippingFee: order.shippingFee,
+            shippingCost: order.shippingCost,
+        });
+
         const calculation = await this.calculateShippingCharge(order);
+
+        // Resolve sellerId defensively
+        let sellerId = order.seller;
+        if (!sellerId && order.shippingBreakdown && order.shippingBreakdown.length > 0) {
+            sellerId = order.shippingBreakdown[0].sellerId;
+        }
+        if (!sellerId && order.sellerOrder && order.sellerOrder.length > 0) {
+            const firstSellerOrder = order.sellerOrder[0];
+            sellerId = firstSellerOrder.seller || firstSellerOrder; // handle populated or ID
+        }
+
+        if (!sellerId) {
+            console.warn(`[ShippingRevenue] Could not resolve sellerId for order ${order._id}. Revenue recording might fail.`);
+        }
 
         const newCharge = new ShippingCharge({
             orderId: order._id,
             buyerId: order.user,
-            sellerId: order.seller,
-            dispatcherId: order.dispatcher,
+            sellerId: sellerId, // Fixed: use resolved sellerId
+            dispatcherId: order.dispatcher || order.dispatcherId, // handle potential naming variations
             totalShippingAmount: calculation.totalShippingAmount,
             platformCut: calculation.platformCut,
             dispatcherPayout: calculation.dispatcherPayout,
             platformCutRate: calculation.platformCutRate,
             status: 'pending',
             calculatedAt: Date.now(),
-            orderDeliveredAt: Date.now() // assuming this is called upon delivery
+            orderDeliveredAt: Date.now()
         });
 
-        await newCharge.save({ session });
+        const saveOptions = session ? { session } : {};
+        const savedCharge = await newCharge.save(saveOptions);
 
         // Record revenue for the platform's cut of the shipping fee
         try {
             const { recordRevenue } = require('./platform/platformRevenueService');
             const { getFeeByCode } = require('./platform/platformFeeService');
 
-            const shippingFee = await getFeeByCode('SHIPPING_CUT');
-            if (shippingFee && calculation.platformCut > 0) {
-                await recordRevenue({
+            // Standardize to UPPERCASE to match seeder
+            const shippingFeeConfig = await getFeeByCode('SHIPPING_CUT');
+
+            if (!shippingFeeConfig) {
+                console.error(`[ShippingRevenue] SHIPPING_CUT fee config not found or inactive. Cannot record revenue for order ${order._id}. Run the platform fee seeder to fix this.`);
+            } else if (calculation.platformCut <= 0) {
+                console.warn(`[ShippingRevenue] Platform cut is 0 or negative for order ${order._id}. shippingFee: ${calculation.totalShippingAmount}, rate: ${shippingFeeConfig.value}%`);
+            } else {
+                const revenueRecord = await recordRevenue({
                     orderId: order._id,
-                    platformFeeId: shippingFee._id,
+                    platformFeeId: shippingFeeConfig._id,
                     feeCode: 'SHIPPING_CUT',
-                    feeName: shippingFee.name,
+                    feeName: shippingFeeConfig.name,
                     feeType: 'shipping_cut',
-                    calculationMethod: shippingFee.calculationMethod,
-                    rateApplied: shippingFee.value || calculation.platformCutRate,
+                    calculationMethod: shippingFeeConfig.calculationMethod,
+                    rateApplied: shippingFeeConfig.value,
                     baseAmount: calculation.totalShippingAmount,
                     revenueAmount: calculation.platformCut,
                     paidBy: 'seller',
                     sellerId: order.seller,
                     chargeEvent: 'on_order_delivered',
                     sourceModel: 'ShippingCharge',
-                    sourceId: newCharge._id,
+                    sourceId: savedCharge._id,
+                });
+
+                console.log('[ShippingRevenue] Revenue recorded', {
+                    revenueId: revenueRecord._id,
+                    amount: revenueRecord.revenueAmount,
+                    orderId: order._id
                 });
             }
         } catch (error) {
-            console.error('Error recording shipping cut revenue:', error);
+            console.error('[ShippingRevenue] Error recording shipping cut revenue:', error);
         }
 
-        return newCharge;
+        return savedCharge;
     }
 
     /**

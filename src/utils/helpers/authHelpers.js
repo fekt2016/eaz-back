@@ -240,6 +240,15 @@ const handleSuccessfulLogin = async (req, res, user, role, options = {}) => {
     user: safePayload,
   };
 
+  // For mobile seller app: include accessToken so app can send Authorization header when cookie not sent
+  const isMobileSeller =
+    role === 'seller' &&
+    req &&
+    (req.headers['x-platform'] === 'saiisai-seller' || req.headers['x-mobile'] === 'true');
+  if (isMobileSeller) {
+    response.accessToken = token;
+  }
+
   // Add device session info if created
   if (sessionData) {
     response.deviceId = sessionData.deviceId;

@@ -18,7 +18,7 @@ const OTP_TYPES = {
  */
 const generateOtp = (user, otpType = OTP_TYPES.SIGNUP) => {
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = crypto.randomInt(100000, 1000000).toString();
   
   // Hash OTP before storing (SHA-256)
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');

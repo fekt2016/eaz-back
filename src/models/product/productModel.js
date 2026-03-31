@@ -1,7 +1,42 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
+const { deleteCloudinaryAsset } = require('../../config/cloudinary');
 // import Category from './categoryModel.js';
 // import AppError from '../../utils/errors/appError.js';
+
+const extractPublicIdFromUrl = (url) => {
+  if (!url || typeof url !== 'string') return null;
+  try {
+    const parts = url.split('/');
+    const uploadIdx = parts.findIndex((part) => part === 'upload');
+    if (uploadIdx === -1) return null;
+    const afterUpload = parts.slice(uploadIdx + 1);
+    const versionIdx = afterUpload.findIndex((part) => /^v\d+$/.test(part));
+    const publicParts =
+      versionIdx >= 0 ? afterUpload.slice(versionIdx + 1) : afterUpload;
+    return publicParts.join('/').replace(/\.[^.]+$/, '');
+  } catch (error) {
+    return null;
+  }
+};
+
+const productImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true },
+    thumbnail: { type: String, default: null },
+    medium: { type: String, default: null },
+    large: { type: String, default: null },
+    publicId: { type: String, required: true },
+    blurhash: { type: String, default: null },
+    position: { type: Number, default: 0 },
+    alt: { type: String, default: '' },
+    width: { type: Number, default: null },
+    height: { type: Number, default: null },
+    format: { type: String, default: 'webp' },
+    size: { type: Number, default: null },
+  },
+  { _id: false }
+);
 
 const productSchema = new mongoose.Schema(
   {
@@ -14,11 +49,7 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    /**
-     * For EazShop (platform store) products: the actual seller/supplier the platform deals with.
-     * When an order containing this product is delivered, this supplier is credited (not the platform).
-     * Required for platform-store products that are supplied by third-party sellers.
-     */
+
     supplierSeller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Seller',
@@ -52,12 +83,25 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Cover image is required'],
       trim: true,
     },
-    images: [
-      {
-        type: String,
-        trim: true,
+    images: {
+      type: [productImageSchema],
+      default: [],
+      validate: {
+        validator: function (arr) {
+          return Array.isArray(arr) && arr.length <= 8;
+        },
+        message: 'Maximum 8 images per product',
       },
-    ],
+    },
+    coverImage: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    video: {
+      type: String,
+      trim: true,
+    },
     parentCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
@@ -172,10 +216,21 @@ const productSchema = new mongoose.Schema(
         },
         condition: {
           type: String,
-          enum: ['new', 'used', 'open_box', 'refurbished', 'like_new', 'fair', 'poor'],
+          enum: [
+            'new',
+            'like_new',
+            'used',
+            'refurbished',
+            'open_box',
+            'fair',
+            'poor',
+            'damaged',
+            'for_parts',
+          ],
           default: 'new',
           required: [true, 'Variant condition is required'],
-          comment: 'Product condition: new, used, open_box, refurbished, like_new, fair, poor',
+          comment:
+            'Product condition: new, used, open_box, refurbished, like_new, fair, poor, damaged, for_parts',
         },
         createdAt: {
           type: Date,
@@ -408,7 +463,17 @@ const productSchema = new mongoose.Schema(
     },
     condition: {
       type: String,
-      enum: ['new', 'used', 'refurbished', 'open_box', 'damaged', 'for_parts'],
+      enum: [
+        'new',
+        'like_new',
+        'used',
+        'refurbished',
+        'open_box',
+        'fair',
+        'poor',
+        'damaged',
+        'for_parts',
+      ],
       default: 'new',
     },
     shippingType: {
@@ -585,6 +650,100 @@ const productSchema = new mongoose.Schema(
     toObject: { virtuals: true },
     timestamps: true,
   },
+);
+
+const normalizeProductImages = (images, productName = '') => {
+  if (!Array.isArray(images)) return [];
+  return images
+    .filter(Boolean)
+    .map((image, index) => {
+      if (typeof image === 'string') {
+        const publicId =
+          extractPublicIdFromUrl(image) || `legacy_image_${Date.now()}_${index}`;
+        return {
+          url: image,
+          thumbnail: image,
+          medium: image,
+          large: image,
+          publicId,
+          blurhash: null,
+          position: index,
+          alt: productName || '',
+          format: 'jpg',
+        };
+      }
+
+      return {
+        ...image,
+        url: image.url || image.large || image.medium || image.thumbnail,
+        thumbnail: image.thumbnail || image.url || null,
+        medium: image.medium || image.url || null,
+        large: image.large || image.url || null,
+        publicId:
+          image.publicId ||
+          extractPublicIdFromUrl(image.url) ||
+          `legacy_image_${Date.now()}_${index}`,
+        position:
+          typeof image.position === 'number' ? image.position : index,
+        alt: image.alt || productName || '',
+      };
+    })
+    .filter((image) => image.url);
+};
+
+productSchema.pre('validate', function (next) {
+  this.images = normalizeProductImages(this.images, this.name);
+  if (Array.isArray(this.images) && this.images.length > 0) {
+    this.coverImage = this.images[0].thumbnail || this.images[0].url;
+    if (!this.imageCover) {
+      this.imageCover = this.images[0].url;
+    }
+  } else {
+    this.coverImage = null;
+  }
+  next();
+});
+
+productSchema.pre('save', async function (next) {
+  if (!this.isModified('images') || this.isNew) return next();
+  try {
+    const existing = await this.constructor.findById(this._id).select('images').lean();
+    const oldPublicIds = new Set(
+      (existing?.images || []).map((image) => image?.publicId).filter(Boolean)
+    );
+    const nextPublicIds = new Set(
+      (this.images || []).map((image) => image?.publicId).filter(Boolean)
+    );
+    const removedIds = [...oldPublicIds].filter((id) => !nextPublicIds.has(id));
+    await Promise.allSettled(
+      removedIds.map((publicId) => deleteCloudinaryAsset(publicId))
+    );
+  } catch (error) {
+    console.error('[Product Pre-Save] image cleanup failed:', error?.message);
+  }
+  next();
+});
+
+productSchema.pre(
+  'deleteOne',
+  { document: false, query: true },
+  async function (next) {
+    try {
+      const product = await this.model
+        .findOne(this.getFilter())
+        .select('images')
+        .lean();
+      const publicIds = (product?.images || [])
+        .map((image) => image?.publicId)
+        .filter(Boolean);
+      await Promise.allSettled(
+        publicIds.map((publicId) => deleteCloudinaryAsset(publicId))
+      );
+    } catch (error) {
+      console.error('[Product Pre-Delete] image cleanup failed:', error?.message);
+    }
+    next();
+  }
 );
 
 // Pre-save middleware - Update variant timestamps

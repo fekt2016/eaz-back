@@ -149,15 +149,10 @@ const OrderItemSchema = new mongoose.Schema({
     default: 0,
     comment: 'GETFund amount (2.5%)',
   },
-  covidLevy: {
-    type: Number,
-    default: 0,
-    comment: 'COVID levy (1% on base price)',
-  },
   totalTaxes: {
     type: Number,
     default: 0,
-    comment: 'Total of all taxes (VAT + NHIL + GETFund + COVID levy)',
+    comment: 'Total of all taxes (VAT + NHIL + GETFund)',
   },
   isVATInclusive: {
     type: Boolean,
@@ -294,7 +289,6 @@ OrderItemSchema.pre('save', async function (next) {
       this.vat = pricing.vat;
       this.nhil = pricing.nhil;
       this.getfund = pricing.getfund;
-      this.covidLevy = pricing.covidLevy;
       this.totalTaxes = pricing.totalTax;
       this.vatAmount = pricing.vat; // Matching vatAmount field
       this.vatRate = 0.15; // Standard platform rate

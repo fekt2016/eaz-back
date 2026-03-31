@@ -7,8 +7,7 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const logger = require('../../utils/logger');
 const Seller = require('../../models/user/sellerModel');
-const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-const PaymentRequest = require('../../models/payment/paymentRequestModel'); // Existing payment request model
+const PaymentRequest = require('../../models/payment/paymentRequestModel');
 const Transaction = require('../../models/transaction/transactionModel');
 const AdminActionLog = require('../../models/admin/adminActionLogModel');
 const Admin = require('../../models/user/adminModel');
@@ -19,69 +18,35 @@ const { getIpAddress } = require('../../utils/helpers/deviceUtils');
 
 /**
  * Get all withdrawal requests
- * Fetches from both WithdrawalRequest (new) and PaymentRequest (existing) models
  * GET /api/v1/admin/payout/requests
  */
 exports.getAllWithdrawalRequests = catchAsync(async (req, res, next) => {
   const { status, seller, limit = 50, page = 1 } = req.query;
 
-  const query = {}; // Admin can see both active and deactivated withdrawals
-  if (status) {
-    query.status = status;
-  }
-  if (seller) {
-    query.seller = seller;
-  }
+  const query = { seller: { $exists: true, $ne: null } };
+  if (status) query.status = status;
+  if (seller) query.seller = seller;
 
-  const skip = (page - 1) * limit;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
 
-  // Fetch from both models
-  const [withdrawalRequests, paymentRequests] = await Promise.all([
-    WithdrawalRequest.find(query)
-      .populate({
-        path: 'seller',
-        select: 'name shopName email',
-      })
-      .populate({
-        path: 'processedBy',
-        select: 'name email',
-      })
+  const [requests, total] = await Promise.all([
+    PaymentRequest.find(query)
+      .populate({ path: 'seller', select: 'name shopName email' })
+      .populate({ path: 'processedBy', select: 'name email' })
       .sort('-createdAt')
+      .skip(skip)
+      .limit(parseInt(limit))
       .lean(),
-    PaymentRequest.find({ ...query, seller: { $exists: true, $ne: null } }) // Only get seller payment requests (includes deactivated)
-      .populate({
-        path: 'seller',
-        select: 'name shopName email',
-      })
-      .sort('-createdAt')
-      .lean(),
+    PaymentRequest.countDocuments(query),
   ]);
-
-  // Transform PaymentRequest to match WithdrawalRequest format
-  const transformedPaymentRequests = paymentRequests.map((req) => ({
-    ...req,
-    payoutMethod: req.paymentMethod, // Map paymentMethod to payoutMethod
-    _id: req._id,
-    type: 'payment-request', // Mark as legacy payment request
-  }));
-
-  // Combine and sort by createdAt
-  const allRequests = [...withdrawalRequests, ...transformedPaymentRequests]
-    .sort((a, b) => new Date(b.createdAt || b.paymentDate) - new Date(a.createdAt || a.paymentDate));
-
-  // Apply pagination
-  const paginatedRequests = allRequests.slice(skip, skip + parseInt(limit));
-  const total = allRequests.length;
 
   res.status(200).json({
     status: 'success',
-    results: paginatedRequests.length,
+    results: requests.length,
     total,
     page: parseInt(page),
     limit: parseInt(limit),
-    data: {
-      withdrawalRequests: paginatedRequests,
-    },
+    data: { withdrawalRequests: requests },
   });
 });
 
@@ -102,15 +67,7 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // Load withdrawal from PaymentRequest first, then WithdrawalRequest
-    let withdrawalRequest = await PaymentRequest.findById(id).session(session);
-    let isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      isPaymentRequest = false;
-    }
+    const withdrawalRequest = await PaymentRequest.findById(id).session(session);
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -144,7 +101,6 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     logger.info('[verifyPaystackOtpForWithdrawal] Checking Paystack transfer status before OTP verification', {
       withdrawalId: withdrawalRequest._id,
       transferCode,
-      isPaymentRequest,
       adminId,
     });
 
@@ -271,7 +227,6 @@ exports.verifyPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     logger.info('[verifyPaystackOtpForWithdrawal] Finalizing transfer with OTP', {
       withdrawalId: withdrawalRequest._id,
       transferCode,
-      isPaymentRequest,
       adminId,
     });
 
@@ -489,15 +444,7 @@ exports.resendPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // Load withdrawal from PaymentRequest first, then WithdrawalRequest
-    let withdrawalRequest = await PaymentRequest.findById(id).session(session);
-    let isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      const WithdrawalRequest = require('../../models/payout/withdrawalRequestModel');
-      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      isPaymentRequest = false;
-    }
+    const withdrawalRequest = await PaymentRequest.findById(id).session(session);
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -551,7 +498,6 @@ exports.resendPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     logger.info('[resendPaystackOtpForWithdrawal] Resending OTP', {
       withdrawalId: withdrawalRequest._id,
       transferCode,
-      isPaymentRequest,
       adminId,
     });
 
@@ -608,58 +554,23 @@ exports.resendPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
 
 /**
  * Get a single withdrawal request
- * Checks both WithdrawalRequest and PaymentRequest models
  * GET /api/v1/admin/payout/request/:id
  */
 exports.getWithdrawalRequest = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
-  // Try PaymentRequest first (since we're using PaymentRequest model now)
-  let withdrawalRequest = await PaymentRequest.findById(id)
+  const withdrawalRequest = await PaymentRequest.findById(id)
     .populate({
       path: 'seller',
       select: 'name shopName email balance lockedBalance pendingBalance withdrawableBalance paymentMethods paystackRecipientCode',
     })
+    .populate({ path: 'processedBy', select: 'name email' })
+    .populate({ path: 'transaction' })
     .lean();
 
-  // If not found, try WithdrawalRequest (for backward compatibility)
   if (!withdrawalRequest) {
-    const withdrawalReq = await WithdrawalRequest.findById(id)
-      .populate({
-        path: 'seller',
-        select: 'name shopName email balance lockedBalance pendingBalance withdrawableBalance paymentMethods paystackRecipientCode',
-      })
-      .populate({
-        path: 'processedBy',
-        select: 'name email',
-      })
-      .populate({
-        path: 'transaction',
-      })
-      .lean();
-
-    if (!withdrawalReq) {
-      return next(new AppError('Withdrawal request not found', 404));
-    }
-
-    withdrawalRequest = withdrawalReq;
-  } else {
-    // Transform PaymentRequest to match WithdrawalRequest format for compatibility
-    withdrawalRequest = {
-      ...withdrawalRequest,
-      payoutMethod: withdrawalRequest.paymentMethod, // Map paymentMethod to payoutMethod
-      type: 'payment-request',
-    };
+    return next(new AppError('Withdrawal request not found', 404));
   }
-
-  // Debug: Log paymentDetails to verify they're included
-  logger.info('[getWithdrawalRequest] Payment details:', {
-    id: withdrawalRequest._id,
-    hasPaymentDetails: !!withdrawalRequest.paymentDetails,
-    paymentDetails: withdrawalRequest.paymentDetails,
-    paymentMethod: withdrawalRequest.paymentMethod,
-    payoutMethod: withdrawalRequest.payoutMethod,
-  });
 
   res.status(200).json({
     status: 'success',
@@ -697,38 +608,14 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
   // Declare outside try block so it's accessible in catch block
   let withdrawalRequest = null;
-  let isPaymentRequest = false;
 
   try {
-    // Try WithdrawalRequest first
-    // Get all fields - payoutMethod and paymentDetails should be included by default
-    withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
+    withdrawalRequest = await PaymentRequest.findById(id).session(session);
 
-    // If not found, try PaymentRequest
     if (!withdrawalRequest) {
-      const paymentRequest = await PaymentRequest.findById(id).session(session);
-      if (!paymentRequest) {
-        await session.abortTransaction();
-        return next(new AppError('Withdrawal request not found', 404));
-      }
-      isPaymentRequest = true;
-      withdrawalRequest = paymentRequest;
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request not found', 404));
     }
-
-    // Convert to plain object to inspect all fields
-    const requestObj = withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest;
-
-    // Debug: Log the withdrawal request to see what fields are present
-    logger.info('[approveWithdrawalRequest] Withdrawal request fields:', {
-      id: requestObj._id,
-      isPaymentRequest,
-      payoutMethod: requestObj.payoutMethod,
-      paymentMethod: requestObj.paymentMethod,
-      hasPaymentDetails: !!requestObj.paymentDetails,
-      paymentDetails: requestObj.paymentDetails, // Log full paymentDetails
-      paymentDetailsKeys: requestObj.paymentDetails ? Object.keys(requestObj.paymentDetails) : [],
-      allFields: Object.keys(requestObj),
-    });
 
     // Security check: Prevent approving if status is not pending
     if (withdrawalRequest.status !== 'pending') {
@@ -772,34 +659,13 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     // Note: Balance was already deducted when withdrawal was created
     // We only need to verify the withdrawal exists and update status
 
-    // ALWAYS use payment details from the request, not from seller's saved methods
-    // PaymentRequest uses 'paymentMethod', WithdrawalRequest uses 'payoutMethod'
-    const paymentMethod = isPaymentRequest
-      ? (withdrawalRequest.paymentMethod || withdrawalRequest.payoutMethod)
-      : (withdrawalRequest.payoutMethod || withdrawalRequest.paymentMethod);
+    // payoutMethod is a virtual alias for paymentMethod on PaymentRequest
+    const paymentMethod = withdrawalRequest.paymentMethod;
     const paymentDetails = withdrawalRequest.paymentDetails || {};
-
-    logger.info('[approveWithdrawalRequest] Using payment details from request:', {
-      isPaymentRequest,
-      payoutMethod: withdrawalRequest.payoutMethod,
-      paymentMethod: withdrawalRequest.paymentMethod,
-      resolvedPaymentMethod: paymentMethod,
-      hasPaymentDetails: !!paymentDetails && Object.keys(paymentDetails).length > 0,
-      paymentDetailsKeys: paymentDetails ? Object.keys(paymentDetails) : [],
-      paymentDetails,
-      withdrawalRequestFields: Object.keys(withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest),
-    });
 
     // Validate payment method exists
     if (!paymentMethod) {
       await session.abortTransaction();
-      logger.error('[approveWithdrawalRequest] Payment method missing. Request data:', {
-        id: withdrawalRequest._id,
-        isPaymentRequest,
-        payoutMethod: withdrawalRequest.payoutMethod,
-        paymentMethod: withdrawalRequest.paymentMethod,
-        allFields: Object.keys(withdrawalRequest.toObject ? withdrawalRequest.toObject() : withdrawalRequest),
-      });
       return next(new AppError('Payment method is missing from the withdrawal request. Please ensure the request has a valid payout method.', 400));
     }
 
@@ -990,28 +856,16 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     // Security check: Double-check status before updating (prevent race conditions)
     const currentRequest = await PaymentRequest.findById(id).session(session);
     if (!currentRequest) {
-      const currentWithdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      if (!currentWithdrawalRequest) {
-        await session.abortTransaction();
-        return next(new AppError('Withdrawal request not found', 404));
-      }
-      if (currentWithdrawalRequest.status !== 'pending') {
-        await session.abortTransaction();
-        return next(new AppError(`Withdrawal request status changed to ${currentWithdrawalRequest.status}. Cannot proceed with approval.`, 400));
-      }
-      if (currentWithdrawalRequest.isActive === false) {
-        await session.abortTransaction();
-        return next(new AppError('Withdrawal request was deactivated. Cannot proceed with approval.', 400));
-      }
-    } else {
-      if (currentRequest.status !== 'pending') {
-        await session.abortTransaction();
-        return next(new AppError(`Withdrawal request status changed to ${currentRequest.status}. Cannot proceed with approval.`, 400));
-      }
-      if (currentRequest.isActive === false) {
-        await session.abortTransaction();
-        return next(new AppError('Withdrawal request was deactivated. Cannot proceed with approval.', 400));
-      }
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request not found', 404));
+    }
+    if (currentRequest.status !== 'pending') {
+      await session.abortTransaction();
+      return next(new AppError(`Withdrawal request status changed to ${currentRequest.status}. Cannot proceed with approval.`, 400));
+    }
+    if (currentRequest.isActive === false) {
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request was deactivated. Cannot proceed with approval.', 400));
     }
 
     // Calculate withholding tax and create TaxCollection record
@@ -1050,65 +904,34 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       userAgent: userAgent,
     };
 
-    // Update withdrawal request (handle both models)
-    if (isPaymentRequest) {
-      // Update PaymentRequest
-      const paymentRequest = await PaymentRequest.findById(id).session(session);
-      // Set status based on Paystack's actual transfer status
-      // Only set to 'awaiting_paystack_otp' if Paystack status is 'otp'
-      paymentRequest.status = finalStatus;
-      paymentRequest.paystackTransferCode = transferResult.transfer_code;
-      paymentRequest.transactionId = transferResult.reference;
-      paymentRequest.processedAt = new Date();
-      paymentRequest.approvedAt = new Date(); // Mark as approved
-      paymentRequest.requiresPin = finalRequiresPin;
-      paymentRequest.pinSubmitted = false;
+    // Update PaymentRequest with approval details
+    withdrawalRequest.status = finalStatus;
+    withdrawalRequest.paystackRecipientCode = recipientCode;
+    withdrawalRequest.paystackTransferId = transferResult.transfer_id;
+    withdrawalRequest.paystackTransferCode = transferResult.transfer_code;
+    withdrawalRequest.paystackReference = transferResult.reference;
+    withdrawalRequest.transactionId = transferResult.reference;
+    withdrawalRequest.requiresPin = finalRequiresPin;
+    withdrawalRequest.pinSubmitted = false;
+    withdrawalRequest.processedBy = adminId;
+    withdrawalRequest.processedAt = new Date();
+    withdrawalRequest.approvedAt = new Date();
 
-      // Add admin tracking
-      paymentRequest.approvedByAdmin = adminTrackingData;
-      paymentRequest.rejectedByAdmin = null; // Clear rejection if exists
+    // Add admin tracking
+    withdrawalRequest.approvedByAdmin = adminTrackingData;
+    withdrawalRequest.rejectedByAdmin = null;
 
-      // Add to audit history
-      if (!paymentRequest.auditHistory) {
-        paymentRequest.auditHistory = [];
-      }
-      paymentRequest.auditHistory.push({
-        action: 'approved',
-        ...adminTrackingData,
-      });
-
-      await paymentRequest.save({ session });
-      withdrawalRequest = paymentRequest.toObject();
-    } else {
-      // Update WithdrawalRequest
-      // Set to 'awaiting_paystack_otp' for mobile money or if PIN is required
-      // Set status based on Paystack's actual transfer status
-      // Only set to 'awaiting_paystack_otp' if Paystack status is 'otp'
-      withdrawalRequest.status = finalStatus;
-      withdrawalRequest.paystackRecipientCode = recipientCode;
-      withdrawalRequest.paystackTransferId = transferResult.transfer_id;
-      withdrawalRequest.paystackTransferCode = transferResult.transfer_code;
-      withdrawalRequest.paystackReference = transferResult.reference;
-      withdrawalRequest.requiresPin = finalRequiresPin; // Always true for mobile money
-      withdrawalRequest.pinSubmitted = false;
-      withdrawalRequest.processedBy = adminId;
-      withdrawalRequest.processedAt = new Date();
-
-      // Add admin tracking
-      withdrawalRequest.approvedByAdmin = adminTrackingData;
-      withdrawalRequest.rejectedByAdmin = null; // Clear rejection if exists
-
-      // Add to audit history
-      if (!withdrawalRequest.auditHistory) {
-        withdrawalRequest.auditHistory = [];
-      }
-      withdrawalRequest.auditHistory.push({
-        action: 'approved',
-        ...adminTrackingData,
-      });
-
-      await withdrawalRequest.save({ session });
+    // Add to audit history
+    if (!withdrawalRequest.auditHistory) {
+      withdrawalRequest.auditHistory = [];
     }
+    withdrawalRequest.auditHistory.push({
+      action: 'approved',
+      ...adminTrackingData,
+    });
+
+    await withdrawalRequest.save({ session });
+    withdrawalRequest = withdrawalRequest.toObject();
 
     // Create AdminActionLog entry
     const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
@@ -1123,7 +946,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       role: admin.role,
       actionType: 'WITHDRAWAL_APPROVED',
       withdrawalId: withdrawalRequest._id,
-      withdrawalType: isPaymentRequest ? 'PaymentRequest' : 'WithdrawalRequest',
+      withdrawalType: 'PaymentRequest',
       sellerId: withdrawalRequest.seller,
       amountRequested: amountRequested,
       amountPaid: amountPaid,
@@ -1141,12 +964,23 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
     // When admin approves, the withdrawal is in pendingBalance (awaiting OTP)
     // Balance (total revenue) is NOT deducted yet - only when OTP is verified
+    // Unless the transfer is instant without PIN (finalStatus === 'paid')
     // But we need to ensure withdrawableBalance is correctly calculated
     // Available Balance = balance - lockedBalance - pendingBalance
     const oldBalance = seller.balance || 0;
     const oldPendingBalance = seller.pendingBalance || 0;
     const oldLockedBalance = seller.lockedBalance || 0;
     const oldWithdrawableBalance = seller.withdrawableBalance || 0;
+
+    // If finalStatus is 'paid' (instant transfer without OTP), deduct balance and pendingBalance immediately
+    if (finalStatus === 'paid') {
+      const amountRequested = withdrawalRequest.amountRequested || withdrawalRequest.amount || 0;
+      if (amountRequested > 0 && oldPendingBalance >= amountRequested) {
+        seller.pendingBalance = Math.max(0, oldPendingBalance - amountRequested);
+        seller.balance = Math.max(0, oldBalance - amountRequested);
+        logger.info(`[approveWithdrawalRequest] Instant transfer success without OTP. Deducted from pendingBalance and balance (paid): seller ${seller._id}, amount: ${amountRequested}`);
+      }
+    }
 
     // Recalculate withdrawableBalance (balance - lockedBalance - pendingBalance)
     seller.calculateWithdrawableBalance();
@@ -1155,10 +989,15 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
     await seller.save({ session });
 
     logger.info(`[approveWithdrawalRequest] Balance after admin approval for seller ${seller._id}:`);
-    logger.info(`  Total Revenue (Balance);: ${oldBalance} (unchanged - will deduct when OTP verified)`);
-    logger.info(`  Pending Balance: ${oldPendingBalance} (unchanged - awaiting OTP verification);`);
-    logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged);`);
-    logger.info(`  Available Balance: ${oldWithdrawableBalance} → ${newWithdrawableBalance} (recalculated);`);
+    if (finalStatus === 'paid') {
+      logger.info(`  Total Revenue (Balance): ${oldBalance} → ${seller.balance} (deducted immediately)`);
+      logger.info(`  Pending Balance: ${oldPendingBalance} → ${seller.pendingBalance} (deducted immediately)`);
+    } else {
+      logger.info(`  Total Revenue (Balance): ${oldBalance} (unchanged - will deduct when OTP verified)`);
+      logger.info(`  Pending Balance: ${oldPendingBalance} (unchanged - awaiting OTP verification)`);
+    }
+    logger.info(`  Locked Balance: ${oldLockedBalance} (unchanged)`);
+    logger.info(`  Available Balance: ${oldWithdrawableBalance} → ${newWithdrawableBalance} (recalculated)`);
 
     // Update existing transaction or create new one
     let transactionRecord = await Transaction.findOne({
@@ -1184,13 +1023,13 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
         [
           {
             seller: seller._id,
+            source: 'withdrawal',
             amount: withdrawalRequest.amount,
             type: 'debit',
             description: `Withdrawal Payout - Request #${withdrawalRequest._id}`,
             status: 'pending', // Will be updated when transfer is verified
-            payoutRequest: withdrawalRequest._id, // Set the link
+            payoutRequest: withdrawalRequest._id,
             metadata: {
-              withdrawalRequestId: withdrawalRequest._id,
               paystackReference: transferResult.reference,
               paystackTransferCode: transferResult.transfer_code,
               processedBy: adminId,
@@ -1203,50 +1042,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       logger.info(`[approveWithdrawalRequest] Created new transaction for withdrawal ${withdrawalRequest._id}`);
     }
 
-    // Link transaction to request (only for WithdrawalRequest, PaymentRequest doesn't have this field)
-    if (!isPaymentRequest) {
-      withdrawalRequest.transaction = transaction[0]._id;
-      await withdrawalRequest.save({ session });
-    }
-
     await session.commitTransaction();
-
-    // Verify transfer status asynchronously (don't wait) - only for WithdrawalRequest
-    // BUT: Don't auto-update to 'paid' if PIN is required - seller must submit PIN first
-    if (!isPaymentRequest && !finalRequiresPin && !isMobileMoney) {
-      // Only auto-verify if PIN is not required (bank transfers that don't need PIN)
-      payoutService
-        .verifyTransferStatus(transferResult.transfer_id)
-        .then(async (transferStatus) => {
-          await payoutService.updateWithdrawalStatusFromPaystack(withdrawalRequest._id, transferStatus, finalRequiresPin);
-        })
-        .catch((error) => {
-          logger.error('[approveWithdrawalRequest] Error verifying transfer:', error);
-          // Will be verified later via polling or webhook
-        });
-    } else if (!isPaymentRequest && (finalRequiresPin || isMobileMoney)) {
-      // For mobile money with PIN requirement, verify status but don't auto-update to paid
-      payoutService
-        .verifyTransferStatus(transferResult.transfer_id)
-        .then(async (transferStatus) => {
-          // Update requiresPin flag if verification confirms it, but keep status as processing
-          const withdrawal = await WithdrawalRequest.findById(withdrawalRequest._id);
-          if (withdrawal) {
-            // Ensure requiresPin is set for mobile money
-            if (isMobileMoney && !withdrawal.requiresPin) {
-              withdrawal.requiresPin = true;
-            }
-            // Keep status as processing until PIN is submitted
-            if (withdrawal.status !== 'processing') {
-              withdrawal.status = 'processing';
-            }
-            await withdrawal.save();
-          }
-        })
-        .catch((error) => {
-          logger.error('[approveWithdrawalRequest] Error verifying transfer:', error);
-        });
-    }
 
     // Determine response message based on payment method and PIN requirement
     let message = 'Withdrawal request approved and transfer initiated';
@@ -1327,7 +1123,6 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
 /**
  * Reject a withdrawal request
- * Handles both WithdrawalRequest (new) and PaymentRequest (existing) models
  * POST /api/v1/admin/payout/request/:id/reject
  */
 exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
@@ -1354,19 +1149,11 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   try {
-    // Try WithdrawalRequest first
-    let withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-    let isPaymentRequest = false;
+    const withdrawalRequest = await PaymentRequest.findById(id).session(session);
 
-    // If not found, try PaymentRequest
     if (!withdrawalRequest) {
-      const paymentRequest = await PaymentRequest.findById(id).session(session);
-      if (!paymentRequest) {
-        await session.abortTransaction();
-        return next(new AppError('Withdrawal request not found', 404));
-      }
-      isPaymentRequest = true;
-      withdrawalRequest = paymentRequest;
+      await session.abortTransaction();
+      return next(new AppError('Withdrawal request not found', 404));
     }
 
     if (withdrawalRequest.status !== 'pending') {
@@ -1440,7 +1227,6 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
           withdrawalRequestId: withdrawalRequest._id.toString(),
           rejectionReason: req.body.reason || 'Rejected by admin',
           rejectedBy: adminId,
-          isPaymentRequest,
           pendingBalanceBefore: oldPendingBalance,
           pendingBalanceAfter: seller.pendingBalance,
           refundType: 'pendingBalance_refund', // Indicates this is a pendingBalance refund
@@ -1479,53 +1265,27 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       userAgent: userAgent,
     };
 
-    // Update withdrawal request (handle both models)
-    if (isPaymentRequest) {
-      // Update PaymentRequest
-      const paymentRequest = await PaymentRequest.findById(id).session(session);
-      paymentRequest.status = 'rejected';
-      paymentRequest.rejectionReason = reason || 'Rejected by admin';
-      paymentRequest.processedAt = new Date();
-      paymentRequest.rejectedAt = new Date(); // Mark rejection time
+    // Update PaymentRequest with rejection details
+    withdrawalRequest.status = 'rejected';
+    withdrawalRequest.rejectionReason = reason || 'Rejected by admin';
+    withdrawalRequest.processedBy = adminId;
+    withdrawalRequest.processedAt = new Date();
+    withdrawalRequest.rejectedAt = new Date();
 
-      // Add admin tracking
-      paymentRequest.rejectedByAdmin = adminTrackingData;
-      paymentRequest.approvedByAdmin = null; // Clear approval if exists
+    // Add admin tracking
+    withdrawalRequest.rejectedByAdmin = adminTrackingData;
+    withdrawalRequest.approvedByAdmin = null;
 
-      // Add to audit history
-      if (!paymentRequest.auditHistory) {
-        paymentRequest.auditHistory = [];
-      }
-      paymentRequest.auditHistory.push({
-        action: 'rejected',
-        ...adminTrackingData,
-      });
-
-      await paymentRequest.save({ session });
-      withdrawalRequest = paymentRequest.toObject();
-    } else {
-      // Update WithdrawalRequest
-      withdrawalRequest.status = 'rejected';
-      withdrawalRequest.rejectionReason = reason || 'Rejected by admin';
-      withdrawalRequest.processedBy = adminId;
-      withdrawalRequest.processedAt = new Date();
-      withdrawalRequest.rejectedAt = new Date(); // Mark rejection time
-
-      // Add admin tracking
-      withdrawalRequest.rejectedByAdmin = adminTrackingData;
-      withdrawalRequest.approvedByAdmin = null; // Clear approval if exists
-
-      // Add to audit history
-      if (!withdrawalRequest.auditHistory) {
-        withdrawalRequest.auditHistory = [];
-      }
-      withdrawalRequest.auditHistory.push({
-        action: 'rejected',
-        ...adminTrackingData,
-      });
-
-      await withdrawalRequest.save({ session });
+    // Add to audit history
+    if (!withdrawalRequest.auditHistory) {
+      withdrawalRequest.auditHistory = [];
     }
+    withdrawalRequest.auditHistory.push({
+      action: 'rejected',
+      ...adminTrackingData,
+    });
+
+    await withdrawalRequest.save({ session });
 
     // Create AdminActionLog entry
     // amountRequested already declared at line 832
@@ -1537,7 +1297,7 @@ exports.rejectWithdrawalRequest = catchAsync(async (req, res, next) => {
       role: admin.role,
       actionType: 'WITHDRAWAL_REJECTED',
       withdrawalId: withdrawalRequest._id,
-      withdrawalType: isPaymentRequest ? 'PaymentRequest' : 'WithdrawalRequest',
+      withdrawalType: 'PaymentRequest',
       sellerId: withdrawalRequest.seller,
       amountRequested: amountRequested,
       amountPaid: 0, // No payment on rejection
@@ -1625,17 +1385,9 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
   session.startTransaction();
 
   let withdrawalRequest = null;
-  let isPaymentRequest = false;
 
   try {
-    // Try PaymentRequest first, then WithdrawalRequest
     withdrawalRequest = await PaymentRequest.findById(id).session(session);
-    isPaymentRequest = true;
-
-    if (!withdrawalRequest) {
-      withdrawalRequest = await WithdrawalRequest.findById(id).session(session);
-      isPaymentRequest = false;
-    }
 
     if (!withdrawalRequest) {
       await session.abortTransaction();
@@ -1734,19 +1486,18 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
       [
         {
           seller: withdrawalRequest.seller,
+          source: 'withdrawal_refund',
           amount: amountRequested,
           type: 'credit',
           description: `Withdrawal Reversal - Refund for Request #${withdrawalRequest._id}. Reason: ${reason}`,
           status: 'completed',
           metadata: {
             withdrawalRequestId: withdrawalRequest._id,
-            action: 'withdrawal_reversal',
             reversedAt: new Date(),
             reversedBy: adminId,
             reverseReason: reason,
-            originalAmount: amountRequested,
-            withholdingTax: withholdingTax,
-            amountPaidToSeller: amountPaidToSeller,
+            withholdingTax,
+            amountPaidToSeller,
           },
         },
       ],
@@ -1830,14 +1581,7 @@ exports.reverseWithdrawal = catchAsync(async (req, res, next) => {
 exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
   const { id } = req.params;
 
-  // Try PaymentRequest first, then WithdrawalRequest
-  let withdrawalRequest = await PaymentRequest.findById(id);
-  let isPaymentRequest = true;
-
-  if (!withdrawalRequest) {
-    withdrawalRequest = await WithdrawalRequest.findById(id);
-    isPaymentRequest = false;
-  }
+  const withdrawalRequest = await PaymentRequest.findById(id);
 
   if (!withdrawalRequest) {
     return next(new AppError('Withdrawal request not found', 404));
@@ -1856,18 +1600,12 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
   const transferStatus = await payoutService.verifyTransferStatus(transferId);
 
   // Update status based on Paystack's actual status
-  // Handle both PaymentRequest and WithdrawalRequest models
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     // Reload the request with session
-    let requestToUpdate;
-    if (isPaymentRequest) {
-      requestToUpdate = await PaymentRequest.findById(id).session(session);
-    } else {
-      requestToUpdate = await WithdrawalRequest.findById(id).session(session);
-    }
+    const requestToUpdate = await PaymentRequest.findById(id).session(session);
 
     if (!requestToUpdate) {
       await session.abortTransaction();
@@ -1950,30 +1688,16 @@ exports.verifyTransferStatus = catchAsync(async (req, res, next) => {
         oldStatus,
         newStatus,
         paystackStatus: transferStatus.status,
-        isPaymentRequest,
       });
     }
 
     await session.commitTransaction();
 
     // Refetch updated withdrawal request
-    let updatedRequest;
-    if (isPaymentRequest) {
-      updatedRequest = await PaymentRequest.findById(id)
-        .populate('seller', 'name shopName email')
-        .lean();
-      // Transform to match WithdrawalRequest format
-      updatedRequest = {
-        ...updatedRequest,
-        payoutMethod: updatedRequest.paymentMethod,
-        type: 'payment-request',
-      };
-    } else {
-      updatedRequest = await WithdrawalRequest.findById(id)
-        .populate('seller', 'name shopName email')
-        .populate('processedBy', 'name email')
-        .lean();
-    }
+    const updatedRequest = await PaymentRequest.findById(id)
+      .populate('seller', 'name shopName email')
+      .populate('processedBy', 'name email')
+      .lean();
 
     // Send transfer-success email to seller when status synced to paid
     if (newStatus === 'paid' && oldStatus !== newStatus && updatedRequest && updatedRequest.seller && updatedRequest.seller.email) {

@@ -8,7 +8,7 @@ router
   .route('/status/:sellerId')
   .get(authController.protect, followController.getFollowStatus);
 router
-  .get('/products', authController.protect, authController.restrictTo('user'), followController.getFollowedSellerProducts);
+  .get('/products', authController.protect, authController.restrictTo('user', 'seller', 'admin', 'driver', 'official_store'), followController.getFollowedSellerProducts);
 router
   .route('/:sellerId')
   .get(
@@ -18,19 +18,19 @@ router
   )
   .post(
     authController.protect,
-    authController.restrictTo('user'),
+    authController.restrictTo('user', 'seller', 'admin', 'driver', 'official_store'),
     followController.followSeller,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('user'),
+    authController.restrictTo('user', 'seller', 'admin', 'driver', 'official_store'),
     followController.unfollowSeller,
   );
 router
   .route('/')
   .get(
     authController.protect,
-    authController.restrictTo('user'),
+    authController.restrictTo('user', 'seller', 'admin', 'driver', 'official_store'),
     followController.getFollowedShops,
   );
 

@@ -17,6 +17,12 @@ router.get('/', activityLogController.getActivityLogs);
 // Get activity statistics
 router.get('/stats', activityLogController.getActivityStats);
 
+// Get homepage experiment statistics
+router.get(
+  '/stats/homepage-experiments',
+  activityLogController.getHomepageExperimentStats
+);
+
 // Get suspicious activity logs
 router.get('/suspicious', activityLogController.getSuspiciousActivity);
 

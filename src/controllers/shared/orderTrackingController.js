@@ -188,7 +188,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
       order.status = 'cancelled';
       order.orderStatus = 'cancelled';
       order.FulfillmentStatus = 'cancelled';
-    } else if (status === 'out_for_delivery') {
+    } else if (status === 'out_for_delivery' || status === 'delivery_attempted') {
       order.orderStatus = 'shipped';
       order.FulfillmentStatus = 'shipped';
       order.status = 'processing';
@@ -224,12 +224,18 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
       const pushNotificationService = require('../../services/pushNotificationService');
       const orderPopulated = await Order.findById(orderId).populate('user', 'id').lean();
 
-      if (orderPopulated?.user?.id && ['out_for_delivery', 'delivered'].includes(status)) {
+      if (
+        orderPopulated?.user?.id &&
+        ['out_for_delivery', 'delivery_attempted', 'delivered'].includes(status)
+      ) {
         let title, body;
 
         if (status === 'out_for_delivery') {
           title = 'Order Out for Delivery';
           body = `Your order #${order.orderNumber} is out for delivery and will arrive soon!`;
+        } else if (status === 'delivery_attempted') {
+          title = 'Delivery Attempted';
+          body = `We attempted to deliver order #${order.orderNumber}, but could not reach you.`;
         } else if (status === 'delivered') {
           title = 'Order Delivered';
           body = `Your order #${order.orderNumber} has been delivered. Thank you for shopping with us!`;
@@ -242,10 +248,18 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
           body,
           status
         );
-        console.log(`[updateOrderStatus] ✅ Push notification sent for order ${orderId} status: ${status}`);
+        if (process.env.NODE_ENV === 'development') {
+          logger.info(
+            `[updateOrderStatus] Push notification sent for order ${orderId} status: ${status}`,
+          );
+        }
       }
     } catch (pushError) {
-      console.error('[updateOrderStatus] Error sending push notification:', pushError.message);
+      if (process.env.NODE_ENV === 'development') {
+        logger.error('[updateOrderStatus] Error sending push notification:', {
+          message: pushError?.message,
+        });
+      }
       // Don't fail the order update if push notification fails
     }
 
@@ -278,8 +292,12 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
         }
       }
 
-      // Create delivery notification if status is out_for_delivery or delivered
-      if (status === 'out_for_delivery' || status === 'delivered') {
+      // Create delivery notification for delivery lifecycle statuses
+      if (
+        status === 'out_for_delivery' ||
+        status === 'delivery_attempted' ||
+        status === 'delivered'
+      ) {
         await notificationService.createDeliveryNotification(
           order.user,
           order._id,
@@ -320,7 +338,13 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
         }
 
         // Sellers: status update email (for key milestones excl. cancelled — handled separately)
-        const sellerStatusStatuses = ['out_for_delivery', 'delivered', 'refunded', 'confirmed'];
+        const sellerStatusStatuses = [
+          'out_for_delivery',
+          'delivery_attempted',
+          'delivered',
+          'refunded',
+          'confirmed',
+        ];
         const sellerOrders = await SellerOrder.find({ order: order._id })
           .populate('seller', 'email name shopName')
           .lean();
@@ -352,9 +376,9 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
       // Don't fail the order update if SellerOrder sync fails
     }
 
-    // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-    // This is the ONLY place where sellers should be credited
-    if (status === 'delivered' && !wasCompleted) {
+    // Attempt seller credit on every delivered update.
+    // orderService.creditSellerForOrder is idempotent and prevents double-crediting.
+    if (status === 'delivered') {
       try {
         const balanceUpdateResult = await orderService.creditSellerForOrder(
           orderId,
@@ -464,25 +488,85 @@ exports.updateDriverLocation = catchAsync(async (req, res, next) => {
   const { orderId } = req.params;
   const { lat, lng } = req.body;
 
-  if (!lat || !lng) {
+  if (lat === undefined || lng === undefined) {
     return next(new AppError('Latitude and longitude are required', 400));
   }
 
+  const latNum = Number(lat);
+  const lngNum = Number(lng);
+
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+    return next(new AppError('Invalid latitude/longitude values', 400));
+  }
+
   // Validate coordinates
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+  if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
     return next(new AppError('Invalid coordinates', 400));
   }
 
-  const order = await Order.findById(orderId);
+  const user = req.user;
+  if (!user) return next(new AppError('Authentication required', 401));
+
+  const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
+  const isSeller = user.role === 'seller';
+  const isDriver = user.role === 'driver';
+
+  if (!isAdminLike && !isSeller && !isDriver) {
+    return next(
+      new AppError('You are not authorized to update driver location', 403),
+    );
+  }
+
+  // Find order (populate sellerOrder only when we need seller ownership checks)
+  const order = isSeller
+    ? await Order.findById(orderId).populate({
+        path: 'sellerOrder',
+        populate: { path: 'seller' },
+      })
+    : await Order.findById(orderId);
 
   if (!order) {
     return next(new AppError('Order not found', 404));
   }
 
+  // Sellers can only update location for orders that contain their products
+  if (isSeller && !isAdminLike) {
+    const hasItems = order.sellerOrder?.some(
+      (so) => so?.seller?._id?.toString() === user.id?.toString(),
+    );
+    if (!hasItems) {
+      return next(
+        new AppError(
+          'You can only update location for orders containing your products',
+          403,
+        ),
+      );
+    }
+  }
+
+  // Drivers can only update for active deliveries (basic guard against misuse)
+  if (isDriver && !isAdminLike) {
+    const allowedStatuses = [
+      'processing',
+      'confirmed',
+      'ready_for_dispatch',
+      'out_for_delivery',
+      'shipped',
+      'delivered',
+      'international_shipped',
+      'delievered',
+    ];
+    if (!allowedStatuses.includes(order.currentStatus)) {
+      return next(
+        new AppError('Driver location can only be updated for active deliveries', 403),
+      );
+    }
+  }
+
   // Update driver location
   order.driverLocation = {
-    lat,
-    lng,
+    lat: latNum,
+    lng: lngNum,
     lastUpdated: new Date(),
   };
 
@@ -567,7 +651,6 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
   }
 
   const order = await Order.findOne({ trackingNumber })
-    .populate('user', 'name email')
     .populate('orderItems', 'quantity price')
     .populate({
       path: 'orderItems',
@@ -578,7 +661,6 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         select: 'name imageCover isPreOrder preOrderAvailableDate preOrderNote',
       },
     })
-    .populate('trackingHistory.updatedBy', 'name email')
     .populate({
       path: 'pickupCenterId',
       select: 'pickupName address city area openingHours googleMapLink instructions',
@@ -612,6 +694,18 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
     }
   }
 
+  // SECURITY: Public tracking must not expose identifying address detail.
+  // We only return coarse location fields suitable for UX.
+  const sanitizedShippingAddress = shippingAddress
+    ? {
+        area: shippingAddress.area || undefined,
+        city: shippingAddress.city || undefined,
+        state: shippingAddress.state || undefined,
+        region: shippingAddress.region || undefined,
+        country: shippingAddress.country || undefined,
+      }
+    : null;
+
   // Auto-fix tracking history: Ensure confirmed entry exists for paid orders
   if (order.paymentStatus === 'completed' && order.paidAt) {
     const hasConfirmed = (order.trackingHistory || []).some(
@@ -633,8 +727,6 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
           status: 'confirmed',
           message: 'Your order has been confirmed and payment received.',
           location: '',
-          updatedBy: order.user,
-          updatedByModel: 'User',
           timestamp: order.paidAt,
         });
       } else {
@@ -643,8 +735,6 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
           status: 'confirmed',
           message: 'Your order has been confirmed and payment received.',
           location: '',
-          updatedBy: order.user,
-          updatedByModel: 'User',
           timestamp: order.paidAt,
         });
       }
@@ -656,9 +746,19 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
   );
 
+  const sanitizedTrackingHistory = sortedHistory.map((entry) => {
+    const {
+      updatedBy,
+      updatedByModel,
+      updatedByRole,
+      ...safeEntry
+    } = entry || {};
+    return safeEntry;
+  });
+
   // Get latest update
-  const latestUpdate = sortedHistory.length > 0
-    ? sortedHistory[sortedHistory.length - 1]
+  const latestUpdate = sanitizedTrackingHistory.length > 0
+    ? sanitizedTrackingHistory[sanitizedTrackingHistory.length - 1]
     : null;
 
   res.status(200).json({
@@ -670,9 +770,9 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         trackingNumber: order.trackingNumber,
         orderType: order.orderType || 'normal',
         currentStatus: order.currentStatus || 'pending_payment',
-        trackingHistory: sortedHistory,
+        trackingHistory: sanitizedTrackingHistory,
         latestUpdateTimestamp: latestUpdate?.timestamp || order.createdAt,
-        shippingAddress: shippingAddress,
+        shippingAddress: sanitizedShippingAddress,
         orderItems: order.orderItems,
         totalPrice: order.totalPrice,
         subtotal: order.subtotal || 0,
@@ -691,10 +791,6 @@ exports.getOrderByTrackingNumber = catchAsync(async (req, res, next) => {
         internationalTrackingNumber: order.internationalTrackingNumber || null,
         estimatedArrivalDate: order.estimatedArrivalDate || null,
         customsClearedAt: order.customsClearedAt || null,
-        user: {
-          name: order.user?.name,
-          email: order.user?.email,
-        },
       },
     },
   });
@@ -737,6 +833,7 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       'arrived_destination',
       'local_dispatch',
       'out_for_delivery',
+      'delivery_attempted',
       'delivered',
       'cancelled',
       'refunded',
@@ -805,6 +902,25 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       await session.abortTransaction();
       session.endSession();
       return next(new AppError(transitionCheck.reason || 'Invalid status transition', 400));
+    }
+
+    // SECURITY: Prevent unpaid orders from being advanced to delivery states
+    // (seller crediting happens when status becomes delivered)
+    const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+    const isPaid = rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
+    if (
+      !isPaid &&
+      status !== order.currentStatus &&
+      !['cancelled', 'refunded'].includes(status)
+    ) {
+      await session.abortTransaction();
+      session.endSession();
+      return next(
+        new AppError(
+          'Cannot update order status while payment is pending. You may only cancel unpaid orders.',
+          400,
+        ),
+      );
     }
 
     const isInternational = order.orderType === 'preorder_international';
@@ -879,7 +995,7 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       order.status = 'cancelled';
       order.orderStatus = 'cancelled';
       order.FulfillmentStatus = 'cancelled';
-    } else if (status === 'out_for_delivery') {
+    } else if (status === 'out_for_delivery' || status === 'delivery_attempted') {
       order.orderStatus = 'shipped';
       order.FulfillmentStatus = 'shipped';
       order.status = 'processing';
@@ -916,9 +1032,9 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       // Don't fail the order update if SellerOrder sync fails
     }
 
-    // CRITICAL: Credit sellers ONLY when order status becomes "delivered"
-    // This is the ONLY place where sellers should be credited
-    if (status === 'delivered' && !wasCompleted) {
+    // Attempt seller credit on every delivered update.
+    // orderService.creditSellerForOrder is idempotent and prevents double-crediting.
+    if (status === 'delivered') {
       try {
         const balanceUpdateResult = await orderService.creditSellerForOrder(
           id,

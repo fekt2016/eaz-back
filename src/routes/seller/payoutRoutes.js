@@ -5,7 +5,7 @@
 const express = require('express');
 const payoutController = require('../../controllers/seller/payoutController');
 const authController = require('../../controllers/buyer/authController');
-const { otpLimiter } = require('../../middleware/rateLimiting/otpLimiter');
+const { otpLimiter, financialLimiter } = require('../../middleware/rateLimiting/otpLimiter');
 
 const router = express.Router();
 
@@ -22,14 +22,15 @@ router.get('/requests', payoutController.getSellerWithdrawalRequests);
 // Get seller balance
 router.get('/balance', payoutController.getSellerBalance);
 
+// SECURITY: All financial mutation endpoints require rate limiting
 // Cancel withdrawal request
-router.patch('/request/:id/cancel', payoutController.cancelWithdrawalRequest);
+router.patch('/request/:id/cancel', financialLimiter, payoutController.cancelWithdrawalRequest);
 
 // Delete withdrawal request
-router.delete('/request/:id', payoutController.deleteWithdrawalRequest);
+router.delete('/request/:id', financialLimiter, payoutController.deleteWithdrawalRequest);
 
 // Submit PIN for mobile money transfer
-router.post('/request/:id/submit-pin', payoutController.submitTransferPin);
+router.post('/request/:id/submit-pin', financialLimiter, payoutController.submitTransferPin);
 
 // Verify OTP for Paystack transfer
 router.post('/request/:id/verify-otp', otpLimiter, payoutController.verifyOtp);
@@ -38,7 +39,7 @@ router.post('/request/:id/verify-otp', otpLimiter, payoutController.verifyOtp);
 router.post('/request/:id/resend-otp', otpLimiter, payoutController.resendOtp);
 
 // Request reversal of a withdrawal
-router.post('/request/:id/request-reversal', payoutController.requestWithdrawalReversal);
+router.post('/request/:id/request-reversal', financialLimiter, payoutController.requestWithdrawalReversal);
 
 module.exports = router;
 

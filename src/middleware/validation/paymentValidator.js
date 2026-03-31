@@ -21,11 +21,17 @@ exports.validatePaystackInit = [
     }),
 
   body('email')
-    .notEmpty()
-    .withMessage('Email is required')
+    .optional({ values: 'falsy' })
     .isEmail()
     .withMessage('Invalid email format')
     .normalizeEmail(),
+
+  body('callbackBaseUrl')
+    .optional({ values: 'falsy' })
+    .isString()
+    .withMessage('callbackBaseUrl must be a string')
+    .isLength({ max: 2048 })
+    .withMessage('callbackBaseUrl is too long'),
 
   body('amount')
     .optional()
@@ -40,7 +46,7 @@ exports.validatePaystackInit = [
   // Reject unknown fields (prevent mass assignment)
   body()
     .custom((value, { req }) => {
-      const allowedFields = ['orderId', 'email', 'amount'];
+      const allowedFields = ['orderId', 'email', 'amount', 'callbackBaseUrl'];
       const receivedFields = Object.keys(req.body);
       const unknownFields = receivedFields.filter(field => !allowedFields.includes(field));
       
@@ -62,6 +68,41 @@ exports.validatePaymentVerification = [
 
   // Note: orderId and reference can come from query params for GET requests
   // This validator is for POST requests
+];
+
+// Validation rules for Paystack payment verification (POST)
+exports.validatePaystackVerify = [
+  body('reference')
+    .notEmpty()
+    .withMessage('Payment reference is required')
+    .customSanitizer((value) =>
+      typeof value === 'string' ? value.trim() : value
+    )
+    .isLength({ min: 10, max: 100 })
+    .withMessage('Payment reference must be between 10 and 100 characters')
+    .matches(/^[A-Za-z0-9\-_]+$/)
+    .withMessage('Payment reference contains invalid characters'),
+
+  body('orderId')
+    .optional({ values: 'null' })
+    .custom((value) => {
+      if (value == null || value === '') return true;
+      if (!mongoose.Types.ObjectId.isValid(value)) throw new Error('Invalid orderId format');
+      return true;
+    }),
+
+  // Reject unknown fields (prevent mass assignment)
+  body().custom((_, { req }) => {
+    const allowedFields = ['reference', 'orderId'];
+    const receivedFields = Object.keys(req.body || {});
+    const unknownFields = receivedFields.filter(
+      (field) => !allowedFields.includes(field)
+    );
+    if (unknownFields.length > 0) {
+      throw new Error(`Unknown fields not allowed: ${unknownFields.join(', ')}`);
+    }
+    return true;
+  }),
 ];
 
 // Middleware to handle validation errors

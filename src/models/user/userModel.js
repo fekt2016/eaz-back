@@ -335,8 +335,7 @@ userSchema.pre(/^find/, function (next) {
 //   return user;
 // };
 userSchema.methods.correctPassword = async function (candidatePassword) {
-  logger.info('candidatePassword', candidatePassword);
-  logger.info('userPassword', this.password);
+  // SECURITY: Never log passwords or hashes
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
@@ -373,7 +372,7 @@ userSchema.methods.createPasswordResetToken = function () {
 };
 userSchema.methods.createOtp = function () {
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = crypto.randomInt(100000, 1000000).toString();
 
   // Hash OTP before storing (SHA-256)
   const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');

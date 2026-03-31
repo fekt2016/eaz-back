@@ -23,8 +23,9 @@ exports.generateCSRFToken = (res) => {
 
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // CSRF token cookie must be readable by JavaScript (httpOnly: false)
-  // This allows the frontend to read it and send it in the X-CSRF-Token header
+  // SECURITY: Keep the CSRF cookie httpOnly. The frontend should obtain
+  // the token from the `/api/v1/csrf-token` response and send it via the
+  // `X-CSRF-Token` header.
   //
   // CRITICAL: In production, set domain to .saiisai.com so the cookie is shared
   // across all subdomains (seller.saiisai.com, admin.saiisai.com, saiisai.com).
@@ -35,7 +36,7 @@ exports.generateCSRFToken = (res) => {
     : undefined;
 
   const cookieOptions = {
-    httpOnly: false, // Must be readable by JavaScript
+    httpOnly: true,
     secure: isProduction, // HTTPS only in production
     sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
     path: '/',
@@ -77,6 +78,13 @@ exports.csrfProtection = (req, res, next) => {
   if (fullPath === '/api/v1/users/logout' ||
     fullPath === '/api/v1/admin/logout' ||
     fullPath === '/api/v1/seller/logout') {
+    return next();
+  }
+
+  // Skip CSRF for mobile seller app: it cannot read the CSRF cookie (React Native),
+  // and auth is via Authorization Bearer, so classic browser CSRF does not apply.
+  const isMobileSeller = req.headers['x-platform'] === 'saiisai-seller' || req.headers['x-mobile'] === 'true';
+  if (isMobileSeller) {
     return next();
   }
 
@@ -177,7 +185,7 @@ exports.clearCSRFToken = (res) => {
     : undefined;
 
   res.clearCookie('csrf-token', {
-    httpOnly: false,
+    httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     path: '/',

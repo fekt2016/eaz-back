@@ -11,6 +11,7 @@ const INTERNATIONAL_PREORDER_FLOW = [
   'arrived_destination',    // Arrived in destination country/warehouse
   'local_dispatch',         // Handed to local courier
   'out_for_delivery',       // Rider is out for delivery
+  'delivery_attempted',     // Attempted delivery but buyer unavailable
   'delivered',              // Completed
 ];
 
@@ -61,6 +62,16 @@ function validateStatusTransition(order, nextStatus, actorRole) {
 
   // International pre-order strict flow
   if (orderType === 'preorder_international') {
+    // Allow explicit retry flow around doorstep attempt:
+    // out_for_delivery -> delivery_attempted -> out_for_delivery/delivered
+    if (
+      (currentStatus === 'out_for_delivery' && nextStatus === 'delivery_attempted') ||
+      (currentStatus === 'delivery_attempted' &&
+        (nextStatus === 'out_for_delivery' || nextStatus === 'delivered'))
+    ) {
+      return { allowed: true };
+    }
+
     // Terminal statuses are always allowed (cancellation / refund)
     if (TERMINAL_STATUSES.has(nextStatus)) {
       return { allowed: true };

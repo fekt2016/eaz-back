@@ -91,13 +91,19 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
 
   user.password = undefined;
 
-  // SECURITY: Token is ONLY in HTTP-only cookie, NOT in JSON response
-  // This prevents XSS attacks from stealing tokens
+  // For mobile seller app: also send accessToken in body so app can use Authorization
+  // header when cookie is not sent (e.g. multipart/form-data on React Native).
+  const isMobileSeller =
+    req &&
+    cookieName === 'seller_jwt' &&
+    (req.headers['x-platform'] === 'saiisai-seller' || req.headers['x-mobile'] === 'true');
+
   const response = {
     status: 'success',
     message: 'Authentication successful',
     data: {
       user,
+      ...(isMobileSeller && { accessToken: token }),
     },
   };
 

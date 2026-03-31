@@ -1,6 +1,7 @@
 const express = require('express');
 const recommendationController = require('../../controllers/shared/recommendationController');
 const authController = require('../../controllers/buyer/authController');
+const { optionalAuth } = require('../../middleware/auth/optionalAuth');
 
 const router = express.Router();
 
@@ -23,10 +24,10 @@ router.get(
   recommendationController.getRecentlyViewed
 );
 
-// Activity tracking (public but can be authenticated)
+// Activity tracking: optional auth — works for guests (sessionId) and logged-in users (userId)
 router.post(
   '/track',
-  authController.protect, // Optional
+  optionalAuth,
   recommendationController.trackActivity
 );
 

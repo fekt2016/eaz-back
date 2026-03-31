@@ -32,38 +32,43 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
   // Explicitly ensure withdrawableBalance is set correctly (double-check)
   const calculatedWithdrawable = Math.max(0, (seller.balance || 0) - (seller.lockedBalance || 0) - (seller.pendingBalance || 0));
   if (Math.abs((seller.withdrawableBalance || 0) - calculatedWithdrawable) > 0.01) {
-    // Only save if there's a significant discrepancy (more than 1 cent)
+    // SECURITY FIX: Use atomic update to avoid racing with concurrent withdrawals
+    await Seller.updateOne(
+      { _id: sellerId },
+      { $set: { withdrawableBalance: calculatedWithdrawable } }
+    );
     seller.withdrawableBalance = calculatedWithdrawable;
-    await seller.save(); // Save if there's a discrepancy
     logger.info(`[getSellerBalance] Corrected withdrawableBalance for seller ${sellerId}: ${seller.withdrawableBalance}`);
   }
 
-  // Calculate total withdrawals (sum of all paid/approved withdrawal requests)
-  // Use amountRequested if available (the actual amount that left the account), otherwise use amount
-  const totalWithdrawals = await PaymentRequest.aggregate([
+  // Calculate total withdrawn: sum debit transactions linked to a payout request (paid withdrawals)
+  // Using Transaction is authoritative — covers both PaymentRequest and WithdrawalRequest paths
+  const withdrawnAgg = await Transaction.aggregate([
     {
       $match: {
         seller: new mongoose.Types.ObjectId(sellerId),
-        status: { $in: ['paid', 'approved', 'success'] }, // Only count successful withdrawals
+        type: 'debit',
+        status: 'completed',
+        payoutRequest: { $exists: true, $ne: null },
       },
     },
-    {
-      $group: {
-        _id: null,
-        total: { 
-          $sum: { 
-            $ifNull: ['$amountRequested', '$amount'] // Use amountRequested if available, fallback to amount
-          } 
-        },
-      },
-    },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
+  const totalWithdrawn = withdrawnAgg[0]?.total || 0;
 
-  const totalWithdrawn = totalWithdrawals.length > 0 ? totalWithdrawals[0].total : 0;
-
-  // Calculate total revenue: balance (current) + totalWithdrawn (all time)
-  // This represents all earnings from delivered orders
-  const totalRevenue = (seller.balance || 0) + (totalWithdrawn || 0);
+  // Calculate total revenue: order earnings + admin adjustments (both increase seller's revenue)
+  const revenueAgg = await Transaction.aggregate([
+    {
+      $match: {
+        seller: new mongoose.Types.ObjectId(sellerId),
+        source: { $in: ['order_delivery', 'admin_adjustment'] },
+        type: 'credit',
+        status: 'completed',
+      },
+    },
+    { $group: { _id: null, total: { $sum: '$amount' } } },
+  ]);
+  const totalRevenue = revenueAgg[0]?.total || 0;
 
   // Compute payout verification status: Seller.paymentMethods first, then PaymentMethod records (fallback)
   let payoutCheck = hasVerifiedPayoutMethod(seller);
@@ -111,15 +116,14 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
       pendingBalance: seller.pendingBalance || 0, // Funds in withdrawal requests awaiting approval/OTP
       withdrawableBalance: seller.withdrawableBalance || 0, // Available balance (can be withdrawn)
       availableBalance: seller.withdrawableBalance || 0, // Alias for backward compatibility
-      totalWithdrawn: totalWithdrawn || 0, // Total amount withdrawn by seller (all time)
-      totalRevenue: totalRevenue || 0, // Total revenue = balance + totalWithdrawn (all earnings from delivered orders)
-      payoutStatus, // 'verified' | 'pending' | 'rejected' - from bankAccount.payoutStatus or mobileMoney.payoutStatus
-      payoutRejectionReason, // Reason if rejected (for wallet page withdrawal guard)
+      totalWithdrawn: totalWithdrawn || 0, // Sum of completed debit transactions linked to payout requests
+      totalRevenue: totalRevenue || 0, // Sum of all completed credit transactions (true lifetime earnings)
+      payoutStatus, // 'verified' | 'pending' | 'rejected'
+      payoutRejectionReason,
       seller: {
         name: seller.name,
         shopName: seller.shopName,
       },
-      // Verification: totalRevenue = balance + totalWithdrawn
       // Verification: balance = withdrawableBalance + lockedBalance + pendingBalance
     },
   });
@@ -131,16 +135,18 @@ exports.getSellerBalance = catchAsync(async (req, res, next) => {
  */
 exports.getSellerTransactions = catchAsync(async (req, res, next) => {
   const sellerId = req.user.id;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20)); // SECURITY: cap at 100
   const skip = (page - 1) * limit;
 
-  // Build filter
+  // Build filter — SECURITY: whitelist query values to prevent NoSQL injection
   const filter = { seller: sellerId };
-  if (req.query.type) {
-    filter.type = req.query.type; // 'credit' or 'debit'
+  const allowedTypes = ['credit', 'debit'];
+  const allowedStatuses = ['pending', 'completed', 'failed', 'cancelled'];
+  if (req.query.type && typeof req.query.type === 'string' && allowedTypes.includes(req.query.type)) {
+    filter.type = req.query.type;
   }
-  if (req.query.status) {
+  if (req.query.status && typeof req.query.status === 'string' && allowedStatuses.includes(req.query.status)) {
     filter.status = req.query.status;
   }
 
@@ -170,6 +176,44 @@ exports.getSellerTransactions = catchAsync(async (req, res, next) => {
     totalPages: Math.ceil(total / limit),
     data: {
       transactions,
+    },
+  });
+});
+
+/**
+ * Get single transaction by ID (seller must own it)
+ * GET /api/v1/seller/me/transactions/:id
+ */
+exports.getSellerTransactionById = catchAsync(async (req, res, next) => {
+  const sellerId = req.user.id;
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return next(new AppError('Invalid transaction ID', 400));
+  }
+
+  const transaction = await Transaction.findOne({
+    _id: id,
+    seller: sellerId,
+  })
+    .populate({
+      path: 'sellerOrder',
+      select: 'subtotal shippingCost tax order',
+      populate: {
+        path: 'order',
+        select: 'orderNumber totalPrice createdAt',
+      },
+    })
+    .lean();
+
+  if (!transaction) {
+    return next(new AppError('Transaction not found', 404));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      transaction,
     },
   });
 });
@@ -308,8 +352,14 @@ exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
     sortOrder = 'desc',
   } = req.query;
 
-  const skip = (parseInt(page) - 1) * parseInt(limit);
-  const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
+  const parsedPage = Math.max(1, parseInt(page) || 1);
+  const parsedLimit = Math.min(100, Math.max(1, parseInt(limit) || 20)); // SECURITY: cap at 100
+  const skip = (parsedPage - 1) * parsedLimit;
+
+  // SECURITY: Whitelist sortBy to prevent arbitrary field probing
+  const allowedSortFields = ['createdAt', 'amount', 'type'];
+  const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const sort = { [safeSortBy]: sortOrder === 'desc' ? -1 : 1 };
 
   // Build query
   const query = { sellerId: new mongoose.Types.ObjectId(sellerId) };
@@ -351,7 +401,7 @@ exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
     SellerRevenueHistory.find(query)
       .sort(sort)
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(parsedLimit)
       .populate('orderId', 'orderNumber totalPrice')
       .populate('refundId', 'status totalRefundAmount')
       .populate('payoutRequestId', 'status amount')
@@ -364,10 +414,10 @@ exports.getSellerRevenueHistory = catchAsync(async (req, res, next) => {
     status: 'success',
     results: history.length,
     pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: parsedPage,
+      limit: parsedLimit,
       total,
-      pages: Math.ceil(total / parseInt(limit)),
+      pages: Math.ceil(total / parsedLimit),
     },
     data: {
       seller: seller ? {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 /**
  * Support Ticket Model
@@ -12,7 +13,7 @@ const supportTicketSchema = new mongoose.Schema(
       required: true,
       default: () => {
         const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 10000);
+        const random = crypto.randomInt(0, 10000);
         return `TKT-${timestamp}-${random}`;
       },
     },

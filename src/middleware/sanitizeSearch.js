@@ -61,3 +61,30 @@ exports.sanitizeSearchQuery = (req, res, next) => {
 
     next();
 };
+
+/**
+ * Sanitize a search term in route params.
+ * Example: /search/query/:query, /search/suggestions/:query
+ */
+exports.sanitizeSearchParam = (paramName = 'query') => (req, res, next) => {
+  const raw = req.params?.[paramName];
+  if (raw === undefined || raw === null) {
+    return next();
+  }
+
+  const searchString = String(raw);
+  const MAX_LENGTH = 100;
+  if (searchString.length > MAX_LENGTH) {
+    return next(
+      new AppError(`Search query too long (max ${MAX_LENGTH} characters)`, 400)
+    );
+  }
+
+  const sanitized = searchString.replace(/[^\w\s-]/g, '').trim();
+  if (!sanitized) {
+    return next(new AppError('Invalid search query', 400));
+  }
+
+  req.params[paramName] = sanitized;
+  return next();
+};

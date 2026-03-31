@@ -28,14 +28,6 @@ const platformSettingsSchema = new mongoose.Schema({
     max: 1,
     comment: 'GETFund rate (2.5%)',
   },
-  // COVID Levy
-  covidLevyRate: {
-    type: Number,
-    default: 0.01, // 1%
-    min: 0,
-    max: 1,
-    comment: 'COVID levy rate (1%)',
-  },
   // Withholding Tax Rates
   withholdingIndividual: {
     type: Number,

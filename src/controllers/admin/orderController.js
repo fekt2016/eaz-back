@@ -339,3 +339,93 @@ exports.backfillSellerCredits = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * Reconcile delivered orders with ORDER_EARNING history but missing credit transactions
+ * POST /api/v1/order/reconcile-seller-credits
+ * Body: { limit?: number } (optional, default 100, max 500)
+ */
+exports.reconcileSellerCredits = catchAsync(async (req, res, next) => {
+  const adminId = req.user.id;
+  const limit = req.body?.limit;
+  const dryRun = req.body?.dryRun === true;
+  const result = await orderService.reconcileDeliveredOrdersMissingCreditTx(
+    adminId,
+    { limit, dryRun }
+  );
+
+  logger.info(
+    `[reconcileSellerCredits] Processed: ${result.processed}, reconciled: ${result.reconciled}, skipped: ${result.skipped}`
+  );
+
+  res.status(200).json({
+    status: 'success',
+    message: dryRun
+      ? `Dry run complete. ${result.reconciled} order(s) would be reconciled, ${result.skipped} skipped.`
+      : `Reconciliation complete. Reconciled ${result.reconciled} order(s), skipped ${result.skipped}.`,
+    data: result,
+  });
+});
+
+/**
+ * Reconcile a single delivered order if history exists but credit tx is missing
+ * POST /api/v1/order/reconcile-seller-credit/:orderId
+ * Body: { dryRun?: boolean }
+ */
+exports.reconcileSingleSellerCredit = catchAsync(async (req, res, next) => {
+  const adminId = req.user.id;
+  const { orderId } = req.params;
+  const dryRun = req.body?.dryRun === true;
+  const reconciliationType = req.body?.reconciliationType;
+  const adjustmentAmount = req.body?.adjustmentAmount;
+  const sellerId = req.body?.sellerId;
+
+  const result =
+    await orderService.reconcileSingleDeliveredOrderMissingCreditTx(
+      orderId,
+      adminId,
+      { dryRun, reconciliationType, adjustmentAmount, sellerId }
+    );
+
+  logger.info(
+    `[reconcileSingleSellerCredit] orderId=${orderId} dryRun=${dryRun} success=${result.success} reconciled=${result.reconciled}`
+  );
+
+  res.status(result.success ? 200 : 400).json({
+    status: result.success ? 'success' : 'fail',
+    message: result.message,
+    data: result,
+  });
+});
+
+/**
+ * Reconcile a single order using either order ObjectId or orderNumber
+ * POST /api/v1/order/reconcile-seller-credit
+ * Body: { identifier: string, dryRun?: boolean }
+ */
+exports.reconcileSingleSellerCreditByIdentifier = catchAsync(
+  async (req, res, next) => {
+    const adminId = req.user.id;
+    const identifier = req.body?.identifier;
+    const dryRun = req.body?.dryRun === true;
+    const reconciliationType = req.body?.reconciliationType;
+    const adjustmentAmount = req.body?.adjustmentAmount;
+    const sellerId = req.body?.sellerId;
+
+    const result = await orderService.reconcileSingleByIdentifier(
+      identifier,
+      adminId,
+      { dryRun, reconciliationType, adjustmentAmount, sellerId }
+    );
+
+    logger.info(
+      `[reconcileSingleSellerCreditByIdentifier] identifier=${identifier} dryRun=${dryRun} success=${result.success} reconciled=${result.reconciled}`
+    );
+
+    res.status(result.success ? 200 : 400).json({
+      status: result.success ? 'success' : 'fail',
+      message: result.message,
+      data: result,
+    });
+  }
+);
+

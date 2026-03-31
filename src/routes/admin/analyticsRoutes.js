@@ -2,14 +2,22 @@ const express = require('express');
 const analyticsController = require('../../controllers/admin/analyticsController');
 const authController = require('../../controllers/buyer/authController');
 const authSellerController = require('../../controllers/seller/authSellerController');
+const {
+  analyticsIngestionLimiter,
+} = require('../../middleware/rateLimiting/analyticsLimiter');
 const router = express.Router();
 
 router.post(
   '/views',
   // Allow both authenticated and anonymous users to record views
-  // Remove authentication requirement - product views should be trackable for all users
+  analyticsIngestionLimiter,
   analyticsController.recordView,
 );
+
+router.post('/screen-views', analyticsIngestionLimiter, analyticsController.recordScreenView);
+router.post('/search', analyticsIngestionLimiter, analyticsController.recordSearchQuery);
+router.post('/category-views', analyticsIngestionLimiter, analyticsController.recordCategoryView);
+router.post('/seller-views', analyticsIngestionLimiter, analyticsController.recordSellerView);
 
 // Seller analytics - allow sellers to view their own analytics
 router.get(
@@ -20,4 +28,4 @@ router.get(
   analyticsController.getSellerProductViews,
 );
 
-module.exports = router;;
+module.exports = router;

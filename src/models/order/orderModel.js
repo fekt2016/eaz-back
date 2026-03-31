@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const orderSchema = new mongoose.Schema(
   {
@@ -25,7 +26,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
       default: () => {
         const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 10000);
+        const random = crypto.randomInt(0, 10000);
         return `ORD-${timestamp}-${random}`;
       },
     },
@@ -98,11 +99,6 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       comment: 'Total GETFund (2.5%)',
-    },
-    totalCovidLevy: {
-      type: Number,
-      default: 0,
-      comment: 'Total COVID levy (1%)',
     },
     totalTax: {
       type: Number,
@@ -298,6 +294,7 @@ const orderSchema = new mongoose.Schema(
         'arrived_destination',
         'local_dispatch',
         'out_for_delivery',
+        'delivery_attempted',
         'delivered',
         'cancelled',
         'refunded',
@@ -323,6 +320,7 @@ const orderSchema = new mongoose.Schema(
             'arrived_destination',
             'local_dispatch',
             'out_for_delivery',
+            'delivery_attempted',
             'delivered',
             'cancelled',
             'refunded',
@@ -541,6 +539,17 @@ orderSchema.pre('save', function (next) {
     }
   }
 
+  next();
+});
+
+/**
+ * PRE-SAVE HOOK: Sync shipping fees
+ * Keeps shippingCost in sync with shippingFee for backward compatibility
+ */
+orderSchema.pre('save', function (next) {
+  if (this.isModified('shippingFee')) {
+    this.shippingCost = this.shippingFee;
+  }
   next();
 });
 
