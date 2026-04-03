@@ -2,12 +2,28 @@ const express = require('express');
 const shippingQuoteController = require('../../controllers/shared/shippingQuoteController');
 const shippingCalculationController = require('../../controllers/shared/shippingCalculationController');
 const shippingController = require('../../controllers/shared/shippingController');
-const authController = require('../../controllers/buyer/authController');
 const PickupCenter = require('../../models/shipping/pickupCenterModel');
+const SaiisaiShippingFees = require('../../models/shipping/saiisaiShippingFeesModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const logger = require('../../utils/logger');
 
 const router = express.Router();
+
+/** Public: minimum cart subtotal (GHS) for free delivery messaging — from platform shipping fees */
+router.get(
+  '/free-delivery',
+  catchAsync(async (req, res) => {
+    const fees = await SaiisaiShippingFees.getOrCreate();
+    const raw = fees.freeDeliveryThreshold;
+    const freeDeliveryThreshold =
+      raw != null && Number(raw) > 0 ? Math.round(Number(raw) * 100) / 100 : null;
+
+    res.status(200).json({
+      status: 'success',
+      data: { freeDeliveryThreshold },
+    });
+  }),
+);
 
 // Get active pickup centers (public endpoint for checkout)
 router.get(

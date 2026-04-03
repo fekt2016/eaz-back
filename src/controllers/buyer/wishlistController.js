@@ -17,6 +17,10 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const Product = require('../../models/product/productModel');
 const logger = require('../../utils/logger');
 
+/** Populated fields for wishlist product cards (needs images[] when imageCover is empty/stale). */
+const WISHLIST_PRODUCT_SELECT =
+  'name price imageCover coverImage images variants stock status defaultPrice minPrice maxPrice seller';
+
 /**
  * Helper function to calculate totalStock for products
  * @param {Array} products - Array of wishlist items with populated products
@@ -72,7 +76,7 @@ exports.getWishlist = catchAsync(async (req, res, next) => {
   const wishlist = await WishList.findOne({ user: req.user.id })
     .populate({
       path: 'products.product',
-      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      select: WISHLIST_PRODUCT_SELECT,
       // Don't fail if product is deleted - just return null
       strictPopulate: false,
     })
@@ -157,7 +161,7 @@ exports.addToWishlist = catchAsync(async (req, res, next) => {
     }
   ).populate({
     path: 'products.product',
-    select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    select: WISHLIST_PRODUCT_SELECT,
     strictPopulate: false, // Don't fail if product is deleted
   });
 
@@ -232,7 +236,7 @@ exports.removeFromWishlist = catchAsync(async (req, res, next) => {
     }
   ).populate({
     path: 'products.product',
-    select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+    select: WISHLIST_PRODUCT_SELECT,
     strictPopulate: false, // Don't fail if product is deleted
   });
 
@@ -317,7 +321,7 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
       }
     ).populate({
       path: 'products.product',
-      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      select: WISHLIST_PRODUCT_SELECT,
       strictPopulate: false, // Don't fail if product is deleted
     });
     // Filter out null products and soft-deleted products
@@ -351,7 +355,7 @@ exports.toggleWishlist = catchAsync(async (req, res, next) => {
       }
     ).populate({
       path: 'products.product',
-      select: 'name price imageCover variants stock status defaultPrice minPrice maxPrice seller',
+      select: WISHLIST_PRODUCT_SELECT,
       strictPopulate: false, // Don't fail if product is deleted
     });
     // Filter out null products and soft-deleted products
@@ -442,7 +446,7 @@ exports.getOrCreateGuestWishlist = catchAsync(async (req, res, next) => {
     }
   ).populate({
     path: 'products.product',
-    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+    select: WISHLIST_PRODUCT_SELECT,
     strictPopulate: false, // Don't fail if product is deleted
   });
 
@@ -507,7 +511,7 @@ exports.addToGuestWishlist = catchAsync(async (req, res, next) => {
     }
   ).populate({
     path: 'products.product',
-    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+    select: WISHLIST_PRODUCT_SELECT,
   });
 
   // Check if product was actually added
@@ -559,7 +563,7 @@ exports.removeFromGuestWishlist = catchAsync(async (req, res, next) => {
     }
   ).populate({
     path: 'products.product',
-    select: 'name price images seller variants stock status defaultPrice minPrice maxPrice',
+    select: WISHLIST_PRODUCT_SELECT,
   });
 
   if (!wishlist) {
@@ -660,7 +664,7 @@ exports.mergeWishlists = catchAsync(async (req, res, next) => {
   // Populate the merged wishlist
   await userWishlist.populate({
     path: 'products.product',
-    select: 'name price images seller',
+    select: WISHLIST_PRODUCT_SELECT,
     strictPopulate: false, // Don't fail if product is deleted
   });
 

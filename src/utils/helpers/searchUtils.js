@@ -191,6 +191,43 @@ exports.buildTextSearchQuery = (query) => {
 };
 
 /**
+ * Match every query token as a case-insensitive substring on key product fields.
+ * Unlike MongoDB $text, this finds tokens inside words (e.g. "phone" matches "iPhone").
+ * Multi-word queries use AND semantics: each token must match somewhere.
+ * @param {string} query - Search query
+ * @returns {Object|null} - A fragment suitable for { $and: [ buyerSafeFilter, fragment ] }
+ */
+exports.buildInclusiveKeywordQuery = (query) => {
+  const normalized = exports.normalizeQuery(query);
+  if (!normalized || normalized.length < 2) return null;
+
+  const tokens = exports.tokenizeQuery(normalized);
+  if (tokens.length === 0) return null;
+
+  const matchTokenAcrossFields = (token) => {
+    const escaped = exports.escapeRegex(token);
+    const rx = new RegExp(escaped, 'i');
+    return {
+      $or: [
+        { name: rx },
+        { brand: rx },
+        { description: rx },
+        { tags: rx },
+        { 'manufacturer.name': rx },
+        { 'specifications.color.name': rx },
+        { 'variants.attributes.value': rx },
+      ],
+    };
+  };
+
+  if (tokens.length === 1) {
+    return matchTokenAcrossFields(tokens[0]);
+  }
+
+  return { $and: tokens.map(matchTokenAcrossFields) };
+};
+
+/**
  * Build fallback regex query for when $text search returns no results
  * @param {string} query - Search query
  * @param {Object} options - Additional options
@@ -221,8 +258,10 @@ exports.buildFallbackQuery = (query, options = {}) => {
     orConditions.push({ brand: { $regex: tokens.join('|'), $options: 'i' } });
   }
 
-  // Tags matching
-  orConditions.push({ tags: { $in: tokens } });
+  // Tags matching (substring on any tag, not exact token equality)
+  orConditions.push({
+    tags: { $regex: tokens.map(exports.escapeRegex).join('|'), $options: 'i' },
+  });
 
   // Description matching (lower priority)
   orConditions.push({ description: { $regex: tokens.join('|'), $options: 'i' } });

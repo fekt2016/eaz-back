@@ -1401,3 +1401,543 @@
 {"level":"info","message":"[WithdrawalCleanupJob] 🔍 Starting cleanup of stuck withdrawals...","service":"backend-api","timestamp":"2026-03-13 01:00:00"}
 {"level":"info","message":"[WithdrawalCleanupJob] Found 0 stuck withdrawals","service":"backend-api","timestamp":"2026-03-13 01:00:00"}
 {"level":"info","message":"[WithdrawalCleanupJob] ✅ Cleanup complete: 0 refunded, 0 errors","service":"backend-api","timestamp":"2026-03-13 01:00:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.237 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.534 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.576 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.558 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.591 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.625 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.655 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.636 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.876 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.733 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 3.639 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:37"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.557 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:39"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.585 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:40"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.655 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:41"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.528 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:42"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 2.815 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:43"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.595 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:43"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.554 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.337 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:46"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.813 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.124 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.712 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.548 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.563 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.647 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.842 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.183 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.606 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.011 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.665 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.568 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.979 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.667 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.646 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.627 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.684 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.547 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.537 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.711 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.169 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.539 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.713 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.550 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.655 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.087 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.687 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.599 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.531 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.110 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.597 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.072 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.602 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.719 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.654 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:58"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.614 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:58"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.241 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.598 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.036 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.983 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:34:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.599 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.669 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.117 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.006 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.308 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.114 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:02"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.791 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:02"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.117 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.272 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.588 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.962 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.574 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.537 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.648 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.895 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.669 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.610 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.882 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.593 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.560 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.582 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.800 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.031 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.974 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:07"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.546 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.523 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.687 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:08"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.552 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.687 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.684 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.926 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:09"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.518 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.578 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.648 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:10"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.890 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 2.177 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.883 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:11"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.872 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 2.218 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.550 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:12"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.529 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.639 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.570 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:13"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.697 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.625 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.517 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:14"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.587 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.669 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.833 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:15"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.541 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.576 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.648 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:16"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.585 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.190 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.563 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.594 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:17"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.734 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.613 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.619 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:18"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.584 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.648 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.572 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.771 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:19"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.524 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.592 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.526 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:20"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.561 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.310 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.692 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.590 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:21"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:22"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.562 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:22"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.781 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:22"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.681 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.702 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.802 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.619 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:23"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.636 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.408 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.817 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:24"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.574 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.533 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.575 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.592 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:25"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.395 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.595 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.687 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:26"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.600 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.786 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.222 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.891 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:27"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.635 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.129 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.554 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:28"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.795 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.573 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.728 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:29"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.546 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.129 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.911 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.443 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:30"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.957 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.562 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.501 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:31"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.553 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.590 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.252 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.696 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:32"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.695 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.800 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.498 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:33"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.657 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.647 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.710 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:34"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.712 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.579 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.567 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:35"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.522 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.519 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.732 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:36"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.602 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.520 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.487 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:37"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.721 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.860 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.673 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:38"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.567 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.013 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.502 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:39"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.572 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.771 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.555 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:40"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.553 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.536 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 2.906 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:41"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:42"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.656 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:42"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.844 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:42"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.194 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 2.889 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.534 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:43"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.693 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.217 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.546 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:44"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.674 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.618 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.492 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:45"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.553 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.713 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.667 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:46"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.542 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.498 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.772 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:47"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.919 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:48"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.147 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:48"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.492 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:49"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.677 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:49"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.051 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.507 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.530 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:50"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.071 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.557 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.507 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:51"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.861 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.537 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.555 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:52"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:53"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.607 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:53"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.528 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:53"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.911 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.511 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.741 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:54"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.712 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.864 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.265 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:55"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.046 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.539 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.591 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:56"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:57"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.563 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:57"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.945 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:57"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.699 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.615 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.097 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:58"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.575 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.505 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.359 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:35:59"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:00"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.557 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:00"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.493 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:00"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.686 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:01"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.670 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:01"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.911 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.584 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 4.643 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:02"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.628 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 1.283 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.795 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:03"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.599 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.496 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.522 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:04"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.495 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.542 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.734 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:05"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.749 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.900 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"debug","message":"[CORS] Development - allowing origin: http://localhost:5173","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"info","message":"\u001b[0mPOST /api/v1/analytics/screen-views \u001b[32m200\u001b[0m 0.508 ms - 53\u001b[0m","service":"backend-api","timestamp":"2026-04-01 09:36:06"}
+{"level":"info","message":"SIGINT received. Shutting down gracefully...","service":"backend-api","timestamp":"2026-04-01 09:36:06"}

@@ -9,14 +9,36 @@ const logger = require('../../utils/logger');
 const {
   normalizeQuery,
   tokenizeQuery,
-  buildTextSearchQuery,
-  buildFallbackQuery,
+  buildInclusiveKeywordQuery,
   buildSearchRegex,
   buildFuzzyRegexes,
   escapeRegex,
-  calculateRelevanceScore,
   expandKeywords,
 } = require('../../utils/helpers/searchUtils');
+
+const mergeBuyerSafeWithInclusiveSearch = (buyerSafeQuery, inclusiveFragment) => {
+  if (!inclusiveFragment) return null;
+  return { $and: [buyerSafeQuery, inclusiveFragment] };
+};
+
+const buildExpandedFuzzyRegexes = (terms = []) => {
+  const seen = new Set();
+  const patterns = [];
+
+  terms.forEach((term) => {
+    const regexes = buildFuzzyRegexes(term) || [];
+    regexes.forEach((regex) => {
+      if (!(regex instanceof RegExp)) return;
+      const key = `${regex.source}/${regex.flags}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        patterns.push(regex);
+      }
+    });
+  });
+
+  return patterns;
+};
 
 /**
  * @desc    Get search suggestions (autocomplete)
@@ -56,6 +78,10 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
   }
 
   const tokens = tokenizeQuery(normalized);
+  const expandedKeywords = await expandKeywords(searchTerm, aiSearchService.isAIEnabled());
+  const expandedTerms = [normalized, ...expandedKeywords].filter(Boolean);
+  const expandedTokens = [...new Set(expandedTerms.flatMap((term) => tokenizeQuery(term)))];
+  const expandedNameRegexes = buildExpandedFuzzyRegexes(expandedTerms);
   const suggestions = [];
 
   try {
@@ -82,7 +108,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
       await Promise.all([
         // Product name matches (optimized with limit, using fuzzy logic for typo tolerance)
         Product.find({
-          name: { $in: buildFuzzyRegexes(searchTerm) },
+          name: { $in: expandedNameRegexes },
           status: 'active',
           isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
@@ -110,7 +136,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
 
         // Tags (using $in for exact matches)
         Product.distinct('tags', {
-          tags: { $in: tokens },
+          tags: { $in: expandedTokens.length > 0 ? expandedTokens : tokens },
           status: 'active',
           isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
@@ -120,7 +146,7 @@ exports.getSearchSuggestions = catchAsync(async (req, res) => {
 
         // Sellers
         Seller.find({
-          shopName: { $in: buildFuzzyRegexes(searchTerm) },
+          shopName: { $in: expandedNameRegexes },
           status: 'active',
         })
           .select('shopName avatar')
@@ -258,12 +284,16 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
     }
 
     const tokens = tokenizeQuery(normalized);
+    const expandedKeywords = await expandKeywords(searchTerm, aiSearchService.isAIEnabled());
+    const expandedTerms = [normalized, ...expandedKeywords].filter(Boolean);
+    const expandedTokens = [...new Set(expandedTerms.flatMap((term) => tokenizeQuery(term)))];
+    const expandedNameRegexes = buildExpandedFuzzyRegexes(expandedTerms);
 
     // Parallel queries for suggestions
     const [productResults, categoryResults, brandResults, tagResults, sellerResults] =
       await Promise.all([
         Product.find({
-          name: { $in: buildFuzzyRegexes(searchTerm) },
+          name: { $in: expandedNameRegexes },
           status: 'active',
           isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
@@ -289,7 +319,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         }),
 
         Product.distinct('tags', {
-          tags: { $in: tokens },
+          tags: { $in: expandedTokens.length > 0 ? expandedTokens : tokens },
           status: 'active',
           isVisible: true,
           isDeleted: { $ne: true }, // Exclude deleted products
@@ -298,7 +328,7 @@ exports.searchProducts = catchAsync(async (req, res, next) => {
         }),
 
         Seller.find({
-          shopName: { $in: buildFuzzyRegexes(searchTerm) },
+          shopName: { $in: expandedNameRegexes },
           status: 'active',
         })
           .select('shopName avatar')
@@ -522,19 +552,18 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
 
   // Handle different search types
   if (type === 'product' && normalized) {
-    // Product name search with text index
-    const textQuery = buildTextSearchQuery(normalized);
-    if (textQuery) {
-      // Merge text query with buyer-safe query
-      const query = { ...buyerSafeQuery, ...textQuery };
-      logger.info('[SEARCH] Text Query Executing:', JSON.stringify(query));
+    // Substring-inclusive search (matches tokens inside words, e.g. "phone" → "iPhone")
+    const inclusiveFragment = buildInclusiveKeywordQuery(normalized);
+    const query = mergeBuyerSafeWithInclusiveSearch(buyerSafeQuery, inclusiveFragment);
+
+    if (query) {
+      logger.info('[SEARCH] Inclusive product query executing');
       const countQuery = Product.countDocuments(query);
       const findQuery = Product.find(query)
         .select('-__v')
         .populate('parentCategory', 'name slug')
         .populate('subCategory', 'name slug');
 
-      // Apply sorting
       switch (sortBy) {
         case 'price-low':
           findQuery.sort({ minPrice: 1 });
@@ -548,64 +577,17 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
         case 'newest':
           findQuery.sort({ createdAt: -1 });
           break;
-        default: // relevance
-          findQuery.sort({ score: { $meta: 'textScore' } });
+        default:
+          findQuery.sort({ totalSold: -1, ratingsAverage: -1 });
       }
 
-      // Apply pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
       findQuery.skip(skip).limit(parseInt(limit));
 
       [totalProducts, products] = await Promise.all([countQuery, findQuery]);
-
-      // If no results from text search, try fallback
-      if (products.length === 0) {
-        const fallbackQuery = buildFallbackQuery(normalized, {
-          categoryId: categoryId || (category ? (await Category.findOne({ name: { $regex: `^${category.trim()}$`, $options: 'i' } }))?._id : null),
-          brand,
-          minPrice,
-          maxPrice,
-          inStock: inStock === 'true' || inStock === true,
-          onSale: onSale === 'true' || onSale === true,
-        });
-
-        if (fallbackQuery) {
-          // Merge fallback query with buyer-safe query
-          const safeFallbackQuery = { ...buyerSafeQuery, ...fallbackQuery };
-          logger.info('[SEARCH] Fallback Query Executing:', JSON.stringify(safeFallbackQuery));
-          const fallbackFindQuery = Product.find(safeFallbackQuery)
-            .select('-__v')
-            .populate('parentCategory', 'name slug')
-            .populate('subCategory', 'name slug');
-
-          // Apply same sorting
-          switch (sortBy) {
-            case 'price-low':
-              fallbackFindQuery.sort({ minPrice: 1 });
-              break;
-            case 'price-high':
-              fallbackFindQuery.sort({ minPrice: -1 });
-              break;
-            case 'rating':
-              fallbackFindQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
-              break;
-            case 'newest':
-              fallbackFindQuery.sort({ createdAt: -1 });
-              break;
-            default:
-              // Sort by relevance score
-              fallbackFindQuery.sort({ totalSold: -1, ratingsAverage: -1 });
-          }
-
-          const skip = (parseInt(page) - 1) * parseInt(limit);
-          fallbackFindQuery.skip(skip).limit(parseInt(limit));
-
-          [totalProducts, products] = await Promise.all([
-            Product.countDocuments(safeFallbackQuery),
-            fallbackFindQuery,
-          ]);
-        }
-      }
+    } else {
+      totalProducts = 0;
+      products = [];
     }
   } else if (type === 'category' && category) {
     // Category search
@@ -686,40 +668,50 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
 
     [totalProducts, products] = await Promise.all([countQuery, findQuery]);
   } else if (type === 'tag' && normalized) {
-    // Tag search
+    // Tag search — substring on tags array (each token must match some tag)
     const tokens = tokenizeQuery(normalized);
-    const query = {
-      ...buyerSafeQuery,
-      tags: { $in: tokens },
-    };
+    if (tokens.length === 0) {
+      totalProducts = 0;
+      products = [];
+    } else {
+      const tagFragment =
+        tokens.length === 1
+          ? { tags: new RegExp(escapeRegex(tokens[0]), 'i') }
+          : {
+              $and: tokens.map((t) => ({
+                tags: new RegExp(escapeRegex(t), 'i'),
+              })),
+            };
+      const query = mergeBuyerSafeWithInclusiveSearch(buyerSafeQuery, tagFragment);
 
-    const countQuery = Product.countDocuments(query);
-    const findQuery = Product.find(query)
-      .select('-__v')
-      .populate('parentCategory', 'name slug')
-      .populate('subCategory', 'name slug');
+      const countQuery = Product.countDocuments(query);
+      const findQuery = Product.find(query)
+        .select('-__v')
+        .populate('parentCategory', 'name slug')
+        .populate('subCategory', 'name slug');
 
-    switch (sortBy) {
-      case 'price-low':
-        findQuery.sort({ minPrice: 1 });
-        break;
-      case 'price-high':
-        findQuery.sort({ minPrice: -1 });
-        break;
-      case 'rating':
-        findQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
-        break;
-      case 'newest':
-        findQuery.sort({ createdAt: -1 });
-        break;
-      default:
-        findQuery.sort({ totalSold: -1, ratingsAverage: -1 });
+      switch (sortBy) {
+        case 'price-low':
+          findQuery.sort({ minPrice: 1 });
+          break;
+        case 'price-high':
+          findQuery.sort({ minPrice: -1 });
+          break;
+        case 'rating':
+          findQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
+          break;
+        case 'newest':
+          findQuery.sort({ createdAt: -1 });
+          break;
+        default:
+          findQuery.sort({ totalSold: -1, ratingsAverage: -1 });
+      }
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      findQuery.skip(skip).limit(parseInt(limit));
+
+      [totalProducts, products] = await Promise.all([countQuery, findQuery]);
     }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    findQuery.skip(skip).limit(parseInt(limit));
-
-    [totalProducts, products] = await Promise.all([countQuery, findQuery]);
   } else if ((type === 'seller' || type === 'store') && (normalized || q)) {
     // Seller/Store search: Find matching sellers, then return their products
     const Seller = require('../../models/user/sellerModel');
@@ -763,103 +755,41 @@ exports.searchProductsResults = catchAsync(async (req, res, next) => {
 
     [totalProducts, products] = await Promise.all([countQuery, findQuery]);
   } else if (normalized) {
-    // General free-text search
-    const textQuery = buildTextSearchQuery(normalized);
-    let query = { ...buyerSafeQuery };
+    // General free-text search — substring-inclusive on name, brand, description, tags, etc.
+    const inclusiveFragment = buildInclusiveKeywordQuery(normalized);
+    const query = mergeBuyerSafeWithInclusiveSearch(buyerSafeQuery, inclusiveFragment);
 
-    if (textQuery) {
-      query = { ...query, ...textQuery };
-    } else {
-      // Fallback to regex if text search not available
-      const fallbackQueryResult = buildFallbackQuery(normalized, {
-        categoryId: categoryId || (category ? (await Category.findOne({ name: { $regex: `^${category.trim()}$`, $options: 'i' } }))?._id : null),
-        brand,
-        minPrice,
-        maxPrice,
-        inStock: inStock === 'true' || inStock === true,
-        onSale: onSale === 'true' || onSale === true,
-      });
-      query = fallbackQueryResult ? { ...buyerSafeQuery, ...fallbackQueryResult } : buyerSafeQuery;
-    }
+    if (query) {
+      const countQuery = Product.countDocuments(query);
+      const findQuery = Product.find(query)
+        .select('-__v')
+        .populate('parentCategory', 'name slug')
+        .populate('subCategory', 'name slug');
 
-    const countQuery = Product.countDocuments(query);
-    const findQuery = Product.find(query)
-      .select('-__v')
-      .populate('parentCategory', 'name slug')
-      .populate('subCategory', 'name slug');
-
-    // Apply sorting
-    switch (sortBy) {
-      case 'price-low':
-        findQuery.sort({ minPrice: 1 });
-        break;
-      case 'price-high':
-        findQuery.sort({ minPrice: -1 });
-        break;
-      case 'rating':
-        findQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
-        break;
-      case 'newest':
-        findQuery.sort({ createdAt: -1 });
-        break;
-      default: // relevance
-        if (textQuery) {
-          findQuery.sort({ score: { $meta: 'textScore' } });
-        } else {
+      switch (sortBy) {
+        case 'price-low':
+          findQuery.sort({ minPrice: 1 });
+          break;
+        case 'price-high':
+          findQuery.sort({ minPrice: -1 });
+          break;
+        case 'rating':
+          findQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
+          break;
+        case 'newest':
+          findQuery.sort({ createdAt: -1 });
+          break;
+        default:
           findQuery.sort({ totalSold: -1, ratingsAverage: -1 });
-        }
-    }
-
-    // Apply pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    findQuery.skip(skip).limit(parseInt(limit));
-
-    [totalProducts, products] = await Promise.all([countQuery, findQuery]);
-
-    // If no results and we used text search, try fallback
-    if (products.length === 0 && textQuery) {
-      const fallbackQuery = buildFallbackQuery(normalized, {
-        categoryId: categoryId || (category ? (await Category.findOne({ name: { $regex: `^${category.trim()}$`, $options: 'i' } }))?._id : null),
-        brand,
-        minPrice,
-        maxPrice,
-        inStock: inStock === 'true' || inStock === true,
-        onSale: onSale === 'true' || onSale === true,
-      });
-
-      if (fallbackQuery) {
-        // Merge fallback query with buyer-safe query
-        const safeFallbackQuery = { ...buyerSafeQuery, ...fallbackQuery };
-        const fallbackFindQuery = Product.find(safeFallbackQuery)
-          .select('-__v')
-          .populate('parentCategory', 'name slug')
-          .populate('subCategory', 'name slug');
-
-        switch (sortBy) {
-          case 'price-low':
-            fallbackFindQuery.sort({ minPrice: 1 });
-            break;
-          case 'price-high':
-            fallbackFindQuery.sort({ minPrice: -1 });
-            break;
-          case 'rating':
-            fallbackFindQuery.sort({ ratingsAverage: -1, ratingsQuantity: -1 });
-            break;
-          case 'newest':
-            fallbackFindQuery.sort({ createdAt: -1 });
-            break;
-          default:
-            fallbackFindQuery.sort({ totalSold: -1, ratingsAverage: -1 });
-        }
-
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        fallbackFindQuery.skip(skip).limit(parseInt(limit));
-
-        [totalProducts, products] = await Promise.all([
-          Product.countDocuments(safeFallbackQuery),
-          fallbackFindQuery,
-        ]);
       }
+
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      findQuery.skip(skip).limit(parseInt(limit));
+
+      [totalProducts, products] = await Promise.all([countQuery, findQuery]);
+    } else {
+      totalProducts = 0;
+      products = [];
     }
   } else {
     // No search query, return empty or all products with filters
