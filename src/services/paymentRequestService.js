@@ -24,6 +24,24 @@ const { sendPaymentNotification } = require('../utils/helpers/notificationServic
 exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDetails = {}) => {
   const mongoose = require('mongoose');
 
+  // ── Validate paymentMethod against backend enum ────────────────────
+  // Accepted values map to branches in this service + paymentRequestModel enum.
+  const ALLOWED_PAYMENT_METHODS = new Set([
+    'bank',
+    'mtn_momo',
+    'telecel_cash',
+    'at_money',
+    'vodafone_cash',
+    'airtel_tigo_money',
+    'cash',
+  ]);
+  if (!ALLOWED_PAYMENT_METHODS.has(paymentMethod)) {
+    throw new AppError(
+      `Unsupported payment method: ${paymentMethod}. Expected one of: ${[...ALLOWED_PAYMENT_METHODS].join(', ')}.`,
+      400,
+    );
+  }
+
   // ── Input validation ──────────────────────────────────────────────
   if (amount <= 0) {
     throw new AppError('Amount must be greater than 0', 400);
@@ -49,30 +67,35 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   // SECURITY: Prevent floating point manipulation — round to 2 decimal places
   amount = Math.round(numAmount * 100) / 100;
 
-  // ── Start atomic session to prevent race-condition double-spend ──
+  // ── Atomic session (withTransaction retries transient WriteConflict, etc.) ──
   const session = await mongoose.startSession();
-  session.startTransaction();
+  let result;
+  let currentSeller;
+  let oldPendingBalance;
 
   try {
-  // Get current seller balance WITH session lock
-  const currentSeller = await Seller.findById(seller.id)
-    .select('balance lockedBalance pendingBalance taxCategory paymentMethods email name shopName requiredSetup onboardingStage')
-    .session(session);
-  if (!currentSeller) {
-    await session.abortTransaction();
-    throw new AppError('Seller not found', 404);
-  }
+    await session.withTransaction(
+      async () => {
+        // Get current seller balance WITH session lock
+        currentSeller = await Seller.findById(seller.id)
+          .select('balance lockedBalance pendingBalance taxCategory paymentMethods email name shopName requiredSetup onboardingStage')
+          .session(session);
+        if (!currentSeller) {
+          throw new AppError('Seller not found', 404);
+        }
 
-  // SECURITY: Check for existing pending withdrawals (prevent concurrent requests)
-  const existingPending = await PaymentRequest.countDocuments({
-    seller: seller.id,
-    status: { $in: ['pending', 'processing', 'awaiting_paystack_otp'] },
-    isActive: true,
-  }).session(session);
-  if (existingPending > 0) {
-    await session.abortTransaction();
-    throw new AppError('You already have a pending withdrawal request. Please wait for it to complete or cancel it first.', 400);
-  }
+        // SECURITY: Check for existing pending withdrawals (prevent concurrent requests)
+        const existingPending = await PaymentRequest.countDocuments({
+          seller: seller.id,
+          status: { $in: ['pending', 'processing', 'awaiting_paystack_otp'] },
+          isActive: true,
+        }).session(session);
+        if (existingPending > 0) {
+          throw new AppError(
+            'You already have a pending withdrawal request. Please wait for it to complete or cancel it first.',
+            400,
+          );
+        }
 
   // SECURITY: Require payout verification before allowing withdrawal
   const { hasVerifiedPayoutMethod } = require('../utils/helpers/paymentMethodHelpers');
@@ -134,6 +157,8 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     const paymentMethodToType = {
       'bank': 'bank_transfer',
       'mtn_momo': 'mobile_money',
+      'telecel_cash': 'mobile_money',
+      'at_money': 'mobile_money',
       'vodafone_cash': 'mobile_money',
       'airtel_tigo_money': 'mobile_money',
     };
@@ -141,6 +166,8 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     // Map payment method to provider
     const paymentMethodToProvider = {
       'mtn_momo': 'MTN',
+      'telecel_cash': 'Telecel',
+      'at_money': 'AT',
       'vodafone_cash': 'Vodafone',
       'airtel_tigo_money': 'AirtelTigo',
     };
@@ -214,7 +241,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
       if (!finalPaymentDetails.accountNumber) {
         throw new AppError('Bank account details not found. Please add bank details in your payment methods.', 400);
       }
-    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
+    } else if (['mtn_momo', 'telecel_cash', 'at_money', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
       const provider = paymentMethodToProvider[paymentMethod];
 
       // Try to get from PaymentMethod model first
@@ -312,7 +339,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
         bankName: paymentDetails.bankName,
         branch: paymentDetails.branch || '',
       };
-    } else if (['mtn_momo', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
+    } else if (['mtn_momo', 'telecel_cash', 'at_money', 'vodafone_cash', 'airtel_tigo_money'].includes(paymentMethod)) {
       if (!paymentDetails.phone || !paymentDetails.network) {
         throw new AppError('Please provide phone number and network for mobile money.', 400);
       }
@@ -373,7 +400,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   // This tracks funds awaiting admin approval and OTP verification
   // IMPORTANT: Total Revenue (balance) should NOT be deducted here - only available balance decreases
   const oldBalance = currentSeller.balance || 0;
-  const oldPendingBalance = currentSeller.pendingBalance || 0;
+  oldPendingBalance = currentSeller.pendingBalance || 0;
   const oldLockedBalance = currentSeller.lockedBalance || 0;
   const oldWithdrawableBalance = Math.max(0, oldBalance - oldLockedBalance - oldPendingBalance);
 
@@ -433,16 +460,25 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
 
   await currentSeller.save({ session });
 
-  // ── Commit the atomic transaction ─────────────────────────────────
-  await session.commitTransaction();
+        result = paymentRequest;
+      },
+      {
+        readPreference: 'primary',
+        readConcern: { level: 'local' },
+        writeConcern: { w: 'majority' },
+      },
+    );
+  } finally {
+    await session.endSession();
+  }
 
-  logger.info(`[createPaymentRequest] ✅ Atomic withdrawal created - seller ${seller.id}, amount: ${amount}, PR: ${paymentRequest._id}`);
+  logger.info(`[createPaymentRequest] ✅ Atomic withdrawal created - seller ${seller.id}, amount: ${amount}, PR: ${result._id}`);
 
   // ── Post-commit: non-critical notifications (outside session) ─────
   try {
     const financeAudit = require('./financeAuditService');
     await financeAudit.logWithdrawalCreated(
-      seller.id, amount, paymentRequest._id, oldPendingBalance, currentSeller.pendingBalance
+      seller.id, amount, result._id, oldPendingBalance, currentSeller.pendingBalance
     );
   } catch (auditError) {
     logger.error('[createPaymentRequest] Failed to log finance audit (non-critical):', auditError);
@@ -450,7 +486,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
 
   // Send confirmation to seller
   try {
-    await sendPaymentNotification(seller, 'request_created', paymentRequest);
+    await sendPaymentNotification(seller, 'request_created', result);
   } catch (notifError) {
     logger.error('[createPaymentRequest] Failed to send notification (non-critical):', notifError);
   }
@@ -459,7 +495,7 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
   try {
     const notificationService = require('../services/notification/notificationService');
     await notificationService.createWithdrawalRequestNotification(
-      paymentRequest._id,
+      result._id,
       seller.id,
       currentSeller.shopName || currentSeller.name || 'Seller',
       amount
@@ -468,16 +504,6 @@ exports.createPaymentRequest = async (seller, amount, paymentMethod, paymentDeta
     logger.error('[Payment Request] Error creating admin notification:', notificationError);
   }
 
-  return paymentRequest;
-
-  } catch (error) {
-    // Rollback everything if any step fails
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
-    throw error;
-  } finally {
-    session.endSession();
-  }
+  return result;
 };
 
