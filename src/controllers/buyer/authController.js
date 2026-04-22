@@ -1409,9 +1409,14 @@ exports.protect = catchAsync(async (req, res, next) => {
   // IMPORTANT: admin dashboard hits shared paths like GET /api/v1/order/get/stats — those MUST
   // read admin_jwt first. Previously the default branch used main_jwt/jwt only, so admins with
   // no buyer cookie got 401 and admins with both cookies could authenticate as the wrong user.
-  let token = null;
+  // Extract token: header first, then cookie (standard best practice)
+  let token = extractToken(req.headers.authorization);
+  
+  if (token) {
+    logger.info(`[Auth] ✅ Token found in Authorization header for ${method} ${fullPath}`);
+  }
 
-  if (req.cookies) {
+  if (!token && req.cookies) {
     // Route-aware cookie selection
     if (fullPath.startsWith('/api/v1/admin') || fullPath.startsWith('/api/v1/sessions/admin') || isAdminOnlySellerRoute) {
       token = req.cookies.admin_jwt;
