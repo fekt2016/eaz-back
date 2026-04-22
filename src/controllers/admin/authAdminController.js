@@ -1,4 +1,6 @@
 const Admin = require('../../models/user/adminModel');
+const User = require('../../models/user/userModel');
+const Seller = require('../../models/user/sellerModel');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 const { createSendToken } = require('../../utils/helpers/createSendToken');
@@ -12,10 +14,106 @@ const orderService = require('../../services/order/orderService');
 const logger = require('../../utils/logger');
 // Shared helpers for standardized auth
 const { normalizeEmail, handleSuccessfulLogin, clearAuthCookie } = require('../../utils/helpers/authHelpers');
+const { generateProvisionedPassword } = require('../../utils/generateProvisionedPassword');
+const { sendProvisionedAccountEmail } = require('../../services/admin/provisionedAccountEmail');
 
 exports.signupAdmin = catchAsync(async (req, res, next) => {
-  const newAdmin = await Admin.create(req.body);
+  const { createdBy: _ignoreClientCreatedBy, ...safeBody } = req.body || {};
+  const newAdmin = await Admin.create(safeBody);
   createSendToken(newAdmin, 201, res, null, 'admin_jwt');
+});
+
+/**
+ * Create an admin account while already authenticated as superadmin.
+ * Records `createdBy` and does not switch the current session to the new admin.
+ */
+exports.createAdminBySuperadmin = catchAsync(async (req, res, next) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return next(
+      new AppError('Only a superadmin may create administrator accounts.', 403),
+    );
+  }
+
+  const creatorId = req.user._id || req.user.id;
+  const {
+    createdBy: _ignoreClientCreatedBy,
+    name,
+    email,
+    password: bodyPassword,
+    passwordConfirm: bodyPasswordConfirm,
+    role,
+    referral,
+  } = req.body || {};
+
+  if (!email || !name) {
+    return next(new AppError('Please provide name and email', 400));
+  }
+
+  const allowedRoles = ['admin', 'superadmin', 'support_agent'];
+  const nextRole = role && allowedRoles.includes(role) ? role : 'admin';
+
+  const useGen =
+    bodyPassword === undefined ||
+    bodyPassword === null ||
+    String(bodyPassword).trim() === '';
+  const password = useGen ? generateProvisionedPassword() : String(bodyPassword);
+  const passwordConfirm =
+    bodyPasswordConfirm !== undefined && bodyPasswordConfirm !== null
+      ? String(bodyPasswordConfirm)
+      : password;
+
+  const adminLogin =
+    process.env.EAZADMIN_URL ||
+    process.env.ADMIN_WEB_URL ||
+    'http://localhost:5174';
+
+  let newAdmin;
+  try {
+    newAdmin = await Admin.create({
+      name,
+      email,
+      password,
+      passwordConfirm,
+      role: nextRole,
+      createdBy: creatorId,
+      referral:
+        referral !== undefined && referral !== null ? String(referral).trim() : '',
+    });
+  } catch (err) {
+    return next(err);
+  }
+
+  try {
+    await sendProvisionedAccountEmail({
+      to: newAdmin.email,
+      name: newAdmin.name,
+      accountType: 'admin',
+      tempPassword: password,
+      loginUrl: adminLogin,
+      referredByLine: referral
+        ? `Referral on file: ${String(referral).trim()}`
+        : undefined,
+    });
+  } catch (err) {
+    logger.error('[createAdminBySuperadmin] Email failed:', err?.message || err);
+    await Admin.findByIdAndDelete(newAdmin._id);
+    return next(
+      new AppError(
+        'Could not send welcome email; the admin was not created. Check email configuration.',
+        502,
+      ),
+    );
+  }
+
+  const out = newAdmin.toObject();
+  delete out.password;
+  delete out.passwordConfirm;
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Admin created. Sign-in instructions were sent to their email.',
+    data: { admin: out },
+  });
 });
 exports.adminLogin = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
@@ -216,43 +314,216 @@ exports.adminLogin = catchAsync(async (req, res, next) => {
 });
 
 exports.signupUser = catchAsync(async (req, res, next) => {
-  const admin = await Admin.findOne({ email: req.user.email });
-
-  if (!admin) {
-    return next(new AppError('You are not an admin', 401));
+  const creatorId = req.user._id || req.user.id;
+  const staffRoles = ['admin', 'superadmin'];
+  if (!creatorId || !staffRoles.includes(req.user.role)) {
+    return next(new AppError('You are not authorized to create buyer accounts', 403));
   }
 
-  const newUser = await admin.createNewUser({
-    email: req.body.email,
-    password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
-    name: req.body.name,
-    createdBy: admin._id,
-  });
-
-  createSendToken(newUser, 201, res, null, 'main_jwt');
-});
-
-exports.sigupSeller = catchAsync(async (req, res, next) => {
-  const admin = await Admin.findOne({ email: req.user.email });
-
-  if (!admin) {
-    return next(new AppError('You are not an admin', 401));
+  const { name, email, phone, gender, referral } = req.body || {};
+  if (!email || !name) {
+    return next(new AppError('Please provide name and email', 400));
   }
-  const newSeller = await admin.createNewSeller({
-    shopName: req.body.shopName,
-    email: req.body.email,
-    name: req.body.name,
-    password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
-    createdBy: admin._id,
-  });
+
+  const rawPw = req.body.password;
+  const useGenerated =
+    rawPw === undefined || rawPw === null || String(rawPw).trim() === '';
+  const password = useGenerated ? generateProvisionedPassword() : String(rawPw);
+  const passwordConfirm =
+    req.body.passwordConfirm !== undefined && req.body.passwordConfirm !== null
+      ? String(req.body.passwordConfirm)
+      : password;
+
+  const buyerLogin =
+    process.env.BUYER_WEB_URL ||
+    process.env.SAIISAI_WEB_URL ||
+    process.env.FRONTEND_URL ||
+    'https://saiisai.com';
+
+  let newUser;
+  try {
+    newUser = await User.create({
+      name,
+      email,
+      phone,
+      gender,
+      referral:
+        referral !== undefined && referral !== null ? String(referral).trim() : '',
+      password,
+      passwordConfirm,
+      createdBy: creatorId,
+    });
+  } catch (err) {
+    return next(err);
+  }
+
+  try {
+    await sendProvisionedAccountEmail({
+      to: newUser.email,
+      name: newUser.name,
+      accountType: 'buyer',
+      tempPassword: password,
+      loginUrl: buyerLogin,
+      referredByLine: referral
+        ? `Referral on file: ${String(referral).trim()}`
+        : undefined,
+    });
+  } catch (err) {
+    logger.error('[signupUser] Welcome email failed:', err?.message || err);
+    await User.findByIdAndDelete(newUser._id);
+    return next(
+      new AppError(
+        'Could not send welcome email; the user was not created. Check email configuration.',
+        502,
+      ),
+    );
+  }
+
+  const out = newUser.toObject();
+  delete out.password;
+  delete out.passwordConfirm;
 
   res.status(201).json({
     status: 'success',
+    message: 'User created. Sign-in instructions were sent to their email.',
+    data: { user: out },
+  });
+});
+
+exports.sigupSeller = catchAsync(async (req, res, next) => {
+  const creatorId = req.user._id || req.user.id;
+  const staffRoles = ['admin', 'superadmin'];
+  if (!creatorId || !staffRoles.includes(req.user.role)) {
+    return next(new AppError('You are not authorized to create seller accounts', 403));
+  }
+
+  const { shopName, email, name, referral } = req.body || {};
+  if (!email || !name || !shopName) {
+    return next(new AppError('Please provide name, email, and store name', 400));
+  }
+
+  const rawPw = req.body.password;
+  const useGenerated =
+    rawPw === undefined || rawPw === null || String(rawPw).trim() === '';
+  const password = useGenerated ? generateProvisionedPassword() : String(rawPw);
+  const passwordConfirm =
+    req.body.passwordConfirm !== undefined && req.body.passwordConfirm !== null
+      ? String(req.body.passwordConfirm)
+      : password;
+
+  const sellerLogin =
+    process.env.SELLER_WEB_URL ||
+    process.env.EAZSELLER_URL ||
+    process.env.SELLER_APP_URL ||
+    'http://localhost:5175';
+
+  let newSeller;
+  try {
+    newSeller = await Seller.create({
+      shopName,
+      email,
+      name,
+      referral:
+        referral !== undefined && referral !== null ? String(referral).trim() : '',
+      password,
+      passwordConfirm,
+      createdBy: creatorId,
+    });
+  } catch (err) {
+    return next(err);
+  }
+
+  try {
+    await sendProvisionedAccountEmail({
+      to: newSeller.email,
+      name: newSeller.name,
+      accountType: 'seller',
+      tempPassword: password,
+      loginUrl: sellerLogin,
+      referredByLine: referral
+        ? `Referral on file: ${String(referral).trim()}`
+        : undefined,
+    });
+  } catch (err) {
+    logger.error('[sigupSeller] Welcome email failed:', err?.message || err);
+    await Seller.findByIdAndDelete(newSeller._id);
+    return next(
+      new AppError(
+        'Could not send welcome email; the seller was not created. Check email configuration.',
+        502,
+      ),
+    );
+  }
+
+  const sellerOut = newSeller.toObject();
+  delete sellerOut.password;
+  delete sellerOut.passwordConfirm;
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Seller created. Sign-in instructions were sent to their email.',
     data: {
-      seller: newSeller,
+      seller: sellerOut,
     },
+  });
+});
+
+/**
+ * PATCH /api/v1/admin/me/password
+ * Authenticated admin updates their own password (current password required).
+ */
+exports.updateMyPassword = catchAsync(async (req, res, next) => {
+  const { currentPassword, newPassword, passwordConfirm } = req.body || {};
+
+  if (!currentPassword || !newPassword || !passwordConfirm) {
+    return next(
+      new AppError(
+        'Please provide current password, new password, and password confirmation',
+        400,
+      ),
+    );
+  }
+
+  if (newPassword !== passwordConfirm) {
+    return next(new AppError('New password and confirmation do not match', 400));
+  }
+
+  if (newPassword.length < 8) {
+    return next(new AppError('Password must be at least 8 characters long', 400));
+  }
+
+  const admin = await Admin.findById(req.user.id).select('+password');
+
+  if (!admin) {
+    return next(new AppError('Admin not found', 404));
+  }
+
+  const isCurrentValid = await admin.correctPassword(
+    currentPassword,
+    admin.password,
+  );
+  if (!isCurrentValid) {
+    return next(new AppError('Current password is incorrect', 401));
+  }
+
+  admin.password = newPassword;
+  admin.passwordConfirm = passwordConfirm;
+  admin.passwordChangedAt = Date.now();
+  await admin.save();
+
+  logActivityAsync({
+    userId: admin._id,
+    role: 'admin',
+    action: 'PASSWORD_CHANGED',
+    description: 'Admin changed password from account settings',
+    req,
+    activityType: 'PASSWORD_CHANGE',
+    platform: 'eazadmin',
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password updated successfully',
   });
 });
 
@@ -405,8 +676,11 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
 
   await admin.save();
 
-  // SECURITY: Invalidate all active sessions
-  // Note: Admin sessions may use different session management - implement as needed
+  // SECURITY: Invalidate all active sessions immediately.
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  const TokenBlacklist = require('../../models/user/tokenBlackListModal');
+  await DeviceSession.deactivateAll(admin._id);
+  await TokenBlacklist.invalidateAllSessions(admin._id, 'admin');
 
   try {
     // Send confirmation email
@@ -482,6 +756,12 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   admin.passwordResetExpires = undefined;
   admin.passwordChangedAt = Date.now();
   await admin.save();
+
+  // SECURITY: Invalidate all active sessions for legacy endpoint too.
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  const TokenBlacklist = require('../../models/user/tokenBlackListModal');
+  await DeviceSession.deactivateAll(admin._id);
+  await TokenBlacklist.invalidateAllSessions(admin._id, 'admin');
 
   // Log admin in with new password
   createSendToken(admin, 200, res, null, 'admin_jwt');

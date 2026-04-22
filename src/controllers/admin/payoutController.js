@@ -510,27 +510,37 @@ exports.resendPaystackOtpForWithdrawal = catchAsync(async (req, res, next) => {
     withdrawalRequest.status = 'awaiting_paystack_otp';
     await withdrawalRequest.save({ session, validateBeforeSave: false });
 
-    // Log admin action
-    await AdminActionLog.create(
-      [
-        {
-          adminId,
-          name: req.user.name || req.user.email,
-          email: req.user.email,
-          role: req.user.role,
-          actionType: 'WITHDRAWAL_RESEND_PAYSTACK_OTP',
-          withdrawalId: withdrawalRequest._id,
-          timestamp: new Date(),
-          ipAddress: req.ip || req.connection.remoteAddress,
-          userAgent: req.get('user-agent'),
-          metadata: {
-            transferCode,
-            paystackStatus: paystackResponse?.data?.status,
+    // Log admin action, but do not fail payout flow on audit-log persistence.
+    try {
+      await AdminActionLog.create(
+        [
+          {
+            adminId,
+            name: req.user.name || req.user.email,
+            email: req.user.email,
+            role: req.user.role,
+            actionType: 'WITHDRAWAL_RESEND_PAYSTACK_OTP',
+            withdrawalId: withdrawalRequest._id,
+            timestamp: new Date(),
+            ipAddress: req.ip || req.connection.remoteAddress,
+            userAgent: req.get('user-agent'),
+            metadata: {
+              transferCode,
+              paystackStatus: paystackResponse?.data?.status,
+            },
           },
-        },
-      ],
-      { session }
-    );
+        ],
+        { session }
+      );
+    } catch (logError) {
+      logger.error(
+        '[resendPaystackOtpForWithdrawal] Error creating admin action log:',
+        {
+          message: logError.message,
+          stack: logError.stack,
+        }
+      );
+    }
 
     await session.commitTransaction();
 
@@ -686,8 +696,8 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
       // Map payment method to network
       const methodToNetwork = {
         'mtn_momo': 'MTN',
-        'vodafone_cash': 'Vodafone',
-        'airtel_tigo_money': 'AirtelTigo',
+        'vodafone_cash': 'Telecel',
+        'airtel_tigo_money': 'AT',
       };
 
       // Validate mobile money details
@@ -703,7 +713,7 @@ exports.approveWithdrawalRequest = catchAsync(async (req, res, next) => {
 
       if (!mobileBankCode) {
         await session.abortTransaction();
-        return next(new AppError('Invalid mobile money network. Supported networks: MTN, Vodafone, AirtelTigo', 400));
+        return next(new AppError('Invalid mobile money network. Supported networks: MTN, Telecel, AT', 400));
       }
 
       // Format phone number - remove any spaces, dashes, or non-digit characters

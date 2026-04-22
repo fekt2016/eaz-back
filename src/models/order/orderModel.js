@@ -9,7 +9,8 @@ const orderSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'OrderItems',
         required: true,
-        comment: 'Array of OrderItem references - each item is a snapshot of product/variant at order time',
+        comment:
+          'Array of OrderItem references — each item is a snapshot at order time (see OrderItemModel). Optional promoProductRef on each OrderItem links the line to the PromoProduct submission used for pricing.',
       },
     ],
 

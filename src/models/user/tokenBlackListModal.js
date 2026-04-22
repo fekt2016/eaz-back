@@ -80,7 +80,27 @@ tokenBlacklistSchema.statics.isBlacklisted = async function (token) {
   // Hash token before checking
   const hashedToken = this.hashToken(token);
   const exists = await this.exists({ token: hashedToken });
-  return !!exists;
+  if (exists) {
+    return true;
+  }
+
+  // Also enforce user-level global invalidation markers.
+  // Any token issued before the marker timestamp is treated as revoked.
+  if (decoded && decoded.id && decoded.iat) {
+    const globalToken = `global_invalidation:${decoded.id}`;
+    const globalHash = this.hashToken(globalToken);
+    const marker = await this.findOne({ token: globalHash }).select('createdAt');
+
+    if (marker) {
+      const tokenIssuedAt = decoded.iat * 1000;
+      const invalidatedAt = new Date(marker.createdAt).getTime();
+      if (tokenIssuedAt < invalidatedAt) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 };
 
 // Static method for bulk insertion
@@ -141,7 +161,10 @@ tokenBlacklistSchema.statics.blacklistToken = async function (token, userId = nu
 };
 
 // ADDED MISSING METHOD: Invalidate all sessions for a user
-tokenBlacklistSchema.statics.invalidateAllSessions = async function (userId) {
+tokenBlacklistSchema.statics.invalidateAllSessions = async function (
+  userId,
+  userType = 'customer',
+) {
   // Create special token representing global invalidation
   const globalToken = `global_invalidation:${userId}`;
   const hashedToken = this.hashToken(globalToken);
@@ -157,7 +180,7 @@ tokenBlacklistSchema.statics.invalidateAllSessions = async function (userId) {
       user: userId,
       expiry,
       reason: 'security',
-      userType: 'customer', // Default, will be updated in actual usage
+      userType,
       createdAt: new Date(),
     },
     { upsert: true, new: true },

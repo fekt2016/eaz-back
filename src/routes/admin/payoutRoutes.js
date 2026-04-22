@@ -10,7 +10,7 @@ const router = express.Router();
 
 // All routes require admin authentication
 router.use(authController.protect);
-// Allow superadmin and admin (moderators cannot approve/reject)
+// Allow superadmin and admin (support agents cannot approve/reject)
 router.use(authController.restrictTo('admin', 'superadmin'));
 
 // Get all withdrawal requests

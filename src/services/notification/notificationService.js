@@ -462,6 +462,32 @@ exports.createProductCreationNotification = async (productId, productName, selle
 };
 
 /**
+ * Seller edited an already-approved product — back in moderation queue
+ * @param {string} productId
+ * @param {string} productName
+ * @param {string} sellerId
+ * @param {string} sellerName
+ * @param {string} changedSummary - human-readable list of updated areas
+ */
+exports.createProductUpdatedForReviewNotification = async (
+  productId,
+  productName,
+  sellerId,
+  sellerName,
+  changedSummary,
+) => {
+  const summary = (changedSummary && String(changedSummary).trim()) || 'Product details';
+  return await exports.createNotificationForAllAdmins({
+    type: 'product',
+    title: 'Product Updated — Re-Review Required',
+    message: `${sellerName} updated an approved listing "${productName}". It is hidden from buyers until approved again. Updated areas include: ${summary}.`,
+    metadata: { productId, sellerId, changedSummary: summary, resubmission: true },
+    priority: 'medium',
+    actionUrl: `/dashboard/product-details/${productId}`,
+  });
+};
+
+/**
  * Create refund request notification for admins
  */
 exports.createRefundRequestNotification = async (refundId, orderId, orderNumber, amount, requestedBy) => {

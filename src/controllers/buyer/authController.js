@@ -40,6 +40,24 @@ const GOOGLE_CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_C
   .map((id) => id.trim())
   .filter(Boolean);
 const googleClient = GOOGLE_CLIENT_IDS.length ? new OAuth2Client(GOOGLE_CLIENT_IDS[0]) : null;
+const STRICT_DEVICE_SESSION_ENFORCEMENT =
+  String(process.env.STRICT_DEVICE_SESSION_ENFORCEMENT || '').toLowerCase() ===
+  'true';
+
+const shouldUseSecureCookies = (req) => {
+  const hostHeader = String(req?.headers?.host || '').toLowerCase();
+  const host = hostHeader.split(':')[0]; // remove port
+  const isLoopback =
+    host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+
+  // Never set Secure cookies on loopback/local HTTP — browsers won't store them.
+  if (isLoopback) return false;
+
+  const forwardedProto = String(
+    req?.headers?.['x-forwarded-proto'] || '',
+  ).toLowerCase();
+  return Boolean(req?.secure || forwardedProto === 'https');
+};
 
 // Initialize route cache (5 minutes TTL)
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
@@ -62,7 +80,6 @@ const publicRoutes = [
   { path: '/api/v1/users/forgot-password', methods: ['POST'] },
   { path: '/api/v1/users/reset-password/:token', methods: ['PATCH'] },
   { path: '/api/v1/admin/login', methods: ['POST'] },
-  { path: '/api/v1/admin/register', methods: ['POST'] },
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
   { path: '/api/v1/seller/login', methods: ['POST'] },
   { path: '/api/v1/seller/register', methods: ['POST'] },
@@ -675,13 +692,16 @@ exports.verify2FALogin = catchAsync(async (req, res, next) => {
 
   // Set cookie
   const isProduction = process.env.NODE_ENV === 'production';
+  const secureByProtocol = shouldUseSecureCookies(req);
+  const useCrossSiteCookie = isProduction && secureByProtocol;
   const cookieOptions = {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: useCrossSiteCookie,
+    sameSite: useCrossSiteCookie ? 'none' : 'lax',
     path: '/',
     expires: new Date(Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000),
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    ...(useCrossSiteCookie &&
+      process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
   };
 
   res.cookie('main_jwt', token, cookieOptions);
@@ -1158,10 +1178,12 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
 
     // Set cookie (same as createSendToken)
     const isProduction = process.env.NODE_ENV === 'production';
+    const secureByProtocol = shouldUseSecureCookies(req);
+    const useCrossSiteCookie = isProduction && secureByProtocol;
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction, // true in production, false in development
-      sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
+      secure: useCrossSiteCookie,
+      sameSite: useCrossSiteCookie ? 'none' : 'lax',
       path: '/', // Available on all paths
       expires: new Date(
         Date.now() +
@@ -1169,7 +1191,8 @@ exports.verifyOtp = catchAsync(async (req, res, next) => {
       ),
       // Set domain for production to allow cookie sharing across subdomains
       // Only set in production, leave undefined in development (localhost)
-      ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+      ...(useCrossSiteCookie &&
+        process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
     };
 
     res.cookie('main_jwt', token, cookieOptions);
@@ -1322,60 +1345,22 @@ exports.protect = catchAsync(async (req, res, next) => {
     logger.info(`Allowing ${method} access to ${fullPath} (public route);`);
     return next();
   }
-  // SECURITY: Cookie-only authentication - tokens MUST be in HTTP-only cookies
-  // Authorization headers are NOT accepted to prevent XSS token theft
-  // Extract token ONLY from cookies
-  let token = null;
-  // Check for app-specific cookie based on route path
-  // IMPORTANT: Each app (eazmain, eazseller, eazadmin) uses its own cookie
-  // Note: /api/v1/paymentrequest and /api/v1/support/seller are used by sellers, so they should use seller_jwt
-  // Also check for seller order routes: /api/v1/order/get-seller-orders and /api/v1/order/seller-order
-  // Product variant routes are also seller routes: /api/v1/product/:id/variants
-  // POST /api/v1/product is a seller route (create product)
-  // PATCH /api/v1/product/:id is a seller route (update product)
-  // DELETE /api/v1/product/:id is a seller route (delete product)
-  // GET /api/v1/product is public (not a seller route)
-  // EXCEPTION: Admin-only seller routes (these require admin_jwt, not seller_jwt)
-  // GET /api/v1/seller - getAllSeller (admin-only)
-  // PATCH /api/v1/seller/:id/status - update seller status (admin-only)
-  // PATCH /api/v1/seller/:id/approve-verification - approve seller verification (admin-only)
-  // PATCH /api/v1/seller/:id/reject-verification - reject seller verification (admin-only)
-  // PATCH /api/v1/seller/:id/document-status - update document status (admin-only)
-  // PATCH /api/v1/seller/:id/approve-payout - approve payout (admin-only)
-  // PATCH /api/v1/seller/:id/reject-payout - reject payout (admin-only)
-  // GET /api/v1/seller/:id - getSeller (admin-only) - isAdminOnlySellerRoute already defined above
-  // Check if this is a seller route (but allow admins to access shared product routes with admin_jwt)
-  const isSellerRoute = !isAdminOnlySellerRoute && (
-    fullPath.startsWith('/api/v1/seller') ||
-    fullPath.startsWith('/api/v1/support/seller') ||
-    fullPath.startsWith('/api/v1/paymentrequest') ||
-    // Payment method routes are shared: buyers use main_jwt, sellers use seller_jwt – do NOT treat as seller-only
-    fullPath.includes('/order/get-seller-orders') ||
-    fullPath.includes('/order/seller-order/') ||
-    fullPath.startsWith('/api/v1/analytics/seller') || // Seller analytics endpoints
-    (fullPath.includes('/product/') && fullPath.includes('/variants')) ||
-    (fullPath === '/api/v1/product' && method === 'POST') ||
-    // Product PATCH/DELETE: Allow both seller_jwt and admin_jwt (shared route)
-    (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE'))
-  );
-  
-  // Shared product routes that can be accessed by both sellers and admins
-  // These routes should check both seller_jwt and admin_jwt cookies
-  // IMPORTANT: These routes are NOT seller-only - they allow admins too
+  // Route detection for authentication context
   const isSharedProductRoute = (
     (fullPath === '/api/v1/product' && method === 'POST') ||
     (fullPath.startsWith('/api/v1/product/') && (method === 'PATCH' || method === 'DELETE')) ||
     (fullPath.includes('/product/') && fullPath.includes('/variants'))
   );
-  
-  // CRITICAL: Ensure /api/v1/seller/coupon is detected as seller route
-  // This route is mounted at /api/v1/seller/coupon, so it should match the startsWith check above
-  // Adding explicit check for coupon routes to ensure they're detected
-  if (fullPath.startsWith('/api/v1/seller/coupon')) {
-    if (!isSellerRoute) {
-      console.warn(`[Auth] ⚠️ Seller coupon route not detected as seller route: ${fullPath}`);
-    }
-  }
+
+  const isSellerRoute = !isAdminOnlySellerRoute && (
+    fullPath.startsWith('/api/v1/seller') ||
+    fullPath.startsWith('/api/v1/support/seller') ||
+    fullPath.startsWith('/api/v1/paymentrequest') ||
+    fullPath.includes('/order/get-seller-orders') ||
+    fullPath.includes('/order/seller-order/') ||
+    fullPath.startsWith('/api/v1/analytics/seller') ||
+    isSharedProductRoute
+  );
 
   const isAdminRoute =
     fullPath.startsWith('/api/v1/admin') ||
@@ -1384,7 +1369,9 @@ exports.protect = catchAsync(async (req, res, next) => {
     fullPath.startsWith('/api/v1/eazshop') ||
     // Admin-managed shipping resources (used by eazadmin dashboard)
     fullPath.startsWith('/api/v1/shipping-zones') ||
-    fullPath.startsWith('/api/v1/shipping-rates');
+    fullPath.startsWith('/api/v1/shipping-rates') ||
+    // Admin session management routes (logout-all, my-devices, etc.)
+    fullPath.startsWith('/api/v1/sessions/admin');
 
   // Admin-only shared routes (routes that require admin but don't start with /api/v1/admin)
   // GET /api/v1/order - admin only (getAllOrder)
@@ -1407,6 +1394,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.startsWith('/api/v1/order/') && method === 'GET' && !fullPath.includes('/get-seller-orders') && !fullPath.includes('/seller-order/') && !fullPath.includes('/get-user-orders') && !fullPath.includes('/get-user-order/') && !fullPath.includes('/tracking')) ||
     (fullPath.startsWith('/api/v1/order/') && method === 'PATCH' && !fullPath.includes('/shipping-address') && !fullPath.includes('/update-address') && !fullPath.includes('/pay-shipping-difference') && !fullPath.includes('/send-email') && !fullPath.includes('/confirm-payment') && !fullPath.includes('/status') && !fullPath.includes('/driver-location') && !fullPath.includes('/tracking') && !fullPath.includes('/request-refund') && !fullPath.includes('/refund-status')) ||
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
+    (fullPath === '/api/v1/users' && method === 'POST') || // POST /users — admin creates buyer
     (fullPath.startsWith('/api/v1/users/') && method === 'GET' && !fullPath.includes('/profile') && !fullPath.includes('/me') && !fullPath.includes('/get/count') && !fullPath.includes('/reset-password') && !fullPath.includes('/personalized') && !fullPath.includes('/recently-viewed')) || // GET /users/:id is admin-only
     // PATCH /users/:id is admin-only, but allow non-admin avatar + self-update routes
     (fullPath.startsWith('/api/v1/users/') && method === 'PATCH' &&
@@ -1416,6 +1404,39 @@ exports.protect = catchAsync(async (req, res, next) => {
       !fullPath.includes('/avatar')) || // <-- buyer avatar update should use buyer cookie
     (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe')) // DELETE /users/:id is admin-only
   );
+
+  // Extract token from cookies only (cookie-first, no Authorization header fallback)
+  // IMPORTANT: admin dashboard hits shared paths like GET /api/v1/order/get/stats — those MUST
+  // read admin_jwt first. Previously the default branch used main_jwt/jwt only, so admins with
+  // no buyer cookie got 401 and admins with both cookies could authenticate as the wrong user.
+  let token = null;
+
+  if (req.cookies) {
+    // Route-aware cookie selection
+    if (fullPath.startsWith('/api/v1/admin') || fullPath.startsWith('/api/v1/sessions/admin') || isAdminOnlySellerRoute) {
+      token = req.cookies.admin_jwt;
+    } else if (isAdminRoute || isAdminOnlySharedRoute) {
+      token = req.cookies.admin_jwt;
+    } else if (isSellerRoute) {
+      // Shared product + variant routes: prefer seller_jwt when present so the seller dashboard
+      // keeps the listing owner's identity when both seller_jwt and admin_jwt exist (common in dev).
+      // Admins without a seller session still use admin_jwt only.
+      if (isSharedProductRoute) {
+        token = req.cookies.seller_jwt || req.cookies.admin_jwt;
+      } else {
+        token = req.cookies.seller_jwt;
+      }
+    } else {
+      // Buyer routes: prefer modern buyer cookie first.
+      // Legacy main_jwt can remain from old sessions and may be blacklisted.
+      token = req.cookies.user_jwt || req.cookies.main_jwt || req.cookies.jwt;
+    }
+  }
+  if (fullPath.startsWith('/api/v1/seller/coupon')) {
+    if (!isSellerRoute) {
+      console.warn(`[Auth] ⚠️ Seller coupon route not detected as seller route: ${fullPath}`);
+    }
+  }
 
   // Shared routes that can be accessed by multiple roles (buyers, sellers, admins)
   // Check for support ticket creation - can be used by any authenticated user
@@ -1427,27 +1448,72 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Notification routes are shared - can be accessed by buyers, sellers, and admins
   const isSharedNotificationRoute = fullPath.startsWith('/api/v1/notifications');
 
+  // Live chat (buyer + seller widgets share /api/v1/chat; guest/messages is public and skips protect)
+  const isSharedChatRoute =
+    fullPath.startsWith('/api/v1/chat/') && !fullPath.startsWith('/api/v1/chat/guest');
+
   // Order tracking update route (POST /api/v1/order/:id/tracking) is shared between admin and seller
-  // Both admins (superadmin, moderator, admin) and sellers can add tracking updates
+  // Admins (superadmin, admin) and sellers can add tracking updates (support_agent is read-only on orders)
   const isSharedOrderTrackingRoute = (
     /^\/api\/v1\/order\/[^/]+\/tracking\/?$/.test(fullPath) && method === 'POST'
   );
 
   // For shared product routes, prefer seller_jwt when present so seller app POST /product
-  // uses the seller (not admin). Admins can still use admin_jwt.
+  // and variant reads use the seller (not admin when both cookies exist). Admins can still use admin_jwt alone.
   let cookieName;
   if (isSharedProductRoute) {
-    // Prefer seller_jwt so seller app product create gets seller; fall back to admin_jwt
     cookieName = req.cookies?.['seller_jwt'] ? 'seller_jwt' : 'admin_jwt';
   } else if (isSharedOrderTrackingRoute) {
     // Order tracking routes: try admin_jwt first, then seller_jwt
     cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' : 'seller_jwt';
+  } else if (isSharedChatRoute) {
+    const platform = String(req.headers['x-platform'] || '').toLowerCase();
+    if (platform === 'eazseller' || platform === 'saiisai-seller') {
+      cookieName = 'seller_jwt';
+    } else {
+      cookieName = 'user_jwt';
+    }
   } else if (isSellerRoute) {
     cookieName = 'seller_jwt';
   } else if (isAdminRoute || isAdminOnlySharedRoute || isAdminOnlySellerRoute) {
     cookieName = 'admin_jwt';
   } else {
     cookieName = 'user_jwt'; // Default to buyer/eazmain (legacy: main_jwt)
+  }
+
+  /**
+   * Shared live chat: override the generic `main_jwt` default so REST matches Socket.io.
+   * Socket seller clients use `seller_jwt` + chatAs seller; without this, the first token branch
+   * can pick `main_jwt` and `findUserByToken` loads a **buyer User** — a different ChatConversation
+   * (participantId = User._id) than the seller socket row (participantId = Seller._id). Admin
+   * then sees buyer chats but not the seller thread.
+   */
+  if (isSharedChatRoute && req.cookies) {
+    const platform = String(req.headers['x-platform'] || '').toLowerCase();
+    if (platform === 'eazseller' || platform === 'saiisai-seller') {
+      if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+      }
+    } else if (platform === 'saiisaiweb' || platform === 'saiisai') {
+      if (req.cookies.user_jwt) {
+        token = req.cookies.user_jwt;
+      } else if (req.cookies.main_jwt) {
+        token = req.cookies.main_jwt;
+      }
+    } else {
+      // Unknown / missing x-platform: still align /chat with Socket.io when possible.
+      // Seller dashboard often has both legacy buyer (main_jwt) and seller_jwt — prefer seller_jwt
+      // for this route so participantId matches chatAs:seller; buyer sessions usually have user_jwt.
+      if (req.cookies.user_jwt) {
+        token = req.cookies.user_jwt;
+      } else if (req.cookies.seller_jwt && req.cookies.main_jwt) {
+        token = req.cookies.seller_jwt;
+      } else if (req.cookies.main_jwt) {
+        token = req.cookies.main_jwt;
+      } else if (req.cookies.seller_jwt) {
+        token = req.cookies.seller_jwt;
+      }
+    }
   }
 
   // #region agent log
@@ -1626,28 +1692,11 @@ exports.protect = catchAsync(async (req, res, next) => {
           timestamp: new Date().toISOString()
         });
         // SECURITY: Never log full auth headers or cookie strings (tokens / session IDs)
-        logger.error(`[Auth] Headers (sanitized):`, {
-          authorization: req.headers.authorization ? {
-            present: true,
-            length: req.headers.authorization.length,
-            prefix: req.headers.authorization.substring(0, 20) + '...' // prefix only
-          } : 'missing',
-          cookie: req.headers.cookie ? {
-            present: true,
-            length: req.headers.cookie.length
-          } : 'missing'
+        logger.error(`[Auth] Headers summary:`, {
+          hasAuthorization: Boolean(req.headers.authorization),
+          hasCookieHeader: Boolean(req.headers.cookie),
+          cookieCount: req.cookies ? Object.keys(req.cookies).length : 0,
         });
-        logger.error(`[Auth] Cookies (parsed):`, req.cookies ? {
-          keys: Object.keys(req.cookies),
-          seller_jwt: req.cookies.seller_jwt ? {
-            present: true,
-            length: req.cookies.seller_jwt.length,
-            prefix: req.cookies.seller_jwt.substring(0, 20) + '...'
-          } : 'missing',
-          main_jwt: req.cookies.main_jwt ? 'present' : 'missing',
-          admin_jwt: req.cookies.admin_jwt ? 'present' : 'missing',
-          cookieCount: Object.keys(req.cookies).length
-        } : 'undefined');
         logger.error(`[Auth] Route Detection:`, {
           isSellerRoute,
           cookieName,
@@ -1665,14 +1714,10 @@ exports.protect = catchAsync(async (req, res, next) => {
       } else {
         logger.info(`[Auth] Cookie ${cookieName}: ${req.cookies?.[cookieName] ? 'present' : 'missing'}`);
       }
-      // Log all cookies for debugging (but don't log values for security)
-      logger.info(`[Auth] Available cookie names:`, req.cookies ? Object.keys(req.cookies) : 'none');
-
-      console.error(`[Auth] 🛑 RETURNING 401 - No token found`);
-      console.error(`[Auth] Route: ${method} ${fullPath}`);
-      console.error(`[Auth] Expected cookie: ${cookieName}`);
-      console.error(`[Auth] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
-      console.error('═══════════════════════════════════════════════════════════');
+      logger.warn('[Auth] Returning 401 due to missing token', {
+        route: `${method} ${fullPath}`,
+        expectedCookie: cookieName,
+      });
 
       return next(
         new AppError('You are not logged in! Please log in to get access.', 401),
@@ -1680,8 +1725,18 @@ exports.protect = catchAsync(async (req, res, next) => {
     }
   }
   // Check token blacklist using the helper method (hashes token before checking)
-  const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
+  let isBlacklisted = false;
+  try {
+    isBlacklisted = await TokenBlacklist.isBlacklisted(token);
+  } catch (err) {
+    logger.warn('[Auth] Error checking token blacklist', {
+      route: fullPath,
+      message: err.message,
+    });
+  }
+
   if (isBlacklisted) {
+    logger.warn(`[Auth] 🔴 Token blacklisted or expired for ${fullPath}. Requesting re-login.`);
     return next(
       new AppError('Your session has expired. Please log in again.', 401),
     );
@@ -1699,7 +1754,20 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   // Find user
-  const currentUser = await findUserByToken(decoded);
+  let currentUser = await findUserByToken(decoded);
+
+  // Shared live chat: seller dashboards must use the Seller document for participantId so REST
+  // matches Socket.io (same row as chatAs:seller). x-platform is set by eazseller / saiisai-seller.
+  if (currentUser && isSharedChatRoute) {
+    const platform = String(req.headers['x-platform'] || '').toLowerCase();
+    if (platform === 'eazseller' || platform === 'saiisai-seller') {
+      const sellerDoc = await Seller.findById(decoded.id);
+      if (sellerDoc) {
+        currentUser = sellerDoc;
+      }
+    }
+  }
+
   if (!currentUser) {
     const isVerifyOtpRoute = fullPath.includes('/verify-otp');
     if (isVerifyOtpRoute) {
@@ -1711,6 +1779,30 @@ exports.protect = catchAsync(async (req, res, next) => {
     }
     return next(
       new AppError('The user belonging to this token no longer exists', 401),
+    );
+  }
+
+  // Enforce device-session validity for tokens that carry device identity.
+  // This makes admin/seller/buyer forced device logout effective immediately.
+  if (decoded.deviceId) {
+    const DeviceSession = require('../../models/user/deviceSessionModel');
+    const activeSession = await DeviceSession.findOne({
+      userId: currentUser._id || currentUser.id,
+      deviceId: decoded.deviceId,
+      isActive: true,
+    }).select('_id');
+
+    if (!activeSession) {
+      return next(
+        new AppError('Your session is no longer valid. Please log in again.', 401),
+      );
+    }
+  } else if (STRICT_DEVICE_SESSION_ENFORCEMENT) {
+    logger.warn(
+      `[Auth] Token missing deviceId for ${method} ${fullPath} while STRICT_DEVICE_SESSION_ENFORCEMENT=true`,
+    );
+    return next(
+      new AppError('Your session is no longer valid. Please log in again.', 401),
     );
   }
 
@@ -1815,6 +1907,7 @@ exports.protect = catchAsync(async (req, res, next) => {
     // Admin-only user routes: GET /api/v1/users (getAllUsers), GET/PATCH/DELETE /api/v1/users/:id
     // BUT explicitly exclude self-service buyer routes like /profile, /me, /get/count, /reset-password, /personalized, /recently-viewed, /avatar
     (fullPath === '/api/v1/users' && method === 'GET') || // GET /users is admin-only (getAllUsers)
+    (fullPath === '/api/v1/users' && method === 'POST') || // POST /users — admin creates buyer
     (fullPath.startsWith('/api/v1/users/') && method === 'GET' &&
       !fullPath.includes('/profile') &&
       !fullPath.includes('/me') &&
@@ -1830,8 +1923,8 @@ exports.protect = catchAsync(async (req, res, next) => {
     (fullPath.startsWith('/api/v1/users/') && method === 'DELETE' && !fullPath.includes('/deleteMe'));
 
   if (isAdminRouteCheck) {
-    // Allow admin, superadmin, and moderator roles
-    const adminRoles = ['admin', 'superadmin', 'moderator'];
+    // Allow admin, superadmin, and support_agent roles
+    const adminRoles = ['admin', 'superadmin', 'support_agent'];
     if (!adminRoles.includes(currentUser.role)) {
       // User/buyer token was used on an admin route (e.g. wrong cookie sent) – treat as "not authenticated for this context"
       if (currentUser.role === 'user') {
@@ -1843,7 +1936,7 @@ exports.protect = catchAsync(async (req, res, next) => {
       console.error(`[Auth] ❌ Route details: ${method} ${fullPath}`);
       console.error(`[Auth] ❌ User ID: ${currentUser.id}, Role: ${currentUser.role}`);
       return next(
-        new AppError(`You do not have permission to perform this action. Required role: admin, superadmin, or moderator. Your role: ${currentUser.role}`, 403)
+        new AppError(`You do not have permission to perform this action. Required role: admin, superadmin, or support_agent. Your role: ${currentUser.role}`, 403)
       );
     }
   }
@@ -2315,13 +2408,12 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
 
   await user.save();
 
-  // SECURITY: Invalidate all active sessions
-  // This ensures that if someone had access to the account, they're logged out
-  // Note: This requires session management implementation
-  // For JWT-based auth, tokens will naturally expire, but you may want to:
-  // 1. Add a passwordChangedAt check in token verification
-  // 2. Maintain a token blacklist
-  // 3. Use refresh tokens that can be revoked
+  // SECURITY: Invalidate all active sessions immediately.
+  // This revokes all previously issued access tokens via global invalidation
+  // and deactivates existing device sessions.
+  const DeviceSession = require('../../models/user/deviceSessionModel');
+  await DeviceSession.deactivateAll(user._id);
+  await TokenBlacklist.invalidateAllSessions(user._id, 'customer');
 
   try {
     // Send confirmation email

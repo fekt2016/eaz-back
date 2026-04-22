@@ -28,7 +28,7 @@ const paymentMethodSchema = new mongoose.Schema(
     // Mobile money specific fields
     provider: {
       type: String,
-      enum: ['MTN', 'Vodafone', 'AirtelTigo'],
+      enum: ['MTN', 'Telecel', 'AT', 'Vodafone', 'AirtelTigo'],
       // required: function () {
       //   logger.info('this.type', this.type);
       //   return this.type === 'mobile_money';

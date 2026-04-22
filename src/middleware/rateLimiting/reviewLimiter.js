@@ -5,6 +5,7 @@
  */
 
 const rateLimit = require('express-rate-limit');
+const { rateLimitKey } = require('../../utils/rateLimitKey');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -20,10 +21,7 @@ exports.reviewSubmissionLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count all requests (including failed ones)
-  keyGenerator: (req) => {
-    // Use user ID for per-user rate limiting
-    return req.user ? req.user.id : req.ip;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 module.exports = exports;

@@ -20,6 +20,32 @@ const connectDatabase = async () => {
     await mongoose.connect(mongodb, connectionOptions);
     logger.info('Connected to MongoDB successfully');
 
+    // Replace legacy guestToken unique index (sparse + default null caused E11000 on dup null)
+    // and strip stored nulls so partial unique index + upserts work reliably.
+    try {
+      const ChatConversation = require('../models/chat/chatConversationModel');
+      await ChatConversation.syncIndexes();
+      const coll = ChatConversation.collection;
+      const unsetGuest = await coll.updateMany(
+        { guestToken: null },
+        { $unset: { guestToken: '' } }
+      );
+      const unsetGuestParticipant = await coll.updateMany(
+        { participantRole: 'guest', participantId: null },
+        { $unset: { participantId: '' } }
+      );
+      if (unsetGuest.modifiedCount || unsetGuestParticipant.modifiedCount) {
+        logger.info('ChatConversation legacy null fields cleaned', {
+          guestTokenFields: unsetGuest.modifiedCount,
+          guestParticipantIdFields: unsetGuestParticipant.modifiedCount,
+        });
+      }
+    } catch (idxErr) {
+      logger.warn('ChatConversation index sync / null cleanup', {
+        message: idxErr.message,
+      });
+    }
+
     const dbHost = mongoose.connection.host;
     const dbName = mongoose.connection.name;
     logger.info('MongoDB connection details', { host: dbHost, database: dbName });

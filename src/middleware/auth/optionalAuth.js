@@ -28,12 +28,17 @@ exports.optionalAuth = catchAsync(async (req, res, next) => {
     cookieName = 'seller_jwt';
     token = req.cookies?.[cookieName];
   } else {
-    // For shared routes, try all cookies in priority order: admin_jwt, seller_jwt, main_jwt
-    // This ensures admins can access shared routes (like /product) with their admin_jwt cookie
-    token = req.cookies?.['admin_jwt'] || req.cookies?.['seller_jwt'] || req.cookies?.['main_jwt'];
-    cookieName = req.cookies?.['admin_jwt'] ? 'admin_jwt' :
-                 req.cookies?.['seller_jwt'] ? 'seller_jwt' :
-                 'main_jwt';
+    // For shared routes, prioritize cookie by x-platform to avoid cross-app
+    // misclassification when multiple cookies exist in the browser.
+    const requestPlatform = String(req.headers['x-platform'] || '').toLowerCase();
+    const cookiePriority =
+      requestPlatform === 'eazseller'
+        ? ['seller_jwt', 'user_jwt', 'admin_jwt', 'main_jwt']
+        : requestPlatform === 'eazadmin'
+          ? ['admin_jwt', 'seller_jwt', 'user_jwt', 'main_jwt']
+          : ['user_jwt', 'seller_jwt', 'admin_jwt', 'main_jwt'];
+    cookieName = cookiePriority.find((name) => !!req.cookies?.[name]) || null;
+    token = cookieName ? req.cookies?.[cookieName] : null;
   }
   
   // If no token found, continue without authentication (public access)

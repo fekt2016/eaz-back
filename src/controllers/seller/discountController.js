@@ -4,6 +4,70 @@ const catchAsync = require('../../utils/helpers/catchAsync');
 const mongoose = require('mongoose');
 const AppError = require('../../utils/errors/appError');
 const logger = require('../../utils/logger');
+const {
+  findConflictingDiscounts,
+  findConflictingFlashDeals,
+} = require('../../services/pricing/productOfferGuardService');
+
+const getTargetProducts = async ({ sellerId, productIds, categoryIds }) => {
+  const query = { seller: sellerId };
+
+  if (Array.isArray(productIds) && productIds.length > 0) {
+    query._id = { $in: productIds };
+  } else if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    query.$or = [
+      { parentCategory: { $in: categoryIds } },
+      { subCategory: { $in: categoryIds } },
+    ];
+  }
+
+  return Product.find(query).select('_id name parentCategory subCategory promotionKey');
+};
+
+const enforceSingleOfferPerProduct = async ({
+  sellerId,
+  products,
+  startDate,
+  endDate,
+  excludeDiscountId,
+}) => {
+  const discountConflicts = await findConflictingDiscounts({
+    sellerId,
+    products,
+    startDate,
+    endDate,
+    excludeDiscountId,
+  });
+
+  if (discountConflicts.length > 0) {
+    const sample = discountConflicts
+      .slice(0, 3)
+      .map((item) => `${item.productName} -> ${item.discountName}`)
+      .join(', ');
+    throw new AppError(
+      `Cannot apply multiple discounts/promos to the same product. Conflict with existing discount(s): ${sample}`,
+      400,
+    );
+  }
+
+  const flashConflicts = await findConflictingFlashDeals({
+    sellerId,
+    productIds: products.map((p) => p._id),
+    startDate,
+    endDate,
+  });
+
+  if (flashConflicts.length > 0) {
+    const sample = flashConflicts
+      .slice(0, 3)
+      .map((item) => item.flashDealTitle)
+      .join(', ');
+    throw new AppError(
+      `Cannot apply discount because one or more products already have a flash promo in the same period: ${sample}`,
+      400,
+    );
+  }
+};
 
 // Helper function to update products when discounts change
 const updateAffectedProducts = async (discount) => {
@@ -56,6 +120,30 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     categories, // Array of category IDs
   } = req.body;
 
+  if (endDate < startDate) {
+    return next(new AppError('End date must be greater than start date', 400));
+  }
+
+  const productObjectIds = products
+    ? products.map((id) => new mongoose.Types.ObjectId(id))
+    : [];
+  const categoryObjectIds = categories
+    ? categories.map((id) => new mongoose.Types.ObjectId(id))
+    : [];
+
+  const targetProducts = await getTargetProducts({
+    sellerId: req.user.id,
+    productIds: productObjectIds,
+    categoryIds: categoryObjectIds,
+  });
+
+  await enforceSingleOfferPerProduct({
+    sellerId: req.user.id,
+    products: targetProducts,
+    startDate,
+    endDate,
+  });
+
   const discount = await Discount.create({
     name,
     code,
@@ -66,16 +154,10 @@ exports.createDiscount = catchAsync(async (req, res, next) => {
     maxUsage,
     active,
     seller: req.user.id,
-    products: products
-      ? products.map((id) => new mongoose.Types.ObjectId(id))
-      : [],
-    categories: categories
-      ? categories.map((id) => new mongoose.Types.ObjectId(id))
-      : [],
+    products: productObjectIds,
+    categories: categoryObjectIds,
   });
-  if (endDate < startDate) {
-    return next(new AppError('End date must be greater than start date', 400));
-  }
+
   // Update affected products
   await updateAffectedProducts(discount);
 
@@ -112,18 +194,46 @@ exports.getDiscount = catchAsync(async (req, res) => {
 });
 
 exports.updateDiscount = catchAsync(async (req, res, next) => {
+  if (req.body.endDate && req.body.startDate && req.body.endDate < req.body.startDate) {
+    return next(new AppError('End date must be greater than start date', 400));
+  }
+
+  const existing = await Discount.findById(req.params.id);
+  if (!existing) {
+    return next(new AppError('No discount found with that ID', 404));
+  }
+
+  const effectiveProducts = req.body.products
+    ? req.body.products.map((id) => new mongoose.Types.ObjectId(id))
+    : existing.products;
+  const effectiveCategories = req.body.categories
+    ? req.body.categories.map((id) => new mongoose.Types.ObjectId(id))
+    : existing.categories;
+  const effectiveStartDate = req.body.startDate || existing.startDate;
+  const effectiveEndDate = req.body.endDate || existing.endDate;
+  const effectiveActive =
+    typeof req.body.active === 'boolean' ? req.body.active : existing.active;
+
+  if (effectiveActive) {
+    const targetProducts = await getTargetProducts({
+      sellerId: req.user.id,
+      productIds: effectiveProducts,
+      categoryIds: effectiveCategories,
+    });
+
+    await enforceSingleOfferPerProduct({
+      sellerId: req.user.id,
+      products: targetProducts,
+      startDate: effectiveStartDate,
+      endDate: effectiveEndDate,
+      excludeDiscountId: req.params.id,
+    });
+  }
+
   const discount = await Discount.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   });
-
-  if (!discount) {
-    return next(new AppError('No discount found with that ID', 404));
-  }
-
-  if (req.body.endDate < req.body.startDate) {
-    return next(new AppError('End date must be greater than start date', 400));
-  }
 
   // Update affected products
   await updateAffectedProducts(discount);

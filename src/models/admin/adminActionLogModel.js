@@ -23,7 +23,7 @@ const adminActionLogSchema = new mongoose.Schema({
   role: {
     type: String,
     required: false,
-    enum: ['superadmin', 'admin', 'moderator'],
+    enum: ['superadmin', 'admin', 'support_agent'],
     index: true,
   },
   actionType: {
@@ -31,6 +31,8 @@ const adminActionLogSchema = new mongoose.Schema({
     enum: [
       'WITHDRAWAL_APPROVED',
       'WITHDRAWAL_REJECTED',
+      'WITHDRAWAL_VERIFY_PAYSTACK_OTP',
+      'WITHDRAWAL_RESEND_PAYSTACK_OTP',
       'PAYOUT_VERIFICATION_APPROVED',
       'PAYOUT_VERIFICATION_REJECTED',
       'SHIPPING_RATE_UPDATE',

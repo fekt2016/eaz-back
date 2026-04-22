@@ -1,6 +1,7 @@
 const express = require('express');
 const supportController = require('../../controllers/shared/supportController');
 const authController = require('../../controllers/buyer/authController');
+const { ALL_ADMIN_ROLES } = require('../../config/rolePermissions');
 const {
   supportTicketCreateLimiter,
   supportTicketReplyLimiter,
@@ -35,19 +36,19 @@ router.post(
 // Admin routes
 router.patch(
   '/tickets/:id/status',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...ALL_ADMIN_ROLES),
   supportController.updateTicketStatus
 );
 
 router.get(
   '/admin/tickets',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...ALL_ADMIN_ROLES),
   supportController.getAllTickets
 );
 
 router.get(
   '/admin/stats',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...ALL_ADMIN_ROLES),
   supportController.getSupportStats
 );
 

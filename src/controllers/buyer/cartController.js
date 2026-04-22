@@ -72,14 +72,14 @@ function getVariantIdForLookup(item) {
   return mongoose.Types.ObjectId.isValid(str) ? str : null;
 }
 
-// Helper function to populate cart with product details (include promotionKey for promo price)
+// Helper function to populate cart with product details
 const populateCart = (cart) => {
   return cart.populate({
     path: 'products.product',
     // Include isPreOrder + pre-order metadata so frontend (cart, checkout)
     // can clearly label pre-order items and show international shipping info.
     select:
-      'name price priceInclVat imageCover variants seller isEazShopProduct promotionKey isPreOrder preOrderAvailableDate preOrderNote preOrderOriginCountry',
+      'name price priceInclVat imageCover variants seller isEazShopProduct isPreOrder preOrderAvailableDate preOrderNote preOrderOriginCountry',
     populate: {
       path: 'seller',
       select: '_id name shopName role shopAddress location',

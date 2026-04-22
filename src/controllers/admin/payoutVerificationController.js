@@ -121,10 +121,10 @@ exports.approvePayoutVerification = catchAsync(async (req, res, next) => {
           query.provider = 'MTN';
         } else if (paymentMethod === 'vodafone_cash') {
           query.type = 'mobile_money';
-          query.provider = { $in: ['Vodafone', 'vodafone'] };
+          query.provider = { $in: ['Telecel', 'telecel', 'Vodafone', 'vodafone'] };
         } else if (paymentMethod === 'airtel_tigo_money') {
           query.type = 'mobile_money';
-          query.provider = { $in: ['AirtelTigo', 'airtel_tigo'] };
+          query.provider = { $in: ['AT', 'at', 'AirtelTigo', 'airtel_tigo'] };
         }
 
         console.log('[Approve Payout Verification] Query for PaymentMethod:', JSON.stringify(query, null, 2));

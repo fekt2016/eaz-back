@@ -1628,7 +1628,7 @@ exports.resendOtp = catchAsync(async (req, res, next) => {
         const mobileBankCode = payoutService.getMobileMoneyBankCode(network);
 
         if (!mobileBankCode) {
-          return next(new AppError('Invalid mobile money network. Supported networks: MTN, Vodafone, AirtelTigo', 400));
+          return next(new AppError('Invalid mobile money network. Supported networks: MTN, Telecel, AT', 400));
         }
 
         // Format phone number

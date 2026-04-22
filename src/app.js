@@ -27,6 +27,7 @@ const cookieParser = require('cookie-parser');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const slowDown = require('express-slow-down');
+const { rateLimitKey } = require('./utils/rateLimitKey');
 const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
@@ -57,17 +58,22 @@ const permissionRoutes = require('./routes/buyer/permissionRoutes');
 const newsletterRoutes = require('./routes/buyer/newsletterRoutes');
 const discountDisplayRoutes = require('./routes/buyer/discountDisplayRoutes');
 const statusRoutes = require('./routes/buyer/statusRoutes');
+const buyerFlashDealRoutes = require('./routes/buyer/flashDealRoutes');
+const buyerPromoRoutes = require('./routes/buyer/promoRoutes');
+const buyerOfferRoutes = require('./routes/buyer/offerRoutes');
 
 const sellerRoutes = require('./routes/seller/sellerRoutes');
 const sellerReviewRoutes = require('./routes/seller/reviewRoutes');
 const paymentRequestRoutes = require('./routes/seller/paymentRequestRoutes');
 const sellerPayoutRoutes = require('./routes/seller/payoutRoutes');
 const discountRoutes = require('./routes/seller/discountRoute');
+const sellerFlashDealRoutes = require('./routes/seller/flashDealRoutes');
 const buyerCouponRoutes = require('./routes/buyer/couponRoutes');
 const sellerCouponRoutes = require('./routes/seller/couponRoutes');
 const shippingSettingsRoutes = require('./routes/seller/shippingSettingsRoutes');
 const sellerImageRoutes = require('./routes/seller/imageRoutes');
 const sellerTestimonialRoutes = require('./routes/seller/testimonialRoutes');
+const sellerPromoRoutes = require('./routes/seller/promoRoutes');
 
 const adminRoutes = require('./routes/admin/adminRoutes');
 const adminCouponRoutes = require('./routes/admin/couponRoutes');
@@ -83,8 +89,10 @@ const adminReviewRoutes = require('./routes/admin/reviewRoutes');
 const adminPayoutRoutes = require('./routes/admin/payoutRoutes');
 const adminRefundRoutes = require('./routes/admin/refundRoutes');
 const adRoutes = require('./routes/admin/adRoutes');
+const adminFlashDealRoutes = require('./routes/admin/flashDealRoutes');
 const adminShippingRoutes = require('./routes/admin/shippingRoutes');
 const adminTestimonialRoutes = require('./routes/admin/testimonialRoutes');
+const adminPromoRoutes = require('./routes/admin/promoRoutes');
 
 const productRoutes = require('./routes/shared/productRoutes');
 const categoryRoutes = require('./routes/shared/categoryRoutes');
@@ -103,6 +111,8 @@ const deviceSessionRoutes = require('./routes/shared/deviceSessionRoutes');
 const recommendationRoutes = require('./routes/shared/recommendationRoutes');
 const supportRoutes = require('./routes/shared/supportRoutes');
 const seoRoutes = require('./routes/shared/seoRoutes');
+const chatRoutes = require('./routes/shared/chatRoutes');
+const adminChatRoutes = require('./routes/admin/chatRoutes');
 
 const app = express();
 
@@ -154,7 +164,7 @@ app.use((req, res, next) => {
           'https://*.paystack.com',
           'https://checkout.paystack.com',
           'https://nominatim.openstreetmap.org',
-          // Development origins
+          // Development origins (HTTP + WebSocket)
           ...(process.env.NODE_ENV === 'development'
             ? [
               'http://localhost:5173',
@@ -171,6 +181,9 @@ app.use((req, res, next) => {
               'http://154.161.40.137:3000',
               'http://154.161.40.137:3001',
               'http://154.161.40.137:4000',
+              // WebSocket connections for Socket.io (dev)
+              'ws://localhost:4000',
+              'ws://127.0.0.1:4000',
             ]
             : []
           ),
@@ -180,8 +193,10 @@ app.use((req, res, next) => {
               'https://api.saiisai.com',
               'https://saiisai.com',
               'https://www.saiisai.com',
-              'https://seller.saiisai.com',   // Seller dashboard
-              'https://admin.saiisai.com',    // Admin dashboard
+              'https://seller.saiisai.com',
+              'https://admin.saiisai.com',
+              // WebSocket connections for Socket.io (prod)
+              'wss://api.saiisai.com',
             ]
             : []
           ),
@@ -242,6 +257,16 @@ const corsOptions = {
     const normalizedAllowedOrigins = allowedOrigins.map(o => o.toLowerCase().replace(/\/$/, ''));
     if (normalizedAllowedOrigins.includes(normalizedOrigin)) {
       logger.debug(`[CORS] Allowing known origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    // Local loopback + any port: dev UIs (e.g. Vite :5173) hitting production API for REST and
+    // Socket.io long-polling (those requests pass through Express cors() before Engine.io).
+    // Same trust model as Socket.io server localDevOriginRe in server.js.
+    const localLoopbackOriginRe =
+      /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+    if (origin && localLoopbackOriginRe.test(String(origin).trim())) {
+      logger.debug(`[CORS] Allowing local loopback origin: ${origin}`);
       return callback(null, true);
     }
 
@@ -344,22 +369,6 @@ app.options('*', cors(corsOptions));
 const { enforceHttps } = require('./middleware/security/httpsEnforcement');
 app.use(enforceHttps); // Enforces HTTPS in production
 
-const getRateLimitClientIp = (req) => {
-  // Prefer CDN/client-origin headers when available (CloudFront/ALB),
-  // then fall back to Express-derived IP.
-  const cfIp = req.headers['cf-connecting-ip'];
-  if (typeof cfIp === 'string' && cfIp.trim()) {
-    return cfIp.trim();
-  }
-
-  const xForwardedFor = req.headers['x-forwarded-for'];
-  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
-    return xForwardedFor.split(',')[0].trim();
-  }
-
-  return req.ip;
-};
-
 // Logging - Use Winston logger for HTTP requests
 if (isDevelopment) {
   app.use(morgan('dev', { stream: logger.stream }));
@@ -379,7 +388,7 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getRateLimitClientIp,
+  keyGenerator: rateLimitKey,
   // Skip rate limiting for whitelisted IPs (optional)
   skip: (req) => {
     // Skip localhost in development
@@ -398,15 +407,17 @@ const speedLimiter = slowDown({
   delayAfter: isProduction ? 300 : 1000,
   delayMs: (hits) => Math.max(0, (hits - (isProduction ? 300 : 1000)) * 100),
   maxDelayMs: isProduction ? 3000 : 0,
-  keyGenerator: getRateLimitClientIp,
+  keyGenerator: rateLimitKey,
   skip: () => isDevelopment, // Skip in development to avoid slow backend during local testing
 });
 app.use('/api', speedLimiter);
 
-// More aggressive rate limiting for auth endpoints (brute-force protection)
+// Aggressive rate limiting for auth endpoints (brute-force protection).
+// Failed responses (status >= 400) count when skipSuccessfulRequests is true.
+// Development uses a higher cap so local/staging iteration is not blocked by 401/403 tests.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isProduction ? 5 : 80,
   message: {
     error: 'Too many login attempts, please try again later',
     retryAfter: 15 * 60,
@@ -414,13 +425,14 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: getRateLimitClientIp,
+  keyGenerator: rateLimitKey,
 });
 
 app.use('/api/v1/users/login', authLimiter);
 app.use('/api/v1/users/signup', authLimiter);
 app.use('/api/v1/admin/login', authLimiter);
 app.use('/api/v1/admin/signup', authLimiter);
+app.use('/api/v1/admin/register', authLimiter);
 app.use('/api/v1/seller/login', authLimiter);
 app.use('/api/v1/seller/signup', authLimiter);
 
@@ -539,12 +551,17 @@ app.use('/api/v1/permission', permissionRoutes);
 app.use('/api/v1/newsletter', newsletterRoutes);
 app.use('/api/v1/discount', discountDisplayRoutes);
 app.use('/api/v1/statuses', statusRoutes);
+app.use('/api/v1/flash-deals', buyerFlashDealRoutes);
+app.use('/api/v1/promos', buyerPromoRoutes);
+app.use('/api/v1/offers', buyerOfferRoutes);
 
 // Seller routes
 // IMPORTANT: More specific routes must come BEFORE general routes to avoid route conflicts
 // The sellerRoutes has a catch-all /:id route that would match /coupon if mounted first
 app.use('/api/v1/seller/coupon', sellerCouponRoutes); // Seller routes (manage coupons) - MUST come before sellerRoutes
 app.use('/api/v1/seller/discount', discountRoutes); // Seller routes (manage discounts) - MUST come before sellerRoutes
+app.use('/api/v1/seller/flash-deals', sellerFlashDealRoutes);
+app.use('/api/v1/seller/promos', sellerPromoRoutes);
 app.use('/api/v1/seller/reviews', sellerReviewRoutes);
 app.use('/api/v1/seller/testimonials', sellerTestimonialRoutes);
 app.use('/api/v1/seller/payout', sellerPayoutRoutes);
@@ -565,6 +582,8 @@ app.use('/api/v1/admin/testimonials', adminTestimonialRoutes);
 app.use('/api/v1/admin/payout', adminPayoutRoutes);
 app.use('/api/v1/admin/refunds', adminRefundRoutes);
 app.use('/api/v1/admin/coupons', adminCouponRoutes);
+app.use('/api/v1/admin/flash-deals', adminFlashDealRoutes);
+app.use('/api/v1/admin/promos', adminPromoRoutes);
 app.use('/api/v1/admin/shipping', adminShippingRoutes);
 app.use('/api/v1/logs', require('./modules/activityLog/activityLog.routes'));
 app.use('/api/v1/admin', adminRoutes);
@@ -595,6 +614,8 @@ app.use('/api/v1/sessions', deviceSessionRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/api/v1/support', supportRoutes);
 app.use('/api/v1/seo', seoRoutes);
+app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/admin/chat', adminChatRoutes);
 
 // Health check endpoint (improved for Docker/K8s)
 app.get('/health', (req, res) => {

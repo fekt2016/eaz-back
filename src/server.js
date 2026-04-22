@@ -1,4 +1,6 @@
+const http = require('http');
 const mongoose = require('mongoose');
+const { Server: SocketServer } = require('socket.io');
 const app = require('./app');
 const { validateEnvironment } = require('./config/env');
 const connectDatabase = require('./config/database');
@@ -39,7 +41,78 @@ class Server {
         );
       }
 
-      this.server = app.listen(port, host, () => {
+      // Create HTTP server and attach Socket.io
+      const httpServer = http.createServer(app);
+
+      const extraSocketOrigins = (process.env.SOCKET_IO_CORS_ORIGINS || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const socketOrigins = new Set([
+        'https://saiisai.com',
+        'https://www.saiisai.com',
+        'https://seller.saiisai.com',
+        'https://admin.saiisai.com',
+        ...(process.env.NODE_ENV === 'development'
+          ? [
+              'http://localhost:5173',
+              'http://localhost:5174',
+              'http://localhost:5175',
+              'http://127.0.0.1:5173',
+              'http://127.0.0.1:5174',
+              'http://127.0.0.1:5175',
+            ]
+          : []),
+        ...extraSocketOrigins,
+      ]);
+
+      // Localhost / loopback + any port — allowed in production too so Vite (e.g. :5173) can use
+      // Socket.io against api.saiisai.com without SOCKET_IO_CORS_ORIGINS. Browsers only send these
+      // origins from the developer's machine.
+      const localDevOriginRe =
+        /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+      // LAN IPs: dev API only (broader surface)
+      const lanDevOriginRe =
+        /^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/i;
+
+      const io = new SocketServer(httpServer, {
+        cors: {
+          origin: (origin, callback) => {
+            if (!origin) {
+              return callback(null, true);
+            }
+            if (socketOrigins.has(origin)) {
+              return callback(null, true);
+            }
+            if (localDevOriginRe.test(origin)) {
+              return callback(null, true);
+            }
+            if (
+              process.env.NODE_ENV === 'development' &&
+              lanDevOriginRe.test(origin)
+            ) {
+              return callback(null, true);
+            }
+            logger.warn(`[Socket.io] CORS blocked handshake`, { origin });
+            // Use (null, false) — passing Error can yield 500 without CORS headers in some paths
+            return callback(null, false);
+          },
+          credentials: true,
+          methods: ['GET', 'POST'],
+        },
+        path: '/socket.io',
+      });
+
+      // Initialise chat socket handler
+      const chatSocketHandler = require('./sockets/chatSocketHandler');
+      chatSocketHandler(io);
+
+      // Make io available to controllers if needed
+      app.set('io', io);
+
+      this.server = httpServer;
+      this.server.listen(port, host, () => {
         const timestamp = new Date().toISOString();
         console.log('\n' + '='.repeat(60));
         console.log(`🚀 Server started at ${timestamp}`);
@@ -168,6 +241,12 @@ class Server {
         startOrphanedImageCleanup,
       } = require('./jobs/cleanupOrphanedImages');
       startOrphanedImageCleanup();
+
+      const { startFlashDealScheduler } = require('./utils/flashDealScheduler');
+      startFlashDealScheduler();
+
+      const { startPromoStatusJob } = require('./jobs/promoStatusJob');
+      startPromoStatusJob();
       
       if (process.env.NODE_ENV === 'production') {
         logger.info('Cron jobs initialized');

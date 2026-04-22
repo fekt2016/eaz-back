@@ -1,5 +1,6 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES } = require('../../config/rolePermissions');
 const reviewController = require('../../controllers/shared/reviewController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
 const { reviewSubmissionLimiter } = require('../../middleware/rateLimiting/reviewLimiter');
@@ -26,7 +27,7 @@ router.get(
 
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllReview)
+  .get(authController.protect, authController.restrictTo(...OPS_ROLES), getAllReview)
   .post(
     authController.protect,
     authController.restrictTo('user', 'buyer'),
@@ -40,13 +41,13 @@ router
   .get(validateObjectId('id'), reviewController.getReview)
   .patch(
     authController.protect,
-    authController.restrictTo('user', 'buyer', 'admin'), // 'buyer' alias for customer role
+    authController.restrictTo('user', 'buyer', 'admin', 'superadmin'),
     validateObjectId('id'),
     reviewController.updateReview,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('user', 'buyer', 'admin'), // 'buyer' alias for customer role
+    authController.restrictTo('user', 'buyer', 'admin', 'superadmin'),
     validateObjectId('id'),
     reviewController.deleteReview,
   );
@@ -56,7 +57,7 @@ router
   .route('/:id/reply')
   .post(
     authController.protect,
-    authController.restrictTo('seller', 'admin'),
+    authController.restrictTo('seller', 'admin', 'superadmin'),
     validateObjectId('id'),
     reviewController.replyToReview,
   );

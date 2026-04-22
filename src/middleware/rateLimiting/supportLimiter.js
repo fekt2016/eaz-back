@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { rateLimitKey } = require('../../utils/rateLimitKey');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -11,7 +12,7 @@ exports.supportTicketCreateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: rateLimitKey,
 });
 
 exports.supportTicketReplyLimiter = rateLimit({
@@ -23,6 +24,6 @@ exports.supportTicketReplyLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?.id || req.ip,
+  keyGenerator: rateLimitKey,
 });
 

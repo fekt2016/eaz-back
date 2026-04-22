@@ -563,8 +563,8 @@ exports.updatePaymentMethod = catchAsync(async (req, res, next) => {
             timestamp: new Date(),
             paymentMethod: updatedPaymentMethod.type === 'bank_transfer' ? 'bank' :
               updatedPaymentMethod.provider === 'MTN' ? 'mtn_momo' :
-                updatedPaymentMethod.provider === 'Vodafone' ? 'vodafone_cash' :
-                  'airtel_tigo_money',
+                (updatedPaymentMethod.provider === 'Telecel' || updatedPaymentMethod.provider === 'Vodafone') ? 'telecel_cash' :
+                  'at_money',
             paymentDetails: updatedPaymentMethod.type === 'bank_transfer' ? {
               accountNumber: updatedPaymentMethod.accountNumber,
               accountName: updatedPaymentMethod.accountName,

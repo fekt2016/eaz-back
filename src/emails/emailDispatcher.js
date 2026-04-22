@@ -629,6 +629,94 @@ const sendProductApprovedEmail = async (seller, product) => {
 };
 
 /**
+ * Escape minimal HTML for email bodies
+ * @param {string} str
+ */
+const escapeHtmlAttr = (str) => {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+
+/**
+ * Seller edited an approved product — pending moderation again
+ * @param {Object} seller - Seller with email, name, shopName
+ * @param {Object} product - Product with name, _id
+ * @param {string} changedSummary - human-readable list of updated areas
+ */
+const sendProductPendingReviewAfterUpdateEmail = async (seller, product, changedSummary) => {
+  const brandConfig = {
+    name: process.env.APP_NAME || process.env.BRAND_NAME || 'Saiisai',
+    url: process.env.FRONTEND_URL || process.env.SELLER_DASHBOARD_URL || 'https://saiisai.com',
+  };
+  const productName = escapeHtmlAttr(product?.name || 'Your product');
+  const summary = escapeHtmlAttr(
+    (changedSummary && String(changedSummary).trim()) || 'Product details',
+  );
+  const sellerProductsUrl = `${String(brandConfig.url).replace(/\/+$/, '')}/seller/products`;
+  const greet = escapeHtmlAttr(seller.name || seller.shopName || 'Seller');
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
+        .notice-box { background: #fffbeb; border-left: 4px solid #d97706; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .info-box { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 30px; background: #d97706; color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea; color: #6c757d; font-size: 0.9em; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Listing back in review</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${greet},</p>
+          <p>We saved your changes to <strong>${productName}</strong>. Because this product was already live, our team needs to review the update before buyers can see it again.</p>
+          <div class="notice-box">
+            <p><strong>What happens next</strong></p>
+            <p>Your listing is set to <strong>pending review</strong> and is temporarily <strong>hidden</strong> from the marketplace until it is approved.</p>
+          </div>
+          <div class="info-box">
+            <p><strong>Product:</strong> ${productName}</p>
+            <p><strong>Areas updated in this save:</strong> ${summary}</p>
+          </div>
+          <p>You will receive another email when the review is complete.</p>
+          <p style="text-align: center;">
+            <a href="${escapeHtmlAttr(sellerProductsUrl)}" class="button">Open seller dashboard</a>
+          </p>
+        </div>
+        <div class="footer">
+          <p>Best regards,<br>The ${escapeHtmlAttr(brandConfig.name)} Team</p>
+          <p>© ${new Date().getFullYear()} ${escapeHtmlAttr(brandConfig.name)}. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const plainName = product?.name || 'Your product';
+  const plainSummary =
+    (changedSummary && String(changedSummary).trim()) || 'Product details';
+
+  return await sendEmail({
+    to: seller.email,
+    subject: `We received your updates — "${plainName}" is pending review — ${brandConfig.name}`,
+    text: `Hello ${seller.name || seller.shopName || 'Seller'}, we saved your changes to "${plainName}". The listing is pending review and hidden from buyers until approved. Updated areas: ${plainSummary}. Manage listings: ${sellerProductsUrl}`,
+    html: htmlContent,
+  });
+};
+
+/**
  * Send refund processed email to buyer
  * @param {Object} user - User object with email and name
  * @param {Object} refund - Refund request object
@@ -1591,6 +1679,7 @@ module.exports = {
   // Products
   sendProductApprovedEmail,
   sendProductRejectedEmail,
+  sendProductPendingReviewAfterUpdateEmail,
   // Seller account
   sendSellerVerifiedEmail,
   sendSellerSuspendedEmail,

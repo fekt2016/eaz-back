@@ -31,7 +31,19 @@ const adminSchema = new mongoose.Schema(
         message: 'passwords are not the same ',
       },
     },
-    role: { type: String, enum: ['admin', 'superadmin', 'moderator'], default: 'admin' },
+    role: { type: String, enum: ['admin', 'superadmin', 'support_agent'], default: 'admin' },
+    /** Set when another admin creates this account (JWT actor). Bootstrap signup leaves unset. */
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
+    referral: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [200, 'Referral is too long'],
+    },
     createdAt: { type: Date, default: Date.now() },
     updatedAt: { type: Date, default: Date.now() },
     lastLogin: { type: Date, default: Date.now() },

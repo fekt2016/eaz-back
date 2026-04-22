@@ -187,9 +187,18 @@ exports.forceLogoutUser = catchAsync(async (req, res, next) => {
     return next(new AppError('User ID is required', 400));
   }
 
+  const sampleSession = await DeviceSession.findOne({ userId }).select('userModel');
   const result = await DeviceSession.deleteMany({ userId });
 
-  await TokenBlacklist.invalidateAllSessions(userId);
+  const userTypeMap = {
+    Seller: 'seller',
+    Admin: 'admin',
+    User: 'customer',
+  };
+  const userType =
+    userTypeMap[sampleSession?.userModel] || 'customer';
+
+  await TokenBlacklist.invalidateAllSessions(userId, userType);
 
   logger.info(`[Admin] Deleted all device sessions for user: ${userId}, count: ${result.deletedCount}`);
 

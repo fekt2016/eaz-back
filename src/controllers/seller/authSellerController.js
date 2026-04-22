@@ -18,6 +18,9 @@ const logger = require('../../utils/logger');
 // Shared helpers for standardized auth
 const { normalizeEmail, normalizePhone, handleSuccessfulLogin, clearAuthCookie } = require('../../utils/helpers/authHelpers');
 const { OTP_TYPES, generateOtp, verifyOtp, clearOtp } = require('../../utils/helpers/otpHelpers');
+const STRICT_DEVICE_SESSION_ENFORCEMENT =
+  String(process.env.STRICT_DEVICE_SESSION_ENFORCEMENT || '').toLowerCase() ===
+  'true';
 
 // Initialize login session cache (5 minutes TTL) for 2FA login flow
 const loginSessionCache = new NodeCache({ stdTTL: 300 });
@@ -1254,7 +1257,7 @@ exports.resetPasswordWithToken = catchAsync(async (req, res, next) => {
   const DeviceSession = require('../../models/user/deviceSessionModel');
   const TokenBlacklist = require('../../models/user/tokenBlackListModal');
   await DeviceSession.deactivateAll(seller._id);
-  await TokenBlacklist.invalidateAllSessions(seller._id);
+  await TokenBlacklist.invalidateAllSessions(seller._id, 'seller');
 
   try {
     // Send confirmation email
@@ -1340,7 +1343,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // Invalidate all sessions on password reset
   const DeviceSession = require('../../models/user/deviceSessionModel');
   await DeviceSession.deactivateAll(seller._id);
-  await TokenBlacklist.invalidateAllSessions(seller._id);
+  await TokenBlacklist.invalidateAllSessions(seller._id, 'seller');
 
   // Log seller in with new password
   try {
@@ -1979,48 +1982,38 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
 
   // 🛡️ HARD SAFETY GUARD: Prevent buyer routes from using seller auth
   if (fullPath.startsWith('/api/v1/users') || fullPath.startsWith('/api/v1/buyer') || fullPath.startsWith('/users') || fullPath.startsWith('/buyer')) {
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('[AUTH TRACE] ❌ CRITICAL ERROR: BUYER route passed to SELLER auth middleware');
-    console.error('[AUTH TRACE] Route:', method, fullPath);
-    console.error('[AUTH TRACE] This is a CONFIGURATION ERROR');
-    console.error('═══════════════════════════════════════════════════════════');
+    logger.error('[protectSeller] Buyer route passed to seller middleware', {
+      route: `${method} ${fullPath}`,
+    });
     return next(new AppError('Configuration error: Buyer route using seller auth', 500));
   }
 
-  // 🔍 AUTH TRACE LOGGING
-  console.log('[AUTH TRACE]', {
-    path: fullPath,
-    method: method,
-    middleware: 'protectSeller (seller/authSellerController.js)',
-    cookies: req.cookies ? Object.keys(req.cookies) : 'none',
-    hasSellerJwt: req.cookies?.seller_jwt ? 'YES' : 'NO',
-    hasMainJwt: req.cookies?.main_jwt ? 'YES' : 'NO',
-    timestamp: new Date().toISOString(),
-  });
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[protectSeller] auth trace', {
+      route: `${method} ${fullPath}`,
+      hasSellerJwt: Boolean(req.cookies?.seller_jwt),
+      hasMainJwt: Boolean(req.cookies?.main_jwt),
+    });
+  }
 
   // Extract token: cookie first (web), then Authorization Bearer (mobile when cookie not sent e.g. FormData)
   let token = null;
   if (req.cookies && req.cookies.seller_jwt) {
     token = req.cookies.seller_jwt;
-    console.log(`[protectSeller] ✅ Token found in seller_jwt cookie for ${method} ${fullPath}`);
   } else if (
     req.headers.authorization &&
     typeof req.headers.authorization === 'string' &&
     req.headers.authorization.startsWith('Bearer ')
   ) {
     token = req.headers.authorization.slice(7).trim();
-    if (token) {
-      console.log(`[protectSeller] ✅ Token from Authorization header for ${method} ${fullPath}`);
-    }
   }
 
   if (!token) {
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error(`[protectSeller] ❌ CRITICAL: No seller_jwt token found for seller route`);
-    console.error(`[protectSeller] Route: ${method} ${fullPath}`);
-    console.error(`[protectSeller] Expected cookie: seller_jwt`);
-    console.error(`[protectSeller] Available cookies:`, req.cookies ? Object.keys(req.cookies).join(', ') : 'none');
-    console.error('═══════════════════════════════════════════════════════════');
+    logger.warn('[protectSeller] Missing token for protected seller route', {
+      route: `${method} ${fullPath}`,
+      hasSellerCookie: Boolean(req.cookies?.seller_jwt),
+      hasAuthHeader: Boolean(req.headers.authorization),
+    });
     return next(
       new AppError('You are not logged in! Please log in to get access.', 401),
     );
@@ -2039,7 +2032,10 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
   const { decoded, error } = await verifyToken(token, fullPath);
 
   if (error || !decoded) {
-    console.error('[protectSeller] Token verification failed:', error?.message || 'Invalid token');
+    logger.warn('[protectSeller] Token verification failed', {
+      route: `${method} ${fullPath}`,
+      message: error?.message || 'Invalid token',
+    });
     return next(new AppError('Session expired', 401));
   }
 
@@ -2052,7 +2048,9 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
       const { clearAuthCookie } = require('../../utils/helpers/authHelpers');
       clearAuthCookie(res, 'seller');
     } catch (e) {
-      console.error('[protectSeller] Error clearing invalid seller cookie:', e.message);
+      logger.warn('[protectSeller] Error clearing invalid seller cookie', {
+        message: e.message,
+      });
     }
 
     return next(
@@ -2073,6 +2071,29 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
     );
   }
 
+  // Enforce device-session validity for device-bound seller tokens.
+  if (decoded.deviceId) {
+    const DeviceSession = require('../../models/user/deviceSessionModel');
+    const activeSession = await DeviceSession.findOne({
+      userId: currentUser._id || currentUser.id,
+      deviceId: decoded.deviceId,
+      isActive: true,
+    }).select('_id');
+
+    if (!activeSession) {
+      return next(
+        new AppError('Your session is no longer valid. Please log in again.', 401),
+      );
+    }
+  } else if (STRICT_DEVICE_SESSION_ENFORCEMENT) {
+    logger.warn(
+      `[protectSeller] Token missing deviceId for ${method} ${fullPath} while STRICT_DEVICE_SESSION_ENFORCEMENT=true`,
+    );
+    return next(
+      new AppError('Your session is no longer valid. Please log in again.', 401),
+    );
+  }
+
   // Check password change timestamp
   if (currentUser.changedPasswordAfter && currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
@@ -2086,11 +2107,12 @@ exports.protectSeller = catchAsync(async (req, res, next) => {
     req.user.deviceId = decoded.deviceId;
   }
 
-  console.log(`[protectSeller] ✅ Authentication successful for seller:`, {
-    userId: currentUser.id,
-    email: currentUser.email || currentUser.phone,
-    route: fullPath,
-  });
+  if (process.env.NODE_ENV === 'development') {
+    logger.debug('[protectSeller] Authentication successful', {
+      userId: currentUser.id,
+      route: fullPath,
+    });
+  }
 
   next();
 });

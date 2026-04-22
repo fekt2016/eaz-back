@@ -27,7 +27,6 @@ const publicRoutes = [
   { path: '/api/v1/users/forgot-password', methods: ['POST'] },
   { path: '/api/v1/users/reset-password/:token', methods: ['PATCH'] },
   { path: '/api/v1/admin/login', methods: ['POST'] },
-  { path: '/api/v1/admin/register', methods: ['POST'] },
   { path: '/api/v1/admin/verify-email', methods: ['POST'] },
   { path: '/api/v1/seller/login', methods: ['POST'] },
   { path: '/api/v1/seller/register', methods: ['POST'] },
@@ -103,27 +102,58 @@ const verifyToken = async (token, currentPath) => {
 const findUserByToken = async (decoded) => {
   const models = {
     user: User,
+    buyer: User,
     admin: Admin,
-    superadmin: Admin,  // superadmin users are stored in Admin model
-    moderator: Admin,   // moderator users are stored in Admin model
+    superadmin: Admin,       // superadmin users are stored in Admin model
+    support_agent: Admin,   // support_agent users are stored in Admin model
+    moderator: Admin,       // legacy JWT role → treat as Admin doc lookup
     seller: Seller,
+    official_store: Seller,  // official_store accounts are Seller documents
   };
 
-  const user = await models[decoded.role]?.findById(decoded.id);
+  const rk = String(decoded.role || 'user').toLowerCase();
+  let user = models[rk] ? await models[rk].findById(decoded.id) : null;
+
+  // If role string was wrong/unknown but `id` exists in exactly one collection, resolve it.
+  if (!user && decoded.id) {
+    const [sellerDoc, userDoc] = await Promise.all([
+      Seller.findById(decoded.id),
+      User.findById(decoded.id),
+    ]);
+    if (sellerDoc && !userDoc) {
+      user = sellerDoc;
+    } else if (userDoc && !sellerDoc) {
+      user = userDoc;
+    } else if (sellerDoc && userDoc) {
+      user = ['seller', 'official_store'].includes(rk) ? sellerDoc : userDoc;
+    }
+  }
   
   // CRITICAL: For admins, ALWAYS use the role from the token
-  // The Admin model enum only allows 'admin', but tokens can have 'superadmin' or 'moderator'
+  // The Admin model enum only allows 'admin', but tokens can have 'superadmin' or 'support_agent'
   // This ensures admin roles from the token are preserved and available for restrictTo middleware
-  if (user && decoded.role && (decoded.role === 'admin' || decoded.role === 'superadmin' || decoded.role === 'moderator')) {
+  if (
+    user &&
+    decoded.role &&
+    (decoded.role === 'admin' ||
+      decoded.role === 'superadmin' ||
+      decoded.role === 'support_agent' ||
+      decoded.role === 'moderator')
+  ) {
     // Override the role from database with the role from token
     // This handles cases where Admin model has role='admin' but token has role='superadmin'
-    user.role = decoded.role;
+    user.role = decoded.role === 'moderator' ? 'support_agent' : decoded.role;
   } else if (user && !user.role) {
     // If user doesn't have a role set, default to the role from token
     // This ensures the role is always available for restrictTo middleware
     user.role = decoded.role || 'user';
     // Save the role to the database if it was missing (but not for admins, as we set it above)
-    if (decoded.role !== 'admin' && decoded.role !== 'superadmin' && decoded.role !== 'moderator') {
+    if (
+      decoded.role !== 'admin' &&
+      decoded.role !== 'superadmin' &&
+      decoded.role !== 'support_agent' &&
+      decoded.role !== 'moderator'
+    ) {
       await user.save({ validateBeforeSave: false });
     }
   }

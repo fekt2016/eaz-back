@@ -9,6 +9,7 @@ const pickupLocationController = require('../../controllers/seller/pickupLocatio
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES, ALL_ADMIN_ROLES } = require('../../config/rolePermissions');
 const statusController = require('../../controllers/seller/statusController');
 const { resizeImage, uploadProfileImage } = require('../../middleware/upload/multer');
 
@@ -47,68 +48,52 @@ router
   .route('/')
   .get(
     authController.protect, // Use standard protect (accepts admin_jwt/main_jwt)
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...ALL_ADMIN_ROLES),
     sellerControllor.getAllSeller
   );
+
+const adminSellerIdGuard = (req, res, next) => {
+  if (
+    [
+      'me',
+      'status',
+      'statuses',
+      'updateMe',
+      'update-onboarding',
+      'returns',
+      'refunds',
+    ].includes(req.params.id)
+  ) {
+    return next('route');
+  }
+  next();
+};
 
 // Admin-only route to get or update a specific seller by ID
 // IMPORTANT: This must be defined BEFORE protectSeller AND before /me route
 // This route allows admins to view any seller by ID (not by /me)
 // CRITICAL: Must exclude 'me' and 'status' from matching to prevent route conflicts
-router
-  .route('/:id')
-  .get(
-    (req, res, next) => {
-      // Exclude literal path segments from matching this route (they are not seller ObjectIds)
-      if (
-        [
-          'me',
-          'status',
-          'statuses',
-          'updateMe',
-          'update-onboarding',
-          // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
-          'returns',
-          'refunds',
-        ].includes(req.params.id)
-      ) {
-        return next('route'); // Skip to next route handler
-      }
-      next();
-    },
-    authController.protect, // Use standard protect for admin access
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
-    sellerControllor.getSeller
-  )
-  .patch(
-    (req, res, next) => {
-      // Exclude literal path segments from matching this route (they are not seller ObjectIds)
-      if (
-        [
-          'me',
-          'status',
-          'statuses',
-          'updateMe',
-          'update-onboarding',
-          // IMPORTANT: these are dedicated sub-routes and must not be treated as seller IDs
-          'returns',
-          'refunds',
-        ].includes(req.params.id)
-      ) {
-        return next('route'); // Skip to next route handler
-      }
-      next();
-    },
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
-    sellerControllor.updateSeller
-  );
+router.get(
+  '/:id',
+  adminSellerIdGuard,
+  authController.protect,
+  authController.restrictTo(...ALL_ADMIN_ROLES),
+  sellerControllor.getSeller,
+);
+
+router.patch(
+  '/:id',
+  adminSellerIdGuard,
+  authController.protect,
+  authController.restrictTo('admin', 'superadmin', 'seller'),
+  sellerControllor.updateSeller,
+);
 
 // Admin: Reactivate seller (set active: true). Uses updateOne so inactive sellers can be found.
 router.patch(
   '/:id/reactivate',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   sellerControllor.reactivateSeller
 );
 
@@ -116,7 +101,7 @@ router.patch(
 router.patch(
   '/:id/status',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   sellerControllor.sellerStatus
 );
 
@@ -125,26 +110,26 @@ router.patch(
 router.patch(
   '/:id/approve-verification',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   onboardingController.approveSellerVerification
 );
 router.patch(
   '/:id/reject-verification',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   onboardingController.rejectSellerVerification
 );
 router.patch(
   '/:id/document-status',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   onboardingController.updateDocumentStatus
 );
 
 // 🔒 CRITICAL: Use protectSeller for seller-specific routes
 // This ensures seller routes use seller_jwt cookie, not main_jwt
 router.use(authSellerController.protectSeller);
-router.use(authController.restrictTo('seller', 'admin', 'superadmin', 'moderator')); // restrictTo is safe to use (just checks role)
+router.use(authController.restrictTo('seller', 'admin', 'superadmin'));
 
 // ✅ CRITICAL: /me route MUST be defined here (after protectSeller)
 // This ensures sellers can access their own profile using seller_jwt cookie
@@ -184,6 +169,11 @@ router.delete(
   '/statuses/:id',
   authController.restrictTo('seller', 'official_store'),
   statusController.deleteStatus
+);
+router.post(
+  '/statuses/:id/repost',
+  authController.restrictTo('seller', 'official_store'),
+  statusController.repostStatus
 );
 
 router
@@ -524,23 +514,6 @@ router.patch(
   uploadProfileImage,
   resizeImage,
   sellerControllor.updateSellerImage,
-);
-// Admin: Approve/Reject seller verification
-router.patch(
-  '/:id/approve-verification',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
-  onboardingController.approveSellerVerification
-);
-router.patch(
-  '/:id/reject-verification',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
-  onboardingController.rejectSellerVerification
-);
-// Admin: Update individual document status
-router.patch(
-  '/:id/document-status',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
-  onboardingController.updateDocumentStatus
 );
 // NOTE: Payout verification routes have been moved to /api/v1/admin/sellers/:id/payout/*
 // This separation ensures payout verification is completely independent from document verification

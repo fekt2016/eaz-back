@@ -58,6 +58,12 @@ const OrderItemSchema = new mongoose.Schema({
     },
     comment: 'Variant ID (ObjectId) for variant products, null for simple products. NEVER store full variant objects.',
   },
+  promoProductRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PromoProduct',
+    default: null,
+    comment: 'Reference to approved PromoProduct used for final promo pricing, if any.',
+  },
   /**
    * SNAPSHOT FIELDS - Store product/variant details at order time
    * These fields ensure order history remains accurate even if products change
@@ -337,6 +343,11 @@ OrderItemSchema.methods.getDisplayName = function () {
 OrderItemSchema.index({ product: 1 });
 OrderItemSchema.index({ sku: 1 });
 OrderItemSchema.index({ sellerId: 1 });
+// Promo traceability: aggregate sales / audit by PromoProduct submission
+OrderItemSchema.index(
+  { promoProductRef: 1 },
+  { sparse: true },
+);
 
 const OrderItems = mongoose.model('OrderItems', OrderItemSchema);
 

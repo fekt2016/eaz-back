@@ -15,6 +15,7 @@ const sessionManagementController = require('../../controllers/admin/sessionMana
 const historyController = require('../../controllers/admin/historyController');
 const productController = require('../../controllers/admin/productController');
 const authController = require('../../controllers/buyer/authController');
+const { ALL_ADMIN_ROLES, OPS_ROLES, SUPERADMIN_ONLY } = require('../../config/rolePermissions');
 const { updateOrderStatus } = require('../../controllers/shared/orderTrackingController');
 const { deleteOrder } = require('../../controllers/shared/orderController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
@@ -36,12 +37,20 @@ router.post('/reset-password', resetLimiter, authAdminController.resetPasswordWi
 router.post('/forgotPassword', resetLimiter, authAdminController.forgetPassword);
 router.patch('/resetPassword/:token', authAdminController.resetPassword);
 
-router.use(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'));
+router.use(authController.protect);
+
+// Superadmin creates another admin (records `createdBy`; does not replace current session)
+router.post(
+  '/register',
+  authController.restrictTo(...SUPERADMIN_ONLY),
+  authAdminController.createAdminBySuperadmin,
+);
 
 // Admin-only order tracking/status update (avoid buyer-route auth ambiguity)
 router.post(
   '/orders/:orderId/status',
   validateObjectId('orderId'),
+  authController.restrictTo(...OPS_ROLES),
   updateOrderStatus
 );
 
@@ -52,26 +61,39 @@ router.post(
 router.delete(
   '/orders/:id',
   validateObjectId('id'),
+  authController.restrictTo(...OPS_ROLES),
   deleteOrder
 );
 
-router.post('/user/signup', authAdminController.signupUser);
+router.post(
+  '/user/signup',
+  authController.restrictTo(...OPS_ROLES),
+  authAdminController.signupUser,
+);
 router.post(
   '/seller/signup',
-  authController.protect,
+  authController.restrictTo(...OPS_ROLES),
   authAdminController.sigupSeller,
 );
 router.get(
   '/me',
-  authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...ALL_ADMIN_ROLES),
   adminController.getMe,
+);
+router.patch(
+  '/me/password',
+  authController.restrictTo(...ALL_ADMIN_ROLES),
+  authAdminController.updateMyPassword,
+);
+router.get(
+  '/me/activity-analytics',
+  authController.restrictTo(...OPS_ROLES),
+  adminController.getMyActivityAnalytics,
 );
 router
   .route('/')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     adminController.getAllAdmins,
   );
 
@@ -79,8 +101,7 @@ router
 router
   .route('/stats')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     statsController.getPlatformStats
   );
 
@@ -88,40 +109,35 @@ router
 router
   .route('/tax/vat-summary')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     taxController.getVATSummary
   );
 
 router
   .route('/tax/unremitted')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     taxController.getUnremittedVAT
   );
 
 router
   .route('/tax/rates')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     taxController.getTaxRates
   );
 
 router
   .route('/tax/withholding')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     taxController.getWithholdingTax
   );
 
 router
   .route('/tax/mark-remitted')
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     taxController.markTaxRemitted
   );
 
@@ -129,37 +145,32 @@ router
 router
   .route('/settings/platform')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     platformSettingsController.getPlatformSettings
   )
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     platformSettingsController.updatePlatformSettings
   );
 
 router
   .route('/settings/audit-logs')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     platformSettingsController.getAuditLogs
   );
 
 router
   .route('/stats/reset-revenue')
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     statsController.resetRevenue
   );
 
 router
   .route('/stats/reset-revenue-only')
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     statsController.resetRevenueOnly
   );
 
@@ -167,48 +178,42 @@ router
 router
   .route('/sessions')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.getAllSessions
   );
 
 router
   .route('/sessions/suspicious')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.getSuspiciousLogins
   );
 
 router
   .route('/sessions/cleanup-logs')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.getCleanupLogs
   );
 
 router
   .route('/sessions/logout-device/:deviceId')
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.forceLogoutDevice
   );
 
 router
   .route('/sessions/user/:userId')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.getUserSessions
   );
 
 router
   .route('/sessions/logout-user/:userId')
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin'),
+    authController.restrictTo(...OPS_ROLES),
     sessionManagementController.forceLogoutUser
   );
 
@@ -216,32 +221,28 @@ router
 router
   .route('/audit-logs')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     adminAuditLogController.getAdminAuditLogs
   );
 
 router
   .route('/audit-logs/stats')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     adminAuditLogController.getAuditStats
   );
 
 router
   .route('/audit-logs/clear')
   .put(
-    authController.protect,
-    authController.restrictTo('superadmin'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     adminAuditLogController.clearAuditLogs
   );
 
 router
   .route('/audit-logs/:id')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     adminAuditLogController.getAdminAuditLog
   );
 
@@ -249,26 +250,22 @@ router
 router
   .route('/shipping-config')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     shippingConfigController.getShippingConfig
   )
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     shippingConfigController.createShippingConfig
   )
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     shippingConfigController.updateShippingConfig
   );
 
 // International shipping (read-only matrix for admin UI)
 router.get(
   '/international-shipping/matrix',
-  authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   internationalShippingController.getInternationalShippingMatrix,
 );
 
@@ -276,57 +273,48 @@ router.get(
 router
   .route('/international-shipping/configs')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.getInternationalShippingConfigs
   )
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.createInternationalShippingConfig
   );
 
 router
   .route('/international-shipping/configs/:country')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.getInternationalShippingConfigByCountry
   )
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.updateInternationalShippingConfig
   )
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.deleteInternationalShippingConfig
   );
 
 router
   .route('/international-shipping/duty-by-category')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.getImportDutyByCategory
   )
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.createImportDutyByCategory
   );
 
 router
   .route('/international-shipping/duty-by-category/:id')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.updateImportDutyByCategory
   )
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     internationalShippingManagementController.deleteImportDutyByCategory
   );
 
@@ -334,40 +322,35 @@ router
 router
   .route('/seller/:id/balance')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     sellerController.getSellerBalance
   );
 
 router
   .route('/seller/:id/reset-balance')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     sellerController.resetSellerBalance
   );
 
 router
   .route('/seller/:id/reset-locked-balance')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     sellerController.resetLockedBalance
   );
 
 router
   .route('/seller/:id/lock-funds')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     sellerController.lockSellerFunds
   );
 
 router
   .route('/seller/:id/unlock-funds')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     sellerController.unlockSellerFunds
   );
 
@@ -375,24 +358,21 @@ router
 router
   .route('/sellers/:id/payout')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     payoutVerificationController.getPayoutVerificationDetails
   );
 
 router
   .route('/sellers/:id/payout/approve')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     payoutVerificationController.approvePayoutVerification
   );
 
 router
   .route('/sellers/:id/payout/reject')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     payoutVerificationController.rejectPayoutVerification
   );
 
@@ -400,96 +380,84 @@ router
 router
   .route('/analytics/kpi')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getKPICards
   );
 
 router
   .route('/analytics/revenue')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getRevenueAnalytics
   );
 
 router
   .route('/analytics/orders')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getOrdersAnalytics
   );
 
 router
   .route('/analytics/sellers/top')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getTopSellers
   );
 
 router
   .route('/analytics/products/top')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getTopProducts
   );
 
 router
   .route('/analytics/customers')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getCustomerAnalytics
   );
 
 router
   .route('/analytics/order-status')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getOrderStatusAnalytics
   );
 
 router
   .route('/analytics/tax')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getTaxAnalytics
   );
 
 router
   .route('/analytics/traffic')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getTrafficAnalytics
   );
 
 router
   .route('/analytics/carts')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getCartAnalytics
   );
 
 router
   .route('/analytics/fraud')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getFraudAnalytics
   );
 
 router
   .route('/analytics/inventory')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     analyticsController.getInventoryAnalytics
   );
 
@@ -497,32 +465,28 @@ router
 router
   .route('/wallet-history')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getAllWalletHistory
   );
 
 router
   .route('/wallet-history/:userId')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getUserWalletHistory
   );
 
 router
   .route('/revenue-history')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getAllSellerRevenueHistory
   );
 
 router
   .route('/revenue-history/:sellerId')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getSellerRevenueHistory
   );
 
@@ -530,16 +494,14 @@ router
 router
   .route('/transactions')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getAllSellerTransactions
   );
 
 router
   .route('/history/stats')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     historyController.getHistoryStats
   );
 
@@ -547,48 +509,42 @@ router
 router
   .route('/products/pending')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.getPendingProducts
   );
 
 router
   .route('/products/update-visibility')
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.updateAllProductsVisibility
   );
 
 router
   .route('/products/fix-approved-visibility')
   .post(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.fixApprovedProductsVisibility
   );
 
 router
   .route('/products/:id/approve')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.approveProduct
   );
 
 router
   .route('/products/:id/reject')
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.rejectProduct
   );
 
 router
   .route('/products/:productId')
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     productController.removeProduct
   );
 
@@ -597,18 +553,15 @@ router
 router
   .route('/:id')
   .get(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     adminController.getAdmin,
   )
   .patch(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     adminController.updateAdmin,
   )
   .delete(
-    authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...SUPERADMIN_ONLY),
     adminController.deleteAdmin,
   );
 

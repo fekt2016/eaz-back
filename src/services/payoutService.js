@@ -180,7 +180,7 @@ exports.createRecipientForSeller = async (seller) => {
 
       const mobileBankCode = exports.getMobileMoneyBankCode(mobile.network);
       if (!mobileBankCode) {
-        throw new AppError('Invalid mobile money network. Supported networks: MTN, Vodafone, AirtelTigo', 400);
+        throw new AppError('Invalid mobile money network. Supported networks: MTN, Telecel, AT', 400);
       }
 
       recipientData = {
@@ -248,10 +248,14 @@ exports.createRecipientForSeller = async (seller) => {
 exports.getMobileMoneyBankCode = function getMobileMoneyBankCode(network) {
   const networkMap = {
     'MTN': 'MTN', // Paystack uses 'MTN' as bank code for MTN Mobile Money
-    'Vodafone': 'VOD', // Paystack uses 'VOD' for Vodafone Cash
-    'AirtelTigo': 'ATL', // Paystack uses 'ATL' for AirtelTigo Money
+    'Telecel': 'VOD', // Vodafone is now Telecel, Paystack still uses 'VOD'
+    'Vodafone': 'VOD',
+    'AT': 'ATL', // AirtelTigo is now AT, Paystack still uses 'ATL'
+    'AirtelTigo': 'ATL',
     'mtn': 'MTN',
+    'telecel': 'VOD',
     'vodafone': 'VOD',
+    'at': 'ATL',
     'airteltigo': 'ATL',
   };
 

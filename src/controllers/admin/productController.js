@@ -32,7 +32,7 @@ exports.approveProduct = catchAsync(async (req, res, next) => {
   }
 
   // Verify user is admin
-  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+  if (adminRole !== 'admin' && adminRole !== 'superadmin') {
     logger.error('[Approve Product] User is not admin:', { role: adminRole, userId: adminId });
     return next(new AppError('Admin access required', 403));
   }
@@ -241,7 +241,7 @@ exports.rejectProduct = catchAsync(async (req, res, next) => {
   }
 
   // Verify user is admin
-  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+  if (adminRole !== 'admin' && adminRole !== 'superadmin') {
     logger.error('[Reject Product] User is not admin:', { role: adminRole, userId: adminId });
     return next(new AppError('Admin access required', 403));
   }
@@ -380,7 +380,7 @@ exports.fixApprovedProductsVisibility = catchAsync(async (req, res, next) => {
   const adminRole = req.user.role;
 
   // Verify user is admin
-  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+  if (adminRole !== 'admin' && adminRole !== 'superadmin') {
     return next(new AppError('Admin access required', 403));
   }
 
@@ -479,7 +479,7 @@ exports.updateAllProductsVisibility = catchAsync(async (req, res, next) => {
   const adminRole = req.user.role;
 
   // Verify user is admin
-  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+  if (adminRole !== 'admin' && adminRole !== 'superadmin') {
     return next(new AppError('Admin access required', 403));
   }
 
@@ -548,7 +548,7 @@ exports.removeProduct = catchAsync(async (req, res, next) => {
   }
 
   // Verify user is admin
-  if (adminRole !== 'admin' && adminRole !== 'superadmin' && adminRole !== 'moderator') {
+  if (adminRole !== 'admin' && adminRole !== 'superadmin') {
     logger.error('[Remove Product] User is not admin:', { role: adminRole, userId: adminId });
     console.error('[Remove Product] User is not admin:', { role: adminRole, userId: adminId });
     return next(new AppError('Admin access required', 403));

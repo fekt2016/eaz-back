@@ -1,12 +1,13 @@
 const express = require('express');
 const pickupCenterController = require('../../controllers/admin/pickupCenterController');
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES } = require('../../config/rolePermissions');
 
 const router = express.Router();
 
 // All routes require admin authentication
 router.use(authController.protect);
-router.use(authController.restrictTo('admin', 'superadmin'));
+router.use(authController.restrictTo(...OPS_ROLES));
 
 router
   .route('/')

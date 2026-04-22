@@ -3,6 +3,7 @@ const walletController = require('../../controllers/buyer/walletController');
 const walletWebhookController = require('../../controllers/buyer/walletWebhookController');
 const creditbalanceController = require('../../controllers/buyer/creditbalanceController');
 const authController = require('../../controllers/buyer/authController');
+const { SUPERADMIN_ONLY } = require('../../config/rolePermissions');
 // SECURITY FIX #4 (Phase 2 Enhancement): Rate limiting for wallet operations
 const { walletTopupLimiter } = require('../../middleware/rateLimiting/walletLimiter');
 const { paymentVerificationLimiter } = require('../../middleware/rateLimiting/paymentLimiter');
@@ -27,13 +28,13 @@ router.post('/verify', paymentVerificationLimiter, validateTopupVerification, ha
 // Admin adjustment route
 router.post(
   '/adjust',
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   walletController.adjustWallet
 );
 
 // Keep old routes for backward compatibility
 router.get('/old/balance', authController.restrictTo('user'), creditbalanceController.getCreditBalance);
-router.post('/old/add', authController.restrictTo('admin', 'superadmin', 'moderator'), creditbalanceController.addCredit);
+router.post('/old/add', authController.restrictTo(...SUPERADMIN_ONLY), creditbalanceController.addCredit);
 router.get('/old/transactions', authController.restrictTo('user'), creditbalanceController.getTransactions);
 
 module.exports = router;

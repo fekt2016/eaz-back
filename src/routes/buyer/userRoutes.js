@@ -14,6 +14,7 @@ const { getAllUsers,
   getProfile,
   upLoadUserAvatar, } = require('../../controllers/buyer/userController');
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES, ALL_ADMIN_ROLES } = require('../../config/rolePermissions');
 
 const router = express.Router();
 
@@ -89,27 +90,31 @@ router.delete(
 router.get(
   '/me',
   authController.protect,
-  authController.restrictTo('user', 'admin'),
+  authController.restrictTo('user', 'admin', 'superadmin'),
   getMe,
 );
 
 router.get(
   '/get/count',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   userCount,
 );
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllUsers)
-  .post(createUser);
+  .get(authController.protect, authController.restrictTo(...ALL_ADMIN_ROLES), getAllUsers)
+  .post(
+    authController.protect,
+    authController.restrictTo(...OPS_ROLES),
+    createUser,
+  );
 router
   .route('/:id')
-  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getUser)
-  .patch(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), updateUser)
+  .get(authController.protect, authController.restrictTo(...ALL_ADMIN_ROLES), getUser)
+  .patch(authController.protect, authController.restrictTo(...OPS_ROLES), updateUser)
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     deleteUser,
   );
 

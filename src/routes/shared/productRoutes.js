@@ -21,6 +21,7 @@ const { getAllProduct,
   updateProductVariant,
   deleteProductVariant, } = require('../../controllers/seller/productController');
 const { getPublicOfficialStoreProducts } = require('../../controllers/admin/saiisaiStoreController');
+const promoPriceLock = require('../../middleware/promoPriceLock');
 
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router
   .get(optionalAuth, getAllProduct)
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     setProductIds,
     uploadProductImage,
     resizeProductImages,
@@ -51,12 +52,12 @@ router
   .route('/:id/variants')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     getProductVariants
   )
   .post(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     conditionalUpload,
     resizeProductImages,
     createProductVariant
@@ -66,19 +67,20 @@ router
   .route('/:id/variants/:variantId')
   .get(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     getProductVariant
   )
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
+    promoPriceLock,
     conditionalUpload,
     resizeProductImages,
     updateProductVariant
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     deleteProductVariant
   );
 
@@ -90,7 +92,8 @@ router
   .get(optionalAuth, getProductById)
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
+    promoPriceLock,
     conditionalUpload,
     resizeProductImages,
     validateVariantAttributes,
@@ -98,7 +101,7 @@ router
   )
   .delete(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+    authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
     deleteProduct,
   );
 

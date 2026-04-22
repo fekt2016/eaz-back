@@ -52,8 +52,8 @@ const findMatchingPaymentMethods = async (seller, paymentMethodType) => {
         // Map payment method type to provider
         const providerMap = {
           'mtn_momo': 'MTN',
-          'vodafone_cash': 'Vodafone',
-          'airtel_tigo_money': 'AirtelTigo',
+          'vodafone_cash': 'Telecel',
+          'airtel_tigo_money': 'AT',
         };
         const provider = providerMap[paymentMethodType];
 
@@ -241,8 +241,8 @@ const getPaymentMethodType = (seller) => {
   } else if (seller.paymentMethods?.mobileMoney?.phone) {
     const network = seller.paymentMethods.mobileMoney.network;
     if (network === 'MTN') return 'mtn_momo';
-    if (network === 'Vodafone' || network === 'vodafone') return 'vodafone_cash';
-    if (network === 'AirtelTigo' || network === 'airteltigo') return 'airtel_tigo_money';
+    if (network === 'Telecel' || network === 'telecel' || network === 'Vodafone' || network === 'vodafone') return 'vodafone_cash';
+    if (network === 'AT' || network === 'at' || network === 'AirtelTigo' || network === 'airteltigo') return 'airtel_tigo_money';
     return 'mtn_momo'; // Default fallback
   }
   return null;
@@ -291,7 +291,7 @@ const hasVerifiedPayoutMethod = (seller) => {
   } else if (hasVerifiedMobile) {
     const network = seller.paymentMethods.mobileMoney.network;
     verifiedMethod = network === 'MTN' ? 'mtn_momo' :
-                     network === 'Vodafone' || network === 'vodafone' ? 'vodafone_cash' :
+                     (network === 'Telecel' || network === 'telecel' || network === 'Vodafone' || network === 'vodafone') ? 'vodafone_cash' :
                      'airtel_tigo_money';
   }
 

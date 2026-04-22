@@ -287,6 +287,8 @@ const sellerSchema = new mongoose.Schema(
           enum: [
             'bank',
             'mtn_momo',
+            'telecel_cash',
+            'at_money',
             'vodafone_cash',
             'airtel_tigo_money',
             'cash',
@@ -344,7 +346,7 @@ const sellerSchema = new mongoose.Schema(
             validator: function (v) {
               // Only validate if value is provided (not empty/undefined)
               if (!v || v === '') return true;
-              return /^0(24|54|55|59|20|50|27|57|26|56|23|28)\d{7}$/.test(v);
+              return /^0(20|23|24|25|26|27|50|54|55|56|57|59)\d{7}$/.test(v);
             },
             message: 'Invalid mobile money number',
           },
@@ -352,7 +354,7 @@ const sellerSchema = new mongoose.Schema(
         },
         network: {
           type: String,
-          enum: ['MTN', 'vodafone', 'airteltigo'],
+          enum: ['MTN', 'Telecel', 'AT', 'vodafone', 'airteltigo'],
           default: undefined, // Changed from '' to undefined to avoid enum validation on empty
         },
         // Per-payment-method payout status
@@ -451,7 +453,7 @@ const sellerSchema = new mongoose.Schema(
         },
         paymentMethod: {
           type: String,
-          enum: ['bank', 'mtn_momo', 'vodafone_cash', 'airtel_tigo_money'],
+          enum: ['bank', 'mtn_momo', 'telecel_cash', 'at_money', 'vodafone_cash', 'airtel_tigo_money'],
         },
         paymentDetails: {
           type: mongoose.Schema.Types.Mixed,

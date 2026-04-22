@@ -11,7 +11,31 @@ const ActivityLog = require('../../models/activityLog/activityLogModel');
 const Cart = require('../../models/product/cartModel');
 const TaxCollection = require('../../models/tax/taxCollectionModel');
 const PlatformStats = require('../../models/platform/platformStatsModel');
+const ProductViewEvent = require('../../models/analytics/productViewEventModel');
+const ScreenViewEvent = require('../../models/analytics/screenViewEventModel');
 const mongoose = require('mongoose');
+
+const resolveAnalyticsPlatform = (req) => {
+  const headerPlatform = String(req.headers['x-platform'] || '').toLowerCase();
+  if (['eazmain', 'eazseller', 'eazadmin'].includes(headerPlatform)) {
+    return headerPlatform;
+  }
+  return 'eazmain';
+};
+
+const resolveAnalyticsRole = (reqUser, platform) => {
+  const rawRole = String(reqUser?.role || '').toLowerCase();
+  if (['seller', 'official_store'].includes(rawRole)) return 'seller';
+  if (
+    ['admin', 'superadmin', 'moderator', 'support_agent'].includes(rawRole)
+  ) {
+    return 'admin';
+  }
+  if (reqUser) return 'buyer';
+  if (platform === 'eazseller') return 'seller';
+  if (platform === 'eazadmin') return 'admin';
+  return 'guest';
+};
 
 /**
  * Get KPI Overview Cards
@@ -1160,14 +1184,6 @@ exports.recordView = catchAsync(async (req, res, next) => {
     return next(new AppError('Product ID is required', 400));
   }
 
-  // Increment product views count (Product schema uses totalViews)
-  await Product.findByIdAndUpdate(productId, {
-    $inc: { totalViews: 1 },
-  });
-
-  // Log activity using the activity log service (handles all required fields)
-  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
-  
   // Determine role and userId - handle both authenticated and anonymous users
   let userId = null;
   let role = 'buyer';
@@ -1182,7 +1198,54 @@ exports.recordView = catchAsync(async (req, res, next) => {
       role = 'buyer';
     }
   }
-  
+
+  const dedupeMinutes =
+    Math.max(1, Number(process.env.PRODUCT_VIEW_DEDUPE_MINUTES) || 30);
+  const dedupeCutoff = new Date(Date.now() - dedupeMinutes * 60 * 1000);
+  const sessionKey =
+    typeof sessionId === 'string' && sessionId.trim()
+      ? sessionId.trim()
+      : null;
+  const fallbackAnonKey = `${req.ip || '0.0.0.0'}:${req.get('user-agent') || 'unknown'}`;
+  const viewerKey = userId
+    ? `user:${String(userId)}`
+    : sessionKey
+      ? `session:${sessionKey}`
+      : `anon:${fallbackAnonKey}`;
+
+  const existingRecentView = await ProductViewEvent.findOne({
+    product: productId,
+    viewerKey,
+    viewedAt: { $gte: dedupeCutoff },
+  })
+    .select('_id')
+    .lean();
+
+  if (existingRecentView) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'View already recorded recently',
+      data: { deduped: true },
+    });
+  }
+
+  // Increment product views count (Product schema uses totalViews)
+  await Product.findByIdAndUpdate(productId, {
+    $inc: { totalViews: 1 },
+  });
+
+  await ProductViewEvent.create({
+    product: productId,
+    viewerKey,
+    user: userId || null,
+    role,
+    sessionId: sessionKey,
+    viewedAt: new Date(),
+  });
+
+  // Log activity using the activity log service (handles all required fields)
+  const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
+
   // Get product name for description (optional, don't fail if it doesn't exist)
   let productName = 'Unknown Product';
   try {
@@ -1215,6 +1278,7 @@ exports.recordView = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     message: 'View recorded successfully',
+    data: { deduped: false },
   });
 });
 
@@ -1228,9 +1292,36 @@ exports.recordScreenView = catchAsync(async (req, res, next) => {
     return next(new AppError('Screen name is required', 400));
   }
   const userId = req.user?.id || req.user?._id;
+  const platform = resolveAnalyticsPlatform(req);
+  const role = resolveAnalyticsRole(req.user, platform);
+  const sessionKey =
+    typeof sessionId === 'string' && sessionId.trim()
+      ? sessionId.trim()
+      : null;
+  const fallbackAnonKey = `${req.ip || '0.0.0.0'}:${
+    req.get('user-agent') || 'unknown'
+  }`;
+  const viewerKey = userId
+    ? `user:${String(userId)}`
+    : sessionKey
+      ? `session:${sessionKey}`
+      : `anon:${fallbackAnonKey}`;
+
+  // Persist screen views for both authenticated and anonymous traffic.
+  await ScreenViewEvent.create({
+    screen,
+    viewerKey,
+    user: userId || null,
+    role,
+    platform,
+    sessionId: sessionKey,
+    ipAddress: req.ip || null,
+    userAgent: req.get('user-agent') || null,
+    viewedAt: new Date(),
+  });
+
   if (userId) {
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
-    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
     logActivityAsync({
       userId,
       role,
@@ -1240,7 +1331,7 @@ exports.recordScreenView = catchAsync(async (req, res, next) => {
       metadata: { screen, sessionId: sessionId || null },
       activityType: 'OTHER',
       riskLevel: 'low',
-    }).catch(() => {});
+    });
   }
   res.status(200).json({ status: 'success', message: 'Screen view recorded' });
 });
@@ -1257,7 +1348,7 @@ exports.recordSearchQuery = catchAsync(async (req, res, next) => {
   const userId = req.user?.id || req.user?._id;
   if (userId) {
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
-    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    const role = resolveAnalyticsRole(req.user, resolveAnalyticsPlatform(req));
     logActivityAsync({
       userId,
       role,
@@ -1267,7 +1358,7 @@ exports.recordSearchQuery = catchAsync(async (req, res, next) => {
       metadata: { query: query.substring(0, 200), sessionId: sessionId || null },
       activityType: 'OTHER',
       riskLevel: 'low',
-    }).catch(() => {});
+    });
   }
   res.status(200).json({ status: 'success', message: 'Search recorded' });
 });
@@ -1281,7 +1372,7 @@ exports.recordCategoryView = catchAsync(async (req, res, next) => {
   const userId = req.user?.id || req.user?._id;
   if (userId) {
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
-    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    const role = resolveAnalyticsRole(req.user, resolveAnalyticsPlatform(req));
     logActivityAsync({
       userId,
       role,
@@ -1291,7 +1382,7 @@ exports.recordCategoryView = catchAsync(async (req, res, next) => {
       metadata: { categoryId: categoryId || null, categoryName: categoryName || null, sessionId: sessionId || null },
       activityType: 'OTHER',
       riskLevel: 'low',
-    }).catch(() => {});
+    });
   }
   res.status(200).json({ status: 'success', message: 'Category view recorded' });
 });
@@ -1308,7 +1399,7 @@ exports.recordSellerView = catchAsync(async (req, res, next) => {
   const userId = req.user?.id || req.user?._id;
   if (userId) {
     const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
-    const role = req.user.role === 'seller' ? 'seller' : req.user.role === 'admin' ? 'admin' : 'buyer';
+    const role = resolveAnalyticsRole(req.user, resolveAnalyticsPlatform(req));
     logActivityAsync({
       userId,
       role,
@@ -1318,7 +1409,7 @@ exports.recordSellerView = catchAsync(async (req, res, next) => {
       metadata: { sellerId, sessionId: sessionId || null },
       activityType: 'OTHER',
       riskLevel: 'low',
-    }).catch(() => {});
+    });
   }
   res.status(200).json({ status: 'success', message: 'Seller view recorded' });
 });

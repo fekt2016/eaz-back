@@ -39,7 +39,7 @@ exports.getAllWalletHistory = catchAsync(async (req, res, next) => {
     }
 
     // ========== STEP 2: Authentication Check ==========
-    const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+    const ADMIN_ROLES = ['admin', 'superadmin'];
     try {
       logger.info(`${logPrefix} [STEP 2] Checking authentication...`);
       if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
@@ -606,7 +606,7 @@ exports.getUserWalletHistory = catchAsync(async (req, res, next) => {
  * Admin view all seller revenue history with filters
  */
 exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
-  const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+  const ADMIN_ROLES = ['admin', 'superadmin'];
   try {
     // Ensure admin is authenticated
     if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
@@ -843,7 +843,7 @@ exports.getAllSellerRevenueHistory = catchAsync(async (req, res, next) => {
  * filtering by sellerId and viewing all sellers in one place.
  */
 exports.getAllSellerTransactions = catchAsync(async (req, res, next) => {
-  const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+  const ADMIN_ROLES = ['admin', 'superadmin'];
   if (!req.user || (!req.user.id && !req.user._id) || !ADMIN_ROLES.includes(req.user.role)) {
     return next(new AppError('Admin authentication required', 401));
   }

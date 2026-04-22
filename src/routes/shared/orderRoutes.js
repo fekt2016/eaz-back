@@ -28,6 +28,7 @@ const {
 const { requestRefund, getRefundStatus, selectReturnShippingMethod } = require('../../controllers/buyer/refundController');
 
 const authController = require('../../controllers/buyer/authController');
+const { ALL_ADMIN_ROLES, OPS_ROLES, SUPERADMIN_ONLY } = require('../../config/rolePermissions');
 const platformSettingsController = require('../../controllers/admin/platformSettingsController');
 const { validateObjectId } = require('../../middleware/validateObjectId');
 const { trackingNumberLimiter } = require('../../middleware/rateLimiting/trackingLimiter');
@@ -38,7 +39,7 @@ const router = express.Router();
 
 router
   .route('/')
-  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getAllOrder)
+  .get(authController.protect, authController.restrictTo(...ALL_ADMIN_ROLES), getAllOrder)
   // SECURITY FIX #5: Add input validation middleware before order creation
   .post(
     authController.protect,
@@ -51,16 +52,16 @@ router
 router.get(
   '/get/totalsales',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   totalSales
 );
 router.get(
   '/get/count',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   getCount
 );
-router.get('/get/stats', authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getOrderStats);
+router.get('/get/stats', authController.protect, authController.restrictTo(...OPS_ROLES), getOrderStats);
 // router.get('/get/userorders', authController.protect, getUserOrder);
 
 // Cart validation endpoint (must be before /:id route)
@@ -117,7 +118,7 @@ router
 router.post(
   '/backfill-seller-credits',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   require('../../controllers/admin/orderController').backfillSellerCredits
 );
 
@@ -125,21 +126,21 @@ router.post(
 router.post(
   '/reconcile-seller-credits',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   require('../../controllers/admin/orderController').reconcileSellerCredits
 );
 
 router.post(
   '/reconcile-seller-credit/:orderId',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   require('../../controllers/admin/orderController').reconcileSingleSellerCredit
 );
 
 router.post(
   '/reconcile-seller-credit',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...SUPERADMIN_ONLY),
   require('../../controllers/admin/orderController')
     .reconcileSingleSellerCreditByIdentifier
 );
@@ -181,7 +182,7 @@ router.post(
 router.patch(
   '/:orderId/confirm-payment',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   require('../../controllers/admin/orderController').confirmPayment
 );
 
@@ -189,14 +190,14 @@ router.patch(
 router.post(
   '/:orderId/status',
   authController.protect,
-  authController.restrictTo('admin', 'seller'),
+  authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
   updateOrderStatus
 );
 
 router.patch(
   '/:orderId/driver-location',
   authController.protect,
-  authController.restrictTo('driver', 'seller', 'admin', 'superadmin', 'moderator'),
+  authController.restrictTo('driver', 'seller', 'admin', 'superadmin'),
   updateDriverLocation
 );
 
@@ -213,11 +214,11 @@ router.get(
   getOrderByTrackingNumber
 );
 
-// Add tracking update (admin/superadmin/moderator/seller only)
+// Add tracking update (admin/superadmin/seller only)
 router.post(
   '/:id/tracking',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator', 'seller'),
+  authController.restrictTo('admin', 'superadmin', 'seller', 'official_store'),
   addTrackingUpdate
 );
 
@@ -232,8 +233,8 @@ router.post(
 router.get(
   '/:orderId/refund-status',
   authController.protect,
-  // Allow both buyers and admins to view refund status
-  authController.restrictTo('user', 'admin', 'superadmin'),
+  // Buyers + ops admins (support agents are orders read-only; refunds handled elsewhere)
+  authController.restrictTo('user', ...OPS_ROLES),
   getRefundStatus
 );
 
@@ -246,15 +247,15 @@ router.patch(
 
 router
   .route('/:id')
-  .get(authController.protect, authController.restrictTo('admin', 'superadmin', 'moderator'), getOrder)
+  .get(authController.protect, authController.restrictTo(...ALL_ADMIN_ROLES), getOrder)
   .patch(
     authController.protect,
-    authController.restrictTo('admin', 'superadmin', 'moderator'),
+    authController.restrictTo(...OPS_ROLES),
     updateOrder,
   )
   .delete(
     authController.protect,
-    authController.restrictTo('user', 'admin'),
+    authController.restrictTo('user', 'admin', 'superadmin'),
     OrderDeleteOrderItem,
     deleteOrder,
   );

@@ -78,8 +78,8 @@ const parseDateInput = (value, fieldName) => {
 };
 
 const validateType = (type) => {
-  if (type && !AD_TYPES.includes(type)) {
-    throw new AppError(`Invalid advertisement type. Allowed values: ${AD_TYPES.join(', ')}`, 400);
+  if (!type || !AD_TYPES.includes(type)) {
+    throw new AppError(`Invalid or missing advertisement type. Allowed values: ${AD_TYPES.join(', ')}`, 400);
   }
 };
 
@@ -115,6 +115,16 @@ exports.createAd = catchAsync(async (req, res, next) => {
     discountFixed,
   } = req.body || {};
 
+  if (!title || !String(title).trim()) {
+    throw new AppError('Advertisement title is required.', 400);
+  }
+  if (!imageUrl || !String(imageUrl).trim()) {
+    throw new AppError('Advertisement image URL is required.', 400);
+  }
+  if (link === undefined || link === null || !String(link).trim()) {
+    throw new AppError('Advertisement link is required.', 400);
+  }
+
   validateType(type);
   validateDiscountType(discountTypeInput);
   const startDate = parseDateInput(startDateInput ?? new Date(), 'start date');
@@ -144,7 +154,10 @@ exports.createAd = catchAsync(async (req, res, next) => {
   }
 
   // Normalize link to ensure it's an absolute URL using FRONTEND_URL if relative
-  const normalizedLink = normalizeAdLink(link);
+  const normalizedLink = normalizeAdLink(String(link).trim());
+  if (!normalizedLink || !/^https?:\/\//i.test(String(normalizedLink).trim())) {
+    throw new AppError('Advertisement link must resolve to an absolute HTTP(S) URL.', 400);
+  }
 
   const payload = {
     title,

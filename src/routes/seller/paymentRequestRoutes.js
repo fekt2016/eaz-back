@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../../controllers/shared/paymentController');
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES } = require('../../config/rolePermissions');
 const { requireVerifiedSeller } = require('../../middleware/seller/requireVerifiedSeller');
 const { requirePayoutVerified } = require('../../middleware/seller/requirePayoutVerified');
 const { withdrawalLimiter } = require('../../middleware/rateLimiting/otpLimiter');
@@ -42,21 +43,21 @@ router.delete(
 router.get(
   '/admin/pending',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   paymentController.getPendingRequests,
 );
 
 router.get(
   '/admin/:id',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   paymentController.getPaymentRequestByIdAdmin,
 );
 
 router.put(
   '/admin/:id/process',
   authController.protect,
-  authController.restrictTo('admin', 'superadmin', 'moderator'),
+  authController.restrictTo(...OPS_ROLES),
   paymentController.processPaymentRequest,
 );
 

@@ -75,6 +75,13 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
     },
+    /** Free-text referral (e.g. staff email) when account is created by an admin. */
+    referral: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [200, 'Referral is too long'],
+    },
     role: { type: String, enum: ['user', 'seller', 'admin', 'driver', 'official_store'], default: 'user' },
     address: String,
 

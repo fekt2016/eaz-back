@@ -8,6 +8,10 @@ const Review = require('../../models/product/reviewModel');
 const Product = require('../../models/product/productModel');
 const Category = require('../../models/category/categoryModel');
 const Advertisement = require('../../models/advertisementModel');
+const Discount = require('../../models/product/discountModel');
+const {
+  getActiveApprovedPromoSubmissionForProduct,
+} = require('../../services/promo/promoService');
 const Seller = require('../../models/user/sellerModel');
 const Order = require('../../models/order/orderModel');
 const OrderItems = require('../../models/order/OrderItemModel');
@@ -25,6 +29,65 @@ function stripSellerSubmittedVatFields(body) {
       if (v && typeof v === 'object') ['priceInclVat', 'priceExVat', 'vatAmount', 'vatRate'].forEach((k) => delete v[k]);
     });
   }
+}
+
+/** Admin / superadmin may access any seller product (matches restrictTo on shared product routes) */
+function isPlatformProductStaff(role) {
+  return role === 'admin' || role === 'superadmin';
+}
+
+/**
+ * Human-readable list of areas updated (for moderation emails).
+ * @param {Record<string, unknown>} updateFields - Body fields excluding variants
+ * @param {unknown} variantsToUpdate - Variants payload if any
+ * @returns {string}
+ */
+function buildSellerProductUpdateSummary(updateFields, variantsToUpdate) {
+  const LABELS = {
+    name: 'Product name',
+    description: 'Description',
+    brand: 'Brand',
+    price: 'Price',
+    imageCover: 'Cover image',
+    images: 'Product images',
+    parentCategory: 'Parent category',
+    subCategory: 'Category',
+    specifications: 'Specifications',
+    manufacturer: 'Manufacturer',
+    warranty: 'Warranty',
+    condition: 'Condition',
+    promotionKey: 'Promotion',
+    video: 'Product video',
+    metaTitle: 'SEO title',
+    metaDescription: 'SEO description',
+    tags: 'Tags',
+    returnWindowDays: 'Return window',
+    isPreOrder: 'Pre-order settings',
+    preOrderAvailableDate: 'Pre-order date',
+    preOrderNote: 'Pre-order note',
+    productStatus: 'Listing status',
+    status: 'Listing status',
+    active: 'Visibility flag',
+    isVisible: 'Visibility',
+  };
+  const skip = new Set([
+    'variants',
+    'existingImages',
+    'moderationStatus',
+    'moderatedBy',
+    'moderatedAt',
+    'moderationNotes',
+  ]);
+  const keys = Object.keys(updateFields || {}).filter(
+    (k) => !skip.has(k) && updateFields[k] !== undefined && updateFields[k] !== null,
+  );
+  const labels = keys.map((k) => LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim());
+  if (variantsToUpdate && Array.isArray(variantsToUpdate) && variantsToUpdate.length > 0) {
+    labels.push('Variants (prices, stock, images, or options)');
+  }
+  const unique = [...new Set(labels)];
+  if (unique.length === 0) return 'Product details (general update)';
+  return unique.slice(0, 24).join(', ');
 }
 
 /**
@@ -59,14 +122,169 @@ function applyDiscountsAtReadTime(product, applicableDiscounts) {
 }
 
 /**
- * Normalize promotion key for comparison (e.g. "Ramdan-Special" -> "ramdan-special").
+ * Decode a path or query segment that may be URI-encoded (e.g. easter%20promo).
+ * @param {unknown} raw
+ * @returns {string}
  */
-function normalizePromoKey(key) {
-  return key ? String(key).trim().toLowerCase().replace(/\s+/g, '-') : '';
+function decodePromoKeyInput(raw) {
+  if (raw == null || raw === '') return '';
+  const s = String(raw).trim();
+  try {
+    return decodeURIComponent(s.replace(/\+/g, ' '));
+  } catch {
+    return s;
+  }
 }
 
 /**
- * Extract promotion key from ad link (e.g. https://site.com/offers/ramdan-special -> "ramdan-special").
+ * Normalize promotion key for comparison (e.g. "Ramdan-Special" -> "ramdan-special";
+ * "easter%20promo" / "Easter Promo" -> "easter-promo").
+ * @param {unknown} key
+ * @returns {string}
+ */
+function normalizePromoKey(key) {
+  if (key == null || key === '') return '';
+  const decoded = decodePromoKeyInput(key);
+  if (!decoded) return '';
+  return decoded.toLowerCase().replace(/\s+/g, '-');
+}
+
+/**
+ * Discount model (`discountModel`) stores campaign `startDate` / `endDate` with optional
+ * `promotionKey`. Merge those windows onto buyer product JSON so promos/countdowns match
+ * the promo model (additive: promotionCampaignStart, promotionCampaignEnd).
+ */
+async function attachPromotionCampaignWindowsFromDiscounts(products) {
+  if (!Array.isArray(products) || products.length === 0) return;
+  const keys = new Set();
+  for (const p of products) {
+    const k = normalizePromoKey(p?.promotionKey);
+    if (k) keys.add(k);
+  }
+  if (keys.size === 0) return;
+  let discounts = [];
+  try {
+    const rows = await Discount.find({
+      active: true,
+      promotionKey: { $exists: true, $nin: [null, ''] },
+    })
+      .select('promotionKey startDate endDate')
+      .maxTimeMS(10000)
+      .limit(400)
+      .lean();
+    discounts = rows.filter((d) => keys.has(normalizePromoKey(d.promotionKey)));
+  } catch (e) {
+    logger.warn('[getAllProduct] Discount promo window lookup failed:', e?.message);
+    return;
+  }
+  const windowByKey = {};
+  for (const d of discounts) {
+    const k = normalizePromoKey(d.promotionKey);
+    if (!k || !keys.has(k)) continue;
+    const s = d.startDate != null ? new Date(d.startDate).getTime() : null;
+    const e = d.endDate != null ? new Date(d.endDate).getTime() : null;
+    if ((s != null && Number.isNaN(s)) || (e != null && Number.isNaN(e))) continue;
+    if (!windowByKey[k]) windowByKey[k] = { minStart: null, maxEnd: null };
+    if (s != null && !Number.isNaN(s)) {
+      windowByKey[k].minStart =
+        windowByKey[k].minStart == null ? s : Math.min(windowByKey[k].minStart, s);
+    }
+    if (e != null && !Number.isNaN(e)) {
+      windowByKey[k].maxEnd =
+        windowByKey[k].maxEnd == null ? e : Math.max(windowByKey[k].maxEnd, e);
+    }
+  }
+  for (const p of products) {
+    const k = normalizePromoKey(p?.promotionKey);
+    if (!k || !windowByKey[k]) continue;
+    const { minStart, maxEnd } = windowByKey[k];
+    if (minStart != null) p.promotionCampaignStart = new Date(minStart);
+    if (maxEnd != null) p.promotionCampaignEnd = new Date(maxEnd);
+  }
+}
+
+/**
+ * Active ads often define the public campaign window (carousel start/end) even when no
+ * Discount row exists. Union those windows with any dates already set from discounts.
+ * @param {Array<Record<string, unknown>>} products
+ */
+async function attachPromotionCampaignWindowsFromAdvertisements(products) {
+  if (!Array.isArray(products) || products.length === 0) return;
+  const keys = new Set();
+  for (const p of products) {
+    const k = normalizePromoKey(p?.promotionKey);
+    if (k) keys.add(k);
+  }
+  if (keys.size === 0) return;
+  const now = new Date();
+  let ads = [];
+  try {
+    ads = await Advertisement.find({
+      active: true,
+      $or: [{ endDate: null }, { endDate: { $gte: now } }, { endDate: { $exists: false } }],
+    })
+      .select('link startDate endDate')
+      .maxTimeMS(10000)
+      .limit(400)
+      .lean();
+  } catch (e) {
+    logger.warn('[getAllProduct] Advertisement promo window lookup failed:', e?.message);
+    return;
+  }
+  const windowByKey = {};
+  for (const ad of ads) {
+    const k = getPromotionKeyFromLink(ad.link);
+    if (!k || !keys.has(k)) continue;
+    const s = ad.startDate != null ? new Date(ad.startDate).getTime() : null;
+    const e = ad.endDate != null ? new Date(ad.endDate).getTime() : null;
+    if ((s != null && Number.isNaN(s)) || (e != null && Number.isNaN(e))) continue;
+    if (!windowByKey[k]) windowByKey[k] = { minStart: null, maxEnd: null };
+    if (s != null && !Number.isNaN(s)) {
+      windowByKey[k].minStart =
+        windowByKey[k].minStart == null ? s : Math.min(windowByKey[k].minStart, s);
+    }
+    if (e != null && !Number.isNaN(e)) {
+      windowByKey[k].maxEnd =
+        windowByKey[k].maxEnd == null ? e : Math.max(windowByKey[k].maxEnd, e);
+    }
+  }
+  for (const p of products) {
+    const k = normalizePromoKey(p?.promotionKey);
+    if (!k || !windowByKey[k]) continue;
+    const { minStart, maxEnd } = windowByKey[k];
+    const exS = p.promotionCampaignStart != null ? new Date(p.promotionCampaignStart).getTime() : null;
+    const exE = p.promotionCampaignEnd != null ? new Date(p.promotionCampaignEnd).getTime() : null;
+    const candS = [exS, minStart].filter((x) => x != null && !Number.isNaN(x));
+    const candE = [exE, maxEnd].filter((x) => x != null && !Number.isNaN(x));
+    if (candS.length) p.promotionCampaignStart = new Date(Math.min(...candS));
+    if (candE.length) p.promotionCampaignEnd = new Date(Math.max(...candE));
+  }
+}
+
+/** Whether the authenticated user is a seller (not admin) for product ownership updates */
+function isSellerRole(role) {
+  return role === 'seller' || role === 'official_store';
+}
+
+/**
+ * Persist promotionKey in canonical form so /offers/:slug and ads match the product document.
+ * @param {Record<string, unknown>} bodyOrFields
+ */
+function normalizePromotionKeyField(bodyOrFields) {
+  if (!bodyOrFields || typeof bodyOrFields !== 'object') return;
+  if (!Object.prototype.hasOwnProperty.call(bodyOrFields, 'promotionKey')) return;
+  const raw = bodyOrFields.promotionKey;
+  const pk = normalizePromoKey(raw);
+  if (pk) {
+    bodyOrFields.promotionKey = pk;
+  } else {
+    delete bodyOrFields.promotionKey;
+  }
+}
+
+/**
+ * Extract promotion key from ad link (e.g. https://site.com/offers/ramdan-special -> "ramdan-special";
+ * encoded segments like /offers/easter%20promo -> "easter-promo").
  * Matches frontend useAds extractPromotionKeyFromLink.
  */
 function getPromotionKeyFromLink(link) {
@@ -179,7 +397,7 @@ exports.setProductIds = (req, res, next) => {
   if (currentSellerId) {
     // Current user is a seller: assign their id to product.seller
     req.body.seller = currentSellerId;
-  } else if (role === 'admin' || role === 'superadmin' || role === 'moderator') {
+  } else if (role === 'admin' || role === 'superadmin') {
     // Admin: only set seller for EazShop products; never use admin's own id as seller
     const EAZSHOP_SELLER_ID = '6970b22eaba06cadfd4b8035';
     if (req.body.isEazShopProduct === true) {
@@ -191,7 +409,7 @@ exports.setProductIds = (req, res, next) => {
   // Set moderation status: pending for sellers, approved for admins
   if (currentSellerId && !req.body.moderationStatus) {
     req.body.moderationStatus = 'pending';
-  } else if ((role === 'admin' || role === 'superadmin' || role === 'moderator') && !req.body.moderationStatus) {
+  } else if ((role === 'admin' || role === 'superadmin') && !req.body.moderationStatus) {
     req.body.moderationStatus = 'approved';
   }
 
@@ -704,8 +922,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     isAdminContext &&
     req.user &&
     (req.user.role === 'admin' ||
-      req.user.role === 'superadmin' ||
-      req.user.role === 'moderator')
+      req.user.role === 'superadmin')
   );
 
   // Set default limit based on user role
@@ -738,7 +955,7 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   // For non-admin users (public/buyer access), use buyer-safe query
   // This excludes products from unverified sellers
   if (!isAdmin) {
-    const isSeller = req.user?.role === 'seller';
+    const isSeller = isSellerRole(req.user?.role);
     filter = buildBuyerSafeQuery(filter, {
       user: req.user,
       isAdmin: false,
@@ -748,6 +965,31 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
     // DEBUG: Log the filter being used for buyer queries
     logger.info('[getAllProduct] Buyer query filter:', JSON.stringify(filter, null, 2));
   }
+
+  // Canonical slug for ?promotionKey= so /offers/:promoId matches stored product.promotionKey
+  let usePromotionKeyCollation = false;
+  if (req.query.promotionKey != null && String(req.query.promotionKey).trim() !== '') {
+    const pk = normalizePromoKey(req.query.promotionKey);
+    if (pk) {
+      req.query.promotionKey = pk;
+      usePromotionKeyCollation = true;
+    } else {
+      delete req.query.promotionKey;
+    }
+  }
+
+  // Homepage / flash-style sections: any product tagged with promotionKey (not combined with ?promotionKey=)
+  const hasPromotionFlag =
+    req.query.hasPromotion === 'true' ||
+    req.query.hasPromotion === '1' ||
+    req.query.hasPromotion === 'yes';
+  const hasSpecificPromoKey =
+    req.query.promotionKey != null && String(req.query.promotionKey).trim() !== '';
+  if (hasPromotionFlag && !hasSpecificPromoKey) {
+    filter.promotionKey = { $exists: true, $nin: [null, '', false] };
+  }
+  delete req.query.hasPromotion;
+
   // Admins can see all products (including pending/rejected, unverified sellers, and buyer-created products)
   // Sellers can see their own products regardless of verification (handled in getSellerProducts)
 
@@ -769,6 +1011,9 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   // CRITICAL: Add MongoDB query timeout to prevent hanging queries
   // maxTimeMS: 20000 = 20 seconds max query time
   features.query = features.query.maxTimeMS(20000);
+  if (usePromotionKeyCollation) {
+    features.query = features.query.collation({ locale: 'en', strength: 2 });
+  }
 
   // Populate related fields (limit to essential fields for performance)
   // CRITICAL: Use lean() without virtuals for better performance
@@ -873,6 +1118,12 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   }
 
   // Calculate totalStock and enrich sale fields from variants (lean() doesn't include virtuals)
+  // Align promo countdowns with Discount model (startDate/endDate + promotionKey) when present
+  if (Array.isArray(products) && products.length > 0) {
+    await attachPromotionCampaignWindowsFromDiscounts(products);
+    await attachPromotionCampaignWindowsFromAdvertisements(products);
+  }
+
   // Apply read-time discounts first (Ramadan etc.) so product card shows correct price even if product wasn't saved
   const requestPromoKey = req.query.promotionKey || null;
   if (Array.isArray(products) && products.length > 0) {
@@ -919,6 +1170,9 @@ exports.getAllProduct = catchAsync(async (req, res, next) => {
   const countQuery = Product.find(filter);
   const countFeatures = new APIFeature(countQuery, req.query).filter();
   countFeatures.query = countFeatures.query.maxTimeMS(10000); // 10 seconds for count
+  if (usePromotionKeyCollation) {
+    countFeatures.query = countFeatures.query.collation({ locale: 'en', strength: 2 });
+  }
   const total = await countFeatures.query.countDocuments();
 
   console.timeEnd('getAllProduct');
@@ -1073,8 +1327,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     isAdminContext &&
     req.user &&
     (req.user.role === 'admin' ||
-      req.user.role === 'superadmin' ||
-      req.user.role === 'moderator')
+      req.user.role === 'superadmin')
   );
   let isSellerOwnProduct = false;
   if (req.user && productSellerId) {
@@ -1273,9 +1526,29 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   }
 
   // 2. Build base query using the resolved category ID
+  // For parent categories, support both:
+  // - products saved with parentCategory directly
+  // - products saved only with subCategory (legacy/inconsistent payloads)
+  const categorySubIds = Array.isArray(category.subcategories)
+    ? category.subcategories
+        .map((sub) => {
+          if (!sub) return null;
+          const rawId = sub._id || sub.id || sub;
+          return mongoose.Types.ObjectId.isValid(rawId) ? rawId : null;
+        })
+        .filter(Boolean)
+    : [];
+
   const baseQuery = category.parentCategory
     ? { subCategory: category._id }
-    : { parentCategory: category._id };
+    : categorySubIds.length > 0
+      ? {
+          $or: [
+            { parentCategory: category._id },
+            { subCategory: { $in: categorySubIds } },
+          ],
+        }
+      : { parentCategory: category._id };
 
 
 
@@ -1292,8 +1565,10 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
     );
 
     if (validSubs.length > 0) {
+      // Explicit subcategory selection should be strict to selected tabs only.
+      delete baseQuery.$or;
+      delete baseQuery.parentCategory;
       baseQuery.subCategory = { $in: validSubs };
-
     }
   }
 
@@ -1306,7 +1581,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
 
   // 5. Apply buyer-safe filter (exclude unverified seller products)
   const isAdmin = req.user?.role === 'admin';
-  const isSeller = req.user?.role === 'seller';
+  const isSeller = isSellerRole(req.user?.role);
   const buyerSafeQuery = buildBuyerSafeQuery(baseQuery, {
     user: req.user,
     isAdmin: isAdmin,
@@ -1327,7 +1602,7 @@ exports.getProductsByCategory = catchAsync(async (req, res, next) => {
   } catch (e) {
     logger.warn('[getProductsByCategory] Could not load promos from ads:', e?.message);
   }
-  const requestPromoKey = req.query.promotionKey || null;
+  const requestPromoKey = req.query.promotionKey ? normalizePromoKey(req.query.promotionKey) : null;
   for (let i = 0; i < products.length; i++) {
     const product = products[i];
     product.promoPrice = 0;
@@ -1367,6 +1642,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
   const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 
   stripSellerSubmittedVatFields(req.body);
+  normalizePromotionKeyField(req.body);
 
   // Seller creating product: get the current (logged-in) seller id and assign it to product.seller. Never trust client.
   delete req.body.seller;
@@ -1379,7 +1655,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
   } else {
     // Not a seller – only admin EazShop path can set seller (handled elsewhere if needed)
     const role = req.user?.role ?? req.user?._doc?.role;
-    if ((role === 'admin' || role === 'superadmin' || role === 'moderator') && req.body.isEazShopProduct === true) {
+    if ((role === 'admin' || role === 'superadmin') && req.body.isEazShopProduct === true) {
       req.body.seller = '6970b22eaba06cadfd4b8035';
     }
   }
@@ -1472,14 +1748,14 @@ exports.createProduct = catchAsync(async (req, res, next) => {
   }
 
   // Log activity and update onboarding (async, don't block response)
-  if (productCreated && req.user && req.user.role === 'seller') {
+  if (productCreated && req.user && isSellerRole(req.user.role)) {
     setImmediate(async () => {
       try {
         // Log activity
         if (createdProduct) {
           logActivityAsync({
             userId: req.user.id,
-            role: 'seller',
+            role: req.user.role === 'official_store' ? 'official_store' : 'seller',
             action: 'CREATE_PRODUCT',
             description: `Seller created product: ${createdProduct.name || 'Unknown'}`,
             req,
@@ -1547,8 +1823,39 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
   }
 
   // Verify seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && oldProduct.seller.toString() !== req.user.id.toString()) {
+  if (!isPlatformProductStaff(req.user.role) && oldProduct.seller.toString() !== req.user.id.toString()) {
     return next(new AppError('You do not have permission to modify this product', 403));
+  }
+
+  const hasTopLevelPriceUpdate =
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'price') ||
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'defaultPrice');
+  const hasVariantPriceUpdate =
+    Array.isArray(req.body?.variants) &&
+    req.body.variants.some(
+      (variant) =>
+        variant &&
+        typeof variant === 'object' &&
+        Object.prototype.hasOwnProperty.call(variant, 'price'),
+    );
+  const shouldCheckPromoPriceLock =
+    isSellerRole(req.user.role) && (hasTopLevelPriceUpdate || hasVariantPriceUpdate);
+
+  if (shouldCheckPromoPriceLock) {
+    const blockingSubmission = await getActiveApprovedPromoSubmissionForProduct({
+      productId: oldProduct._id,
+      sellerId: req.user.id,
+    });
+    if (blockingSubmission) {
+      return next(
+        new AppError(
+          `Price is locked while product is in active approved promo "${
+            blockingSubmission?.promo?.name || 'promo'
+          }".`,
+          409,
+        ),
+      );
+    }
   }
 
   // Parse JSON strings for variants and specifications (same as createProduct)
@@ -1708,9 +2015,15 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     const variantsToUpdate = updateFields.variants;
     delete updateFields.variants; // Remove variants, handle separately
 
+    const hadPromotionKeyInBody = Object.prototype.hasOwnProperty.call(req.body, 'promotionKey');
+    normalizePromotionKeyField(updateFields);
+    if (hadPromotionKeyInBody && !Object.prototype.hasOwnProperty.call(updateFields, 'promotionKey')) {
+      product.set('promotionKey', undefined);
+    }
+
     // CRITICAL: Prevent sellers from modifying moderationStatus, moderatedBy, moderatedAt
     // Only admins can change these fields - preserve existing values for sellers
-    if (req.user.role === 'seller') {
+    if (isSellerRole(req.user.role)) {
       delete updateFields.moderationStatus;
       delete updateFields.moderatedBy;
       delete updateFields.moderatedAt;
@@ -1723,20 +2036,31 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         product.isVisible = false;
         logger.info(`[updateProduct] ✅ P4-FIX1: Approved product ${product._id} edited by seller — auto-reset to pending review. Product hidden from marketplace until re-approved.`);
 
-        // Notify admins about the re-submission (non-blocking)
+        const changedSummary = buildSellerProductUpdateSummary(updateFields, variantsToUpdate);
+
+        // Notify admins + seller (non-blocking): distinct copy from "new product" flow
         setImmediate(async () => {
           try {
             const notificationService = require('../../services/notification/notificationService');
-            const seller = await Seller.findById(req.user.id).select('shopName name');
-            await notificationService.createProductCreationNotification(
+            const emailDispatcher = require('../../emails/emailDispatcher');
+            const seller = await Seller.findById(req.user.id).select('shopName name email');
+            await notificationService.createProductUpdatedForReviewNotification(
               product._id,
               product.name,
               req.user.id,
-              seller?.shopName || seller?.name || 'Seller'
+              seller?.shopName || seller?.name || 'Seller',
+              changedSummary,
             );
-            logger.info(`[updateProduct] Admin re-review notification sent for product ${product._id}`);
+            if (seller?.email) {
+              await emailDispatcher.sendProductPendingReviewAfterUpdateEmail(
+                seller,
+                product,
+                changedSummary,
+              );
+            }
+            logger.info(`[updateProduct] Re-review emails sent for product ${product._id}`);
           } catch (notifErr) {
-            logger.warn(`[updateProduct] Could not send admin re-review notification:`, notifErr?.message);
+            logger.warn(`[updateProduct] Could not send re-review notifications:`, notifErr?.message);
           }
         });
       } else {
@@ -1839,7 +2163,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     }
 
     // Log activity
-    if (req.user && req.user.role === 'seller') {
+    if (req.user && isSellerRole(req.user.role)) {
       const changes = [];
       if (oldProduct && updatedProduct.name !== oldProduct.name) {
         changes.push(`name from "${oldProduct.name}" to "${updatedProduct.name}"`);
@@ -1848,7 +2172,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
 
       logActivityAsync({
         userId: req.user.id,
-        role: 'seller',
+        role: req.user.role === 'official_store' ? 'official_store' : 'seller',
         action: 'UPDATE_PRODUCT',
         description: `Seller updated product: ${updatedProduct.name || 'Unknown'}${changeDesc}`,
         req,
@@ -1920,8 +2244,8 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
     productSellerType: typeof productToDelete.seller,
   });
 
-  // Verify ownership (unless admin/superadmin/moderator)
-  // CRITICAL: If user passed restrictTo('admin', 'superadmin', 'moderator', 'seller') middleware,
+  // Verify ownership (unless admin/superadmin)
+  // CRITICAL: If user passed restrictTo('admin', 'superadmin', 'seller') middleware,
   // they are authorized. We just need to check if they're an admin (not a seller) to bypass ownership check.
 
   // Get role from multiple possible locations
@@ -1940,8 +2264,7 @@ exports.deleteProduct = catchAsync(async (req, res, next) => {
 
   // Check if role matches admin roles
   const hasAdminRole = userRoleValue === 'admin' ||
-    userRoleValue === 'superadmin' ||
-    userRoleValue === 'moderator';
+    userRoleValue === 'superadmin';
 
   // Final admin check: user is admin if they have admin role OR are from Admin model
   // Since they passed the restrictTo middleware, they're authorized - we just need to know if they're admin vs seller
@@ -2080,12 +2403,12 @@ exports.getProductVariants = catchAsync(async (req, res, next) => {
     userId,
     userRole: req.user.role,
     sellerMatch: productSellerId === userId,
-    isAdmin: req.user.role === 'admin',
+    isAdmin: isPlatformProductStaff(req.user.role),
     productSellerType: typeof product.seller,
     userIdType: typeof req.user.id,
   });
 
-  if (req.user.role !== 'admin' && productSellerId !== userId) {
+  if (!isPlatformProductStaff(req.user.role) && productSellerId !== userId) {
     logger.warn('[getProductVariants] Permission denied:', {
       productId,
       productSellerId,
@@ -2120,8 +2443,8 @@ exports.getProductVariant = catchAsync(async (req, res, next) => {
     return next(new AppError('Product not found', 404));
   }
 
-  // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  // Check if seller owns this product (unless platform staff)
+  if (!isPlatformProductStaff(req.user.role) && product.seller.toString() !== req.user.id.toString()) {
     return next(new AppError('You do not have permission to access this product', 403));
   }
 
@@ -2165,7 +2488,7 @@ exports.createProductVariant = catchAsync(async (req, res, next) => {
   }
 
   // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  if (!isPlatformProductStaff(req.user.role) && product.seller.toString() !== req.user.id.toString()) {
     return next(new AppError('You do not have permission to modify this product', 403));
   }
 
@@ -2321,8 +2644,28 @@ exports.updateProductVariant = catchAsync(async (req, res, next) => {
   }
 
   // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  if (!isPlatformProductStaff(req.user.role) && product.seller.toString() !== req.user.id.toString()) {
     return next(new AppError('You do not have permission to modify this product', 403));
+  }
+
+  if (
+    isSellerRole(req.user.role) &&
+    Object.prototype.hasOwnProperty.call(req.body || {}, 'price')
+  ) {
+    const blockingSubmission = await getActiveApprovedPromoSubmissionForProduct({
+      productId,
+      sellerId: req.user.id,
+    });
+    if (blockingSubmission) {
+      return next(
+        new AppError(
+          `Price is locked while product is in active approved promo "${
+            blockingSubmission?.promo?.name || 'promo'
+          }".`,
+          409,
+        ),
+      );
+    }
   }
 
   // Find variant
@@ -2419,7 +2762,7 @@ exports.deleteProductVariant = catchAsync(async (req, res, next) => {
   }
 
   // Check if seller owns this product (unless admin)
-  if (req.user.role !== 'admin' && product.seller.toString() !== req.user.id.toString()) {
+  if (!isPlatformProductStaff(req.user.role) && product.seller.toString() !== req.user.id.toString()) {
     return next(new AppError('You do not have permission to modify this product', 403));
   }
 

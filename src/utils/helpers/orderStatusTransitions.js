@@ -120,8 +120,10 @@ function validateStatusTransition(order, nextStatus, actorRole) {
  * Map a request.user.role to the trackingHistory.updatedByRole value.
  */
 function mapRoleToUpdatedByRole(role) {
-  if (role === 'seller') return 'seller';
-  if (role === 'admin' || role === 'superadmin' || role === 'moderator') return 'admin';
+  if (role === 'seller' || role === 'official_store') return 'seller';
+  if (role === 'admin' || role === 'superadmin' || role === 'support_agent') {
+    return 'admin';
+  }
   return 'system';
 }
 

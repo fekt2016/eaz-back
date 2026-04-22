@@ -340,7 +340,7 @@ exports.deleteReview = catchAsync(async (req, res, next) => {
     return next(new AppError('Review not found', 404));
   }
 
-  const isAdmin = ['admin', 'superadmin', 'moderator'].includes(req.user?.role);
+  const isAdmin = ['admin', 'superadmin'].includes(req.user?.role);
   const reviewUserRef = review.user && (review.user._id || review.user);
   const currentUserRef = req.user && (req.user._id || req.user.id);
   let isOwner = false;

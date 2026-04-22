@@ -14,6 +14,21 @@ const signToken = (id, role, deviceId = null) => {
   });
 };
 
+const shouldUseSecureCookies = (req) => {
+  const hostHeader = String(req?.headers?.host || '').toLowerCase();
+  const host = hostHeader.split(':')[0]; // remove port
+  const isLoopback =
+    host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+
+  // Never set Secure cookies on loopback/local HTTP — browsers won't store them.
+  if (isLoopback) return false;
+
+  const proto = String(
+    req?.headers?.['x-forwarded-proto'] || '',
+  ).toLowerCase();
+  return Boolean(req?.secure || proto === 'https');
+};
+
 /**
  * Create and send token (legacy function - use createDeviceSession for new device sessions)
  * @param {Object} user - User object
@@ -46,13 +61,15 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
 
   const token = signToken(user._id, user.role, deviceId);
   const isProduction = process.env.NODE_ENV === 'production';
+  const secureByProtocol = shouldUseSecureCookies(req);
+  const useCrossSiteCookie = isProduction && secureByProtocol;
 
   const cookieOptions = {
     httpOnly: true,
-    secure: isProduction, // true in production, false in development
+    secure: useCrossSiteCookie,
     // CRITICAL: For cross-origin requests (seller.saiisai.com -> api.saiisai.com)
     // sameSite must be 'none' when secure is true
-    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
+    sameSite: useCrossSiteCookie ? 'none' : 'lax',
     path: '/', // Available on all paths
     expires: new Date(
       Date.now() +
@@ -63,7 +80,9 @@ exports.createSendToken = async (user, statusCode, res, redirectTo = null, cooki
     // (seller.saiisai.com, admin.saiisai.com, saiisai.com).
     // Without this, the cookie is scoped only to api.saiisai.com and
     // the seller/admin apps won't include it in cross-origin requests.
-    ...(isProduction && { domain: process.env.COOKIE_DOMAIN || '.saiisai.com' }),
+    ...(useCrossSiteCookie && {
+      domain: process.env.COOKIE_DOMAIN || '.saiisai.com',
+    }),
   };
 
   // Debug logging for cookie configuration (production only, non-sensitive)

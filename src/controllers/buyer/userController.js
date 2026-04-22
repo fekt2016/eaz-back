@@ -8,6 +8,8 @@ const stream = require('stream');
 const logger = require('../../utils/logger');
 const { logActivityAsync } = require('../../modules/activityLog/activityLog.service');
 const { uploadToCloudinary } = require('../../utils/storage/cloudinary');
+const { generateProvisionedPassword } = require('../../utils/generateProvisionedPassword');
+const { sendProvisionedAccountEmail } = require('../../services/admin/provisionedAccountEmail');
 
 const multerStorage = multer.memoryStorage();
 
@@ -248,4 +250,77 @@ exports.getAllUsers = handleFactory.getAll(User);
 exports.updateUser = handleFactory.updateOne(User);
 exports.deleteUser = handleFactory.deleteOne(User);
 exports.getUser = handleFactory.getOne(User);
-exports.createUser = handleFactory.createOne(User);
+
+/**
+ * OPS staff creates a buyer account. Password is generated server-side if omitted;
+ * credentials are emailed to the new user only (never returned in the API body).
+ */
+exports.createUser = catchAsync(async (req, res, next) => {
+  const creatorId = req.user._id || req.user.id;
+  if (!['admin', 'superadmin'].includes(req.user.role)) {
+    return next(new AppError('You are not authorized to create users', 403));
+  }
+
+  const { name, email, phone, gender, referral } = req.body;
+  if (!email || !name) {
+    return next(new AppError('Please provide name and email', 400));
+  }
+
+  const rawPw = req.body.password;
+  const useGenerated =
+    rawPw === undefined || rawPw === null || String(rawPw).trim() === '';
+  const password = useGenerated ? generateProvisionedPassword() : String(rawPw);
+  const passwordConfirm =
+    req.body.passwordConfirm !== undefined && req.body.passwordConfirm !== null
+      ? String(req.body.passwordConfirm)
+      : password;
+
+  const doc = await User.create({
+    name,
+    email,
+    phone,
+    gender,
+    referral: referral !== undefined && referral !== null ? String(referral).trim() : '',
+    password,
+    passwordConfirm,
+    createdBy: creatorId,
+  });
+
+  const buyerLogin =
+    process.env.BUYER_WEB_URL ||
+    process.env.SAIISAI_WEB_URL ||
+    process.env.FRONTEND_URL ||
+    'https://saiisai.com';
+
+  try {
+    await sendProvisionedAccountEmail({
+      to: doc.email,
+      name: doc.name,
+      accountType: 'buyer',
+      tempPassword: password,
+      loginUrl: buyerLogin,
+      referredByLine: referral
+        ? `Referral on file: ${String(referral).trim()}`
+        : undefined,
+    });
+  } catch (err) {
+    logger.error('[createUser] Welcome email failed:', err?.message || err);
+    await User.findByIdAndDelete(doc._id);
+    return next(
+      new AppError(
+        'Could not send welcome email; the user was not created. Check email configuration.',
+        502,
+      ),
+    );
+  }
+
+  const out = doc.toObject();
+  delete out.password;
+  delete out.passwordConfirm;
+
+  res.status(201).json({
+    status: 'success',
+    message: 'User created. Sign-in instructions were sent to their email.',
+    doc: out,
+  });
+});

@@ -111,6 +111,39 @@ exports.getMyStatuses = catchAsync(async (req, res, next) => {
 });
 
 /**
+ * POST /api/v1/seller/statuses/:id/repost
+ * Repost an existing status owned by seller
+ */
+exports.repostStatus = catchAsync(async (req, res, next) => {
+  const existingStatus = await Status.findOne({
+    _id: req.params.id,
+    seller: req.user._id,
+  });
+
+  if (!existingStatus) {
+    return next(
+      new AppError(
+        'Status not found or you do not have permission to repost it',
+        404
+      )
+    );
+  }
+
+  const repostedStatus = await Status.create({
+    seller: req.user._id,
+    video: existingStatus.video,
+    product: existingStatus.product || undefined,
+    caption: (existingStatus.caption || '').trim() || undefined,
+  });
+
+  res.status(201).json({
+    status: 'success',
+    message: 'Status reposted',
+    data: { status: repostedStatus },
+  });
+});
+
+/**
  * DELETE /api/v1/seller/statuses/:id
  * Delete a status (seller must own it)
  */

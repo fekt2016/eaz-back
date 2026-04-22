@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { rateLimitKey } = require('../../utils/rateLimitKey');
 
 // SECURITY: Always enable rate limiting, but with different limits for dev vs production
 const isProduction = process.env.NODE_ENV === 'production';
@@ -24,10 +25,7 @@ exports.otpLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use IP address for rate limiting
-  keyGenerator: (req) => {
-    return req.ip || req.connection.remoteAddress;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 // SECURITY: Financial action rate limiter — prevents rapid-fire withdrawal/cancel/reverse attempts
@@ -39,10 +37,7 @@ exports.financialLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit per seller (authenticated user) rather than just IP
-    return req.user?.id || req.ip || req.connection.remoteAddress;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 // SECURITY: Withdrawal creation limiter — stricter limit for creating new withdrawals
@@ -54,7 +49,5 @@ exports.withdrawalLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.user?.id || req.ip || req.connection.remoteAddress;
-  },
+  keyGenerator: rateLimitKey,
 });

@@ -1,5 +1,6 @@
 const express = require('express');
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES } = require('../../config/rolePermissions');
 const cartController = require('../../controllers/buyer/cartController');
 
 const router = express.Router();
@@ -41,11 +42,11 @@ router
 
 // Admin-only cart access
 router.route('/:id').get(
-  authController.restrictTo('admin', 'superadmin', 'moderator'), // Only admins can view any cart
+  authController.restrictTo(...OPS_ROLES),
   cartController.getCart,
 );
 // .patch(
-//   authController.restrictTo('admin', 'superadmin', 'moderator'), // Only admins can modify any cart
+//   authController.restrictTo('admin', 'superadmin', 'support_agent'), // Only admins can modify any cart
 //   cartController.updateCart,
 // );
 

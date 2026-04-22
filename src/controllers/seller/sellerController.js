@@ -750,7 +750,10 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const minRating = parseFloat(req.query.minRating);
   const useMinRating = Number.isFinite(minRating) && minRating > 0;
-  const productsPerSeller = parseInt(req.query.productsPerSeller) || 4; // Number of products to include per seller
+  const productsPerSeller = Math.min(
+    Math.max(parseInt(req.query.productsPerSeller, 10) || 4, 1),
+    12,
+  );
 
   // Aggregate does not run Mongoose pre('find'), so we must filter active explicitly
   const matchStage = {
@@ -787,33 +790,59 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     },
     { $sort: { 'ratings.average': -1, 'ratings.count': -1, createdAt: -1 } },
     { $limit: limit },
-    // Lookup products for each seller
+    // Top products by units sold (OrderItems.sellerId + quantity), then hydrate Product docs
     {
       $lookup: {
-        from: 'products',
-        let: { sellerId: '$_id' },
+        from: 'orderitems',
+        let: { sellerObjId: '$_id' },
         pipeline: [
           {
             $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$seller', '$$sellerId'] },
-                  { $eq: ['$status', 'active'] }, // Only include active products
-                ],
-              },
+              $expr: { $eq: ['$sellerId', '$$sellerObjId'] },
             },
           },
+          {
+            $group: {
+              _id: '$product',
+              unitsSold: { $sum: '$quantity' },
+            },
+          },
+          { $sort: { unitsSold: -1 } },
           { $limit: productsPerSeller },
           {
-            $project: {
-              name: 1,
-              price: 1,
-              images: 1,
-              ratings: 1,
-              slug: 1,
-              category: 1,
+            $lookup: {
+              from: 'products',
+              let: { pid: '$_id', sid: '$$sellerObjId' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ['$_id', '$$pid'] },
+                        { $eq: ['$seller', '$$sid'] },
+                        { $eq: ['$status', 'active'] },
+                      ],
+                    },
+                  },
+                },
+                {
+                  $project: {
+                    name: 1,
+                    price: 1,
+                    imageCover: 1,
+                    coverImage: 1,
+                    images: 1,
+                    ratings: 1,
+                    slug: 1,
+                    parentCategory: 1,
+                  },
+                },
+              ],
+              as: 'p',
             },
           },
+          { $unwind: { path: '$p', preserveNullAndEmptyArrays: false } },
+          { $replaceRoot: { newRoot: '$p' } },
         ],
         as: 'sellerProducts',
       },
@@ -834,6 +863,77 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     },
   ]);
 
+  // When few/no order lines exist, pad with newest active listings (deduped)
+  const short = sellers.filter(
+    (s) => (s.sellerProducts || []).length < productsPerSeller,
+  );
+  if (short.length > 0) {
+    const sellerIds = short.map((s) => s._id);
+    const extraBySeller = await Product.aggregate([
+      {
+        $match: {
+          seller: { $in: sellerIds },
+          status: 'active',
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          seller: 1,
+          name: 1,
+          price: 1,
+          imageCover: 1,
+          coverImage: 1,
+          images: 1,
+          ratings: 1,
+          slug: 1,
+          parentCategory: 1,
+        },
+      },
+      {
+        $group: {
+          _id: '$seller',
+          items: { $push: '$$ROOT' },
+        },
+      },
+      {
+        $project: {
+          sellerId: '$_id',
+          items: { $slice: ['$items', productsPerSeller + 8] },
+        },
+      },
+    ]);
+    const extrasMap = new Map(
+      extraBySeller.map((e) => [e.sellerId.toString(), e.items]),
+    );
+
+    for (const row of sellers) {
+      if ((row.sellerProducts || []).length >= productsPerSeller) continue;
+      const pool = extrasMap.get(row._id.toString()) || [];
+      const taken = new Set(
+        (row.sellerProducts || []).map((p) => p._id.toString()),
+      );
+      row.sellerProducts = row.sellerProducts || [];
+      for (const doc of pool) {
+        if (row.sellerProducts.length >= productsPerSeller) break;
+        const id = doc._id.toString();
+        if (taken.has(id)) continue;
+        taken.add(id);
+        row.sellerProducts.push({
+          _id: doc._id,
+          name: doc.name,
+          price: doc.price,
+          imageCover: doc.imageCover,
+          coverImage: doc.coverImage,
+          images: doc.images,
+          ratings: doc.ratings,
+          slug: doc.slug,
+          parentCategory: doc.parentCategory,
+        });
+      }
+    }
+  }
+
   // Transform to final response format
   const transformedSellers = sellers.map((seller) => ({
     id: seller._id,
@@ -843,10 +943,12 @@ exports.getFeaturedSellers = catchAsync(async (req, res, next) => {
     rating: seller.rating,
     reviewCount: seller.reviewCount,
     productCount: seller.productCount,
-    products: seller.sellerProducts.map((product) => ({
+    products: (seller.sellerProducts || []).map((product) => ({
       id: product._id,
       name: product.name,
       price: product.price,
+      imageCover: product.imageCover || null,
+      coverImage: product.coverImage || null,
       images: product.images, // Default image if none exists
       rating: product.ratings?.average || 0,
       slug: product.slug,
@@ -1146,6 +1248,7 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
         { name: { $regex: search, $options: 'i' } },
         { shopName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { referral: { $regex: search, $options: 'i' } },
       ],
     };
   }
@@ -1161,7 +1264,7 @@ exports.getAllSeller = catchAsync(async (req, res, next) => {
   }
 
   // Build select fields - include verification status fields for admin UI
-  const selectFields = 'name shopName email balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin verificationStatus onboardingStage verifiedBy verifiedAt verificationDocuments';
+  const selectFields = 'name shopName email referral balance lockedBalance pendingBalance withdrawableBalance status role createdAt lastLogin verificationStatus onboardingStage verifiedBy verifiedAt verificationDocuments';
 
   let query = Seller.find(filter).select(selectFields);
 
@@ -1294,7 +1397,7 @@ exports.getSeller = catchAsync(async (req, res, next) => {
     .lean();
 
   // If not found (seller may be deactivated: active=false), allow admin to fetch for reactivate
-  if (!seller && ['admin', 'superadmin', 'moderator'].includes(req.user?.role)) {
+  if (!seller && ['admin', 'superadmin', 'support_agent'].includes(req.user?.role)) {
     const docs = await Seller.aggregate([
       { $match: { _id: new mongoose.Types.ObjectId(id) } },
       { $project: { name: 1, email: 1, shopName: 1, active: 1, status: 1 } },

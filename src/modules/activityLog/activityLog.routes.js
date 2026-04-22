@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../../controllers/buyer/authController');
+const { OPS_ROLES, SUPERADMIN_ONLY } = require('../../config/rolePermissions');
 const activityLogController = require('./activityLog.controller');
 const { validateObjectId } = require('../../middleware/validateObjectId');
 
 // All activity log routes require authentication and admin role
 router.use(authController.protect);
-router.use(authController.restrictTo('admin', 'superadmin', 'moderator'));
+router.use(authController.restrictTo(...OPS_ROLES));
 
 // IMPORTANT: Specific routes must come BEFORE parameterized routes (/:id)
 // Otherwise /stats, /cleanup, etc. will be matched by /:id
@@ -27,10 +28,18 @@ router.get(
 router.get('/suspicious', activityLogController.getSuspiciousActivity);
 
 // Delete all activity logs
-router.delete('/', activityLogController.deleteAllActivityLogs);
+router.delete(
+  '/',
+  authController.restrictTo(...SUPERADMIN_ONLY),
+  activityLogController.deleteAllActivityLogs,
+);
 
 // Delete logs older than specified days
-router.delete('/cleanup', activityLogController.cleanupOldLogs);
+router.delete(
+  '/cleanup',
+  authController.restrictTo(...SUPERADMIN_ONLY),
+  activityLogController.cleanupOldLogs,
+);
 
 // Get activity logs by user ID (use query param: ?userId=...)
 // This is handled by getActivityLogs with userId query param
@@ -53,6 +62,11 @@ router.get('/action/:action', (req, res, next) => {
 router.get('/:id', validateObjectId('id'), activityLogController.getActivityLog);
 
 // Delete single activity log by ID
-router.delete('/:id', validateObjectId('id'), activityLogController.deleteActivityLog);
+router.delete(
+  '/:id',
+  authController.restrictTo(...SUPERADMIN_ONLY),
+  validateObjectId('id'),
+  activityLogController.deleteActivityLog,
+);
 
 module.exports = router;

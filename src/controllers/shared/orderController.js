@@ -24,6 +24,10 @@ const taxService = require('../../services/tax/taxService');
 const logger = require('../../utils/logger');
 const stockService = require('../../services/stock/stockService');
 const Cart = require('../../models/product/cartModel');
+const sanitizeOrderForModerator = require('../../utils/sanitizeOrderForModerator');
+const {
+  resolveOrderItemPromoDiscount,
+} = require('../../services/promo/promoService');
 
 const isPaymentConfirmedStatus = (paymentStatus) => {
   const normalized = String(paymentStatus || '').toLowerCase();
@@ -152,18 +156,10 @@ exports.validateCart = catchAsync(async (req, res, next) => {
   const products = await Product.find({ _id: { $in: productIds } })
     .populate('seller', '_id')
     .populate('subCategory', 'name')
-    .select('defaultPrice variants stock name promotionKey price priceInclVat priceExVat isPreOrder preOrderOriginCountry specifications shipping');
+    .select('defaultPrice variants stock name price priceInclVat priceExVat isPreOrder preOrderOriginCountry specifications shipping');
 
   const productMap = new Map();
   products.forEach(p => productMap.set(p._id.toString(), p));
-
-  const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
-  let promos = [];
-  try {
-    promos = await getPromosFromAds();
-  } catch (e) {
-    logger.warn('[validateCart] Could not load promos:', e?.message);
-  }
 
   const platformSettings = await require('../../models/platform/platformSettingsModel').getSettings();
 
@@ -206,10 +202,14 @@ exports.validateCart = catchAsync(async (req, res, next) => {
     const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
     const standardPriceInclVat = vatComputed.priceInclVat;
 
-    // 3. Apply promotions to the standard inclusive price
-    const applicable = getApplicablePromos(product, promos);
-    const { unitPrice: finalInclVat } = applyPromosToPrice(standardPriceInclVat, applicable);
-    const promoDiscount = Math.max(0, standardPriceInclVat - finalInclVat);
+    // 3. Apply approved active promo submission (if any) from PromoProduct
+    const { promoDiscount, promoProductId } = await resolveOrderItemPromoDiscount({
+      productId: product._id,
+      sellerId: product?.seller?._id || product?.seller,
+      basePriceInclVat: standardPriceInclVat,
+      taxService,
+      platformSettings,
+    });
 
     // 4. Get final pricing breakdown using the unified service
     const pricing = await pricingService.calculateItemPricing(basePrice, promoDiscount);
@@ -226,7 +226,7 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       ));
     }
 
-    validatedItems.push({
+    const pricedItem = {
       product: item.product,
       variant: item.variant || null,
       sku: item.sku || null,
@@ -236,7 +236,9 @@ exports.validateCart = catchAsync(async (req, res, next) => {
       productName: product.name,
       availableStock,
       pricingBreakdown: pricing // Useful for debugging or detailed checkout view
-    });
+    };
+    pricedItem.promoProductRef = promoProductId || null;
+    validatedItems.push(pricedItem);
   }
 
   // Round to 2 decimal places for money (avoids floating-point total being 1 unit short)
@@ -534,9 +536,19 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
     return orderDoc;
   });
 
+  const resultsPayload =
+    req.user?.role === 'support_agent'
+      ? normalizedResults.map((orderDoc) => {
+          const plain = orderDoc.toObject
+            ? orderDoc.toObject({ virtuals: true })
+            : { ...orderDoc };
+          return sanitizeOrderForModerator(plain);
+        })
+      : normalizedResults;
+
   res.status(200).json({
     status: 'success',
-    results: normalizedResults,
+    results: resultsPayload,
     meta: {
       total,
       totalPages: Math.ceil(total / limit),
@@ -629,14 +641,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     /* ---------------------------------- */
     /* 3. NORMALIZE ORDER ITEMS (SKU ONLY) — Dual VAT: base -> add VAT -> apply promo */
     /* ---------------------------------- */
-    const { getPromosFromAds, getApplicablePromos, applyPromosToPrice } = require('../seller/productController');
-    let orderPromos = [];
-    try {
-      orderPromos = await getPromosFromAds();
-    } catch (e) {
-      logger.warn('[createOrder] Could not load promos:', e?.message);
-    }
-
     const platformSettings = await require('../../models/platform/platformSettingsModel').getSettings();
     const sellerIds = [...new Set(products.map(p => p.seller).filter(Boolean))];
     const sellers = await Seller.find({ _id: { $in: sellerIds } }).select('isVatRegistered').session(session).lean();
@@ -684,10 +688,14 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       const vatComputed = await taxService.addVatToBase(basePrice, platformSettings);
       const standardPriceInclVat = vatComputed.priceInclVat;
 
-      // 3. Apply promos to the standard inclusive price
-      const applicable = getApplicablePromos(product, orderPromos);
-      const { unitPrice: finalInclVat } = applyPromosToPrice(standardPriceInclVat, applicable);
-      const promoDiscount = Math.max(0, standardPriceInclVat - finalInclVat);
+      // 3. Apply approved active promo submission (if any) from PromoProduct
+      const { promoDiscount, promoProductId } = await resolveOrderItemPromoDiscount({
+        productId: product._id,
+        sellerId: product?.seller,
+        basePriceInclVat: standardPriceInclVat,
+        taxService,
+        platformSettings,
+      });
 
       // 4. Get final pricing breakdown using the unified service
       const pricing = await pricingService.calculateItemPricing(basePrice, promoDiscount);
@@ -704,14 +712,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       const sellerIdStr = (product.seller && product.seller.toString()) || '';
       const vatCollectedBy = sellerVatCollectedBy.get(sellerIdStr) || 'platform';
 
-      normalizedItems.push({
+      const pricedItem = {
         product: item.product,
         variant: sellableUnit._id !== product._id ? sellableUnit._id : null,
         quantity,
         sku,
         vatCollectedBy,
         pricing, // Store the full breakdown for OrderItem creation
-      });
+      };
+      pricedItem.promoProductRef = promoProductId || null;
+      normalizedItems.push(pricedItem);
     }
 
     // Build order items with unified pricing data (P2-FIX 2)
@@ -720,6 +730,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       variant: item.variant,
       quantity: item.quantity,
       sku: item.sku,
+      promoProductRef: item.promoProductRef || null,
       price: item.pricing.unitPrice,
       priceInclVat: item.pricing.priceInclVat,
       priceExVat: item.pricing.netBasePrice,
@@ -1432,6 +1443,16 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
     // Save order
     await newOrder.save({ session });
+
+    orderItemDocs.forEach((doc) => {
+      if (doc.promoProductRef) {
+        logger.info('[createOrder] Order line linked to promo submission', {
+          orderId: newOrder._id.toString(),
+          itemId: doc._id.toString(),
+          promoProductId: doc.promoProductRef.toString(),
+        });
+      }
+    });
 
     // 🔐 3. Deduct stock for ALL payment methods (COD, Wallet, Paystack, etc.)
     const stockService = require('../../services/stock/stockService');
@@ -2271,6 +2292,10 @@ exports.getOrder = catchAsync(async (req, res, next) => {
   doc.currentStatus = normalizedAdminOrder.currentStatus;
   doc.orderStatus = normalizedAdminOrder.orderStatus;
 
+  if (req.user?.role === 'support_agent') {
+    sanitizeOrderForModerator(doc);
+  }
+
   res.status(200).json({ status: 'success', data: { data: doc } });
 });
 // Override updateOrder to handle status sync and seller balance updates
@@ -2278,7 +2303,7 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
   const orderId = req.params.id;
   const updateData = req.body;
   const userRole = req.user?.role;
-  const isModerator = userRole === 'moderator';
+  const isModerator = userRole === 'support_agent';
   const isAdminLike = userRole === 'admin' || userRole === 'superadmin';
 
   const allowedKeys = isModerator

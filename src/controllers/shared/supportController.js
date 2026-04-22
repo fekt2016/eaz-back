@@ -13,7 +13,7 @@ const logger = require('../../utils/logger');
 const { safeFs } = require('../../utils/safePath');
 const { escapeRegex } = require('../../utils/helpers/searchUtils');
 
-const ADMIN_ROLES = ['admin', 'superadmin', 'moderator'];
+const ADMIN_ROLES = ['admin', 'superadmin', 'support_agent'];
 const isAdminRole = (user) => user && ADMIN_ROLES.includes(user.role);
 
 const storage = multer.diskStorage({
@@ -756,7 +756,7 @@ exports.updateTicketStatus = catchAsync(async (req, res, next) => {
  * Returns ALL tickets in the system (buyers, sellers, admins)
  */
 exports.getAllTickets = catchAsync(async (req, res, next) => {
-  // Verify admin role (admin, superadmin, moderator)
+  // Verify admin role (admin, superadmin, support_agent)
   if (!isAdminRole(req.user)) {
     return next(new AppError('Only admins can access all tickets', 403));
   }

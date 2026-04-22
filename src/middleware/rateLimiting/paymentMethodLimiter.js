@@ -5,6 +5,7 @@
  */
 
 const rateLimit = require('express-rate-limit');
+const { rateLimitKey } = require('../../utils/rateLimitKey');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -20,10 +21,7 @@ exports.paymentMethodCreationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count all requests
-  keyGenerator: (req) => {
-    // Use user ID for per-user rate limiting
-    return req.user ? req.user.id : req.ip;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 // Rate limiter for verification requests
@@ -38,9 +36,7 @@ exports.verificationRequestLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
-  keyGenerator: (req) => {
-    return req.user ? req.user.id : req.ip;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 // Rate limiter for payment method updates
@@ -55,9 +51,7 @@ exports.paymentMethodUpdateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
-  keyGenerator: (req) => {
-    return req.user ? req.user.id : req.ip;
-  },
+  keyGenerator: rateLimitKey,
 });
 
 module.exports = exports;

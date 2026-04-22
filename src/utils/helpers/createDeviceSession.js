@@ -296,6 +296,10 @@ exports.logoutAllDevices = async (req) => {
   // Deactivate all sessions
   await DeviceSession.deactivateAll(userId);
 
+  // Add a global invalidation marker so previously issued tokens are rejected.
+  const userType = req.user?.role || 'customer';
+  await TokenBlacklist.invalidateAllSessions(userId, userType);
+
   // Blacklist current token
   const token = req.headers.authorization?.split(' ')[1] || req.cookies?.main_jwt || req.cookies?.seller_jwt || req.cookies?.admin_jwt;
   if (token) {

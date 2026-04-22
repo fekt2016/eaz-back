@@ -51,6 +51,21 @@ const getPlatform = (role) => {
   return platformMap[role] || 'eazmain';
 };
 
+const shouldUseSecureCookies = (req) => {
+  const hostHeader = String(req?.headers?.host || '').toLowerCase();
+  const host = hostHeader.split(':')[0]; // remove port
+  const isLoopback =
+    host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+
+  // Never set Secure cookies on loopback/local HTTP — browsers won't store them.
+  if (isLoopback) return false;
+
+  const proto = String(
+    req?.headers?.['x-forwarded-proto'] || '',
+  ).toLowerCase();
+  return Boolean(req?.secure || proto === 'https');
+};
+
 /**
  * Create JWT token with deviceId
  * @param {string} id - User ID
@@ -77,14 +92,16 @@ const signToken = (id, role, deviceId = null) => {
  */
 const setAuthCookie = (res, role, token) => {
   const isProduction = process.env.NODE_ENV === 'production';
+  const secureByProtocol = shouldUseSecureCookies(res?.req);
+  const useCrossSiteCookie = isProduction && secureByProtocol;
   const cookieName = getCookieName(role);
   
   const cookieOptions = {
     httpOnly: true,
-    secure: isProduction, // true in production, false in development
+    secure: useCrossSiteCookie,
     // CRITICAL: For cross-origin requests (seller.saiisai.com -> api.saiisai.com)
     // sameSite must be 'none' when secure is true
-    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-site in production, 'lax' for same-site in dev
+    sameSite: useCrossSiteCookie ? 'none' : 'lax',
     path: '/',
     expires: new Date(
       Date.now() + (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000
@@ -92,7 +109,9 @@ const setAuthCookie = (res, role, token) => {
     // Set domain for production to allow cookie sharing across subdomains
     // IMPORTANT: Use .saiisai.com (with leading dot) to share cookies across all subdomains
     // Only set in production, leave undefined in development (localhost)
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    ...(useCrossSiteCookie && process.env.COOKIE_DOMAIN && {
+      domain: process.env.COOKIE_DOMAIN,
+    }),
   };
 
   res.cookie(cookieName, token, cookieOptions);
@@ -118,15 +137,19 @@ const setAuthCookie = (res, role, token) => {
  */
 const clearAuthCookie = (res, role) => {
   const isProduction = process.env.NODE_ENV === 'production';
+  const secureByProtocol = shouldUseSecureCookies(res?.req);
+  const useCrossSiteCookie = isProduction && secureByProtocol;
   const cookieName = getCookieName(role);
   
   res.cookie(cookieName, 'loggedout', {
     expires: new Date(Date.now() + 10 * 1000), // Expire immediately (10 seconds)
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: useCrossSiteCookie,
+    sameSite: useCrossSiteCookie ? 'none' : 'lax',
     path: '/',
-    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN }),
+    ...(useCrossSiteCookie && process.env.COOKIE_DOMAIN && {
+      domain: process.env.COOKIE_DOMAIN,
+    }),
   });
 };
 
@@ -240,14 +263,9 @@ const handleSuccessfulLogin = async (req, res, user, role, options = {}) => {
     user: safePayload,
   };
 
-  // For mobile seller app: include accessToken so app can send Authorization header when cookie not sent
-  const isMobileSeller =
-    role === 'seller' &&
-    req &&
-    (req.headers['x-platform'] === 'saiisai-seller' || req.headers['x-mobile'] === 'true');
-  if (isMobileSeller) {
-    response.accessToken = token;
-  }
+  // Include accessToken so frontend apps can pass it in the socket auth payload
+  // This bypasses HttpOnly cookie restrictions in cross-origin development
+  response.accessToken = token;
 
   // Add device session info if created
   if (sessionData) {

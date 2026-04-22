@@ -1,4 +1,9 @@
 const ActivityLog = require('../../models/activityLog/activityLogModel');
+const ScreenViewEvent = require('../../models/analytics/screenViewEventModel');
+const User = require('../../models/user/userModel');
+const Seller = require('../../models/user/sellerModel');
+const Admin = require('../../models/user/adminModel');
+const logger = require('../../utils/logger');
 const catchAsync = require('../../utils/helpers/catchAsync');
 const AppError = require('../../utils/errors/appError');
 
@@ -47,6 +52,9 @@ const buildActivityLogFilter = (query = {}) => {
   return filter;
 };
 
+const SCREEN_VIEW_PREFIX = 'Viewed screen: ';
+const SCREEN_VIEW_PREFIX_LENGTH = SCREEN_VIEW_PREFIX.length;
+
 /**
  * Get paginated activity logs
  * GET /api/v1/logs
@@ -89,36 +97,257 @@ exports.getActivityLogs = catchAsync(async (req, res, next) => {
  * GET /api/v1/logs/stats/homepage-experiments
  */
 exports.getHomepageExperimentStats = catchAsync(async (req, res, next) => {
+  // Preferred source: dedicated screen view events (includes anonymous traffic).
+  const requestedRole =
+    typeof req.query.role === 'string' && req.query.role.trim()
+      ? req.query.role.trim().toLowerCase()
+      : null;
+  const screenFilter = {
+    screen: { $regex: '^home(?::|$)', $options: 'i' },
+  };
+  if (req.query.platform) {
+    screenFilter.platform = req.query.platform;
+  }
+  if (req.query.startDate || req.query.endDate) {
+    screenFilter.viewedAt = {};
+    if (req.query.startDate) {
+      screenFilter.viewedAt.$gte = new Date(req.query.startDate);
+    }
+    if (req.query.endDate) {
+      screenFilter.viewedAt.$lte = new Date(req.query.endDate);
+    }
+  }
+  if (req.query.search) {
+    screenFilter.screen = {
+      $regex: req.query.search,
+      $options: 'i',
+    };
+  }
+
+  const screenResults = await ScreenViewEvent.aggregate([
+    { $match: screenFilter },
+    {
+      $addFields: {
+        __parts: { $split: ['$screen', ':'] },
+        actorRole: {
+          $cond: [
+            {
+              $and: [
+                { $ne: ['$role', null] },
+                { $ne: [{ $toLower: '$role' }, 'guest'] },
+              ],
+            },
+            { $toLower: '$role' },
+            {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$platform', 'eazseller'] }, then: 'seller' },
+                  { case: { $eq: ['$platform', 'eazadmin'] }, then: 'admin' },
+                ],
+                default: 'buyer',
+              },
+            },
+          ],
+        },
+      },
+    },
+    ...(requestedRole
+      ? [
+          {
+            $match: {
+              $expr: { $eq: ['$actorRole', requestedRole] },
+            },
+          },
+        ]
+      : []),
+    {
+      $match: {
+        $expr: {
+          $eq: [{ $toLower: { $arrayElemAt: ['$__parts', 0] } }, 'home'],
+        },
+      },
+    },
+    {
+      $project: {
+        eventName: {
+          $toLower: {
+            $ifNull: [{ $arrayElemAt: ['$__parts', 1] }, 'unknown'],
+          },
+        },
+        variant: {
+          $toUpper: {
+            $ifNull: [{ $arrayElemAt: ['$__parts', 2] }, 'UNKNOWN'],
+          },
+        },
+        actorRole: 1,
+        dateKey: {
+          $dateToString: { format: '%Y-%m-%d', date: '$viewedAt' },
+        },
+      },
+    },
+    {
+      $facet: {
+        totals: [
+          {
+            $group: {
+              _id: null,
+              totalEvents: { $sum: 1 },
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+        ],
+        byVariant: [
+          {
+            $group: {
+              _id: '$variant',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+        byDay: [
+          {
+            $group: {
+              _id: '$dateKey',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+        byRole: [
+          {
+            $group: {
+              _id: '$actorRole',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
+      },
+    },
+  ]);
+
+  const screenAggregate = screenResults[0] || {};
+  const screenTotals = screenAggregate.totals?.[0] || {
+    totalEvents: 0,
+    impressions: 0,
+    interactions: 0,
+  };
+
+  // Fallback source: ActivityLog (legacy, authenticated-only path).
   const filter = buildActivityLogFilter(req.query);
-  filter.description = { $regex: '^Viewed screen: home:' };
+  if (requestedRole) {
+    filter.role = requestedRole;
+  }
+  filter.$or = [
+    { description: { $regex: '^Viewed screen:\\s*home(?::|$)', $options: 'i' } },
+    { 'metadata.screen': { $regex: '^home(?::|$)', $options: 'i' } },
+  ];
 
   const results = await ActivityLog.aggregate([
     { $match: filter },
     {
       $addFields: {
         __screen: {
-          $substrCP: ['$description', 16, { $strLenCP: '$description' }],
+          $trim: {
+            input: {
+              $ifNull: [
+                '$metadata.screen',
+                {
+                  $substrCP: [
+                    '$description',
+                    SCREEN_VIEW_PREFIX_LENGTH,
+                    { $strLenCP: '$description' },
+                  ],
+                },
+              ],
+            },
+          },
         },
       },
     },
     {
       $addFields: {
         __parts: { $split: ['$__screen', ':'] },
+        actorRole: {
+          $cond: [
+            {
+              $and: [
+                { $ne: ['$role', null] },
+                { $ne: ['$role', ''] },
+                { $ne: [{ $toLower: '$role' }, 'guest'] },
+              ],
+            },
+            { $toLower: '$role' },
+            {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$platform', 'eazseller'] }, then: 'seller' },
+                  { case: { $eq: ['$platform', 'eazadmin'] }, then: 'admin' },
+                ],
+                default: 'buyer',
+              },
+            },
+          ],
+        },
       },
     },
     {
       $match: {
-        $expr: { $eq: [{ $arrayElemAt: ['$__parts', 0] }, 'home'] },
+        $expr: {
+          $eq: [{ $toLower: { $arrayElemAt: ['$__parts', 0] } }, 'home'],
+        },
       },
     },
     {
       $project: {
-        eventName: { $ifNull: [{ $arrayElemAt: ['$__parts', 1] }, 'unknown'] },
+        eventName: {
+          $toLower: {
+            $ifNull: [{ $arrayElemAt: ['$__parts', 1] }, 'unknown'],
+          },
+        },
         variant: {
           $toUpper: {
             $ifNull: [{ $arrayElemAt: ['$__parts', 2] }, 'UNKNOWN'],
           },
         },
+        actorRole: 1,
         dateKey: {
           $dateToString: { format: '%Y-%m-%d', date: '$timestamp' },
         },
@@ -180,6 +409,24 @@ exports.getHomepageExperimentStats = catchAsync(async (req, res, next) => {
           },
           { $sort: { _id: 1 } },
         ],
+        byRole: [
+          {
+            $group: {
+              _id: '$actorRole',
+              impressions: {
+                $sum: {
+                  $cond: [{ $eq: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+              interactions: {
+                $sum: {
+                  $cond: [{ $ne: ['$eventName', 'variant_seen'] }, 1, 0],
+                },
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ],
       },
     },
   ]);
@@ -191,25 +438,63 @@ exports.getHomepageExperimentStats = catchAsync(async (req, res, next) => {
     interactions: 0,
   };
 
+  const useScreenSource = (screenTotals.totalEvents || 0) > 0;
+  const selectedAggregate = useScreenSource ? screenAggregate : aggregate;
+  const selectedTotals = useScreenSource ? screenTotals : totals;
+  let selectedByRole = Array.isArray(selectedAggregate.byRole)
+    ? selectedAggregate.byRole
+    : [];
+  if (selectedByRole.length === 0 && (selectedTotals.totalEvents || 0) > 0) {
+    const inferredRole = requestedRole
+      || (req.query.platform === 'eazseller'
+        ? 'seller'
+        : req.query.platform === 'eazadmin'
+          ? 'admin'
+          : 'buyer');
+    selectedByRole = [
+      {
+        _id: inferredRole,
+        impressions: selectedTotals.impressions || 0,
+        interactions: selectedTotals.interactions || 0,
+      },
+    ];
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    logger.info(
+      '[HomepageExperimentStats] source=%s total=%d impressions=%d interactions=%d byRole=%j',
+      useScreenSource ? 'screen_events' : 'activity_log',
+      selectedTotals.totalEvents || 0,
+      selectedTotals.impressions || 0,
+      selectedTotals.interactions || 0,
+      selectedByRole
+    );
+  }
+
   const ctr =
-    totals.impressions > 0
-      ? (totals.interactions / totals.impressions) * 100
+    selectedTotals.impressions > 0
+      ? (selectedTotals.interactions / selectedTotals.impressions) * 100
       : 0;
 
   res.status(200).json({
     status: 'success',
     data: {
-      totalEvents: totals.totalEvents || 0,
-      impressions: totals.impressions || 0,
-      interactions: totals.interactions || 0,
+      totalEvents: selectedTotals.totalEvents || 0,
+      impressions: selectedTotals.impressions || 0,
+      interactions: selectedTotals.interactions || 0,
       ctr,
-      byVariant: (aggregate.byVariant || []).map((item) => ({
+      byVariant: (selectedAggregate.byVariant || []).map((item) => ({
         variant: item._id || 'UNKNOWN',
         impressions: item.impressions || 0,
         interactions: item.interactions || 0,
       })),
-      byDay: (aggregate.byDay || []).map((item) => ({
+      byDay: (selectedAggregate.byDay || []).map((item) => ({
         date: item._id,
+        impressions: item.impressions || 0,
+        interactions: item.interactions || 0,
+      })),
+      byRole: selectedByRole.map((item) => ({
+        role: item._id || 'guest',
         impressions: item.impressions || 0,
         interactions: item.interactions || 0,
       })),
@@ -310,6 +595,66 @@ exports.getActivityStats = catchAsync(async (req, res, next) => {
   // Total logs
   const totalLogs = await ActivityLog.countDocuments(filter);
 
+  const loginMatch = {
+    ...filter,
+    $or: [{ action: 'LOGIN' }, { activityType: 'LOGIN' }],
+  };
+
+  const totalLogins = await ActivityLog.countDocuments(loginMatch);
+
+  const loginByRoleRaw = await ActivityLog.aggregate([
+    { $match: loginMatch },
+    {
+      $group: {
+        _id: '$role',
+        count: { $sum: 1 },
+        users: { $addToSet: '$userId' },
+      },
+    },
+    {
+      $project: {
+        _id: 1,
+        count: 1,
+        uniqueUsers: { $size: '$users' },
+      },
+    },
+  ]);
+
+  const loginRoleMap = loginByRoleRaw.reduce((acc, row) => {
+    const role = row?._id || 'unknown';
+    acc[role] = {
+      count: row?.count || 0,
+      uniqueUsers: row?.uniqueUsers || 0,
+    };
+    return acc;
+  }, {});
+
+  const buyerLogins = loginRoleMap.buyer?.count || 0;
+  const sellerLogins = loginRoleMap.seller?.count || 0;
+  const adminLogins = loginRoleMap.admin?.count || 0;
+
+  // Fallback source: role-specific account lastLogin timestamps.
+  // This keeps buyer/seller/admin login cards useful even when
+  // historical ActivityLog LOGIN events are sparse.
+  const lastLoginFilter = {
+    lastLogin: { $gte: startDate, $lte: endDate },
+  };
+  const [
+    buyerLastLoginUsers,
+    sellerLastLoginUsers,
+    adminLastLoginUsers,
+  ] = await Promise.all([
+    User.countDocuments(lastLoginFilter),
+    Seller.countDocuments(lastLoginFilter),
+    Admin.countDocuments(lastLoginFilter),
+  ]);
+
+  const buyerEffectiveLogins = Math.max(buyerLogins, buyerLastLoginUsers);
+  const sellerEffectiveLogins = Math.max(sellerLogins, sellerLastLoginUsers);
+  const adminEffectiveLogins = Math.max(adminLogins, adminLastLoginUsers);
+  const totalEffectiveLogins =
+    buyerEffectiveLogins + sellerEffectiveLogins + adminEffectiveLogins;
+
   // Logs by role
   const logsByRole = await ActivityLog.aggregate([
     { $match: filter },
@@ -350,6 +695,36 @@ exports.getActivityStats = catchAsync(async (req, res, next) => {
         endDate,
       },
       totalLogs,
+      loginStats: {
+        totalLogins: totalEffectiveLogins || totalLogins,
+        buyerLogins: buyerEffectiveLogins,
+        sellerLogins: sellerEffectiveLogins,
+        adminLogins: adminEffectiveLogins,
+        buyerUniqueUsers: Math.max(
+          loginRoleMap.buyer?.uniqueUsers || 0,
+          buyerLastLoginUsers
+        ),
+        sellerUniqueUsers: Math.max(
+          loginRoleMap.seller?.uniqueUsers || 0,
+          sellerLastLoginUsers
+        ),
+        adminUniqueUsers: Math.max(
+          loginRoleMap.admin?.uniqueUsers || 0,
+          adminLastLoginUsers
+        ),
+        buyerSharePct:
+          totalEffectiveLogins > 0
+            ? (buyerEffectiveLogins / totalEffectiveLogins) * 100
+            : 0,
+        sellerSharePct:
+          totalEffectiveLogins > 0
+            ? (sellerEffectiveLogins / totalEffectiveLogins) * 100
+            : 0,
+        adminSharePct:
+          totalEffectiveLogins > 0
+            ? (adminEffectiveLogins / totalEffectiveLogins) * 100
+            : 0,
+      },
       logsByRole,
       logsByPlatform,
       topActions,

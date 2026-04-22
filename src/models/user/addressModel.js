@@ -121,7 +121,7 @@ const addressSchema = new mongoose.Schema(
       validate: {
         validator: function (v) {
           // Validate Ghana phone numbers (10 digits starting with valid prefixes)
-          return /^(020|023|024|025|026|027|028|029|050|054|055|056|057|059)\d{7}$/.test(
+          return /^(020|023|024|025|026|027|050|054|055|056|057|059)\d{7}$/.test(
             v,
           );
         },

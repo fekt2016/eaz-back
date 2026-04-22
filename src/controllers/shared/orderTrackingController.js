@@ -35,9 +35,9 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
       return next(new AppError('Order not found', 404));
     }
 
-    // Check authorization: admin, superadmin, moderator or seller (who owns items in the order)
-    const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
-    const isSeller = user.role === 'seller';
+    // Check authorization: admin, superadmin, seller, or official_store
+    const isAdmin = ['admin', 'superadmin'].includes(user.role);
+    const isSeller = ['seller', 'official_store'].includes(user.role);
 
     if (!isAdmin && !isSeller) {
       await session.abortTransaction();
@@ -70,7 +70,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
 
     // Determine updatedByModel
     let updatedByModel = 'Admin';
-    if (user.role === 'seller') {
+    if (['seller', 'official_store'].includes(user.role)) {
       updatedByModel = 'Seller';
     } else if (user.role === 'user') {
       updatedByModel = 'User';
@@ -85,10 +85,14 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
     }
 
     // Do not allow progressing unpaid orders beyond cancellation.
+    // Exception: payment_on_delivery orders are paid at the door — tracking updates
+    // must proceed before payment is confirmed.
     const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+    const rawPaymentMethod = (order.paymentMethod || '').toString().toLowerCase();
     const isPaid =
       rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
-    if (!isPaid && status !== order.currentStatus && status !== 'cancelled') {
+    const isPayOnDelivery = rawPaymentMethod === 'payment_on_delivery';
+    if (!isPaid && !isPayOnDelivery && status !== order.currentStatus && status !== 'cancelled') {
       await session.abortTransaction();
       session.endSession();
       return next(
@@ -101,7 +105,7 @@ exports.updateOrderStatus = catchAsync(async (req, res, next) => {
 
     // For international pre-orders, certain steps are admin-only
     const isInternational = order.orderType === 'preorder_international';
-    const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
+    const isAdminLike = ['admin', 'superadmin'].includes(user.role);
 
     if (
       isInternational &&
@@ -507,7 +511,7 @@ exports.updateDriverLocation = catchAsync(async (req, res, next) => {
   const user = req.user;
   if (!user) return next(new AppError('Authentication required', 401));
 
-  const isAdminLike = ['admin', 'superadmin', 'moderator'].includes(user.role);
+  const isAdminLike = ['admin', 'superadmin'].includes(user.role);
   const isSeller = user.role === 'seller';
   const isDriver = user.role === 'driver';
 
@@ -845,9 +849,9 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
       return next(new AppError('Invalid status', 400));
     }
 
-    // Check authorization: admin (admin, superadmin, moderator) or seller
-    const isAdmin = ['admin', 'superadmin', 'moderator'].includes(user.role);
-    const isSeller = user.role === 'seller';
+    // Check authorization: admin, seller, or official_store
+    const isAdmin = ['admin', 'superadmin'].includes(user.role);
+    const isSeller = ['seller', 'official_store'].includes(user.role);
 
     if (!isAdmin && !isSeller) {
       await session.abortTransaction();
@@ -889,7 +893,7 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
 
     // Determine updatedByModel
     let updatedByModel = 'Admin';
-    if (user.role === 'seller') {
+    if (['seller', 'official_store'].includes(user.role)) {
       updatedByModel = 'Seller';
     }
 
@@ -906,10 +910,15 @@ exports.addTrackingUpdate = catchAsync(async (req, res, next) => {
 
     // SECURITY: Prevent unpaid orders from being advanced to delivery states
     // (seller crediting happens when status becomes delivered)
+    // Exception: payment_on_delivery orders are paid at the door — tracking must be
+    // updated before payment is confirmed, so they bypass this check.
     const rawPaymentStatus = (order.paymentStatus || '').toString().toLowerCase();
+    const rawPaymentMethod = (order.paymentMethod || '').toString().toLowerCase();
     const isPaid = rawPaymentStatus === 'paid' || rawPaymentStatus === 'completed';
+    const isPayOnDelivery = rawPaymentMethod === 'payment_on_delivery';
     if (
       !isPaid &&
+      !isPayOnDelivery &&
       status !== order.currentStatus &&
       !['cancelled', 'refunded'].includes(status)
     ) {

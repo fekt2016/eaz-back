@@ -117,6 +117,20 @@ exports.getStatusFeed = catchAsync(async (req, res) => {
   }
 
   let feed = Array.from(groupMap.values());
+
+  const nowBuyer = new Date();
+  feed = feed
+    .map((g) => ({
+      ...g,
+      statuses: (g.statuses || []).filter((st) => {
+        const v = st.videoUrl;
+        if (typeof v !== 'string' || !v.trim()) return false;
+        if (st.expiresAt && new Date(st.expiresAt) <= nowBuyer) return false;
+        return true;
+      }),
+    }))
+    .filter((g) => (g.statuses || []).length > 0);
+
   const statusIdsInFeed = validStatuses.map((s) => s._id);
 
   // Phase 1–6: When authenticated, personalize and set viewedByMe
@@ -372,6 +386,28 @@ exports.getStatusesBySeller = catchAsync(async (req, res) => {
     hasUnseen: true,
   };
   group.statuses.forEach((st) => { st.seller = group.seller; });
+
+  group.statuses = group.statuses.filter(
+    (st) => typeof st.videoUrl === 'string' && st.videoUrl.trim(),
+  );
+
+  if (group.statuses.length === 0) {
+    return res.status(200).json({
+      status: 'success',
+      data: [{
+        seller: {
+          _id: sellerId,
+          id: sellerId,
+          name: '',
+          shopName: '',
+          avatar: '',
+          isVerified: false,
+        },
+        statuses: [],
+        hasUnseen: false,
+      }],
+    });
+  }
 
   res.status(200).json({
     status: 'success',

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const { deleteCloudinaryAsset } = require('../../config/cloudinary');
+const logger = require('../../utils/logger');
 // import Category from './categoryModel.js';
 // import AppError from '../../utils/errors/appError.js';
 
@@ -106,12 +107,6 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
       required: [true, 'Parent category is required'],
-    },
-    // Optional promotion key used for homepage/offers landing pages (e.g. "back-to-school")
-    promotionKey: {
-      type: String,
-      trim: true,
-      index: true,
     },
     subCategory: {
       type: mongoose.Schema.Types.ObjectId,
@@ -260,7 +255,7 @@ const productSchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    // Calculated price when a promotion (promotionKey/discount) applies. Uses variant price + discount value. 0 when no promotion. Used by product card.
+    // Unified promo system final price snapshot (set by promo flow). 0 when no promo.
     promoPrice: {
       type: Number,
       min: 0,
@@ -523,12 +518,6 @@ const productSchema = new mongoose.Schema(
       max: [5, 'Rating must be below 5.0'],
       set: (val) => Math.round(val * 10) / 10,
     },
-    discounts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Discount',
-      },
-    ],
     shipping: {
       weight: {
         value: Number,
@@ -1032,116 +1021,9 @@ productSchema.virtual('taxBreakdown').get(function () {
 // Get base price before VAT for a specific variant
 productSchema.methods.getVariantTaxBreakdown = function (variantIndex) {
   const taxService = require('../../services/tax/taxService');
-  const logger = require('../../utils/logger');
   const variant = this.variants?.[variantIndex];
   if (!variant) return null;
   return taxService.extractTaxFromPrice(variant.price || 0);
-};
-
-// Method to apply discounts to a product
-productSchema.methods.applyDiscounts = async function () {
-  logger.info('applyDiscounts called');
-  const Discount = mongoose.model('Discount');
-  const now = new Date();
-
-  // Find all applicable discounts for this product
-  const discounts = await Discount.find({
-    $or: [
-      { products: this._id },
-      { categories: { $in: [this.parentCategory, this.subCategory] } },
-      { products: { $size: 0 }, categories: { $size: 0 }, seller: this.seller }, // Store-wide discounts from this seller
-    ],
-    active: true,
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-  });
-  logger.info(discounts);
-  // Track if any discount was applied
-  let discountApplied = false;
-  // logger.info('variants', this.variants);
-  // Apply the best discount to each variant
-  for (let i = 0; i < this.variants.length; i++) {
-    let bestDiscountedPrice = this.variants[i].price;
-    // logger.info('bestDiscountedPrice', bestDiscountedPrice);
-    let bestDiscount = null;
-
-    // Store original price if not already set
-    if (!this.variants[i].originalPrice) {
-      this.variants[i].originalPrice = this.variants[i].price;
-    }
-
-    // Check each discount to find the best one for this variant
-    for (const discount of discounts) {
-      let discountedPrice = this.variants[i].originalPrice;
-
-      switch (discount.type) {
-        case 'percentage':
-          discountedPrice =
-            this.variants[i].originalPrice * (1 - discount.value / 100);
-          break;
-        case 'fixed':
-          discountedPrice = Math.max(
-            0,
-            this.variants[i].originalPrice - discount.value,
-          );
-          break;
-      }
-      // logger.info('discountedPrice', discountedPrice);
-      // Track the best discount (lowest price)
-      if (discountedPrice < bestDiscountedPrice) {
-        bestDiscountedPrice = discountedPrice;
-        // logger.info('bestDiscountedPrice', bestDiscountedPrice);
-        bestDiscount = discount;
-        // logger.info('bestDiscount', bestDiscount);
-      }
-    }
-
-    // Apply the best discount if found
-    if (bestDiscount) {
-      this.variants[i].price = Math.round(bestDiscountedPrice * 100) / 100;
-      // Round to 2 decimal places
-      // logger.info('variant price', this.variants[i].price);
-      discountApplied = true;
-    } else {
-      // Reset to original price if no discount applies
-      this.variants[i].price = this.variants[i].originalPrice;
-    }
-  }
-
-  // Update min and max prices
-  const prices = this.variants
-    .map((v) => v.price)
-    .filter((p) => p != null && !isNaN(p) && isFinite(p));
-  if (prices.length > 0) {
-    this.minPrice = Math.min(...prices);
-    this.maxPrice = Math.max(...prices);
-  }
-  logger.info('discountApplied', discountApplied);
-  return discountApplied;
-};
-
-// Method to remove all discounts and revert to original prices
-productSchema.methods.removeDiscounts = function () {
-  let changesMade = false;
-
-  for (let i = 0; i < this.variants.length; i++) {
-    if (this.variants[i].originalPrice) {
-      this.variants[i].price = this.variants[i].originalPrice;
-      changesMade = true;
-    }
-  }
-
-  if (changesMade) {
-    const prices = this.variants
-      .map((v) => v.price)
-      .filter((p) => p != null && !isNaN(p) && isFinite(p));
-    if (prices.length > 0) {
-      this.minPrice = Math.min(...prices);
-      this.maxPrice = Math.max(...prices);
-    }
-  }
-
-  return changesMade;
 };
 
 // Middleware
