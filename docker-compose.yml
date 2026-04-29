@@ -1,10 +1,12 @@
+version: "3.8"
+
 services:
-  backend:
-    container_name: saiisai-backend
+  backend-prod:
+    container_name: saiisai-backend-prod
     build:
       context: .
       dockerfile: Dockerfile
-    image: saiisai-backend:latest
+    image: saiisai-backend:prod
     restart: unless-stopped
     ports:
       - "127.0.0.1:4000:4000"
@@ -17,3 +19,22 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  backend-staging:
+    container_name: saiisai-backend-staging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: saiisai-backend:staging
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4001:4000"
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: staging
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
