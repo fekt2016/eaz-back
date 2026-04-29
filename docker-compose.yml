@@ -28,7 +28,7 @@ services:
     image: saiisai-backend:staging
     restart: unless-stopped
     ports:
-      - "127.0.0.1:4001:4000"
+      - "127.0.0.1:4001:4001"
     env_file:
       - .env.staging
     environment:
