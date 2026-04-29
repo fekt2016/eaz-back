@@ -12,7 +12,6 @@ RUN npm ci --omit=dev --legacy-peer-deps --no-audit --no-fund \
 
 COPY . .
 
-WORKDIR /app/src
 
 EXPOSE 4000
 
