@@ -133,10 +133,10 @@ class Server {
       // Handle server errors
       this.server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
-          logger.error(`Port ${port} is already in use`, {
+          logger.error(`Port ${port} is already in use. This usually means a previous instance of the server is still running.`, {
             code: error.code,
             port,
-            suggestion: `Stop the process using port ${port}, use a different port, or find process: lsof -i :${port}`,
+            suggestion: `Try killing the process on port ${port}: 'lsof -ti :${port} | xargs kill -9'`,
           });
         } else if (error.code === 'EACCES') {
           logger.error(`Permission denied: Cannot bind to port ${port}`, {
@@ -170,6 +170,12 @@ class Server {
   async gracefulShutdown(signal) {
     logger.info(`${signal} received. Shutting down gracefully...`);
 
+    // Force exit after 10 seconds if graceful shutdown fails
+    const forceExitTimeout = setTimeout(() => {
+      logger.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+
     try {
       // Close HTTP server
       if (this.server) {
@@ -182,12 +188,13 @@ class Server {
       }
 
       // Close MongoDB connection
-      if (mongoose.connection.readyState !== 0) {
+      if (mongoose.connection && mongoose.connection.readyState !== 0) {
         await mongoose.connection.close(false);
         logger.info('MongoDB connection closed.');
       }
 
-      logger.info('Shutdown completed.');
+      clearTimeout(forceExitTimeout);
+      logger.info('Shutdown completed successfully.');
       process.exit(0);
     } catch (error) {
       logger.error('Error during shutdown', { error: error.message, stack: error.stack });
