@@ -2629,3 +2629,138 @@
 {"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 11:30:35"}
 {"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 11:30:35"}
 {"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 11:30:35"}
+{"code":"EADDRINUSE","level":"error","message":"Port 4000 is already in use","port":4000,"service":"backend-api","suggestion":"Stop the process using port 4000, use a different port, or find process: lsof -i :4000","timestamp":"2026-04-22 14:51:37"}
+{"code":"EADDRINUSE","level":"error","message":"Port 4000 is already in use","port":4000,"service":"backend-api","suggestion":"Stop the process using port 4000, use a different port, or find process: lsof -i :4000","timestamp":"2026-04-22 15:41:53"}
+{"0":"j","1":"w","10":"m","11":"e","12":"d","2":"t","3":" ","4":"m","5":"a","6":"l","7":"f","8":"o","9":"r","level":"error","message":"Token verification failed:","service":"backend-api","timestamp":"2026-04-22 15:47:35"}
+{"code":"EADDRINUSE","level":"error","message":"Port 4000 is already in use. This usually means a previous instance of the server is still running.","port":4000,"service":"backend-api","suggestion":"Try killing the process on port 4000: 'lsof -ti :4000 | xargs kill -9'","timestamp":"2026-04-22 16:37:04"}
+{"code":"EADDRINUSE","level":"error","message":"Port 4000 is already in use. This usually means a previous instance of the server is still running.","port":4000,"service":"backend-api","suggestion":"Try killing the process on port 4000: 'lsof -ti :4000 | xargs kill -9'","timestamp":"2026-04-22 16:39:32"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-01.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 17:19:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-01.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 17:19:38"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-22 18:01:31"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-22 18:01:31"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-01.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 18:40:04"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-01.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 18:40:04"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 18:58:02"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 18:58:02"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 19:36:22"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 19:36:22"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 20:13:56"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 20:13:56"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-22 21:10:32"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-22 21:10:32"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:04:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:04:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:29:03"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:29:03"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:46:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 22:46:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:03:47"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:03:47"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:20:25"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:20:25"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:38:14"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:38:14"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:56:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-22 23:56:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:14:00"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:14:00"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:29:51"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:29:51"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:45:58"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 00:45:58"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 01:02:00"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 01:02:00"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 01:32:46"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 01:32:46"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-23 02:11:22"}
+{"level":"error","message":"read ECONNRESET","service":"backend-api","timestamp":"2026-04-23 02:11:22"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 02:30:49"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 02:30:49"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 02:49:12"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 02:49:12"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:05:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:05:41"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:23:25"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:23:25"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:40:15"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:40:15"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:58:06"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 03:58:06"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:15:22"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:15:22"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:31:23"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:31:23"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:48:02"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 04:48:02"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:03:58"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:03:58"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:20:53"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:20:53"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:38:21"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:38:21"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:55:27"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 05:55:27"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:11:35"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:11:35"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:29:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:29:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:46:11"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 06:46:11"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:03:26"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:03:26"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:20:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:20:38"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:38:12"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:38:12"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:55:19"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 07:55:19"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:11:35"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:11:35"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:28:24"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:28:24"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:46:32"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 08:46:32"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:03:16"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:03:16"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:21:50"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:21:50"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:37:42"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:37:42"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:56:26"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 09:56:26"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 10:13:06"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 10:13:06"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 10:17:50"}
+{"level":"error","message":"Connection to ac-oljttxa-shard-00-02.6vcorfz.mongodb.net:27017 interrupted due to server monitor timeout","service":"backend-api","timestamp":"2026-04-23 10:17:50"}
+{"level":"error","message":"read ETIMEDOUT","service":"backend-api","timestamp":"2026-04-24 09:31:24"}
+{"level":"error","message":"read ETIMEDOUT","service":"backend-api","timestamp":"2026-04-24 09:31:32"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 29999ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:32:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 29999ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:32:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:33:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:33:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:34:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:34:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:35:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:35:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:36:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:36:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:37:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:37:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:38:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:38:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30002ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:39:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30002ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:39:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:40:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:40:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:41:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30002ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:41:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:42:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:42:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:43:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:43:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 29999ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:44:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 29999ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:44:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:45:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30001ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:45:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:46:19"}
+{"level":"error","message":"Socket 'secureConnect' timed out after 30000ms (connectTimeoutMS: 30000)","service":"backend-api","timestamp":"2026-04-24 09:46:19"}
